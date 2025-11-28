@@ -1,0 +1,299 @@
+homio_thermostat:
+  template: [homio_entity]
+  show_entity_picture: false
+  show_icon: false
+  show_label: false
+  name: Thermostat
+
+  # Helper to toggle between mode rail vs target-temp rail
+  variables:
+    thermostat_toggle_helper: input_boolean.homio_cooling_control
+
+  # Main text
+  state_display: |
+    [[[
+      const mode = entity.state;
+      const target = entity.attributes.temperature;
+      if (mode === 'cool') {
+        return "Cooling to " + target + "°";
+      } else if (mode === 'heat') {
+        return "Heating to " + target + "°";
+      } else {
+        return "Off";
+      }
+    ]]]
+
+  # TAP on the card: toggle to Target Temp view
+  tap_action:
+    action: call-service
+    service: input_boolean.toggle
+    service_data:
+      entity_id: |
+        [[[
+          return variables.thermostat_toggle_helper;
+        ]]]
+
+  # HOLD on the card: open more-info thermostat popup
+  hold_action:
+    action: more-info
+    entity: '[[[ return entity.entity_id ]]]'
+
+  styles:
+    card:
+      - --rail-w: |
+          [[[
+            return (window.innerWidth <= 768) ? '48px' : '60px';
+          ]]]
+    name:
+      - opacity: |
+          [[[
+            return states[variables.thermostat_toggle_helper].state === "on" ? "0" : "1";
+          ]]]
+      - transition: opacity 0.25s
+    state:
+      - opacity: |
+          [[[
+            return states[variables.thermostat_toggle_helper].state === "on" ? "0" : "0.85";
+          ]]]
+      - transition: opacity 0.25s
+
+    custom_fields:
+      cooling_modes:
+        - position: absolute
+        - top: 0
+        - right: 0
+        - bottom: 0
+        - width: var(--rail-w)
+        - z-index: 2
+        - pointer-events: auto
+        - display: |
+            [[[
+              return states[variables.thermostat_toggle_helper].state === "on"
+                ? "none"
+                : "block";
+            ]]]
+      target_temperature:
+        - position: absolute
+        - inset: 0
+        - z-index: 3
+        - pointer-events: auto
+        - display: |
+            [[[
+              return states[variables.thermostat_toggle_helper].state === "on"
+                ? "block"
+                : "none";
+            ]]]
+
+  custom_fields:
+    cooling_modes:
+      card:
+        type: custom:layout-card
+        layout_type: custom:grid-layout
+        layout:
+          position: absolute
+          inset: 0 0 0 auto
+          width: var(--rail-w)
+          grid-template-columns: 1fr
+          grid-template-rows: repeat(2, 1fr)
+          height: 100%
+          margin: 0
+          padding: 0
+          align-items: stretch
+          justify-items: stretch
+        cards:
+          # OFF button (top)
+          - type: custom:button-card
+            template: [homio_default]
+            show_entity_picture: true
+            entity_picture: /local/images/Homio/icons/power_off.svg
+            tap_action:
+              action: call-service
+              service: climate.set_hvac_mode
+              data:
+                entity_id: '[[[ return entity.entity_id ]]]'
+                hvac_mode: "off"
+            styles:
+              card:
+                - height: 100%
+                - min-height: 0
+                - padding: 0
+                - box-shadow: none !important
+                - background: |
+                    [[[
+                      return entity.state === 'off'
+                        ? 'var(--thermostat-card-on)'
+                        : 'var(--thermostat-card-off)';
+                    ]]]
+              img_cell: [ { width: '30%' } ]
+              icon: [ { width: '100%' }, { height: '100%' } ]
+
+          # MODE button (bottom)
+          - type: custom:button-card
+            template: [homio_default]
+            show_entity_picture: true
+            entity_picture: |
+              [[[
+                const sel = states['input_select.homio_thermostat_mode']?.state || 'cool';
+                return sel === 'heat'
+                  ? '/local/images/Homio/icons/heating.svg'
+                  : '/local/images/Homio/icons/cooling.svg';
+              ]]]
+
+            # TAP: turn on the currently selected mode (cool/heat)
+            tap_action:
+              action: call-service
+              service: climate.set_hvac_mode
+              data:
+                entity_id: '[[[ return entity.entity_id ]]]'
+                hvac_mode: |
+                  [[[
+                    return states['input_select.homio_thermostat_mode']?.state || 'cool';
+                  ]]]
+
+            # HOLD: toggle selected mode
+            hold_action:
+              action: call-service
+              service: input_select.select_option
+              data:
+                entity_id: input_select.homio_thermostat_mode
+                option: |
+                  [[[
+                    const sel = states['input_select.homio_thermostat_mode']?.state || 'cool';
+                    return sel === 'heat' ? 'cool' : 'heat';
+                  ]]]
+
+            styles:
+              card:
+                - height: 100%
+                - min-height: 0
+                - padding: 0
+                - box-shadow: none !important
+                - background: |
+                    [[[
+                      return ['cool','heat'].includes(entity.state)
+                        ? 'var(--thermostat-card-on)'
+                        : 'var(--thermostat-card-off)';
+                    ]]]
+              img_cell: [ { width: '30%' } ]
+              icon: [ { width: '100%' }, { height: '100%' } ]
+
+    # Target Temp
+    target_temperature:
+      card:
+        type: custom:button-card
+        template: [homio_entity]
+        show_entity_picture: false
+        show_icon: false
+        name: Target Temp
+        state_display: |
+          [[[
+            return states['input_number.homio_thermostat_target_temperature'].state + "°"
+          ]]]
+        tap_action:
+          action: call-service
+          service: input_boolean.toggle
+          service_data:
+            entity_id: |
+              [[[
+                return variables.thermostat_toggle_helper;
+              ]]]
+
+        styles:
+          card:
+            - background: transparent
+            - backdrop-filter: none
+            - animation: none
+            - box-shadow: none !important
+            - padding-right: var(--rail-w)
+          custom_fields:
+            temperature_controls:
+              - position: absolute
+              - top: 0
+              - right: 0
+              - bottom: 0
+              - width: var(--rail-w)
+
+        custom_fields:
+          temperature_controls:
+            card:
+              type: custom:layout-card
+              layout_type: custom:grid-layout
+              layout:
+                position: absolute
+                inset: 0 0 0 auto
+                width: var(--rail-w)
+                grid-template-columns: 1fr
+                grid-template-rows: repeat(3, 1fr)
+                height: 100%
+                margin: 0
+                padding: 0
+                align-items: stretch
+                justify-items: stretch
+              cards:
+                # UP
+                - type: custom:button-card
+                  template: [homio_default]
+                  show_entity_picture: true
+                  entity_picture: /local/images/Homio/icons/increase.svg
+                  tap_action:
+                    action: call-service
+                    service: input_number.increment
+                    service_data:
+                      entity_id: input_number.homio_thermostat_target_temperature
+                  styles:
+                    card:
+                      - height: 100%
+                      - min-height: 0
+                      - padding: 0
+                      - background: var(--thermostat-card-on)
+                      - border-bottom: "0.5px solid rgba(255,255,255,0.1)"
+                      - box-shadow: none !important
+                    img_cell: [ { width: '30%' } ]
+                    icon: [ { transform: 'rotate(-90deg)' } ]
+
+                # SET
+                - type: custom:button-card
+                  template: [homio_default]
+                  name: SET
+                  tap_action:
+                    action: call-service
+                    service: climate.set_temperature
+                    service_data:
+                      entity_id: '[[[ return entity.entity_id ]]]'
+                      temperature: |
+                        [[[
+                          return parseFloat(states['input_number.homio_thermostat_target_temperature'].state);
+                        ]]]
+                  styles:
+                    card:
+                      - height: 100%
+                      - min-height: 0
+                      - padding: 0
+                      - background: var(--thermostat-card-on)
+                      - box-shadow: none !important
+                      - border-bottom: "0.5px solid rgba(255,255,255,0.1)"
+                    name:
+                      - font-size: 10px
+                      - letter-spacing: 2px
+                      - text-transform: uppercase
+                      - font-weight: 600
+
+                # DOWN
+                - type: custom:button-card
+                  template: [homio_default]
+                  show_entity_picture: true
+                  entity_picture: /local/images/Homio/icons/decrease.svg
+                  tap_action:
+                    action: call-service
+                    service: input_number.decrement
+                    service_data:
+                      entity_id: input_number.homio_thermostat_target_temperature
+                  styles:
+                    card:
+                      - height: 100%
+                      - min-height: 0
+                      - padding: 0
+                      - box-shadow: none !important
+                      - background: var(--thermostat-card-on)
+                    img_cell: [ { width: '30%' } ]
+                    icon: [ { transform: 'rotate(-90deg)' } ]

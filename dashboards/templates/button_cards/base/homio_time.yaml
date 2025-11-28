@@ -1,0 +1,18 @@
+homio_time:
+  template:
+    - homio_default
+  name: |
+    [[[ 
+        return states["sensor.current_time_us"].state
+    ]]]
+  styles:
+    name:
+      - color: var(--primary-text-color)
+      - letter-spacing: 1px
+      - font-size: 16px
+      - text-transform: uppercase
+      - font-weight: 700
+      - justify-self: start
+    card:
+      - background: transparent
+      - box-shadow: none

@@ -1,0 +1,11 @@
+homio_occupancy:
+  template:
+    - homio_entity
+  variables:
+    icon: occupancy
+  show_entity_picture: true
+  show_name: true
+  show_state: true
+  name: Occupancy
+  tap_action:
+    action: more-info

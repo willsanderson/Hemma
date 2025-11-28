@@ -1,0 +1,10 @@
+# Template Sensors
+- sensor:
+    - name: Current Date
+      state: >
+        {% set days = ["st", "nd", "rd"] %}
+        {% set day = now().day %}
+        {{ now().strftime('%A ') }}{{ day }}{{ days[day-1] if day in range(1, 4)
+        and day not in range(11, 14) else 'th' }} {{ now().strftime('%B %Y') }}
+    - name: Current Time
+      state: "{{ now().strftime('%H:%M') }}"

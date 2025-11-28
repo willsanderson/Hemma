@@ -1,0 +1,28 @@
+input_boolean:
+  homio_cooling_control:
+    name: Cooling Control
+    initial: off
+  homio_heating_control:
+    name: Heating Control
+    initial: off
+  homio_hot_water_control:
+    name: Hot Water Control
+    initial: off
+  homio_mobile_navigation:
+    name: Mobile Navigation
+    initial: off
+input_number:
+  homio_thermostat_target_temperature:
+    name: Homio Thermostat Target Temperature
+    min: 68
+    max: 75
+    step: 1
+    unit_of_measurement: "°F"
+    mode: slider
+input_select:
+  homio_thermostat_mode:
+    name: Homio Thermostat Mode
+    options:
+      - cool
+      - heat
+    initial: cool

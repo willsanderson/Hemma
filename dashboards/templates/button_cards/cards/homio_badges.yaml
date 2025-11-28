@@ -1,0 +1,858 @@
+# Badge base
+homio_badge_base:
+  styles:
+    card:
+      - background: var(--badge-background)
+      - box-shadow: var(--badge-shadow)
+      - backdrop-filter: blur(8px)
+      - -webkit-backdrop-filter: blur(8px)
+      - border-radius: var(--badge-br, 9999px)
+      - padding: var(--badge-padding-current, var(--badge-padding, 6px 14px))
+      - min-height: var(--badge-min-height-current, var(--badge-min-height, 44px))
+      - display: inline-grid
+      - align-items: center
+      - gap: 12px
+      - width: fit-content
+      - margin-inline-start: 0px
+      - margin-inline-end: var(--badge-gap-current, var(--badge-gap, 10px)) !important
+      - margin-block-end: var(--badge-row-gap-current, var(--badge-row-gap, 8px)) !important
+      - margin-block-start: var(--badge-top-gap-current, var(--badge-top-gap, 6px)) !important
+      - position: relative
+      - isolation: isolate
+      - --badge-title-color: var(--primary-text-color)
+      - --badge-sub-color: var(--secondary-text-color)
+      - background-clip: padding-box
+      - contain: paint
+      - overflow: hidden
+    grid:
+      - grid-template-areas: '"i l"'
+      - grid-template-columns: min-content minmax(0, 1fr)
+      - column-gap: var(--badge-col-gap-current, var(--badge-col-gap, 6px))
+      - align-items: center
+    name:
+      - grid-area: l
+      - min-width: 0
+      - color: var(--badge-title-color, var(--secondary-text-color))
+      - font-weight: 700
+      - font-size: var(--badge-font-size-current, 13px)
+      - line-height: 1.2
+      - text-align: left
+      - justify-self: start
+      - z-index: 4
+    icon:
+      - grid-area: i
+      - width: var(--badge-icon-size-current, 28px)
+      - height: var(--badge-icon-size-current, 28px)
+      - color: var(--primary-text-color)
+      - z-index: 4
+      - margin-inline-start: var(--badge-icon-nudge, 0px)
+    entity_picture:
+      - grid-area: i
+      - width: var(--badge-icon-size-current, 28px)
+      - height: var(--badge-icon-size-current, 28px)
+      - border-radius: 50%
+      - object-fit: cover
+      - z-index: 4
+      - margin-inline-start: var(--badge-icon-nudge, 0px)
+    label:
+      - font-size: var(--badge-font-size-current, 13px)
+    state:
+      - font-size: var(--badge-font-size-current, 13px)
+  extra_styles: |
+    ha-card::before{ z-index: 3 !important; }
+    ha-card::after{  z-index: 2 !important; }
+
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+    :host{
+      --media-sub-opacity: .82;
+    }
+
+# Air Quality
+homio_badge_air_quality:
+  template: [homio_badge_base]
+  tap_action: { action: more-info }
+  styles:
+    icon:
+      - color: >
+          [[[
+            const s = String(entity?.state || 'unknown').toLowerCase();
+            if (s === 'excellent') return '#67f5a0';
+            if (s === 'good')      return '#44e371';
+            if (s === 'moderate')  return '#f0c741';
+            if (s === 'bad')       return '#f5962a';
+            if (s === 'very bad')  return '#e53552';
+            return 'var(--disabled-text-color)';
+          ]]]
+  icon: >
+    [[[
+      const s = String(entity?.state || 'unknown').toLowerCase();
+      if (s === 'very bad') return 'mdi:emoticon-dead-outline';
+      if (['excellent','good','moderate','bad'].includes(s)) return 'mdi:blur';
+      return 'mdi:cloud';
+    ]]]
+  name: >
+    [[[
+      const raw = String(entity?.state ?? 'Unknown');
+      const nice = raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : 'Unknown';
+
+      return `
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;">
+          <div style="
+            font-size:var(--badge-font-size-current,13px);
+            font-weight:700;
+            color:var(--badge-title-color,var(--secondary-text-color));
+            line-height:1.2;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+          ">
+            Air Quality
+          </div>
+          <div style="
+            font-size:calc(var(--badge-font-size-current,13px) - 1px);
+            color:var(--badge-sub-color,var(--secondary-text-color));
+            line-height:var(--badge-subline-lh-current,1.15);
+            opacity:.9;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+          ">
+            ${nice}
+          </div>
+        </div>
+      `;
+    ]]]
+
+# Humidity
+homio_badge_humidity:
+  template: [homio_badge_base]
+  tap_action: { action: more-info }
+  icon: mdi:water-percent
+  styles:
+    icon:
+      - color: >
+          [[[
+            const v = parseFloat(entity?.state);
+            if (isNaN(v)) return 'var(--disabled-text-color)';
+            if (v <= 29.99) return '#ffb254';  // very dry
+            if (v >= 61)    return '#4bd1fa';  // high
+            return '#45dced';                  // good
+          ]]]
+  name: >
+    [[[
+      const v = parseFloat(entity?.state);
+      let label = 'Unknown';
+
+      if (!isNaN(v)) {
+        if (v <= 29.99)      label = 'Very Dry';
+        else if (v >= 61)    label = 'High';
+        else                 label = 'Good';
+      }
+
+      return `
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;">
+          <div style="
+            font-size:var(--badge-font-size-current,13px);
+            font-weight:700;
+            color:var(--badge-title-color,var(--secondary-text-color));
+            line-height:1.2;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+          ">
+            Humidity
+          </div>
+          <div style="
+            font-size:calc(var(--badge-font-size-current,13px) - 1px);
+            color:var(--badge-sub-color,var(--secondary-text-color));
+            line-height:var(--badge-subline-lh-current,1.15);
+            opacity:.9;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+          ">
+            ${label}
+          </div>
+        </div>
+      `;
+    ]]]
+
+# Presence
+homio_badge_presence:
+  template: [homio_badge_base]
+  show_state: false
+  show_label: false
+  show_entity_picture: >
+    [[[ return !!entity?.attributes?.entity_picture; ]]]
+  show_icon: >
+    [[[ return !entity?.attributes?.entity_picture; ]]]
+  styles:
+    card:
+      - display: >
+          [[[
+            const s = String(entity?.state || '');
+            return s ? 'inline-grid' : 'none';
+          ]]]
+      - --presence-filter: >
+          [[[
+            const s = String(entity?.state || '').toLowerCase().replace('_', ' ');
+            const on = (s === 'home' || s === 'just arrived');
+            return on ? 'none' : 'grayscale(1) contrast(.96) brightness(.94)';
+          ]]]
+      - --presence-opacity: >
+          [[[
+            const s = String(entity?.state || '').toLowerCase().replace('_', ' ');
+            return (s === 'home' || s === 'just arrived') ? '1' : '.88';
+          ]]]
+      - --badge-title-color: >
+          [[[
+            const s = String(entity?.state || '').toLowerCase().replace('_', ' ');
+            return (s === 'home' || s === 'just arrived')
+              ? 'var(--primary-text-color)'
+              : 'var(--badge-title-inactive)';
+          ]]]
+      - --badge-sub-color: >
+          [[[
+            const s = String(entity?.state || '').toLowerCase().replace('_', ' ');
+            return (s === 'home' || s === 'just arrived')
+              ? 'var(--secondary-text-color)'
+              : 'color-mix(in oklab, var(--secondary-text-color) 70%, transparent)';
+          ]]]
+    icon:
+      - filter: var(--presence-filter)
+      - -webkit-filter: var(--presence-filter)
+      - opacity: var(--presence-opacity)
+      - color: var(--badge-title-color)
+    entity_picture:
+      - filter: var(--presence-filter)
+      - -webkit-filter: var(--presence-filter)
+      - opacity: var(--presence-opacity)
+  name: >
+    [[[
+      const friendly = (entity?.attributes?.friendly_name || 'Person').split(' ')[0];
+      const raw = String(entity?.state || 'Unknown');
+      const s = raw.toLowerCase().replace(/_/g, ' ');
+
+      const status =
+        s === 'home'           ? 'Home' :
+        s === 'not home' ||
+        s === 'away'           ? 'Away' :
+        s === 'just arrived'   ? 'Just Arrived' :
+        s === 'just left'      ? 'Just Left' :
+        s === 'extended away'  ? 'Extended Away' :
+                                  raw;
+
+      return `
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;">
+          <div style="
+            font-size:var(--badge-font-size-current,13px);
+            font-weight:700;
+            color:var(--badge-title-color,var(--secondary-text-color));
+            line-height:1.2;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+          ">
+            ${friendly}
+          </div>
+          <div style="
+            font-size:calc(var(--badge-font-size-current,13px) - 1px);
+            color:var(--badge-sub-color,var(--secondary-text-color));
+            line-height:var(--badge-subline-lh-current,1.15);
+            opacity:.9;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+          ">
+            ${status}
+          </div>
+        </div>
+      `;
+    ]]]
+
+# Plex
+homio_badge_plex:
+  template: [homio_badge_media]
+  variables:
+    session_entity: sensor.plex_active_stream_all
+
+  tap_action:
+    action: more-info
+    entity: '[[[ return variables?.session_entity || "sensor.plex_active_stream_all" ]]]'
+
+  hold_action:
+    action: more-info
+    entity: '[[[ return variables?.session_entity || "sensor.plex_active_stream_all" ]]]'
+
+  triggers_update:
+    - '[[[ return variables?.session_entity || "sensor.plex_active_stream_all" ]]]'
+    - '[[[ return entity?.entity_id || "binary_sensor.plex_active_stream" ]]]'
+
+  show_state: false
+  show_label: false
+
+  icon: >
+    [[[
+      const id = variables?.session_entity;
+      const s  = (id && hass.states[id]?.state || '').toLowerCase();
+      if (s === 'paused') return 'mdi:pause';
+      return 'mdi:cast-audio';
+    ]]]
+
+  custom_fields:
+    ic: >
+      [[[
+        const id = variables?.session_entity;
+        const s  = (id && hass.states[id]?.state || '').toLowerCase();
+        if (s !== 'playing') return '';
+        return `
+          <div class="eq" aria-hidden="true">
+            <span class="b b1"></span>
+            <span class="b b2"></span>
+            <span class="b b3"></span>
+            <span class="b b4"></span>
+          </div>
+        `;
+      ]]]
+
+  styles:
+    card:
+      - display: >
+          [[[
+            const st = String(entity?.state || 'off').toLowerCase();
+            return st === 'on' ? 'inline-grid' : 'none';
+          ]]]
+      - --anim-play: >
+          [[[
+            const id = variables?.session_entity;
+            const s  = (id && hass.states[id]?.state || '').toLowerCase();
+            return s === 'paused' ? 'paused' : 'running';
+          ]]]
+      - --bg-url: >
+          [[[
+            const id = variables?.session_entity;
+            const s  = id && hass.states[id];
+            const a  = s?.attributes || {};
+            const raw = a.image_url || a.entity_picture_local || a.entity_picture || a.media_image_url;
+            if (!raw) return 'none';
+            const url = String(raw).startsWith('/') ? `${location.origin}${raw}` : raw;
+            return `url("${url}")`;
+          ]]]
+    icon:
+      - display: >
+          [[[
+            const id = variables?.session_entity;
+            const s  = (id && hass.states[id]?.state || '').toLowerCase();
+            return s === 'playing' ? 'none' : 'block';
+          ]]]
+    custom_fields:
+      ic:
+        - display: >
+            [[[
+              const id = variables?.session_entity;
+              const s  = (id && hass.states[id]?.state || '').toLowerCase();
+              return s === 'playing' ? 'block' : 'none';
+            ]]]
+
+  name: >
+    [[[
+      const id = variables?.session_entity;
+      const s  = id && hass.states[id];
+      const a  = s?.attributes || {};
+      const plexUser = a.user || 'Unknown';
+      const full = a.full_title || '';
+      const esc  = (t) => String(t || '').replaceAll('"','&quot;');
+
+      return `
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;">
+          <div style="
+            font-size:var(--badge-font-size-current,13px);
+            font-weight:700;
+            color:var(--primary-text-color);
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+          ">
+            Plex &ndash; ${esc(plexUser)}
+          </div>
+          <div style="
+            font-size:calc(var(--badge-font-size-current,13px) - 1px);
+            opacity:.84;
+            color:var(--primary-text-color);
+            line-height:var(--badge-subline-lh-current,1.15);
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+          ">
+            ${esc(full)}
+          </div>
+        </div>
+      `;
+    ]]]
+
+# Media
+homio_badge_media:
+  template: [homio_badge_base]
+  show_state: false
+  show_label: false
+  tap_action: { action: more-info }
+  hold_action: { action: more-info }
+
+  styles:
+    card:
+      - box-shadow: none !important
+      - margin-inline-start: var(--badge-inset-start, 4px)
+      - --badge-rim-width: 1.4px
+      - --badge-rim-alpha: 0.24
+      - --badge-rim-glow: 0.12
+      - display: >
+          [[[
+            const s = String(entity?.state || '').toLowerCase();
+            return ['playing','paused','buffering'].includes(s) ? 'inline-grid' : 'none';
+          ]]]
+      - --bg-url: >
+          [[[
+            const a = entity?.attributes || {};
+            const v = variables || {};
+            const pref = a.entity_picture_local || a.entity_picture || a.media_image_url || v.bg_url;
+            if (!pref) return 'none';
+            const url = String(pref).startsWith('/') ? `${location.origin}${pref}` : pref;
+            return `url("${url}")`;
+          ]]]
+      - --anim-play: running
+
+  icon: >
+    [[[
+      const s  = String(entity?.state || '').toLowerCase();
+      const a  = entity?.attributes || {};
+      const id = entity?.entity_id || '';
+      const t  = String(a.media_content_type || '').toLowerCase();
+
+      if (s === 'paused') return 'mdi:pause';
+      if (id.includes('spotify') || t === 'music') return 'mdi:music-note';
+      if (t === 'video') return 'mdi:television-play';
+      return 'mdi:cast-audio';
+    ]]]
+
+  name: >
+    [[[
+      const a = entity?.attributes || {};
+      const s = String(entity?.state || '').toLowerCase();
+      const cap = x => x ? x.charAt(0).toUpperCase() + x.slice(1) : '';
+
+      const friendly = a.friendly_name || 'Media';
+      const type     = String(a.media_content_type || '').toLowerCase();
+      const title    = (a.media_title || a.title || '').trim();
+      const artist   = (a.media_artist || a.artist || a.media_album_artist || '').trim();
+      const series   = (a.media_series_title || '').trim();
+      const channel  = (a.media_channel || '').trim();
+      const app      = (a.app_name || '').trim();
+
+      let sub = cap(s || 'Off');
+
+      if (['playing','paused','buffering'].includes(s)) {
+        sub = (type === 'music')
+          ? ((artist && title) ? `${artist} - ${title}` : (artist || title || cap(s)))
+          : (series || title || channel || app || cap(s));
+      }
+
+      const esc = (sub || '').replaceAll('"','&quot;');
+
+      const isMobile =
+        (window?.matchMedia?.('(max-width: 768px)')?.matches) ?? false;
+
+      const tv = (k, d) =>
+        Number(variables?.[k] ?? hass?.themes?.theme_variables?.[k] ?? d);
+
+      const fontPx  = tv('media_title_px', 12);
+      const weight  = '600';
+      const fudgePx = tv('media_marquee_fudge_px', 140);
+
+      const maxVW   = Math.min(window?.innerWidth || 375, 768);
+      const availPx = Math.max(0, maxVW - fudgePx);
+
+      let textPx = 0;
+      try {
+        const c = document.createElement('canvas');
+        const ctx = c.getContext('2d');
+        ctx.font = `${weight} ${fontPx}px Hanken Grotesk, system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
+        textPx = ctx.measureText(sub).width;
+      } catch(e){}
+
+      const shouldScroll = isMobile && textPx > availPx;
+      const inner = `<span class="m__inner" data-text="${esc}">${esc}</span><span class="m__inner" data-text="${esc}">${esc}</span>`;
+
+      return `
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;">
+          <div style="
+            font-size:var(--badge-font-size-current,13px);
+            font-weight:700;
+            color:var(--primary-text-color);
+            min-width:0;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            line-height:1.2;
+          ">
+            ${friendly}
+          </div>
+
+          <div class="mwrap ${shouldScroll ? 'm--scroll' : ''}" style="min-width:0;">
+            <div class="m ${shouldScroll ? 'm__run' : ''}">
+              ${inner}
+            </div>
+          </div>
+
+          <div class="sub--static" data-text="${esc}">${esc}</div>
+        </div>
+      `;
+    ]]]
+
+  custom_fields:
+    ic: >
+      [[[
+        const s = String(entity?.state || '').toLowerCase();
+        if (s !== 'playing') return '';
+        return `
+          <div class="eq" aria-hidden="true">
+            <span class="b b1"></span>
+            <span class="b b2"></span>
+            <span class="b b3"></span>
+            <span class="b b4"></span>
+          </div>
+        `;
+      ]]]
+
+  state:
+    - value: playing
+      styles:
+        icon:
+          - display: none
+        custom_fields:
+          ic:
+            - display: block
+      card:
+        - --badge-rim-glow: .10
+        - --media-sub-opacity: .86
+
+    - value: paused
+      styles:
+        icon:
+          - display: block
+        custom_fields:
+          ic:
+            - display: none
+      card:
+        - --anim-play: paused
+        - --badge-rim-glow: .02
+        - --media-sub-opacity: .75
+
+    - value: buffering
+      styles:
+        icon:
+          - display: block
+        custom_fields:
+          ic:
+            - display: none
+
+  extra_styles: |
+    /* EQ icon block */
+    #ic{
+      grid-area:i !important;
+      display:grid !important;
+      place-items:center center !important;
+      width:var(--badge-icon-size,28px)!important;
+      height:var(--badge-icon-size,28px)!important;
+      padding-left:0 !important;
+      box-sizing:border-box;
+      z-index:4;
+    }
+    #ic > .eq{
+      width:calc(var(--badge-icon-size,28px)*.88);
+      height:calc(var(--badge-icon-size,28px)*.88);
+      display:grid;
+      grid-auto-flow:column;
+      align-items:center;
+      justify-content:center;
+      column-gap:3px;
+    }
+    .eq .b{
+      width:3px;
+      height:100%;
+      background:var(--primary-text-color);
+      border-radius:999px;
+      transform-origin:50% 50%;
+      transform:scaleY(.35);
+      animation:eq-center 1200ms ease-in-out infinite;
+    }
+    .eq .b1{ --sy-min:.25; --sy-max:.45; animation-delay:-2.2s; }
+    .eq .b2{ --sy-min:.35; --sy-max:.70; animation-delay:-1.6s; }
+    .eq .b3{ --sy-min:.55; --sy-max:.85; animation-delay:-0.8s; }
+    .eq .b4{ --sy-min:.25; --sy-max:.45; animation-delay:-0.4s; }
+
+    @keyframes eq-center{
+      0%  { transform:scaleY(var(--sy-min,.35)); opacity:.92; }
+      50% { transform:scaleY(var(--sy-max,.85)); opacity:1;    }
+      100%{ transform:scaleY(var(--sy-min,.35)); opacity:.92; }
+    }
+
+    :host{
+      --media-marquee-speed: var(--media_marquee_speed, 14s);
+      --media-marquee-gap: var(--media_marquee_gap, 32px);
+      --media-title-line-height: var(--media_title_line_height, 1.35em);
+      --media-title-size: var(--media_title_size, calc(var(--badge-font-size,13px) - 1px));
+      --media-sub-opacity: .75;
+    }
+
+    .sub--static{
+      display:block;
+      font-size: var(--media-title-size);
+      line-height: var(--media-title-line-height);
+    }
+
+    .mwrap{ display:none; }
+
+    @media (max-width: 768px){
+      .mwrap{ display:none; }
+      .m--scroll{ display:block; }
+      .m--scroll + .sub--static{ display:none; }
+    }
+
+    .mwrap{
+      width:100%;
+      min-width:0;
+      overflow:hidden;
+      line-height: var(--media-title-line-height);
+      height: var(--media-title-line-height);
+      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+              mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+      font-size: var(--media-title-size);
+    }
+
+    .m{
+      display:flex;
+      width:max-content;
+      will-change: transform;
+      white-space: nowrap;
+    }
+
+    .m__inner{
+      white-space: nowrap;
+      padding-right: var(--media-marquee-gap);
+    }
+
+    .m__run{
+      animation: media-marquee var(--media-marquee-speed) linear infinite;
+    }
+
+    :host(:focus-within) .m__run{
+      animation-play-state: paused;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .m__run{
+        animation: none !important;
+        transform: translateX(0) !important;
+      }
+    }
+
+    @keyframes media-marquee{
+      from{ transform: translateX(0); }
+      to  { transform: translateX(-50%); }
+    }
+
+    :host{
+      --matte-dim: .045;
+      --matte-hi-dim: .065;
+      --matte-blur: 32px;
+      --matte-sat: 1.62;
+      --matte-contrast: 1.16;
+      --matte-bright: 1.05;
+      --media-wash-a: .15;
+      --matte-wash1: .006;
+      --matte-wash2: .032;
+      --matte-wash3: .024;
+    }
+
+    :host ha-card::after{
+      content:"";
+      position:absolute;
+      inset:-1px;
+      z-index:2;
+      pointer-events:none;
+      border-radius: inherit;
+      -webkit-mask-image: radial-gradient(100% 100% at 50% 50%, #000 calc(100% - 1.5px), transparent 100%);
+              mask-image: radial-gradient(100% 100% at 50% 50%, #000 calc(100% - 1.5px), transparent 100%);
+      background:
+        linear-gradient(rgba(0,0,0,.20), rgba(0,0,0,.20)),
+        linear-gradient(90deg,
+          rgba(255,255,255,var(--matte-wash1)) 0%,
+          rgba(255,255,255,calc(var(--matte-wash1)*1.5)) 50%,
+          rgba(255,255,255,var(--matte-wash1)) 100%),
+        radial-gradient(120% 70% at 20% -30%,
+          rgba(255,255,255,var(--matte-wash2)) 0%,
+          rgba(255,255,255,calc(var(--matte-wash2)*.5)) 18%,
+          rgba(255,255,255,0) 42%),
+        linear-gradient(180deg,
+          rgba(255,255,255,var(--matte-wash3)) 16%,
+          rgba(255,255,255,0) 68%),
+        radial-gradient(120% 160% at 50% 120%, rgba(0,0,0,.03) 0%, rgba(0,0,0,0) 44%),
+        radial-gradient(120% 120% at 50% 50%, rgba(255,255,255,.015), rgba(255,255,255,0) 60%),
+        linear-gradient(rgba(255,255,255,var(--media-wash-a)), rgba(255,255,255,var(--media-wash-a))),
+        var(--bg-url), var(--bg-url), var(--bg-url),
+        linear-gradient(rgba(0,0,0,var(--matte-dim)), rgba(0,0,0,var(--matte-dim))),
+        linear-gradient(rgba(0,0,0,var(--matte-hi-dim)), rgba(0,0,0,var(--matte-hi-dim)));
+      background-blend-mode:
+        normal,
+        screen, normal, normal,
+        normal, normal,
+        normal,
+        soft-light, color, soft-light,
+        multiply,
+        soft-light;
+      background-repeat: no-repeat;
+      filter:
+        blur(var(--matte-blur))
+        saturate(var(--matte-sat))
+        brightness(var(--matte-bright))
+        contrast(var(--matte-contrast));
+      will-change: background-position, filter;
+      transform: translateZ(0);
+      animation:
+        orbit   var(--media-orbit, 52s)  linear infinite,
+        breathe var(--media-breathe, 36s) ease-in-out infinite;
+      animation-play-state: var(--anim-play, running);
+    }
+
+    @keyframes orbit{
+      0%{
+        background-position:
+          50% 50%,50% 50%,50% 50%,50% 50%,
+          66% 50%, 40% 66%, 60% 34%, 50% 50%;
+      }
+      25%{
+        background-position:
+          50% 50%,50% 50%,50% 50%,50% 50%,
+          50% 66%, 34% 50%, 66% 50%, 50% 50%;
+      }
+      50%{
+        background-position:
+          50% 50%,50% 50%,50% 50%,50% 50%,
+          34% 50%, 50% 34%, 50% 66%, 50% 50%;
+      }
+      75%{
+        background-position:
+          50% 50%,50% 50%,50% 50%,50% 50%,
+          50% 34%, 66% 50%, 34% 50%, 50% 50%;
+      }
+      100%{
+        background-position:
+          50% 50%,50% 50%,50% 50%,50% 50%,
+          66% 50%, 40% 66%, 60% 34%, 50% 50%;
+      }
+    }
+
+    @keyframes breathe{
+      0%{
+        background-size:
+          100% 100%,100% 100%,100% 100%,160% 160%,
+          280% 280%,240% 240%,320% 320%,
+          220% 220%,220% 220%,220% 220%,
+          120% 120%,120% 120%;
+      }
+      25%{
+        background-size:
+          100% 100%,100% 100%,100% 100%,158% 158%,
+          300% 300%,255% 255%,335% 335%,
+          230% 230%,230% 230%,230% 230%,
+          120% 120%,120% 120%;
+      }
+      50%{
+        background-size:
+          100% 100%,100% 100%,100% 100%,164% 164%,
+          285% 285%,270% 270%,325% 325%,
+          240% 240%,240% 240%,240% 240%,
+          120% 120%,120% 120%;
+      }
+      75%{
+        background-size:
+          100% 100%,100% 100%,100% 100%,160% 160%,
+          295% 295%,250% 250%,340% 340%,
+          230% 230%,230% 230%,230% 230%,
+          120% 120%,120% 120%;
+      }
+      100%{
+        background-size:
+          100% 100%,100% 100%,100% 100%,160% 160%,
+          280% 280%,240% 240%,320% 320%,
+          220% 220%,220% 220%,220% 220%,
+          120% 120%,120% 120%;
+      }
+    }
+
+    :host::before{
+      content:"";
+      position:absolute;
+      inset:-10px;
+      border-radius: calc(var(--badge-br,9999px) + 10px);
+      pointer-events:none;
+      z-index:4;
+      background: var(--bg-url);
+      background-size: 240% 240%;
+      background-position: 50% 50%;
+      filter: blur(var(--rim-blur, 18px)) saturate(1.35) brightness(1.06) contrast(1.06);
+      mix-blend-mode: screen;
+      padding: calc(var(--badge-rim-width, 1.6px) + 10px);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+              mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+              mask-composite: exclude;
+      -webkit-mask-image: radial-gradient(100% 100% at 50% 50%, #000 calc(100% - 1px), transparent 100%);
+              mask-image: radial-gradient(100% 100% at 50% 50%, #000 calc(100% - 1px), transparent 100%);
+    }
+
+    ha-card::before{
+      --rim-w: var(--badge-rim-width, 1.6px);
+      --rim-a: var(--badge-rim-alpha, .14);
+      --rim-glow-a: var(--badge-rim-glow, .05);
+      --rim-boost: .02;
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      pointer-events:none;
+      z-index:5;
+      mix-blend-mode: normal;
+      background:none;
+      box-shadow:
+        inset 0 0 0 var(--rim-w)             rgba(255,255,255,var(--rim-a)),
+        inset 0 0 0 calc(var(--rim-w) + 1px) rgba(255,255,255,var(--rim-boost)),
+        inset 0 0 12px                       rgba(255,255,255,var(--rim-glow-a));
+      outline: 1px solid transparent;
+    }
+
+    :host{
+      --text-shadow-boost: 0 2px 12px rgba(0,0,0,.25);
+    }
+
+    .sub--static,
+    .m__inner{
+      position: relative;
+      isolation: isolate;
+      color: color-mix(in oklab,
+               var(--secondary-text-color) 70%,
+               white 30%);
+      -webkit-text-fill-color: currentColor;
+      /* let the background color show through the text a bit */
+      mix-blend-mode: screen;
+      opacity: var(--media-sub-opacity, .78);
+      text-shadow: var(--text-shadow-boost);
+      z-index: 3;
+    }
+
+    @supports (-webkit-touch-callout: none) {
+      :host ha-card::after {
+        box-shadow: none !important;
+      }
+    }

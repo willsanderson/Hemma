@@ -1,0 +1,319 @@
+homio_room:
+  class: "homio-hero"
+  template:
+    - homio_default
+    - homio_hero_common
+
+  triggers_update:
+    - '[[[ return variables.motion_sensor ]]]'
+    - '[[[ return variables.temp_sensor ]]]'
+    - '[[[ return variables.quality_sensor ]]]'
+    - '[[[ return variables.humid_sensor ]]]'
+    - '[[[ return variables.presence_entity_1 ]]]'
+    - '[[[ return variables.presence_entity_2 ]]]'
+    - input_boolean.homio_mobile_navigation
+
+  variables:
+    image: home
+    image_position: center center
+    show_quality: false
+    quality_sensor: sensor.home_air_quality
+    show_humid: false
+    humid_sensor: sensor.home_humidity
+    show_temp: true
+    temp_sensor: sensor.home_temperature
+    show_motion: false
+    motion_sensor: binary_sensor.hue_motion_sensor_motion
+    show_presence: false
+    presence_entity_1: sensor.will_status
+    presence_entity_2: sensor.andrew_status
+    show_media_badge: false
+
+  tap_action: { action: none }
+  hold_action: { action: none }
+  double_tap_action: { action: none }
+
+  styles:
+    card:
+      - height: 100svh
+      - padding-top: var(--hero-top)
+      - padding-left: var(--hero-gutter)
+      - padding-right: var(--hero-gutter)
+      - padding-bottom: calc(130px + env(safe-area-inset-bottom))
+      - --hero-img: >
+          [[[
+            const img = variables.image || 'default';
+            const url = `/local/images/Homio/rooms/${img}.jpg`;
+            return `url("${url}")`;
+          ]]]
+      - --hero-img-pos: >
+          [[[
+            return variables.image_position || 'center center';
+          ]]]
+      - overflow: hidden
+      - box-shadow: none !important
+      - transform: translateZ(0)
+      - will-change: transform
+
+    name:
+      - grid-area: n
+      - color: var(--primary-text-color)
+      - opacity: 0.9
+      - font-size: "clamp(40px, 6.897vw + 17.931px, 80px)"
+      - letter-spacing: "-2px"
+      - font-weight: 700
+      - justify-self: start
+      - line-height: >
+          [[[
+            const w = window?.innerWidth || 1024;
+            return (w <= 768) ? '1.22' : '1.2';
+          ]]]
+      - padding-bottom: >
+          [[[
+            const w = window?.innerWidth || 1024;
+            return (w <= 768) ? '4px' : '0px';
+          ]]]
+      - margin-bottom: >
+          [[[
+            const w = window?.innerWidth || 1024;
+            return (w <= 768) ? '0px' : '5px';
+          ]]]
+      - overflow: visible
+
+    grid:
+      - grid-template-columns: 1fr
+      - grid-template-rows: min-content
+      - grid-template-areas: |
+          "temperature"
+          "n"
+          "badges"
+          "badges_media"
+      - align-content: start
+      - row-gap: 2px
+
+    custom_fields:
+      motion_detection:
+        - display: >
+            [[[
+              return variables.show_motion && variables.motion_sensor ? 'block' : 'none';
+            ]]]
+        - position: fixed
+        - right: 0
+        - left: 0
+        - bottom: 0
+        - transform: >
+            [[[
+              return states[variables.motion_sensor]?.state === 'on'
+                ? 'translateY(0)'
+                : 'translateY(100%)';
+            ]]]
+        - transition: transform 0.5s
+        - padding: 20px
+        - color: white
+        - font-size: 13px
+        - text-transform: uppercase
+        - letter-spacing: 2px
+        - font-weight: 700
+        - background: rgba(255,255,255,0.1)
+        - backdrop-filter: blur(12px)
+        - z-index: 999
+
+      temperature:
+        - display: >
+            [[[
+              const navOpen = states['input_boolean.homio_mobile_navigation']?.state === 'on';
+              const has = variables.show_temp && variables.temp_sensor && states[variables.temp_sensor];
+              return (!navOpen && has) ? 'block' : 'none';
+            ]]]
+        - color: var(--primary-text-color)
+        - font-size: 14px
+        - font-weight: 600
+        - opacity: 0.9
+        - justify-self: start
+        - letter-spacing: 1px
+        - text-transform: uppercase
+        - margin: 0
+        - padding-left: var(--row-left-pad)
+        - "--button-card-ripple-color": transparent
+        - "-webkit-tap-highlight-color": transparent
+
+      badges:
+        - grid-area: badges
+        - justify-self: start
+        - margin-top: 0
+        - padding-left: var(--row-left-pad)
+        - pointer-events: auto
+        - display: >
+            [[[
+              return (states['input_boolean.homio_mobile_navigation']?.state === 'on')
+                ? 'none'
+                : 'block';
+            ]]]
+
+      badges_media:
+        - grid-area: badges_media
+        - justify-self: start
+        - margin-top: 0
+        - pointer-events: auto
+        - display: >
+            [[[
+              const navOpen = states['input_boolean.homio_mobile_navigation']?.state === 'on';
+              return (!navOpen && variables.show_media_badge) ? 'block' : 'none';
+            ]]]
+
+      navigation:
+        - position: absolute
+        - top: 0
+        - left: 0
+        - right: 0
+        - "--mdc-ripple-press-opacity": 0
+        - "-webkit-tap-highlight-color": transparent
+        - filter: none
+        - pointer-events: auto
+
+      menu:
+        - position: fixed
+        - top: >
+            [[[
+              return '8px';
+            ]]]
+        - left: >
+            [[[
+              const w = window?.innerWidth || 1024;
+              const h = window?.innerHeight || 800;
+              if (w <= 768 || h <= 500) {
+                return '4px';
+              }
+              return '12px';
+            ]]]
+        - width: 40px
+        - height: 40px
+        - z-index: 10
+        - pointer-events: auto
+        - cursor: pointer
+
+  custom_fields:
+    menu:
+      card:
+        type: custom:button-card
+        template: homio_menu_icon
+
+    navigation:
+      card: !include /config/dashboards/templates/includes/homio_navigation.yaml
+
+    temperature: |
+      [[[
+        if (!(variables.show_temp && variables.temp_sensor && states[variables.temp_sensor])) return;
+        const vRaw = states[variables.temp_sensor].state;
+        const v = Number(vRaw);
+        if (Number.isNaN(v)) return;
+        const t = Math.round(v);
+
+        if (v <= 64.99) return `${t}° - Very Cold`;
+        if (v <= 69.99) return `${t}° - Cool`;
+        if (v <= 74.99) return `${t}° - Comfortable`;
+        if (v <= 80.99) return `${t}° - Warm`;
+        if (v <= 84.99) return `${t}° - Hot`;
+        return `${t}° - Very Hot`;
+      ]]]
+
+    badges:
+      card:
+        type: custom:layout-card
+        layout_type: custom:grid-layout
+        layout:
+          grid-template-columns: repeat(12, max-content)
+          grid-auto-flow: row dense
+          column-gap: 12px
+          row-gap: 8px
+          margin: 0
+        cards:
+          - type: custom:button-card
+            template: homio_badge_presence
+            entity: '[[[ return variables.presence_entity_1 ]]]'
+            styles:
+              card:
+                - display: >
+                    [[[
+                      if (!variables.show_presence) return "none";
+                      const id = variables.presence_entity_1;
+                      if (!id || !states[id]) return "none";
+                      const st = (states[id].state || "unknown").toLowerCase().replace(/_/g," ");
+                      if (["unknown","unavailable","extended away"].includes(st)) return "none";
+                      return "inline-grid";
+                    ]]]
+
+          - type: custom:button-card
+            template: homio_badge_presence
+            entity: '[[[ return variables.presence_entity_2 ]]]'
+            styles:
+              card:
+                - display: >
+                    [[[
+                      if (!variables.show_presence) return "none";
+                      const id = variables.presence_entity_2;
+                      if (!id || !states[id]) return "none";
+                      const st = (states[id].state || "unknown").toLowerCase().replace(/_/g," ");
+                      if (["unknown","unavailable"].includes(st)) return "none";
+                      return "inline-grid";
+                    ]]]
+
+          - type: custom:button-card
+            template: homio_badge_air_quality
+            entity: '[[[ return variables.quality_sensor ]]]'
+            styles:
+              card:
+                - display: >
+                    [[[
+                      const id = variables.quality_sensor;
+                      const st = id && states[id]?.state
+                        ? String(states[id].state).toLowerCase()
+                        : "unknown";
+                      return (variables.show_quality && id && states[id] && !["unknown","unavailable"].includes(st))
+                        ? "inline-grid"
+                        : "none";
+                    ]]]
+
+          - type: custom:button-card
+            template: homio_badge_humidity
+            entity: '[[[ return variables.humid_sensor ]]]'
+            styles:
+              card:
+                - display: >
+                    [[[
+                      const id = variables.humid_sensor;
+                      const st = id && states[id]?.state
+                        ? String(states[id].state).toLowerCase()
+                        : "unknown";
+                      return (variables.show_humid && id && states[id] && !["unknown","unavailable"].includes(st))
+                        ? "inline-grid"
+                        : "none";
+                    ]]]
+
+    badges_media:
+      card:
+        type: custom:layout-card
+        layout_type: custom:grid-layout
+        layout:
+          grid-template-columns: 1fr
+          grid-auto-flow: row
+          column-gap: 12px
+          row-gap: 8px
+          margin: 0
+        cards:
+          - type: custom:button-card
+            template: homio_badge_plex
+            entity: binary_sensor.plex_active_stream
+            variables: { session_entity: sensor.plex_active_stream_all }
+
+          - type: custom:button-card
+            template: homio_badge_media
+            entity: media_player.spotify
+
+          - type: custom:button-card
+            template: homio_badge_media
+            entity: media_player.living_room_apple_tv
+
+          - type: custom:button-card
+            template: homio_badge_media
+            entity: media_player.bedroom_apple_tv

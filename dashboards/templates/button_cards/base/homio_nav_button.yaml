@@ -1,0 +1,18 @@
+homio_nav_button:
+  template:
+    - homio_default
+  tap_action:
+    action: navigate
+    navigation_path: "[[[ return variables.path ]]]"
+  styles:
+    name:
+      - color: var(--primary-text-color)
+      - font-size: 16px
+      - font-weight: 700
+      - border-bottom: >
+          [[[ if(variables.path === window.location.pathname) {return "2px solid
+          white"} else {return "none"} ]]]
+      - justify-self: start
+    card:
+      - background: transparent
+      - pointer-events: all

@@ -1,0 +1,163 @@
+homio_media:
+  show_empty: false
+  template:
+    - homio_entity
+
+  variables:
+    icon: |
+      [[[
+        const id = entity?.entity_id || "";
+        const type = entity?.attributes?.media_content_type || "";
+        if (id.includes("apple_tv")) return "apple";
+        if (id.includes("homepod")) return "apple";
+        if (id.includes("spotify")) return "music";
+        if (id.includes("playstation")) return "sony";
+        if (type === "music") return "speaker";
+        if (type === "video") return "tv";
+        return "speaker";
+      ]]]
+
+  show_last_changed: false
+  show_entity_picture: false
+  show_icon: false
+
+  state_display: |
+    [[[
+      const s = String(entity?.state || "").toLowerCase();
+      const cap = (x) => (x ? x.charAt(0).toUpperCase() + x.slice(1) : "");
+
+      if (s === "playing" || s === "paused") {
+        const title = (entity?.attributes?.media_title || "").trim();
+        const app   = (entity?.attributes?.app_name || "").trim();
+        const label = title || app;
+        return label ? `${cap(s)} - ${label}` : cap(s);
+      }
+
+      if (["off","idle","standby","unavailable","unknown"].includes(s)) return cap(s);
+      return s ? cap(s) : "Off";
+    ]]]
+
+  tap_action:
+    action: more-info
+  hold_action:
+    action: more-info
+
+  styles:
+    grid:
+      - grid-template-areas: '"n icon_right" "s icon_right"'
+      - grid-template-columns: minmax(0, 1fr) min-content
+      - grid-template-rows: min-content min-content
+      - align-items: center
+      - column-gap: |
+          [[[
+            const w = window?.innerWidth || 1024;
+            return (w <= 768) ? '14px' : '20px';
+          ]]]
+
+    card:
+      - background-size: cover
+      - background-position: center
+      - background-image: |
+          [[[
+            const isActive = ["playing","paused"].includes(String(entity?.state || "").toLowerCase());
+            const pic = entity?.attributes?.entity_picture || "";
+            if (isActive && pic) {
+              const path = pic.startsWith("/") ? `${window.location.origin}${pic}` : pic;
+              return `linear-gradient(rgba(70, 70, 70, 0.7), rgba(70, 70, 70, 0.7)), url('${path}')`;
+            }
+            return "none";
+          ]]]
+
+    name:
+      - grid-area: n
+      - align-self: end
+      - z-index: 2
+      - padding-left: |
+          [[[
+            const w = window?.innerWidth || 1024;
+            return (w <= 768) ? '2px' : '0';
+          ]]]
+
+    state:
+      - grid-area: s
+      - align-self: start
+      - z-index: 2
+      - white-space: nowrap
+      - overflow: hidden
+      - text-overflow: ellipsis
+      - padding-left: |
+          [[[
+            const w = window?.innerWidth || 1024;
+            return (w <= 768) ? '2px' : '0';
+          ]]]
+
+    img_cell:
+      - width: |
+          [[[
+            const w = window?.innerWidth || 1024;
+            return (w <= 768) ? '28px' : '30px';
+          ]]]
+      - height: |
+          [[[
+            const w = window?.innerWidth || 1024;
+            return (w <= 768) ? '28px' : '30px';
+          ]]]
+      - background: transparent
+
+    custom_fields:
+      icon_right:
+        - grid-area: icon_right
+        - justify-self: end
+        - align-self: center
+        - margin-right: -8px
+        - width: |
+            [[[
+              const s = String(entity?.state || "").toLowerCase();
+              return (s === "playing" || s === "paused") ? "0" : "50px";
+            ]]]
+        - opacity: |
+            [[[
+              const s = String(entity?.state || "").toLowerCase();
+              return (s === "playing" || s === "paused") ? "0" : "1";
+            ]]]
+        - transition: all 0.3s ease
+
+  custom_fields:
+    icon_right:
+      card:
+        type: custom:button-card
+        show_icon: false
+        show_entity_picture: true
+        entity_picture: |
+          [[[
+            const s = String(entity?.state || "").toLowerCase();
+            if (s === "playing" || s === "paused") return null;
+            return `/local/images/Homio/icons/${variables.icon}.svg`;
+          ]]]
+        styles:
+          card:
+            - width: 50px
+            - height: 50px
+            - background: none
+            - box-shadow: none
+            - padding: 0
+          img_cell:
+            - opacity: |
+                [[[
+                  const s = String(entity?.state || "").toLowerCase();
+                  return (s === "playing" || s === "paused")
+                    ? 'var(--homio-entity-picture-active-opacity,1)'
+                    : 'var(--homio-entity-picture-inactive-opacity,.82)';
+                ]]]
+            - filter: |
+                [[[
+                  const s = String(entity?.state || "").toLowerCase();
+                  return (s === "playing" || s === "paused")
+                    ? 'var(--homio-entity-picture-active-filter,none)'
+                    : 'var(--homio-entity-picture-inactive-filter,brightness(.8))';
+                ]]]
+            - width: 60%
+            - height: 60%
+          entity_picture:
+            - width: 100%
+            - height: 100%

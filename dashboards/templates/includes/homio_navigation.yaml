@@ -1,0 +1,32 @@
+type: conditional
+conditions:
+  - condition: screen
+    media_query: "(min-width: 769px)"
+card:
+  type: custom:layout-card
+  layout_type: custom:grid-layout
+  layout:
+    grid-template-columns: max-content 1fr max-content
+    align-items: center
+    column-gap: 50px
+    margin: 0 8vw 0 8vw
+    position: absolute
+    inset: 60px 0 auto 0
+    padding: 0
+  cards:
+    - type: custom:button-card
+      template: homio_logo
+      styles:
+        card:
+          - margin-left: 2px
+
+    - type: custom:layout-card
+      layout_type: custom:grid-layout
+      layout:
+        grid-auto-flow: column
+        place-content: center
+        grid-column-gap: 50px
+      cards: !include /config/dashboards/templates/includes/homio_navigation_list.yaml
+
+    - type: custom:button-card
+      template: homio_time

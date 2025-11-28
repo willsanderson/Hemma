@@ -1,0 +1,11 @@
+homio_fan:
+  template:
+    - homio_entity
+  show_entity_picture: true
+  show_name: true
+  show_state: true
+  name: Fan
+  tap_action:
+    action: more-info
+  hold_action:
+    action: toggle

@@ -1,0 +1,31 @@
+# Home Assistant internals
+.homeassistant
+.home-assistant_v2.db
+home-assistant_v2.db
+home-assistant.log
+home-assistant.log.*
+*.db-shm
+*.db-wal
+__pycache__/
+*.pyc
+
+# Secrets / credentials
+secrets.yaml
+.secrets.yaml
+*.key
+*.pem
+
+# Backup / temp / generated
+.cloud/
+.storage/
+.backups/
+deps/
+*.bak
+*.tmp
+*.swp
+*.log
+
+# VSCode / editor stuff
+.vscode/
+.idea/
+.DS_Store

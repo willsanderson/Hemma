@@ -1,0 +1,97 @@
+homio_light:
+  template:
+    - homio_entity
+  show_last_changed: false
+  state_display: |
+    [[[ if (entity.state === "on" && entity.attributes.brightness) 
+      {return Math.round((entity.attributes.brightness / 255) * 100) +
+      "%"} else return "Off"
+    ]]]
+  tap_action:
+    action: more-info
+  hold_action:
+    action: toggle
+  styles:
+    label:
+      - position: absolute
+      - bottom: 25px
+      - font-size: 10px
+      - text-transform: uppercase
+      - color: white
+      - letter-spacing: 2px
+      - font-weight: 600
+      - opacity: 1
+      - justify-self: start
+    custom_fields:
+      light-slider:
+        - position: absolute
+        - left: 0
+        - right: 0
+        - height: 8px
+        - padding: |
+            [[[
+              return (window.innerWidth <= 768) ? '0 24px' : '0 40px';
+            ]]]
+        - bottom: |
+            [[[
+              return (window.innerWidth <= 768) ? '20px' : '30px';
+            ]]]
+        - pointer-events: |
+            [[[
+              return (entity.state === 'off' || entity.state === 'unavailable') ? 'none' : 'auto';
+            ]]]
+        - opacity: |
+            [[[
+              return (entity.state === 'off' || entity.state === 'unavailable') ? '0' : '1';
+            ]]]
+        - transition: opacity 0.25s ease, transform 0.25s ease
+        - transform: |
+            [[[
+              return (entity.state === 'off' || entity.state === 'unavailable') ? 'translateY(16px)' : 'translateY(0)';
+            ]]]
+  custom_fields:
+    light-slider:
+      card:
+        type: custom:my-slider-v2
+        entity: |
+          [[[
+            return entity.entity_id;
+          ]]]
+        allowTapping: false
+        allowSliding: true
+        styles:
+          card:
+            - height: 100%
+            - margin: 0
+            - border-radius: 0
+            - border: none
+            - background: transparent
+            - box-shadow: none
+          container:
+            - border-radius: 0
+            - overflow: visible
+          track:
+            - height: 8px
+            - background: var(--homio-slider-track)
+            - border-radius: 20px
+            - transition: background .2s ease
+          progress:
+            - height: 8px
+            - background: var(--homio-slider-progress)
+            - border-radius: 20px
+            - transition: background .2s ease
+          thumb:
+            - width: |
+                [[[
+                  return (window.innerWidth <= 768) ? '14px' : '16px';
+                ]]]
+            - height: |
+                [[[
+                  return (window.innerWidth <= 768) ? '14px' : '16px';
+                ]]]
+            - border-radius: 9999px
+            - background: var(--homio-slider-thumb)
+            - transform: translateY(-3px)
+            - box-shadow: var(--homio-slider-shadow)
+            - transition: box-shadow .15s ease, transform .15s ease
+

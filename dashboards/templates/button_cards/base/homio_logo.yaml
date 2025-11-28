@@ -1,0 +1,19 @@
+homio_logo:
+  template:
+    - homio_default
+  tap_action:
+    action: navigate
+    navigation_path: /dashboard-homio/home
+  name: Home.
+  styles:
+    name:
+      - color: var(--primary-text-color)
+      - letter-spacing: 2px
+      - font-size: 18px
+      - font-weight: 700
+      - text-transform: uppercase
+      - justify-self: start
+    card:
+      - background: transparent
+      - pointer-events: all
+      - box-shadow: none

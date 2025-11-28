@@ -1,0 +1,161 @@
+homio_hero_common:
+  extra_styles: |
+    :host{
+      position: relative;
+      z-index: 0;
+      --hero-gutter: var(--page-gutter, 8vw);
+      --hero-top: var(--header-top-desktop, clamp(300px, 28vh, 380px));
+      --row-left-pad: 4px;
+      --homio-hover-filter: none !important;
+      --menu-icon-offset: var(--menu-icon-offset-desktop, 24px);
+      --menu-icon-gutter: var(--menu-icon-gutter, 19px);
+    }
+
+    :host ha-card{
+      position: relative;
+      pointer-events: none !important;
+      cursor: default !important;
+      filter: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      box-shadow: none !important;
+      transition: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+      --mdc-ripple-press-opacity: 0 !important;
+      background-repeat: no-repeat, no-repeat !important;
+      background-position: center center, center center !important;
+      background-size: cover, cover !important;
+      background-attachment: local, local !important;
+      isolation: isolate !important;
+    }
+
+    :host ha-card:hover,
+    :host ha-card:focus-within,
+    :host ha-card:active{
+      filter:none !important;
+      box-shadow:none !important;
+      transform:none !important;
+      cursor:default !important;
+    }
+
+    /* Foreground interactive */
+    :host .button-card-main,
+    :host .button-card-content,
+    :host .custom-field,
+    :host .grid,
+    :host .name,
+    :host .actions{
+      pointer-events:auto !important;
+    }
+
+    /* Background image */
+    :host ha-card::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      pointer-events:none;
+      z-index:-2;
+      background-image: var(--hero-img);
+      background-position: var(--hero-img-pos, center center);
+      background-size: cover;
+      background-repeat: no-repeat;
+      opacity:1;
+      filter: var(--hero-img-filter, saturate(1.02) brightness(.985));
+      transition: opacity .45s ease, filter .45s ease;
+      will-change: opacity, filter;
+      animation: heroSwap .45s ease;
+    }
+
+    /* Base hero tint */
+    :host ha-card::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      pointer-events:none;
+      z-index:-1;
+      background: linear-gradient(
+        to bottom,
+        var(--hero-tint-top, rgba(56,56,56,0.65)) 0%,
+        var(--hero-tint-mid, rgba(53,53,53,0.60)) 50%,
+        var(--hero-tint-bottom, rgba(50,50,50,0.50)) 100%
+      );
+    }
+
+    @keyframes heroSwap{
+      from{ opacity:.0; filter:saturate(1.0) brightness(.97); }
+      to{   opacity:1;  filter:saturate(1.02) brightness(.985); }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      :host ha-card::after{
+        transition:none;
+        animation:none;
+      }
+    }
+
+    /* Tablet */
+    @media (min-width:769px) and (max-width:1249px){
+      :host{
+        --hero-gutter: var(--page-gutter-desktop, 8vw);
+        --hero-top: var(--header-top-tablet, clamp(300px, 28vh, 380px));
+      }
+    }
+
+    /* ===== MOBILE ===== */
+    @media (max-width:768px), (max-height:500px){
+      :host{
+        --hero-gutter: var(--page-gutter-mobile, 14px);
+        --hero-top: var(--header-top-mobile, clamp(80px, 12vh, 120px));
+        --tiles-pad-bottom: calc(130px + env(safe-area-inset-bottom));
+        --menu-icon-offset: var(--menu-icon-offset-mobile, 20px);
+        --menu-icon-gutter: var(--page-gutter-mobile, 14px);
+      }
+
+      /* Hero “shell” fixed and non-scrollable */
+      :host ha-card{
+        position: fixed !important;
+        inset: 0 !important;
+        height: 100svh !important;
+        min-height: 100svh !important;
+        max-height: 100svh !important;
+        overflow: hidden !important;
+        -webkit-overflow-scrolling: auto !important;
+        touch-action: none !important;
+        padding: 0 !important;
+      }
+
+      /* Inner content of hero (title/badges/nav etc.) */
+      :host .button-card-main{
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding:
+          var(--hero-top)
+          var(--hero-gutter)
+          var(--tiles-pad-bottom)
+          var(--hero-gutter) !important;
+      }
+
+      :host .container{
+        position: relative !important;
+        inset: auto !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+      }
+
+      :host .button-card-content,
+      :host .grid{
+        padding:0 !important;
+        margin:0 !important;
+        overflow:visible !important;
+        display:grid !important;
+      }
+    }

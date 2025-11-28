@@ -1,0 +1,171 @@
+# homio_navbar_mobile.yaml
+type: conditional
+conditions:
+  - condition: screen
+    media_query: "(max-width: 768px)"
+  - condition: state
+    entity: input_boolean.homio_mobile_navigation
+    state: "off"
+
+card:
+  type: custom:navbar-card
+
+  card_mod:
+    style: |
+      :host{
+        --homio-hover-filter: none !important;
+        z-index: 4 !important;
+      }
+
+      ha-card{
+        --mdc-ripple-press-opacity: 0 !important;
+        filter: none !important;
+        transition: none !important;
+        overflow: visible !important;
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+
+      ha-card:hover,
+      ha-card:active{
+        filter: none !important;
+      }
+
+  layout:
+    auto_padding:
+      enabled: false
+      desktop_px: 0
+      mobile_px: 0
+
+  desktop:
+    show_labels: false
+  mobile:
+    show_labels: false
+
+  styles: |
+    .navbar-card.desktop{
+      display:none;
+    }
+
+    .navbar-card.mobile{
+      position:fixed;
+      left:50%;
+      transform:translateX(-50%);
+      bottom: 20px;
+      width:clamp(300px, 82vw, 440px);
+      border-radius:9999px;
+      padding:3px;
+      background:var(--homio-nav-bg, rgba(255,255,255,0.2)) !important;
+      -webkit-backdrop-filter:var(--homio-nav-blur, blur(16px)) !important;
+      backdrop-filter:var(--homio-nav-blur, blur(16px)) !important;
+      border: 1px solid var(--homio-nav-border, rgba(255,255,255,.2));
+      box-shadow: var(--homio-nav-shadow, 0 18px 36px rgba(0,0,0,.20), 0 4px 10px rgba(0,0,0,.10));
+      overflow: visible;
+      z-index:2147483647;
+      -webkit-tap-highlight-color:transparent !important;
+    }
+
+    .navbar{
+      --navbar-route-icon-size:30px;
+    }
+
+    .navbar .route{
+      position:relative;
+      display:flex;
+      align-items:center;
+      min-height:55px;
+      padding:0;
+      border-radius:9999px;
+    }
+
+    .navbar .route .button{
+      position: relative;
+      flex: 1 1 auto;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 5px 8px;
+      gap: 0;
+      border-radius: inherit;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+      user-select: none;
+      -webkit-user-select: none;
+      transform: none !important;
+      top: 0 !important;
+      outline: none !important;
+      transition: none !important;
+      z-index: 0;
+    }
+
+    .navbar .route .button::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      opacity:0;
+      background: var(--homio-nav-active-fill, rgba(0,0,0,0.2));
+      box-shadow: var(--homio-nav-pill-shadow);
+      pointer-events:none;
+      z-index:0;
+    }
+
+    .navbar .route.active .button::before,
+    .navbar .route .button.active::before{
+      opacity:1;
+    }
+
+    .navbar .route .button .icon{
+      --icon-primary-color: var(--homio-nav-icon) !important;
+      opacity: var(--homio-nav-inactive-opacity, .8);
+    }
+
+    .navbar .route .button img{
+      opacity: var(--homio-nav-inactive-opacity, .8);
+    }
+
+    .navbar .route .button .label{
+      margin:0;
+      line-height:1;
+      min-height:1em;
+      color: var(--homio-nav-icon, rgba(0,0,0,.7));
+      opacity: var(--homio-nav-inactive-opacity, .8);
+    }
+
+    .navbar .route.active .button .icon,
+    .navbar .route .button.active .icon{
+      --icon-primary-color: var(--homio-nav-icon-active, var(--homio-nav-icon)) !important;
+      opacity: 1 !important;
+    }
+
+    .navbar .route.active .button img,
+    .navbar .route .button.active img{
+      opacity: 1 !important;
+    }
+
+    .navbar .route.active .button .label,
+    .navbar .route .button.active .label{
+      color: var(--homio-nav-icon-active, var(--homio-nav-icon)) !important;
+      opacity: 1 !important;
+    }
+
+  routes:
+    - url: /dashboard-homio-next/home
+      label: Home
+      image: /local/images/Homio/icons/home.svg
+      image_selected: /local/images/Homio/icons/home-filled.svg
+    - url: /dashboard-homio-next/living-room
+      label: Living Room
+      image: /local/images/Homio/icons/living-room.svg
+      image_selected: /local/images/Homio/icons/living-room-filled.svg
+    - url: /dashboard-homio-next/kitchen
+      label: Kitchen
+      image: /local/images/Homio/icons/kitchen.svg
+      image_selected: /local/images/Homio/icons/kitchen-filled.svg
+    - url: /dashboard-homio-next/bedroom
+      label: Bedroom
+      image: /local/images/Homio/icons/bedroom.svg
+      image_selected: /local/images/Homio/icons/bedroom-filled.svg

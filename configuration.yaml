@@ -1,0 +1,34 @@
+homeassistant:
+  packages: !include_dir_named packages
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+template: !include sensors.yaml
+
+lovelace:
+  mode: "storage"
+  resources:
+    - type: "module"
+      url: "/hacsfiles/button-card/button-card.js"
+    - type: "module"
+      url: "/hacsfiles/kiosk-mode/kiosk-mode.js"
+    - type: "module"
+      url: "/local/community/layout-card-modified/layout-card-modified.js?v=12"
+    - type: "module"
+      url: "/local/community/light-slider/my-slider-v2.js"
+    - type: "css"
+      url: "https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@100..900&display=swap"
+  dashboards:
+    dashboard-homio-next:
+      mode: yaml
+      title: "Homio"
+      icon: mdi:home
+      show_in_sidebar: true
+      filename: dashboards/homio-next/homio.yaml

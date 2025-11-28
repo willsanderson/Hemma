@@ -1,0 +1,337 @@
+button_card_templates: !include_dir_merge_named /config/dashboards/templates/button_cards
+kiosk_mode:
+  hide_header: true
+  hide_sidebar: false
+  hide_dialog_light_settings_actions: true
+  mobile_settings:
+    hide_header: true
+    hide_sidebar: false
+
+views:
+  - type: custom:grid-layout
+    title: home
+    path: home
+    layout: !include /config/dashboards/templates/includes/homio_screen_layout.yaml
+    cards:
+      - type: custom:button-card
+        template: homio_room
+        variables:
+          image: home
+          image_position: center center
+          show_quality: false
+          quality_sensor: sensor.home_air_quality
+          show_humid: false
+          humid_sensor: sensor.home_humidity
+          show_temp: true
+          temp_sensor: sensor.home_temperature
+          show_motion: false
+          motion_sensor: binary_sensor.hue_motion_sensor_motion
+          show_presence: true
+          will_presence_entity: sensor.will_status
+          andrew_presence_entity: sensor.andrew_status
+          show_media_badge: true
+        name: Home
+      - !include /config/dashboards/templates/includes/homio_navbar_mobile.yaml
+
+      - type: custom:layout-card
+        class: homio-entities  
+        layout_type: custom:grid-layout
+        layout: !include /config/dashboards/templates/includes/homio_entity_layout.yaml
+        cards:
+
+          - type: custom:button-card
+            template: homio_thermostat
+            entity: climate.home
+            name: Thermostat
+
+          - type: custom:button-card
+            variables:
+              icon: door
+            template:
+              - homio_entity
+            entity: lock.front_door
+            name: Front Door
+
+          - type: custom:button-card
+            template:
+              - homio_entity
+            variables:
+              icon: light
+            tap_action:
+              action: more-info
+              entity: light.all
+            state_display: >
+              [[[
+                const count = parseInt(states['sensor.lights_on_count']?.state ?? '0');
+                if (isNaN(count) || count === 0) return "All off";
+                if (count === 1) return "1 on";
+                return `${count} on`;
+              ]]]
+            entity: light.all
+            name: Lights
+
+          - type: custom:button-card
+            variables:
+              icon: doorbell
+            template:
+              - homio_entity
+            entity: camera.front_door_live_view
+            name: Camera
+
+  - type: custom:grid-layout
+    title: living-room
+    path: living-room
+    layout: !include /config/dashboards/templates/includes/homio_screen_layout.yaml
+    cards:
+      - type: custom:button-card
+        variables:
+          image: livingroom
+          image_position: center center
+          show_humid: true
+          humid_sensor: sensor.purifier_cool_humidity
+          show_temp: true
+          temp_sensor: sensor.living_room_temperature
+          show_quality: true
+          quality_sensor: sensor.air_quality_dyson_overall
+        template: homio_room
+        name: Living Room
+      - !include /config/dashboards/templates/includes/homio_navbar_mobile.yaml
+
+      - type: custom:layout-card
+        class: homio-entities  
+        layout_type: custom:grid-layout
+        layout: !include /config/dashboards/templates/includes/homio_entity_layout.yaml
+        cards:
+          - type: custom:button-card
+            template: homio_thermostat
+            entity: climate.living_room
+            name: Thermostat
+
+          - type: custom:button-card
+            variables:
+              icon: apple
+            template:
+              - homio_media
+            entity: media_player.living_room_apple_tv
+            name: Apple TV
+
+          - type: custom:button-card
+            variables:
+              icon: light
+            template:
+              - homio_light
+            entity: light.living_room
+            name: Lights
+
+          - type: custom:button-card
+            variables:
+              icon: tv
+            template:
+              - homio_entity
+            entity: media_player.living_room_tv
+            name: TV
+
+          - type: custom:button-card
+            variables:
+              icon: music
+            template:
+              - homio_media
+            entity: media_player.living_room
+            name: Sonos
+
+          - type: custom:button-card
+            variables:
+              icon: purifier
+            template:
+              - homio_fan
+            entity: fan.dyson
+            name: Purifier
+
+          - type: custom:button-card
+            template:
+              - homio_media
+            entity: media_player.playstation_5
+            name: PS5
+
+          - type: custom:button-card
+            variables:
+              icon: curtain
+            template:
+              - homio_curtain
+            entity: cover.living_room_curtain
+            name: Curtain
+
+          - type: custom:button-card
+            variables:
+              icon: plant
+            template:
+              - homio_entity
+            entity: plant.rubber_tree
+            name: Rubber Tree
+
+  - type: custom:grid-layout
+    title: kitchen
+    path: kitchen
+    layout: !include /config/dashboards/templates/includes/homio_screen_layout.yaml
+    cards:
+      - type: custom:button-card
+        variables:
+          image: kitchen
+          image_position: center center
+          show_humid: true
+          humid_sensor: sensor.hub_2_humidity
+          show_temp: true
+          temp_sensor: sensor.hub_2_temperature
+          show_quality: true
+          quality_sensor: sensor.air_quality_dyson_overall
+        template: homio_room
+        name: Kitchen
+      - !include /config/dashboards/templates/includes/homio_navbar_mobile.yaml
+
+      - type: custom:layout-card
+        class: homio-entities
+        layout_type: custom:grid-layout
+        layout: !include /config/dashboards/templates/includes/homio_entity_layout.yaml
+        cards:
+          - type: custom:button-card
+            variables:
+              icon: light
+            template:
+              - homio_light
+            entity: light.kitchen
+            name: Lights
+
+          - type: custom:button-card
+            variables:
+              icon: music
+            template:
+              - homio_media
+            entity: media_player.kitchen
+            name: Sonos
+
+          - type: custom:button-card
+            variables:
+              icon: robot-vacuum
+            template:
+              - homio_media
+            entity: vacuum.robot
+            name: Cleaning Bot
+
+          - type: custom:button-card
+            variables:
+              icon: apple
+            template:
+              - homio_media
+            entity: media_player.kitchen_homepod
+            name: HomePod
+
+  - type: custom:grid-layout
+    title: bedroom
+    path: bedroom
+    layout: !include /config/dashboards/templates/includes/homio_screen_layout.yaml
+    cards:
+      - type: custom:button-card
+        variables:
+          image: bedroom
+          image_position: center center
+          show_humid: true
+          humid_sensor: sensor.monstera_air_humidity
+          show_quality: true
+          quality_sensor: sensor.air_purifier_air_quality_level
+          show_temp: true
+          temp_sensor: sensor.bedroom_temperature
+          show_motion: true
+          motion_sensor: binary_sensor.hue_motion_sensor_motion
+        template: homio_room
+        name: Bedroom
+      - !include /config/dashboards/templates/includes/homio_navbar_mobile.yaml
+
+      - type: custom:layout-card
+        class: homio-entities
+        layout_type: custom:grid-layout
+        layout: !include /config/dashboards/templates/includes/homio_entity_layout.yaml
+        cards:
+          - type: custom:button-card
+            template: homio_thermostat
+            entity: climate.bedroom
+            name: Thermostat
+
+          - type: custom:button-card
+            variables:
+              icon: apple
+            template:
+              - homio_media
+            entity: media_player.bedroom_apple_tv
+            name: Apple TV
+
+          - type: custom:button-card
+            variables:
+              icon: light
+            template:
+              - homio_light
+            entity: light.bedroom
+            name: Lights
+
+          - type: custom:button-card
+            variables:
+              icon: tv
+            template:
+              - homio_entity
+            entity: media_player.bedroom_tv
+            name: TV
+
+          - type: custom:button-card
+            variables:
+              icon: fan
+            template:
+              - homio_fan
+            entity: fan.bedroom
+            name: Fan
+
+          - type: custom:button-card
+            variables:
+              icon: music
+            template:
+              - homio_media
+            entity: media_player.bedroom
+            name: Sonos
+            
+          - type: custom:button-card
+            variables:
+              icon: humidifier
+            template:
+              - homio_fan
+            entity: humidifier.bedroom
+            name: Humidifier
+
+          - type: custom:button-card
+            variables:
+              icon: fan
+            template:
+              - homio_fan
+            entity: fan.snooz
+            name: Snooz
+
+          - type: custom:button-card
+            variables:
+              icon: purifier
+            template:
+              - homio_fan
+            entity: fan.air_purifier
+            name: Purifier
+
+          - type: custom:button-card
+            variables:
+              icon: curtain
+            template:
+              - homio_curtain
+            entity: cover.bedroom_curtains
+            name: Curtains
+
+          - type: custom:button-card
+            variables:
+              icon: plant
+            template:
+              - homio_entity
+            entity: plant.monstera
+            name: Monstera
