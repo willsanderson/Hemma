@@ -8,7 +8,7 @@ A modern mobile-friendly fork of the original [Homio](https://github.com/iamther
 
 ## Desktop View (Single Row)
 <img width="1000" height="625" alt="home-desktop-light-alt" src="https://github.com/user-attachments/assets/4a9b856f-7775-43ce-b1a6-1be9b37772c8" />
-<img width="1000" height="625" alt="living-room-desktop-dark-alt" src="https://github.com/user-attachments/assets/c4f7c974-18f7-4a7d-9315-20eb8bd50aac" />
+<img width="1000" height="625" alt="living-room-desktop-light-alt" src="https://github.com/user-attachments/assets/72adfb45-2512-4e05-a6b4-cfb4093f192a" />
 
 ---
 
