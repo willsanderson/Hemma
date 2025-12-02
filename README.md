@@ -2,13 +2,13 @@
 
 A modern mobile-friendly fork of the original [Homio](https://github.com/iamtherufus/Homio) dashboard by iamtherufus for Home Assistant, featuring light and dark mode, redesigned cards, new custom badges, and media integration.
 
-## Desktop View (Two Rows)
-<img width="1000" height="625" alt="home-desktop-light" src="https://github.com/user-attachments/assets/9e9d8278-ccfb-4afd-93ce-481840ecb36e" />
-<img width="1000" height="625" alt="living-room-desktop-light" src="https://github.com/user-attachments/assets/3cb89190-1654-4f06-b25c-e25d779761f0" />
-
 ## Desktop View (Single Row)
-<img width="1000" height="625" alt="home-desktop-light-alt" src="https://github.com/user-attachments/assets/4a9b856f-7775-43ce-b1a6-1be9b37772c8" />
-<img width="1000" height="625" alt="living-room-desktop-light-alt" src="https://github.com/user-attachments/assets/72adfb45-2512-4e05-a6b4-cfb4093f192a" />
+<img width="1000" height="625" alt="home-desktop-light-alt" src="https://github.com/user-attachments/assets/13df5921-2671-4ded-9304-05b672ebca64" />
+<img width="1000" height="625" alt="bedroom-desktop-light-alt" src="https://github.com/user-attachments/assets/ec673e43-fe7a-4e38-99c0-1c7f5fafe836" />
+
+## Desktop View (Two Rows)
+<img width="1728" height="1085" alt="home-desktop-light" src="https://github.com/user-attachments/assets/d1857ecf-5658-4e8c-a134-de1b090e3b13" />
+<img width="1728" height="1084" alt="bedroom-desktop-light" src="https://github.com/user-attachments/assets/f5bcb186-e58b-410d-84aa-6b1aacd2c689" />
 
 ---
 
@@ -47,14 +47,12 @@ Homio-Next adds new features and changes including:
 Under the hood it’s still YAML files you can read, copy, and modify. This repo just collects my version into a reusable package.
 
 ## Light/Dark Mode
-
-<img width="1000" height="625" alt="bedroom-desktop-light-alt" src="https://github.com/user-attachments/assets/5ca0f5f3-9631-4efe-85cd-a09318089bf0" />
-<img width="1000" height="625" alt="bedroom-desktop-dark-alt" src="https://github.com/user-attachments/assets/fec8fddf-5446-4c30-939e-eb7416000f60" />
+<img width="1000" height="625" alt="bedroom-desktop-light-alt" src="https://github.com/user-attachments/assets/cbabe4d4-dde7-4b06-b51c-33791b8be6d9" />
+<img width="1000" height="625" alt="bedroom-desktop-dark-alt" src="https://github.com/user-attachments/assets/3a349a66-7233-4daa-88b8-e20f26531112" />
 
 ## Rounded/Boxy Button Cards
-
-<img width="1000" height="625" alt="kitchen-desktop-light-alt" src="https://github.com/user-attachments/assets/0b3b1f5e-a738-4796-9a50-2e5172a30b53" />
-<img width="1000" height="625" alt="kitchen-desktop-light-box-alt" src="https://github.com/user-attachments/assets/dbd6d828-d66d-4e41-83a6-5870457148d3" />
+<img width="1000" height="625" alt="kitchen-desktop-light-alt" src="https://github.com/user-attachments/assets/95518bb0-451d-4e07-b0b3-8aea536c6ccc" />
+<img width="1000" height="625" alt="kitchen-desktop-light-box" src="https://github.com/user-attachments/assets/e66877c8-3e54-4708-8bb2-9e21add2b260" />
 
 ---
 
