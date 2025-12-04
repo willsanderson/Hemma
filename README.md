@@ -54,8 +54,8 @@ Under the hood it’s still YAML files you can read, copy, and modify. This repo
 ![living-room-desktop-light-box](https://github.com/user-attachments/assets/2cb3c1fb-9edd-4970-b268-a8f7c4a73127)
 
 ## Mobile View
-<img width="346" height="750" alt="home-mobile-light" src="https://github.com/user-attachments/assets/3c48abb5-69b6-495d-b12a-38fff228e41b" />
-<img width="346" height="750" alt="living-room-mobile-light" src="https://github.com/user-attachments/assets/12830ba4-97e4-433d-9fc3-b33f5ab3d19e" />
+<img width="346" height="698" alt="home-mobile-light" src="https://github.com/user-attachments/assets/589472bc-23f2-4ee0-a13d-0c20993bc268" />
+<img width="346" height="698" alt="living-room-mobile-light" src="https://github.com/user-attachments/assets/afc6af01-6307-48b4-ab6f-3244040d1dcc" />
 
 ---
 
