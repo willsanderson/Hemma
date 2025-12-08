@@ -1,3 +1,4 @@
+# Room
 homio_room:
   class: "homio-hero"
   template:
@@ -138,7 +139,7 @@ homio_room:
         - letter-spacing: 1px
         - text-transform: uppercase
         - margin: 0
-        - padding-left: 2px
+        - padding-left: 3px
         - "--button-card-ripple-color": transparent
         - "-webkit-tap-highlight-color": transparent
 

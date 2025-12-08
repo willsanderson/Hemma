@@ -1,3 +1,4 @@
+# Media Card
 homio_media:
   show_empty: false
   template:

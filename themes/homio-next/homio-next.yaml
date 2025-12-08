@@ -6,30 +6,31 @@ homio-next:
       app-header-background-color: rgba(76, 80, 84, 0.3)
       ha-card-background: rgba(255,255,255,0.08)
       ha-card-background-active: rgba(255,255,255,0.3)
-      thermostat-card-off: rgba(255,255,255,0.04)
-      thermostat-card-on: rgba(255,255,255,0.12)
+      thermostat-card-off: rgba(255,255,255,0.05)
+      thermostat-card-on: rgba(255,255,255,0.18)
       app-theme-color: rgb(0, 0, 0)
       ha-card-box-shadow: none
       button-card-box-shadow: var(--ha-shadow-light)
-      homio-nav-bg: rgba(255,255,255,0.1)
-      homio-nav-border: rgba(255,255,255,0.09)
+      homio-nav-bg: rgba(255,255,255,0.11)
+      homio-nav-border: rgba(255,255,255,0.11)
       homio-nav-shadow: 0 18px 36px rgba(0,0,0,.20), 0 4px 10px rgba(0,0,0,.10)
-      homio-nav-inactive-opacity: .7
-      homio-nav-icon: rgba(255,255,255,.98)
+      homio-nav-inactive-opacity: .6
+      homio-nav-icon: rgba(255,255,255,.7)
       homio-nav-icon-active: rgba(255,255,255,1)
-      homio-nav-active-fill: rgba(0,0,0,0.2)
+      homio-nav-active-fill: rgba(0,0,0,0.3)
       homio-nav-pill-shadow: inset 0 0 16px rgba(0,0,0,0.1)
       homio-nav-fade: |
         linear-gradient(
           to top,
-          rgba(0,0,0,0.40) 0%,
-          rgba(0,0,0,0.0) 50%
+          rgba(0,0,0,0.6) 0%,
+          rgba(0,0,0,0.25) 35%,
+          rgba(0,0,0,0.0) 75%
         )
       homio-slider-track: rgba(255,255,255,0.22)
       homio-slider-progress: rgba(255,255,255,0.95)
       homio-slider-thumb: "#ffffff"
       homio-slider-shadow: 0 2px 10px rgba(0,0,0,.18)
-      homio-nav-blur: blur(8px)
+      homio-nav-blur: blur(10px)
       hero-img-filter: saturate(1.02) brightness(.985)
       hero-tint-top: rgba(56,56,56,0.65)
       hero-tint-mid: rgba(53,53,53,0.60)
@@ -46,16 +47,16 @@ homio-next:
       primary-background-color: rgb(40, 40, 40)
       secondary-background-color: rgb(20, 20, 20)
       app-header-background-color: rgba(76, 80, 84, 0.3)
-      ha-card-background: rgba(10,10,10,0.55)
-      ha-card-background-active: rgba(90,90,90,0.26)
-      thermostat-card-off: rgba(14,14,14,0.18)
-      thermostat-card-on: rgba(180,180,180,0.1)
+      ha-card-background: rgba(0,0,0,0.4)
+      ha-card-background-active: rgba(150,150,150,0.08)
+      thermostat-card-off: rgba(0,0,0,0.1)
+      thermostat-card-on: rgba(180,180,180,0.15)
       app-theme-color: rgb(0, 0, 0)
       ha-card-box-shadow: none
       button-card-box-shadow: var(--ha-shadow-dark)
       button-card-box-shadow-active: var(--ha-shadow-dark-active)
-      homio-nav-bg: rgba(0,0,0,.4)
-      homio-nav-border: rgba(255,255,255,0.09)
+      homio-nav-bg: rgba(0,0,0,.5)
+      homio-nav-border: rgba(255,255,255,0.11)
       homio-nav-inactive-opacity: .6
       homio-nav-icon: rgba(240,240,240,.75)
       homio-nav-icon-active: rgba(255,255,255,.98)
@@ -84,6 +85,8 @@ homio-next:
       dark-vignette: 1
 
   # Global
+
+  # Rounded Cards
   ha-shadow-light: >
     inset 8px 8px 14px -12px rgba(255,255,255,0.18),
     inset -8px -8px 14px -12px rgba(255,255,255,0.14),
@@ -92,22 +95,30 @@ homio-next:
     inset 0 0 6px -3px rgba(255,255,255,0.03),
     0 16px 28px rgba(0,0,0,0.12)
 
+  # Boxy Cards
+  # ha-shadow-light: >
+  #   inset 8px 8px 10px -12px rgba(255,255,255,0.18),
+  #   inset -8px -8px 10px -12px rgba(255,255,255,0.14),
+  #   inset -0.5px -0.5px 2px -1.5px rgba(255,255,255,0.5),
+  #   inset 0 0 6px -3px rgba(255,255,255,0.03),
+  #   0 16px 28px rgba(0,0,0,0.12)
+
   ha-shadow-dark: >
-    inset 0 0 0 0.5px rgba(255,255,255,0.06),
+    inset .5px .5px .3px 0.3px rgba(255,255,255,0.08),
+    inset -.5px -.5px .3px 0.3px rgba(255,255,255,0.08),
     inset 0 14px 32px rgba(255,255,255,0.04),
-    0 0 0 0.5px rgba(255,255,255,0.03),
-    0 22px 24px rgba(0,0,0,0.10)
+    0 22px 24px rgba(100,100,100,0.06)
 
   ha-shadow-dark-active: >
-    inset 0 10px 18px -16px rgba(255,255,255,0.2),
-    inset 0 -10px 18px -16px rgba(255,255,255,0.14),
-    inset 0 0 0 1px rgba(255,255,255,0.05),
-    0 18px 24px rgba(0,0,0,0.10)
+    inset 0 10px 14px -16px rgba(255,255,255,0.25),
+    inset 0 -10px 18px -16px rgba(255,255,255,0.18),
+    inset 0 0 0 .8px rgba(255,255,255,0.06),
+    0 12px 24px rgba(0,0,0,0.12)
 
   badge-shadow: >
     inset .5px .5px 4px -1px rgba(0,0,0,0.13),
     inset -.5px -.5px 1px -.5px rgba(255,255,255,0.07),
-    0 8px 12px rgba(100,100,100,0.05)
+    0 8px 12px rgba(100,100,100,0.06)
 
   # Fonts
   primary-font-family: "Hanken Grotesk"
@@ -149,16 +160,7 @@ homio-next:
   homio-entity-state-font-desktop: 15px
   homio-entity-fade-size-desktop: 26px
 
-  # Preset A (2-Row Grid)
-  # homio-entity-rows-desktop: repeat(2, auto)
-  # homio-entity-col-width-desktop: 250px
-  # homio-entity-justify-desktop: center
-  # homio-entity-right-inset-desktop: var(--page-gutter, 8vw)
-  # homio-entity-bottom-desktop: 30px
-  # homio-entity-shadow-pad-right-desktop: 16px
-  # homio-entity-overflow-y-desktop: visible
-
-  # Preset B (1-Row Carousel)
+  # Preset A (1-Row Carousel)
   homio-entity-rows-desktop: repeat(1, auto)
   homio-entity-col-width-desktop: 300px
   homio-entity-justify-desktop: flex-start
@@ -166,6 +168,15 @@ homio-next:
   homio-entity-bottom-desktop: 40px
   homio-entity-shadow-pad-right-desktop: 0px
   homio-entity-overflow-y-desktop: hidden
+
+  # Preset B (2-Row Grid)
+  # homio-entity-rows-desktop: repeat(2, auto)
+  # homio-entity-col-width-desktop: 250px
+  # homio-entity-justify-desktop: center
+  # homio-entity-right-inset-desktop: var(--page-gutter, 8vw)
+  # homio-entity-bottom-desktop: 30px
+  # homio-entity-shadow-pad-right-desktop: 16px
+  # homio-entity-overflow-y-desktop: visible
 
   # Entity Variables
   homio-entity-active: rgba(255,255,255,1)
@@ -181,24 +192,24 @@ homio-next:
   badge-inset-start: 4px
   badge-br: 9999px
   badge-rim-width: .55px
-  badge-subline-lh: 1.15
-  badge-subline-lh-mobile: 1.1
+  badge-subline-lh: 1.18
+  badge-subline-lh-mobile: 1.15
 
   # Mobile badge formatting
   badge-col-gap-mobile: 3px
   badge-gap-mobile: 6px
   badge-row-gap-mobile: 4px
-  badge-top-gap-mobile: 2px
+  badge-top-gap-mobile: 4px
   badge-font-size-mobile: 13px
-  badge-padding-mobile: 3px 12px 3px 8px
-  badge-min-height-mobile: 44px
+  badge-padding-mobile: 0 12px 0 8px
+  badge-min-height-mobile: 41px
   badge-icon-size-mobile: 26px
   
   # Desktop badge formatting
   badge-col-gap: 6px
   badge-gap: 8px
   badge-row-gap: 12px
-  badge-top-gap: 3px   # ↓ was 6px
+  badge-top-gap: 3px
   badge-padding: 4px 14px 4px 9px
   badge-min-height: 44px
   badge-icon-size: 28px
@@ -227,7 +238,7 @@ homio-next:
 
   header-top-desktop: clamp(300px, 26vh, 340px)
   header-top-tablet:  clamp(180px, 22vh, 280px)
-  header-top-mobile:  clamp(24px, 13vh, 68px)
+  header-top-mobile:  clamp(40px, 18vh, 84px)
 
   # Dialog 
   ha-dialog-surface-backdrop-filter: blur(10px) # this currently disables desktop dropdown
@@ -332,6 +343,19 @@ homio-next:
           .eq .b {
             animation: none !important;
           }
+        }
+
+        .homio-entities,
+        .homio-entities > div {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+
+        .homio-entities::-webkit-scrollbar,
+        .homio-entities > div::-webkit-scrollbar {
+          width: 0 !important;
+          height: 0 !important;
+          background: transparent !important;
         }
 
         app-header,

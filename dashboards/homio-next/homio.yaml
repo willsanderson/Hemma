@@ -1,3 +1,4 @@
+# Dashboard
 button_card_templates: !include_dir_merge_named /config/dashboards/templates/button_cards
 kiosk_mode:
   hide_header: true
@@ -16,7 +17,7 @@ views:
       - type: custom:button-card
         template: homio_room
         variables:
-          image: home
+          image: home-demo3
           image_position: center center
           show_quality: false
           quality_sensor: sensor.home_air_quality
@@ -83,7 +84,7 @@ views:
     cards:
       - type: custom:button-card
         variables:
-          image: livingroom
+          image: livingroom-demo4
           image_position: center center
           show_humid: true
           humid_sensor: sensor.purifier_cool_humidity
@@ -174,7 +175,7 @@ views:
     cards:
       - type: custom:button-card
         variables:
-          image: kitchen
+          image: kitchen-demo4
           image_position: center center
           show_humid: true
           humid_sensor: sensor.hub_2_humidity
@@ -211,7 +212,7 @@ views:
             variables:
               icon: robot-vacuum
             template:
-              - homio_media
+              - homio_entity
             entity: vacuum.robot
             name: Clean Bot
 
@@ -230,7 +231,7 @@ views:
     cards:
       - type: custom:button-card
         variables:
-          image: bedroom
+          image: bedroom-demo4
           image_position: center center
           show_humid: true
           humid_sensor: sensor.monstera_air_humidity
@@ -248,41 +249,6 @@ views:
         class: homio-entities
         layout_type: custom:grid-layout
         layout: !include /config/dashboards/templates/includes/homio_entity_layout.yaml
-
-        card_mod:
-          style: |
-            :host {
-              position: relative;
-              isolation: isolate;
-            }
-
-            /* Desktop / tablet: edge fade for horizontal scroll */
-            @media (min-width: 769px) {
-              :host::after {
-                content: "";
-                position: absolute;
-                inset: 0;
-                pointer-events: none;
-                z-index: 50;
-
-                /* make this dramatic so you *see* it */
-                background: linear-gradient(
-                  to right,
-                  rgba(0,0,0,0.75) 0px,
-                  rgba(0,0,0,0.00) 80px,
-                  rgba(0,0,0,0.00) calc(100% - 80px),
-                  rgba(0,0,0,0.75) 100%
-                );
-              }
-            }
-
-            /* Kill the scrim in 2-row mobile mode */
-            @media (max-width: 768px), (max-height: 500px) {
-              :host::after {
-                content: none;
-              }
-            }
-            
         cards:
           - type: custom:button-card
             template: homio_thermostat

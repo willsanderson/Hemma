@@ -1,4 +1,4 @@
-# homio_navbar_mobile.yaml
+# Mobile Navbar
 type: conditional
 conditions:
   - condition: screen
@@ -125,26 +125,27 @@ card:
       z-index: 1;
     }
 
-    .navbar .route .button .icon{
-      --icon-primary-color: var(--homio-nav-icon) !important;
-    }
-
     .navbar .route .button .label{
       margin:0;
       line-height:1;
       min-height:1em;
       color: var(--homio-nav-icon, rgba(0,0,0,.7));
-      opacity: var(--homio-nav-inactive-opacity, .8);
-    }
-
-    .navbar .route.active .button .icon,
-    .navbar .route .button.active .icon{
-      --icon-primary-color: var(--homio-nav-icon-active, var(--homio-nav-icon)) !important;
+      opacity: var(--homio-nav-inactive-opacity, .6);
     }
 
     .navbar .route.active .button .label,
     .navbar .route .button.active .label{
       color: var(--homio-nav-icon-active, var(--homio-nav-icon)) !important;
+      opacity: 1 !important;
+    }
+
+    .navbar .route .button img{
+      opacity: var(--homio-nav-inactive-opacity, .6);
+      transition: opacity .18s ease-out;
+    }
+
+    .navbar .route.active .button img,
+    .navbar .route .button.active img{
       opacity: 1 !important;
     }
 

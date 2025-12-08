@@ -12,7 +12,7 @@ inset: >
            var(--homio-rail-left, var(--page-gutter, 8vw)))
        var(--homio-entity-bottom-desktop, 60px)
        var(--homio-rail-left, var(--page-gutter, 8vw))
-padding: 20px var(--homio-entity-shadow-pad-right-desktop, 0px) 24px 0
+padding: 20px var(--homio-entity-shadow-pad-right-desktop, 0px) 40px 0
 box-sizing: border-box
 scroll-snap-type: x mandatory
 scroll-padding-inline: var(--homio-entity-shadow-pad-right-desktop, 0px)
@@ -23,6 +23,8 @@ grid-template-rows: var(--homio-entity-rows-desktop, repeat(1, auto))
 min-height: var(--homio-entity-height-desktop, 180px)
 align-content: end
 justify-content: var(--homio-entity-justify-desktop, flex-start)
+scrollbar-width: none
+-ms-overflow-style: none
 
 mediaquery:
   # -------- Mobile --------
