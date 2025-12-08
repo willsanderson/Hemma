@@ -12,6 +12,53 @@ homio_shared:
       --homio-hover-filter: none !important;
     }
 
+    :host::before{
+      content: "";
+      position: fixed;
+      width: 0;
+      height: 0;
+      opacity: 0;
+      pointer-events: none;
+      background-image:
+        url("/local/images/Homio/rooms/home-demo.jpg"),
+        url("/local/images/Homio/rooms/livingroom-demo.jpg"),
+        url("/local/images/Homio/rooms/kitchen-demo.jpg"),
+        url("/local/images/Homio/rooms/bedroom-demo.jpg");
+      background-repeat: no-repeat;
+      background-size: cover;
+    }
+
+    :host{
+      position: relative;
+      z-index: 0;
+      --hero-gutter: var(--content-rail,
+                      var(--homio-rail-left,
+                      var(--page-gutter, 8vw)));
+      --hero-top: var(--header-top-desktop, clamp(220px, 26vh, 340px));
+      --row-left-pad: 0px;
+      --homio-hover-filter: none !important;
+    }
+
+    :host ha-card{
+      position: relative;
+      pointer-events: none !important;
+      cursor: default !important;
+      filter: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      box-shadow: none !important;
+      transition: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+      --mdc-ripple-press-opacity: 0 !important;
+      background-repeat: no-repeat, no-repeat !important;
+      background-position: center center, center center !important;
+      background-size: cover, cover !important;
+      background-attachment: local, local !important;
+      isolation: isolate !important;
+      overflow-x: hidden !important;
+      overflow-y: hidden !important;
+    }
+
     :host ha-card{
       position: relative;
       pointer-events: none !important;
