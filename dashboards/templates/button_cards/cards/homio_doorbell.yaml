@@ -1,0 +1,18 @@
+homio_doorbell:
+  template:
+    - homio_entity
+  show_entity_picture: true
+  show_name: true
+  show_state: true
+  name: Doorbell
+  tap_action:
+    action: more-info
+  hold_action:
+    action: more-info
+  styles:
+    img_cell:
+      - color: var(--homio-entity-active, var(--primary-text-color)) !important
+    entity_picture:
+      - opacity: var(--homio-entity-picture-active-opacity, 1) !important
+    icon:
+      - color: var(--homio-entity-active, var(--primary-text-color)) !important

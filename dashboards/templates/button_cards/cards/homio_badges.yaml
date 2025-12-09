@@ -91,9 +91,6 @@ homio_badge_base:
     ha-card::before{ z-index: 3 !important; }
     ha-card::after{  z-index: 2 !important; }
 
-    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-
-
 # Air Quality
 homio_badge_air_quality:
   template: [homio_badge_base]
@@ -222,25 +219,25 @@ homio_badge_presence:
           ]]]
       - --presence-filter: >
           [[[
-            const s = String(entity?.state || '').toLowerCase().replace('_', ' ');
+            const s = String(entity?.state || '').toLowerCase().replace(/_/g, ' ');
             const on = (s === 'home' || s === 'just arrived');
             return on ? 'none' : 'grayscale(1) contrast(.96) brightness(.94)';
           ]]]
       - --presence-opacity: >
           [[[
-            const s = String(entity?.state || '').toLowerCase().replace('_', ' ');
+            const s = String(entity?.state || '').toLowerCase().replace(/_/g, ' ');
             return (s === 'home' || s === 'just arrived') ? '1' : '.88';
           ]]]
       - --badge-title-color: >
           [[[
-            const s = String(entity?.state || '').toLowerCase().replace('_', ' ');
+            const s = String(entity?.state || '').toLowerCase().replace(/_/g, ' ');
             return (s === 'home' || s === 'just arrived')
               ? 'var(--primary-text-color)'
               : 'var(--badge-title-inactive)';
           ]]]
       - --badge-sub-color: >
           [[[
-            const s = String(entity?.state || '').toLowerCase().replace('_', ' ');
+            const s = String(entity?.state || '').toLowerCase().replace(/_/g, ' ');
             return (s === 'home' || s === 'just arrived')
               ? 'var(--secondary-text-color)'
               : 'color-mix(in oklab, var(--secondary-text-color) 70%, transparent)';
@@ -431,7 +428,7 @@ homio_badge_media:
       - box-shadow: none !important
       - margin-inline-start: var(--badge-inset-start, 0px)
       - margin-left: -1px
-      - min-height: calc(var(--badge-min-height-mobile) + 4px) !important
+      - min-height: "calc(var(--badge-min-height-current, var(--badge-min-height, 44px)) + 4px) !important"
       - --badge-rim-width: 1.4px
       - --badge-rim-alpha: 0.24
       - --badge-rim-glow: 0.12
@@ -586,16 +583,6 @@ homio_badge_media:
             - display: none
 
   extra_styles: |
-    :host ha-card{
-      min-height: var(--badge-min-height-current, var(--badge-min-height, 52px)) !important;
-    }
-
-    @media (max-width: 768px), (max-height: 500px){
-      :host ha-card{
-        min-height: var(--badge-min-height-current, var(--badge-min-height-mobile, 44px)) !important;
-      }
-    }
-
     /* EQ icon block */
     #ic{
       grid-area:i !important;
@@ -886,7 +873,6 @@ homio_badge_media:
                var(--secondary-text-color) 70%,
                white 30%);
       -webkit-text-fill-color: currentColor;
-      /* let the background color show through the text a bit */
       mix-blend-mode: screen;
       opacity: var(--media-sub-opacity, .78);
       text-shadow: var(--text-shadow-boost);

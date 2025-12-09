@@ -132,12 +132,8 @@ homio_room:
               return (!navOpen && has) ? 'block' : 'none';
             ]]]
         - color: var(--primary-text-color)
-        - font-size: 14px
-        - font-weight: 600
         - opacity: 0.9
         - justify-self: start
-        - letter-spacing: 1px
-        - text-transform: uppercase
         - margin: 0
         - padding-left: 3px
         - "--button-card-ripple-color": transparent
@@ -213,12 +209,18 @@ homio_room:
         if (Number.isNaN(v)) return;
         const t = Math.round(v);
 
-        if (v <= 64.99) return `${t}° - Very Cold`;
-        if (v <= 69.99) return `${t}° - Cool`;
-        if (v <= 74.99) return `${t}° - Comfortable`;
-        if (v <= 80.99) return `${t}° - Warm`;
-        if (v <= 84.99) return `${t}° - Hot`;
-        return `${t}° - Very Hot`;
+        let label = 'Very Hot';
+        if (v <= 64.99)      label = 'Very Cold';
+        else if (v <= 69.99) label = 'Cool';
+        else if (v <= 74.99) label = 'Comfortable';
+        else if (v <= 80.99) label = 'Warm';
+        else if (v <= 84.99) label = 'Hot';
+
+        return `
+          <div class="hero-temp-line">
+            ${t}° - ${label.toUpperCase()}
+          </div>
+        `;
       ]]]
 
     badges:

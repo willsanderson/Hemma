@@ -31,7 +31,11 @@ mediaquery:
   "(max-width: 768px), (max-height: 500px)":
     position: absolute
     z-index: 4
-    inset: "calc(var(--entity-top-mobile, 260px) + 180px) var(--homio-rail-left, var(--page-gutter-mobile, 14px)) auto var(--homio-rail-left, var(--page-gutter-mobile, 14px))"
+    inset: >
+      calc(var(--entity-top-mobile, 260px) + 180px)
+      var(--homio-rail-left, var(--page-gutter-mobile, 14px))
+      auto
+      var(--homio-rail-left, var(--page-gutter-mobile, 14px))
     margin: 0
     padding: "0 0 calc(64px + env(safe-area-inset-bottom)) 0"
     width: auto

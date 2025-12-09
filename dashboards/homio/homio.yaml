@@ -17,7 +17,7 @@ views:
       - type: custom:button-card
         template: homio_room
         variables:
-          image: home-demo3
+          image: home-demo
           image_position: center center
           show_quality: false
           quality_sensor: sensor.home_air_quality
@@ -59,13 +59,6 @@ views:
             tap_action:
               action: more-info
               entity: light.all
-            state_display: >
-              [[[
-                const count = parseInt(states['sensor.lights_on_count']?.state ?? '0');
-                if (isNaN(count) || count === 0) return "All off";
-                if (count === 1) return "1 on";
-                return `${count} on`;
-              ]]]
             entity: light.all
             name: Lights
 
@@ -73,7 +66,7 @@ views:
             variables:
               icon: doorbell
             template:
-              - homio_entity
+              - homio_doorbell
             entity: camera.front_door_live_view
             name: Doorbell
 
@@ -84,7 +77,7 @@ views:
     cards:
       - type: custom:button-card
         variables:
-          image: livingroom-demo4
+          image: livingroom-demo
           image_position: center center
           show_humid: true
           humid_sensor: sensor.purifier_cool_humidity
@@ -175,7 +168,7 @@ views:
     cards:
       - type: custom:button-card
         variables:
-          image: kitchen-demo4
+          image: kitchen-demo
           image_position: center center
           show_humid: true
           humid_sensor: sensor.hub_2_humidity
@@ -231,7 +224,7 @@ views:
     cards:
       - type: custom:button-card
         variables:
-          image: bedroom-demo4
+          image: bedroom-demo
           image_position: center center
           show_humid: true
           humid_sensor: sensor.monstera_air_humidity

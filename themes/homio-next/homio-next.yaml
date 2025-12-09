@@ -14,7 +14,7 @@ homio-next:
       homio-nav-bg: rgba(255,255,255,0.11)
       homio-nav-border: rgba(255,255,255,0.11)
       homio-nav-shadow: 0 18px 36px rgba(0,0,0,.20), 0 4px 10px rgba(0,0,0,.10)
-      homio-nav-inactive-opacity: .6
+      homio-nav-inactive-opacity: .7
       homio-nav-icon: rgba(255,255,255,.7)
       homio-nav-icon-active: rgba(255,255,255,1)
       homio-nav-active-fill: rgba(0,0,0,0.3)
@@ -68,17 +68,17 @@ homio-next:
       homio-slider-progress: rgba(255,255,255,0.95)
       homio-slider-thumb: "#ffffff"
       homio-slider-shadow: 0 2px 12px rgba(0,0,0,.34)
+      homio-nav-blur: blur(10px)
       hero-img-filter: saturate(1.02) brightness(0.98)
-      hero-tint-top: rgba(45,45,45,0.75)
-      hero-tint-mid: rgba(45,45,45,0.70)
-      hero-tint-bottom: rgba(50,50,50,0.70)
+      hero-tint-top: rgba(45,45,45,0.65)
+      hero-tint-mid: rgba(45,45,45,0.60)
+      hero-tint-bottom: rgba(50,50,50,0.60)
       primary-text-color: "#ffffff"
       text-primary-color: rgba(255,255,255,.95)
       secondary-text-color: rgba(240,240,240,0.7)
       disabled-text-color: rgba(208,208,208,0.5)
       sidebar-icon-color: '#67676b'
       sidebar-text-color: '#a8a8a8'
-      dialog-surface-shadow: none
       vignette-alpha: 0.78
       vignette-edge: 0.68
       vignette-bottom: 0.34
@@ -88,12 +88,10 @@ homio-next:
 
   # Rounded Cards
   ha-shadow-light: >
-    inset 8px 8px 14px -12px rgba(255,255,255,0.18),
-    inset -8px -8px 14px -12px rgba(255,255,255,0.14),
-    inset 0.5px 0.5px 2px -1.5px rgba(255,255,255,0.5),
-    inset -0.5px -0.5px 2px -1.5px rgba(255,255,255,0.5),
-    inset 0 0 6px -3px rgba(255,255,255,0.03),
-    0 16px 28px rgba(0,0,0,0.12)
+    inset 6px 6px 10px -10px rgba(255,255,255,0.20),
+    inset -6px -6px 10px -10px rgba(255,255,255,0.16),
+    inset 0 0 3px -1px rgba(255,255,255,0.35),
+    0 14px 22px rgba(0,0,0,0.08)
 
   # Boxy Cards
   # ha-shadow-light: >
@@ -142,23 +140,20 @@ homio-next:
   state-icon-color: var(--primary-color)
   ha-color-on-primary-normal: var(--primary-color)
 
-  # ===================== #
-  # Desktop Entity Layout #
-  # ===================== #
-
-  # To switch layouts:
-  # - Use Preset A for 2-row grid
-  # - Use Preset B for 1-row carousel
-  # (only one preset block should be uncommented at a time)
-
-  # Global Variables
+  # Entity Layout
   homio-entity-height-desktop: 180px
   homio-entity-height-mobile: 120px
   homio-entity-padding-desktop: 40px
   homio-entity-padding-mobile: 20px
   homio-entity-name-font-desktop: 18px
   homio-entity-state-font-desktop: 15px
-  homio-entity-fade-size-desktop: 26px
+  hero-temp-font-size-desktop: 16px
+  hero-temp-font-size-mobile: 14px
+
+  # To switch layouts:
+  # - Use Preset A for 2-row grid
+  # - Use Preset B for 1-row carousel
+  # (only one preset block should be uncommented at a time)
 
   # Preset A (1-Row Carousel)
   homio-entity-rows-desktop: repeat(1, auto)
@@ -180,8 +175,8 @@ homio-next:
 
   # Entity Variables
   homio-entity-active: rgba(255,255,255,1)
-  homio-entity-inactive: rgba(255,255,255,.8)
-  homio-entity-picture-inactive-opacity: .8
+  homio-entity-inactive: rgba(255,255,255,.85)
+  homio-entity-picture-inactive-opacity: .9
   homio-entity-picture-active-opacity: 1
   homio-entity-picture-inactive-filter: brightness(.75) saturate(.9)
   homio-entity-picture-active-filter: none
@@ -196,9 +191,9 @@ homio-next:
   badge-subline-lh-mobile: 1.15
 
   # Mobile badge formatting
-  badge-col-gap-mobile: 3px
+  badge-col-gap-mobile: 4px
   badge-gap-mobile: 6px
-  badge-row-gap-mobile: 4px
+  badge-row-gap-mobile: 6px
   badge-top-gap-mobile: 4px
   badge-font-size-mobile: 13px
   badge-padding-mobile: 0 12px 0 8px
@@ -334,7 +329,6 @@ homio-next:
             --page-gutter: var(--page-gutter-mobile);
             --homio-rail-left: var(--page-gutter-mobile);
             --content-rail: calc(var(--homio-rail-left) + var(--homio-entity-padding-mobile, 20px));
-            --tile-h: 168px;
           }
         }
 

@@ -2,11 +2,18 @@ homio_light:
   template:
     - homio_entity
   show_last_changed: false
-  state_display: |
-    [[[ if (entity.state === "on" && entity.attributes.brightness) 
-      {return Math.round((entity.attributes.brightness / 255) * 100) +
-      "%"} else return "Off"
+  state_display: >
+    [[[
+      const count = parseInt(states['sensor.lights_on_count']?.state ?? '0');
+      if (isNaN(count) || count === 0) return "All off";
+      if (count === 1) return "1 on";
+      return `${count} on`;
     ]]]
+  # state_display: |
+  #   [[[ if (entity.state === "on" && entity.attributes.brightness) 
+  #     {return Math.round((entity.attributes.brightness / 255) * 100) +
+  #     "%"} else return "Off"
+  #   ]]]
   tap_action:
     action: more-info
   hold_action:

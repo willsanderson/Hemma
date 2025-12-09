@@ -31,4 +31,4 @@ lovelace:
       title: "Homio"
       icon: mdi:home
       show_in_sidebar: true
-      filename: dashboards/homio-next/homio.yaml
+      filename: dashboards/homio/homio.yaml

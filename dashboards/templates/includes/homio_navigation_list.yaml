@@ -4,7 +4,7 @@
     - homio_nav_button
   name: Living Room
   variables:
-    path: /dashboard-homio-next/living-room
+    path: /dashboard-homio/living-room
   styles:
     card:
       - box-shadow: none
@@ -14,7 +14,7 @@
     - homio_nav_button
   name: Kitchen
   variables:
-    path: /dashboard-homio-next/kitchen
+    path: /dashboard-homio/kitchen
   styles:
     card:
       - box-shadow: none
@@ -24,7 +24,7 @@
     - homio_nav_button
   name: Bedroom
   variables:
-    path: /dashboard-homio-next/bedroom
+    path: /dashboard-homio/bedroom
   styles:
     card:
       - box-shadow: none

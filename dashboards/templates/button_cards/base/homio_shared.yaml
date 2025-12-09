@@ -1,17 +1,6 @@
 # Shared Styles
 homio_shared:
   extra_styles: |
-    :host{
-      position: relative;
-      z-index: 0;
-      --hero-gutter: var(--content-rail,
-                      var(--homio-rail-left,
-                      var(--page-gutter, 8vw)));
-      --hero-top: var(--header-top-desktop, clamp(220px, 26vh, 340px));
-      --row-left-pad: 0px;
-      --homio-hover-filter: none !important;
-    }
-
     :host::before{
       content: "";
       position: fixed;
@@ -37,26 +26,9 @@ homio_shared:
       --hero-top: var(--header-top-desktop, clamp(220px, 26vh, 340px));
       --row-left-pad: 0px;
       --homio-hover-filter: none !important;
-    }
-
-    :host ha-card{
-      position: relative;
-      pointer-events: none !important;
-      cursor: default !important;
-      filter: none !important;
-      opacity: 1 !important;
-      transform: none !important;
-      box-shadow: none !important;
-      transition: none !important;
-      -webkit-tap-highlight-color: transparent !important;
-      --mdc-ripple-press-opacity: 0 !important;
-      background-repeat: no-repeat, no-repeat !important;
-      background-position: center center, center center !important;
-      background-size: cover, cover !important;
-      background-attachment: local, local !important;
-      isolation: isolate !important;
-      overflow-x: hidden !important;
-      overflow-y: hidden !important;
+      --hero-temp-font-size: var(--hero-temp-font-size-desktop, 15px);
+      --hero-temp-font-weight: 600;
+      --hero-temp-letter-spacing: 0.04em;
     }
 
     :host ha-card{
@@ -102,9 +74,9 @@ homio_shared:
       background-repeat: no-repeat;
       opacity:1;
       filter: var(--hero-img-filter, saturate(1.02) brightness(.985));
-      transition: opacity .45s ease, filter .45s ease;
+      transition: opacity .35s ease, filter .35s ease;
       will-change: opacity, filter;
-      animation: heroSwap .45s ease;
+      animation: heroSwap .35s ease;
     }
 
     /* Base hero tint */
@@ -135,6 +107,15 @@ homio_shared:
       }
     }
 
+    .hero-temp-line{
+      font-size: var(--hero-temp-font-size);
+      font-weight: var(--hero-temp-font-weight, 600);
+      letter-spacing: var(--hero-temp-letter-spacing, 0.04em);
+      line-height: 1.2;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
     /* Tablet */
     @media (min-width:769px) and (max-width:1249px){
       :host{
@@ -146,6 +127,7 @@ homio_shared:
     @media (max-width:768px), (max-height:500px){
       :host{
         --hero-top: var(--header-top-mobile, clamp(80px, 12vh, 120px));
+        --hero-temp-font-size: var(--hero-temp-font-size-mobile, 13px);
         --tiles-pad-bottom: calc(130px + env(safe-area-inset-bottom));
         --row-left-pad: 0px;
         --hero-gutter: var(--homio-rail-left, var(--page-gutter-mobile, 10px));

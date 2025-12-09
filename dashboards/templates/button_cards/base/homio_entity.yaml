@@ -103,7 +103,7 @@ homio_entity:
 
     state:
       - text-transform: capitalize
-      - color: var(--homio-entity-inactive, var(--secondary-text-color)) !important
+      - color: var(--secondary-text-color) !important
       - font-size: |
           [[[
             const isMobile = window.innerWidth <= 768;
@@ -142,8 +142,8 @@ homio_entity:
       - transition: opacity .18s ease, filter .18s ease
 
     entity_picture:
-      - opacity: var(--homio-entity-picture-inactive-opacity, .82)
-      - filter: var(--homio-entity-picture-inactive-filter, brightness(.8))
+      - opacity: var(--homio-entity-picture-inactive-opacity, .9)
+      - filter: var(--homio-entity-picture-inactive-filter, brightness(.9))
       - transition: opacity .18s ease, filter .18s ease
 
     icon:

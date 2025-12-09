@@ -150,19 +150,19 @@ card:
     }
 
   routes:
-    - url: /dashboard-homio-next/home
+    - url: /dashboard-homio/home
       label: Home
       image: /local/images/Homio/icons/home.svg
       image_selected: /local/images/Homio/icons/home-filled.svg
-    - url: /dashboard-homio-next/living-room
+    - url: /dashboard-homio/living-room
       label: Living Room
       image: /local/images/Homio/icons/living-room.svg
       image_selected: /local/images/Homio/icons/living-room-filled.svg
-    - url: /dashboard-homio-next/kitchen
+    - url: /dashboard-homio/kitchen
       label: Kitchen
       image: /local/images/Homio/icons/kitchen.svg
       image_selected: /local/images/Homio/icons/kitchen-filled.svg
-    - url: /dashboard-homio-next/bedroom
+    - url: /dashboard-homio/bedroom
       label: Bedroom
       image: /local/images/Homio/icons/bedroom.svg
       image_selected: /local/images/Homio/icons/bedroom-filled.svg
