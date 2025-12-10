@@ -29,6 +29,7 @@ homio_shared:
       --hero-temp-font-size: var(--hero-temp-font-size-desktop, 15px);
       --hero-temp-font-weight: 600;
       --hero-temp-letter-spacing: 0.04em;
+      --hero-temp-margin-bottom: var(--hero-temp-margin-bottom-desktop, 10px);
     }
 
     :host ha-card{
@@ -128,6 +129,7 @@ homio_shared:
       :host{
         --hero-top: var(--header-top-mobile, clamp(80px, 12vh, 120px));
         --hero-temp-font-size: var(--hero-temp-font-size-mobile, 13px);
+        --hero-temp-margin-bottom: var(--hero-temp-margin-bottom-mobile, 8px);
         --tiles-pad-bottom: calc(130px + env(safe-area-inset-bottom));
         --row-left-pad: 0px;
         --hero-gutter: var(--homio-rail-left, var(--page-gutter-mobile, 10px));

@@ -135,6 +135,7 @@ homio_room:
         - opacity: 0.9
         - justify-self: start
         - margin: 0
+        - margin-bottom: var(--hero-temp-margin-bottom)
         - padding-left: 3px
         - "--button-card-ripple-color": transparent
         - "-webkit-tap-highlight-color": transparent
