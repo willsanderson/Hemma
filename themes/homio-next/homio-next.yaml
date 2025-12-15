@@ -6,8 +6,8 @@ homio-next:
       app-header-background-color: rgba(76, 80, 84, 0.3)
       ha-card-background: rgba(200,200,200,0.08)
       ha-card-background-active: rgba(255,255,255,0.3)
-      thermostat-card-off: rgba(255,255,255,0.05)
-      thermostat-card-on: rgba(255,255,255,0.18)
+      thermostat-card-off: rgba(0,0,0,0.1)
+      thermostat-card-on: rgba(255,255,255,0.13)
       app-theme-color: rgb(0, 0, 0)
       ha-card-box-shadow: none
       button-card-box-shadow: var(--ha-shadow-light)
@@ -169,9 +169,8 @@ homio-next:
   homio-entity-name-font-desktop: 18px
   homio-entity-state-font-desktop: 15px
 
-  # To switch layouts:
-  # - Use Preset A for 2-row grid
-  # - Use Preset B for 1-row carousel
+  # - Use Preset A for 1-row carousel
+  # - Use Preset B for 2-row grid
   # (only one preset block should be uncommented at a time)
 
   # Preset A (1-Row Carousel)
