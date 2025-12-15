@@ -114,12 +114,12 @@ homio_media:
         - width: |
             [[[
               const s = String(entity?.state || "").toLowerCase();
-              return (s === "playing" || s === "paused") ? "0" : "50px";
+              return (s === "playing") ? "0" : "50px";
             ]]]
         - opacity: |
             [[[
               const s = String(entity?.state || "").toLowerCase();
-              return (s === "playing" || s === "paused") ? "0" : "1";
+              return (s === "playing") ? "0" : "1";
             ]]]
         - transition: all 0.3s ease
 
@@ -132,7 +132,7 @@ homio_media:
         entity_picture: |
           [[[
             const s = String(entity?.state || "").toLowerCase();
-            if (s === "playing" || s === "paused") return null;
+            if (s === "playing") return null;
             return `/local/images/Homio/icons/${variables.icon}.svg`;
           ]]]
         styles:
@@ -146,14 +146,14 @@ homio_media:
             - opacity: |
                 [[[
                   const s = String(entity?.state || "").toLowerCase();
-                  return (s === "playing" || s === "paused")
+                  return (s === "playing")
                     ? 'var(--homio-entity-picture-active-opacity,1)'
                     : 'var(--homio-entity-picture-inactive-opacity,.82)';
                 ]]]
             - filter: |
                 [[[
                   const s = String(entity?.state || "").toLowerCase();
-                  return (s === "playing" || s === "paused")
+                  return (s === "playing")
                     ? 'var(--homio-entity-picture-active-filter,none)'
                     : 'var(--homio-entity-picture-inactive-filter,brightness(.8))';
                 ]]]
