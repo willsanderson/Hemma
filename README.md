@@ -106,7 +106,7 @@ Example layout:
 
 ### :rocket: Installation
 
-#### 1. Do the base Homio-style setup
+### 1. Do the base Homio-style setup
 
 If you’ve never used Homio before, follow the original README’s **Getting Started** section to:
 
@@ -122,7 +122,7 @@ You don’t have to install the original Homio dashboard itself, but the environ
 
 ---
 
-#### 2. Copy/Overwrite Hemma files into your config
+### 2. Copy/Overwrite Hemma files into your config
 
 From this repo, copy the following into your Home Assistant `/config` directory:
 
@@ -137,7 +137,7 @@ Restart Home Assistant or reload themes/resources as needed.
 
 ---
 
-#### 3. Register the dashboard
+### 3. Register the dashboard
 
 In `configuration.yaml` add the following:
 
@@ -157,7 +157,7 @@ Restart Home Assistant, then refresh your browser and open **Hemma** from the si
 
 ---
 
-#### 4. Configure entities & helpers
+### 4. Configure entities & helpers
 
 - Update entity IDs in the YAML files to match your own setup (lights, media players, sensors, etc.).
 - Make sure everything defined in `packages/hemma_helpers.yaml` exists in your config and uses the correct entity IDs.
