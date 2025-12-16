@@ -1,4 +1,4 @@
-## :house: Hemma Dashboard - Home Assistant
+## :house: Hemma
 
 A modern, minimal, mobile-friendly dashboard for Home Assistant, based on the [Homio](https://github.com/iamtherufus/Homio) dashboard by iamtherufus - featuring light and dark mode, redesigned cards, new custom badges, and media integration.
 
