@@ -5,7 +5,6 @@ A modern, minimal, mobile-friendly fork of the original [Homio](https://github.c
 ### Desktop View (Single Row)
 ![home-light-desktop](https://github.com/user-attachments/assets/fb7d9c83-01f5-4d0d-ad01-7c2a73d0c962)
 ![livingroom-light-desktop](https://github.com/user-attachments/assets/9a2885f0-7f6c-496e-97ca-2afe51dbedb1)
-![bedroom-light-desktop](https://github.com/user-attachments/assets/5f3214d7-1ecc-47a0-9192-524ef23662dc)
 
 ### Desktop View (Two Rows)
 ![two-rows-desktop](https://github.com/user-attachments/assets/01703da5-fb46-41ad-b8db-25b71dc37a0c)
