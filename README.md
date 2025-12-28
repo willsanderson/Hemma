@@ -84,7 +84,7 @@ Example layout:
 /config
 └── dashboards/
     └── hemma/
-        └── hemma.yaml             # Main Hemma dashboard
+        └── hemma.yaml               # Main Hemma dashboard
 └── dashboards/templates/includes/
     ├── hemma_screen_layout.yaml
     ├── hemma_entity_layout.yaml
@@ -93,14 +93,15 @@ Example layout:
     └── hemma_navigation_list.yaml
 └── themes/
     └── hemma/
-        └── hemma.yaml             # Hemma theme
+        └── hemma.yaml               # Hemma theme
 └── packages/
-    └── hemma_helpers.yaml         # Helpers required by the dashboard
+    └── hemma_helpers.yaml           # Helpers required by the dashboard
 └── www/
     └── hemma/
-        ├── icons/                 # UI icons
-        └── rooms/                 # Room/Background images
-
+        ├── icons/                   # UI icons
+        └── rooms/                   # Room/Background images
+    └── layout-card-modified/
+        └── layout-card-modified.js  # Layout Card
 ```
 
 ### :rocket: Installation
