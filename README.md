@@ -99,7 +99,7 @@ Example layout:
 └── www/
     └── hemma/
         ├── icons/                # UI icons
-        └── images/               # Room/Background images
+        └── rooms/               # Room/Background images
 
 ```
 
