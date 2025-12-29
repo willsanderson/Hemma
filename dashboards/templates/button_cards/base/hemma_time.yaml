@@ -1,9 +1,31 @@
 hemma_time:
   template:
     - hemma_default
-  name: |
-    [[[ 
-        return states["sensor.current_time_us"].state
+  variables:
+    time_entity: sensor.time
+    use_12h: true
+  triggers_update:
+    - '[[[ return variables.time_entity || "sensor.time" ]]]'
+  name: >
+    [[[
+      const id  = variables.time_entity || "sensor.time";
+      const ent = states[id];
+      if (!ent) return "";
+      const raw   = String(ent.state || "");
+      const use12 = variables.use_12h === true;
+      const lastComma = raw.lastIndexOf(",");
+      const timePart = (lastComma >= 0 ? raw.slice(lastComma + 1) : raw).trim();
+      if (!timePart) return raw.toUpperCase();
+      if (!use12) {
+        return timePart.toUpperCase();
+      }
+      const [hStr, mStr] = timePart.split(":");
+      const h24 = Number(hStr);
+      if (Number.isNaN(h24)) return timePart.toUpperCase();
+      const ampm = h24 >= 12 ? "PM" : "AM";
+      let h12 = h24 % 12;
+      if (h12 === 0) h12 = 12;
+      return `${h12}:${mStr} ${ampm}`.toUpperCase();
     ]]]
   styles:
     name:
