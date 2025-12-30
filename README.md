@@ -2,7 +2,7 @@
 
 A modern, minimal, mobile-friendly dashboard for Home Assistant. Based on the [Homio](https://github.com/iamtherufus/Homio) dashboard by iamtherufus, Hemma features light and dark mode, redesigned cards, new custom badges, and media integration.
 
-### Desktop View (Single Row)
+### Desktop View
 ![home-light-desktop](https://github.com/user-attachments/assets/fb7d9c83-01f5-4d0d-ad01-7c2a73d0c962)
 ![livingroom-light-desktop](https://github.com/user-attachments/assets/9a2885f0-7f6c-496e-97ca-2afe51dbedb1)
 
