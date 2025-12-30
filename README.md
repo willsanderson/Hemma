@@ -48,8 +48,8 @@ Under the hood it’s still YAML files you can read, copy, and modify. This repo
 ### Boxy Button Cards
 ![livingroom-light-box](https://github.com/user-attachments/assets/d45fba70-b3a6-46b6-81cf-2c98d2d8389f)
 
-## Mobile View (Light and Dark Modes)
-![home-light-mobile](https://github.com/user-attachments/assets/923c3540-b0fd-43b8-bc84-dc601f658059)  &nbsp; &nbsp; &nbsp;![home-dark-mobile](https://github.com/user-attachments/assets/df3e635f-e8ab-45a9-89b7-0003aaf11198)
+## Mobile View (Light/Dark)
+![home-light-mobile](https://github.com/user-attachments/assets/5b04a7d0-d5bf-4101-ac2d-534a3bcd5113)  &nbsp; &nbsp; &nbsp;![home-dark-mobile](https://github.com/user-attachments/assets/c6791209-f7e3-4e0b-a5d6-adaf1324b9de)
 
 ---
 
