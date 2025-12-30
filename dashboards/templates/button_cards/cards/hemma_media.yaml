@@ -19,7 +19,7 @@ hemma_media:
       ]]]
 
   show_last_changed: false
-  show_entity_picture: false
+  show_entity_picture: true
   show_icon: false
 
   state_display: |
@@ -37,9 +37,11 @@ hemma_media:
         const id       = entity?.entity_id || "";
         const friendly = (a.friendly_name || "").toLowerCase();
         const label = title || app || source || cap(s);
+
         const isSonos = id.includes("sonos") || friendly.includes("sonos");
         const bareInputs = ["tv","hdmi","arc","hdmi arc","optical","line-in","line in"];
         let looksLikeBareInput = false;
+
         if (isSonos) {
           const tLow = title.toLowerCase();
           const sLow = source.toLowerCase();
@@ -55,23 +57,22 @@ hemma_media:
 
         const hasRichMeta =
           !!(a.media_artist || a.media_album_artist || a.media_series_title || a.media_episode_title);
+
         const mediaTypes = ["music","movie","video","tvshow"];
+
         const fromRichApp =
           /youtube|plex|netflix|hulu|disney|max|prime|spotify|apple tv|apple music|paramount|peacock/i
             .test(app);
+
         const isRichPlayback = !looksLikeBareInput && (
           hasRichMeta ||
           mediaTypes.includes(type) ||
           fromRichApp
         );
 
-        if (!isRichPlayback) {
-          return label || cap(s);
-        }
+        if (!isRichPlayback) return label || cap(s);
 
-        return `
-          <span class="hemma-media-state">${label}</span>
-        `;
+        return `<span class="hemma-media-state">${label}</span>`;
       }
 
       if (["off","idle","paused","standby","unavailable","unknown"].includes(s)) {
@@ -88,15 +89,16 @@ hemma_media:
 
   styles:
     grid:
-      - grid-template-areas: '"n icon_right" "s icon_right"'
-      - grid-template-columns: minmax(0, 1fr) min-content
-      - grid-template-rows: min-content min-content
-      - align-items: center
-      - column-gap: |
-          [[[
-            const w = window?.innerWidth || 1024;
-            return (w <= 768) ? '14px' : '20px';
-          ]]]
+      - grid-template-areas: |
+          "i"
+          "."
+          "n"
+          "s"
+      - grid-template-columns: 1fr
+      - grid-template-rows: min-content 1fr min-content min-content
+      - row-gap: 4px
+      - justify-items: start
+      - align-items: start
 
     card:
       - background-size: cover
@@ -116,11 +118,6 @@ hemma_media:
       - grid-area: n
       - align-self: end
       - z-index: 2
-      - padding-left: |
-          [[[
-            const w = window?.innerWidth || 1024;
-            return (w <= 768) ? '2px' : '0';
-          ]]]
 
     state:
       - grid-area: s
@@ -129,79 +126,3 @@ hemma_media:
       - white-space: nowrap
       - overflow: hidden
       - text-overflow: ellipsis
-      - padding-left: |
-          [[[
-            const w = window?.innerWidth || 1024;
-            return (w <= 768) ? '2px' : '0';
-          ]]]
-
-    img_cell:
-      - width: |
-          [[[
-            const w = window?.innerWidth || 1024;
-            return (w <= 768) ? '28px' : '30px';
-          ]]]
-      - height: |
-          [[[
-            const w = window?.innerWidth || 1024;
-            return (w <= 768) ? '28px' : '30px';
-          ]]]
-      - background: transparent
-
-    custom_fields:
-      icon_right:
-        - grid-area: icon_right
-        - justify-self: end
-        - align-self: center
-        - margin-right: -8px
-        - width: |
-            [[[
-              const s = String(entity?.state || "").toLowerCase();
-              return (s === "playing") ? "0" : "50px";
-            ]]]
-        - opacity: |
-            [[[
-              const s = String(entity?.state || "").toLowerCase();
-              return (s === "playing") ? "0" : "1";
-            ]]]
-        - transition: all 0.3s ease
-
-  custom_fields:
-    icon_right:
-      card:
-        type: custom:button-card
-        show_icon: false
-        show_entity_picture: true
-        entity_picture: |
-          [[[
-            const s = String(entity?.state || "").toLowerCase();
-            if (s === "playing") return null;
-            return `/local/hemma/icons/${variables.icon}.svg`;
-          ]]]
-        styles:
-          card:
-            - width: 50px
-            - height: 50px
-            - background: none
-            - box-shadow: none
-            - padding: 0
-          img_cell:
-            - opacity: |
-                [[[
-                  const s = String(entity?.state || "").toLowerCase();
-                  return (s === "playing")
-                    ? 'var(--hemma-entity-picture-active-opacity,1)'
-                    : 'var(--hemma-entity-picture-inactive-opacity,.82)';
-                ]]]
-            - filter: |
-                [[[
-                  const s = String(entity?.state || "").toLowerCase();
-                  return (s === "playing")
-                    ? 'var(--hemma-entity-picture-active-filter,none)'
-                    : 'var(--hemma-entity-picture-inactive-filter,brightness(.8))';
-                ]]]
-            - width: 60%
-            - height: 60%
-          entity_picture:
-            - width: 100%
-            - height: 100%

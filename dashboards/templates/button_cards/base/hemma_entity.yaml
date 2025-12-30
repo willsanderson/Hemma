@@ -55,22 +55,18 @@ hemma_entity:
               ? 'var(--hemma-entity-height-mobile, 120px)'
               : 'var(--hemma-entity-height-desktop, 180px)';
           ]]]
-      - padding-left: |
+      - padding: |
           [[[
-            const isMobile = window.innerWidth <= 768;
-            return isMobile
-              ? 'var(--hemma-entity-padding-mobile, 20px)'
-              : 'var(--hemma-entity-padding-desktop, 32px)';
+            return (window.innerWidth <= 768)
+              ? 'var(--hemma-entity-inner-pad-mobile, 18px)'
+              : 'var(--hemma-entity-inner-pad-desktop, 22px)';
           ]]]
-      - padding-right: |
+      - padding-top: |
           [[[
-            const isMobile = window.innerWidth <= 768;
-            return isMobile
-              ? 'var(--hemma-entity-padding-mobile, 20px)'
-              : 'var(--hemma-entity-padding-desktop, 32px)';
+            return (window.innerWidth <= 768)
+              ? 'var(--hemma-entity-inner-pad-mobile, 18px)'
+              : 'var(--hemma-entity-inner-pad-desktop, 22px)';
           ]]]
-      - padding-top: 8px
-      - padding-bottom: 8px
       - scroll-snap-align: start
       - display: |
           [[[
@@ -87,7 +83,7 @@ hemma_entity:
       - font-weight: 600
       - text-shadow: var(--hemma-entity-text-shadow, 0 0 3px rgba(0, 0, 0, 0.3))
       - justify-self: start
-      - margin-bottom: 5px
+      - margin-bottom: 0px
       - font-size: |
           [[[
             const isMobile = window.innerWidth <= 768;
@@ -95,7 +91,7 @@ hemma_entity:
               ? 'var(--hemma-entity-name-font-mobile, 15px)'
               : 'var(--hemma-entity-name-font-desktop, 16px)';
           ]]]
-      - line-height: 1.2
+      - line-height: 1.15
       - white-space: nowrap
       - overflow: hidden
       - text-overflow: ellipsis
@@ -114,29 +110,36 @@ hemma_entity:
       - text-shadow: var(--hemma-entity-text-shadow, 0 0 3px rgba(0, 0, 0, 0.3))
       - justify-self: start
       - font-weight: 700
-      - opacity: 0.85
-      - line-height: 1.2
+      - opacity: 0.75
+      - line-height: 1.15
       - transition: color .18s ease, opacity .18s ease
 
     grid:
-      - grid-template-columns: minmax(0, 1fr) min-content
-      - grid-column-gap: |
-          [[[
-            return (window.innerWidth <= 768) ? '14px' : '20px';
-          ]]]
-      - grid-template-rows: min-content
-      - grid-template-areas: '"n i" "s i"'
-      - place-content: center
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr min-content min-content
+      - grid-template-areas: |
+          "i"
+          "n"
+          "s"
+      - row-gap: 4px
+      - justify-items: start
+      - align-items: start
 
     img_cell:
+      - justify-self: start
+      - align-self: start
       - color: var(--hemma-entity-inactive, var(--secondary-text-color)) !important
       - width: |
           [[[
-            return (window.innerWidth <= 768) ? '28px' : '30px';
+            return (window.innerWidth <= 768)
+              ? 'var(--hemma-entity-icon-size-mobile, 26px)'
+              : 'var(--hemma-entity-icon-size-desktop, 28px)';
           ]]]
       - height: |
           [[[
-            return (window.innerWidth <= 768) ? '28px' : '30px';
+            return (window.innerWidth <= 768)
+              ? 'var(--hemma-entity-icon-size-mobile, 26px)'
+              : 'var(--hemma-entity-icon-size-desktop, 28px)';
           ]]]
       - background: transparent
       - transition: opacity .18s ease, filter .18s ease

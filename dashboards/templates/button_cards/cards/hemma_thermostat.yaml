@@ -7,6 +7,7 @@ hemma_thermostat:
 
   variables:
     thermostat_toggle_helper: input_boolean.hemma_cooling_control
+    temp_sensor: sensor.home_temperature
 
   state_display: |
     [[[
@@ -34,53 +35,17 @@ hemma_thermostat:
     action: more-info
     entity: '[[[ return entity.entity_id ]]]'
 
-  styles:
-    card:
-      - --rail-w: |
-          [[[
-            return (window.innerWidth <= 768) ? '48px' : '60px';
-          ]]]
-    name:
-      - opacity: |
-          [[[
-            return states[variables.thermostat_toggle_helper].state === "on" ? "0" : "1";
-          ]]]
-      - transition: opacity 0.25s
-    state:
-      - opacity: |
-          [[[
-            return states[variables.thermostat_toggle_helper].state === "on" ? "0" : "0.85";
-          ]]]
-      - transition: opacity 0.25s
-
-    custom_fields:
-      cooling_modes:
-        - position: absolute
-        - top: 0
-        - right: 0
-        - bottom: 0
-        - width: var(--rail-w)
-        - z-index: 2
-        - pointer-events: auto
-        - display: |
-            [[[
-              return states[variables.thermostat_toggle_helper].state === "on"
-                ? "none"
-                : "block";
-            ]]]
-      target_temperature:
-        - position: absolute
-        - inset: 0
-        - z-index: 3
-        - pointer-events: auto
-        - display: |
-            [[[
-              return states[variables.thermostat_toggle_helper].state === "on"
-                ? "block"
-                : "none";
-            ]]]
-
   custom_fields:
+    temp_puck: |
+      [[[
+        const eid = variables.temp_sensor;
+        const t = states[eid]?.state;
+        if (!t || t === 'unknown' || t === 'unavailable') return '';
+        const rounded = Math.round(Number(t));
+        if (Number.isNaN(rounded)) return '';
+        return `${rounded}`;
+      ]]]
+
     cooling_modes:
       card:
         type: custom:layout-card
@@ -170,7 +135,6 @@ hemma_thermostat:
               img_cell: [ { width: '30%' } ]
               icon: [ { width: '100%' }, { height: '100%' } ]
 
-    # Target Temp
     target_temperature:
       card:
         type: custom:button-card
@@ -180,7 +144,10 @@ hemma_thermostat:
         name: Target Temp
         state_display: |
           [[[
-            return states['input_number.hemma_thermostat_target_temperature'].state + "°"
+            const raw = states['input_number.hemma_thermostat_target_temperature']?.state;
+            const n = Math.round(Number(raw));
+            if (raw == null || raw === 'unknown' || raw === 'unavailable' || Number.isNaN(n)) return '';
+            return `${n}°`;
           ]]]
         tap_action:
           action: call-service
@@ -223,7 +190,6 @@ hemma_thermostat:
                 align-items: stretch
                 justify-items: stretch
               cards:
-                # UP
                 - type: custom:button-card
                   template: [hemma_default]
                   show_entity_picture: true
@@ -244,7 +210,6 @@ hemma_thermostat:
                     img_cell: [ { width: '30%' } ]
                     icon: [ { transform: 'rotate(-90deg)' } ]
 
-                # SET
                 - type: custom:button-card
                   template: [hemma_default]
                   name: SET
@@ -271,7 +236,6 @@ hemma_thermostat:
                       - text-transform: uppercase
                       - font-weight: 600
 
-                # DOWN
                 - type: custom:button-card
                   template: [hemma_default]
                   show_entity_picture: true
@@ -290,3 +254,109 @@ hemma_thermostat:
                       - background: var(--thermostat-card-on)
                     img_cell: [ { width: '30%' } ]
                     icon: [ { transform: 'rotate(-90deg)' } ]
+
+  styles:
+    card:
+      - --rail-w: |
+          [[[
+            return (window.innerWidth <= 768) ? '48px' : '60px';
+          ]]]
+    name:
+      - opacity: |
+          [[[
+            return states[variables.thermostat_toggle_helper].state === "on" ? "0" : "1";
+          ]]]
+      - transition: opacity 0.25s
+    state:
+      - opacity: |
+          [[[
+            return states[variables.thermostat_toggle_helper].state === "on" ? "0" : "0.85";
+          ]]]
+      - transition: opacity 0.25s
+
+    custom_fields:
+      temp_puck:
+        - position: absolute
+        - top: |
+            [[[
+              return (window.innerWidth <= 768) ? '16px' : '20px';
+            ]]]
+        - left: |
+            [[[
+              return (window.innerWidth <= 768) ? '16px' : '20px';
+            ]]]
+        - width: |
+            [[[
+              const w = window.innerWidth || 1024;
+              return (w <= 768) ? '26px' : '34px';
+            ]]]
+        - height: |
+            [[[
+              const w = window.innerWidth || 1024;
+              return (w <= 768) ? '26px' : '34px';
+            ]]]
+        - transform: |
+            [[[
+              return (window.innerWidth <= 768) ? 'translateY(0.8px)' : 'translateY(1.1px)';
+            ]]]
+        - border-radius: 9999px
+        - box-sizing: border-box
+        - display: flex
+        - align-items: center
+        - justify-content: center
+        - color: |
+            [[[
+              const s = String(entity?.state || "").toLowerCase();
+              const active = ["cool","heat"].includes(s);
+              return active
+                ? "var(--hemma-entity-active, var(--primary-text-color))"
+                : "var(--hemma-entity-inactive, var(--secondary-text-color))";
+            ]]]
+        - font-weight: 500
+        - line-height: 1
+        - font-size: |
+            [[[
+              const w = window.innerWidth || 1024;
+              return (w <= 768) ? '12px' : '16px';
+            ]]]
+        - letter-spacing: -1px
+        - background: rgba(0,0,0,0.02)
+        - border: 1.8px solid
+        - border-color: |
+            [[[
+              const s = String(entity?.state || '').toLowerCase();
+              const isActive = ["cool","heat"].includes(s);
+              const c = isActive
+                ? 'var(--hemma-entity-active, var(--primary-text-color))'
+                : 'var(--hemma-entity-inactive, var(--secondary-text-color))';
+              return `color-mix(in srgb, ${c} 55%, transparent)`;
+            ]]]
+        - z-index: 4
+        - pointer-events: none
+
+      cooling_modes:
+        - position: absolute
+        - top: 0
+        - right: 0
+        - bottom: 0
+        - width: var(--rail-w)
+        - z-index: 2
+        - pointer-events: auto
+        - display: |
+            [[[
+              return states[variables.thermostat_toggle_helper].state === "on"
+                ? "none"
+                : "block";
+            ]]]
+            
+      target_temperature:
+        - position: absolute
+        - inset: 0
+        - z-index: 3
+        - pointer-events: auto
+        - display: |
+            [[[
+              return states[variables.thermostat_toggle_helper].state === "on"
+                ? "block"
+                : "none";
+            ]]]

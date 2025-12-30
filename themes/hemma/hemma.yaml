@@ -11,6 +11,7 @@ Hemma:
       app-theme-color: rgb(0, 0, 0)
       ha-card-box-shadow: none
       button-card-box-shadow: var(--ha-shadow-light)
+      button-card-box-shadow-active: var(--ha-shadow-light-active)
       hemma-nav-bg: rgba(255,255,255,0.11)
       hemma-nav-border: rgba(255,255,255,0.1)
       hemma-nav-shadow: >
@@ -100,19 +101,27 @@ Hemma:
 
   # Rounded Cards
   ha-shadow-light: >
+    inset 0 0 0 1px rgba(255,255,255,0.06),
     inset 6px 6px 10px -10px rgba(255,255,255,0.13),
     inset -6px -6px 10px -10px rgba(255,255,255,0.16),
     inset 0 0 3px -1px rgba(255,255,255,0.24),
     0 14px 22px rgba(0,0,0,0.04)
 
+  ha-shadow-light-active: >
+    inset 0 0 0 1px rgba(255,255,255,0.22),
+    inset 0 0 44px -24px rgba(0,0,0,0.24),
+    0 14px 22px rgba(0,0,0,0.04)
+
   ha-shadow-dark: >
+    inset 0 0 0 1px rgba(120,120,120,0.22),
     inset 0 10px 14px -16px rgba(255,255,255,0.25),
     inset 0 -10px 18px -16px rgba(255,255,255,0.18),
-    inset 1.5px 1.5px 1px -1.5px rgba(255,255,255,0.1),
-    inset -1.5px -1.5px 1px -1.5px rgba(255,255,255,0.1),
+    inset 1.5px 1.5px 1px -1.5px rgba(255,255,255,0.06),
+    inset -1.5px -1.5px 1px -1.5px rgba(255,255,255,0.06),
     0 18px 20px rgba(0,0,0,0.04)
 
   ha-shadow-dark-active: >
+    inset 0 0 0 1px rgba(255,255,255,0.09),
     inset 0 10px 14px -16px rgba(255,255,255,0.22),
     inset 0 -10px 18px -16px rgba(150,150,150,0.14),
     inset 1.3px 1.3px 2px -1px rgba(255,255,255,0.1),
