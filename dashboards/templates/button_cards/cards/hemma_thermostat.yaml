@@ -295,10 +295,6 @@ hemma_thermostat:
               const w = window.innerWidth || 1024;
               return (w <= 768) ? '26px' : '34px';
             ]]]
-        - transform: |
-            [[[
-              return (window.innerWidth <= 768) ? 'translateY(0.8px)' : 'translateY(1.1px)';
-            ]]]
         - border-radius: 9999px
         - box-sizing: border-box
         - display: flex
@@ -319,7 +315,7 @@ hemma_thermostat:
               const w = window.innerWidth || 1024;
               return (w <= 768) ? '12px' : '16px';
             ]]]
-        - letter-spacing: -1px
+        - letter-spacing: -.5px
         - background: rgba(0,0,0,0.02)
         - border: 1.8px solid
         - border-color: |
