@@ -65,6 +65,8 @@ views:
             template: hemma_thermostat
             entity: climate.home
             name: Thermostat
+            variables:
+              temp_sensor: sensor.home_temperature
 
           - type: custom:button-card
             variables:
@@ -126,6 +128,8 @@ views:
             template: hemma_thermostat
             entity: climate.living_room
             name: Thermostat
+            variables:
+              temp_sensor: sensor.living_room_temperature
 
           - type: custom:button-card
             variables:
@@ -286,7 +290,9 @@ views:
             template: hemma_thermostat
             entity: climate.bedroom
             name: Thermostat
-
+            variables:
+              temp_sensor: sensor.bedroom_temperature
+              
           - type: custom:button-card
             variables:
               icon: apple
