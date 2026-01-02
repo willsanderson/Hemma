@@ -24,7 +24,7 @@ Hemma adds new features and changes including:
 
 - **New light/dark tuning**  
   - Refined card backgrounds, shadows, and typography  
-  - Dark mode adjusted for better contrast and “liquid glass” style cards
+  - Dark mode adjusted for better contrast and frosted glass style cards
 
 - **Updated layouts and cards**  
   - Refined screen layout includes (`hemma_screen_layout.yaml`, `hemma_entity_layout.yaml`)  
@@ -60,9 +60,8 @@ You’ll need:
 - Lovelace in **storage** mode (so you can keep using the UI editor for other dashboards)
 - Custom cards (install via HACS or manual, and ensure they’re added as Lovelace resources):
   - [button-card](https://github.com/custom-cards/button-card)
-  - [layout-card](https://github.com/thomasloven/lovelace-layout-card) (Homio originally uses a slightly modified version; check the original repo if you want to stick to that approach.)
+  - [layout-card](https://github.com/thomasloven/lovelace-layout-card) (Homio and Hemma uses a slightly modified version)
   - [lovelace-navbar-card](https://github.com/joseluis9595/lovelace-navbar-card) (for mobile view navigation)
-  - [my-slider-v2](https://github.com/AnthonMS/my-cards/blob/main/docs/cards/slider-v2.md) (for light sliders)
   - Any additional cards you use in your setup (e.g. `browser_mod`, `auto-entities`, etc.)
 
 For exact resource paths and the original recommended setup, refer to the **Getting Started** section in the Homio README:  
@@ -173,32 +172,22 @@ Restart Home Assistant, then refresh your browser and open **Hemma** from the si
     image: home-demo
     image_position: center center
 
-    # Optional environment badges
     show_temp: true
     temp_sensor: sensor.home_temperature
-    show_quality: false
-    quality_sensor: sensor.home_air_quality
-    show_humid: false
-    humid_sensor: sensor.home_humidity
+
     show_presence: true
-    presence_entity_1: sensor.person_1
-    presence_entity_2: sensor.person_2
+    presence_entity_1: sensor.someone
+    presence_entity_2: sensor.someone_else
 
-    # Enable the media badge row
     show_media_badge: true
-
-    # Up to four media players
     show_media_player_1: true
     media_player_1: media_player.spotify
-
     show_media_player_2: true
     media_player_2: media_player.living_room_apple_tv
-
     show_media_player_3: true
-    media_player_3: media_player.kitchen
-
+    media_player_3: media_player.bedroom_apple_tv
     show_media_player_4: true
-    media_player_4: media_player.bedroom_apple_tv
+    media_player_4: media_player.kitchen
 ```
 
 ---
