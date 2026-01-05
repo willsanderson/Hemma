@@ -1,6 +1,6 @@
 ## :house: Hemma
 
-A modern, minimal, mobile-friendly dashboard for Home Assistant. Based on the [Homio](https://github.com/iamtherufus/Homio) dashboard by iamtherufus, Hemma features light and dark mode, redesigned cards, new custom badges, and media integration.
+A modern, minimal, mobile-friendly dashboard for Home Assistant. Based on the [Homio](https://github.com/iamtherufus/Homio) dashboard by iamtherufus, Hemma features redesigned cards, light and dark mode, badge support, and media integration.
 
 ### Desktop View
 ![home-light](https://github.com/user-attachments/assets/faf1c2a3-345a-4a9d-933a-e911be91d238)
@@ -140,7 +140,7 @@ In `configuration.yaml` add the following:
 lovelace:
   mode: storage
   dashboards:
-    dashboard-hom:
+    dashboard-hemma:
       mode: yaml
       title: "Hemma"
       icon: mdi:home
