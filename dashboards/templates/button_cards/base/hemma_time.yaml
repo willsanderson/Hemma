@@ -75,7 +75,7 @@ hemma_time:
 
     name:
       - color: var(--primary-text-color)
-      - opacity: 0.92
+      - opacity: var(--hemma-time-opacity, 0.92)
       - letter-spacing: 1px
       - font-size: 18px
       - line-height: 1

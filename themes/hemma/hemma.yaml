@@ -490,14 +490,11 @@ Hemma:
         transition: filter .2s ease, opacity .2s ease;
       }
 
-      /* Tablet Portrait*/
+      /* Tablet Portrait */
       @media (min-width: 768px) and (max-width: 1249px) and (orientation: portrait) and (hover: none){
         :host, ha-app-layout{
-          --hemma-entity-bottom-current: calc(
-            var(--hemma-nav-offset-bottom)
-            + var(--hemma-nav-height)
-            + 6px
-          );
+          --hemma-entity-bottom-current: calc(env(safe-area-inset-bottom, 0px) + 14px);
+          --hemma-time-opacity: 0.4;
         }
       }
 
@@ -505,6 +502,7 @@ Hemma:
       @media (min-width: 768px) and (max-width: 1249px) and (orientation: landscape) and (hover: none){
         :host, ha-app-layout{
           --hemma-entity-bottom-current: 12px;
+          --hemma-time-opacity: 0.4;
         }
       }
 

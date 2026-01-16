@@ -16,6 +16,8 @@ hemma_room:
     - '[[[ return variables.media_player_2 ]]]'
     - '[[[ return variables.media_player_3 ]]]'
     - '[[[ return variables.media_player_4 ]]]'
+    - '[[[ return variables.psn_1 ]]]'
+    - '[[[ return variables.psn_2 ]]]'
     - input_boolean.hemma_mobile_navigation
 
   variables:
@@ -69,6 +71,9 @@ hemma_room:
       - padding-left: var(--hero-gutter)
       - padding-right: var(--hero-gutter)
       - padding-bottom: calc(130px + env(safe-area-inset-bottom))
+      - box-shadow: none !important
+      - transform: translateZ(0)
+      - will-change: transform
       - --hero-img: >
           [[[
             const img = variables.image || 'default';
@@ -79,9 +84,13 @@ hemma_room:
           [[[
             return variables.image_position || 'center center';
           ]]]
-      - box-shadow: none !important
-      - transform: translateZ(0)
-      - will-change: transform
+      - --hemma-time-right: >
+          [[[
+            const w = window?.innerWidth || 1024;
+            const h = window?.innerHeight || 800;
+            const isTablet = (w >= 768 && w <= 1249 && h > 500);
+            return isTablet ? 'calc(var(--hero-gutter) - 20px)' : 'var(--hemma-nav-margin-current, 4vw)';
+          ]]]
 
     name:
       - grid-area: n
@@ -184,7 +193,7 @@ hemma_room:
             ]]]
         - right: >
             [[[
-              return `var(--hemma-nav-margin-current, 4vw)`;
+              return `var(--hemma-time-right, var(--hemma-nav-margin-current, 4vw))`;
             ]]]
         - z-index: 10
         - pointer-events: auto
@@ -441,6 +450,18 @@ hemma_room:
             entity: '[[[ return variables.media_player_4 ]]]'
             variables:
               enabled: '[[[ return variables.show_media_player_4 ]]]'
+
+          - type: custom:button-card
+            template: hemma_badge_media
+            entity: '[[[ return variables.psn_1 ]]]'
+            variables:
+              enabled: '[[[ return variables.show_psn_1 ]]]'
+
+          - type: custom:button-card
+            template: hemma_badge_media
+            entity: '[[[ return variables.psn_2 ]]]'
+            variables:
+              enabled: '[[[ return variables.show_psn_2 ]]]'
 
     motion_detection: |
       [[[
