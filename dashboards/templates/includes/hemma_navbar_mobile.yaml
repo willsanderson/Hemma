@@ -267,7 +267,7 @@ cards:
           display:inline-flex !important;
           align-items:center !important;
           justify-content:center !important;
-          padding: 12px 16px !important;
+          padding: 12px 10px !important;
           border-radius: 9999px !important;
           line-height: 1 !important;
           white-space: nowrap !important;
@@ -305,7 +305,6 @@ cards:
           label: Bedroom
           image: /local/hemma/icons/bedroom.svg
           image_selected: /local/hemma/icons/bedroom.svg
-
 
   # Landscape
   - type: conditional
