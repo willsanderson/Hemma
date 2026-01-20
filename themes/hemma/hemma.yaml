@@ -155,13 +155,13 @@ Hemma:
   ha-color-on-primary-normal: var(--primary-color)
 
   # Entity Layout - Desktop
-  hemma-entity-height-desktop: 180px
+  hemma-entity-height-desktop: 190px
   hemma-entity-inner-pad-desktop: 24px
   hemma-entity-name-font-desktop: 18px
   hemma-entity-state-font-desktop: 15px
   hemma-entity-icon-size-desktop: 34px
   hemma-scene-height-desktop: 110px
-  hemma-scene-width-desktop: 280px
+  hemma-scene-width-desktop: 270px
   hemma-entity-rows-desktop: repeat(1, auto)
   hemma-entity-col-width-desktop: 280px
   hemma-entity-justify-desktop: start
@@ -396,7 +396,8 @@ Hemma:
       }
 
       /* Tablet */
-      @media (min-width: 768px) and (max-width: 1249px) and (min-height: 501px) {
+      @media (min-width: 768px) and (max-width: 1249px) and (min-height: 501px) and (hover: none) and (pointer: coarse) {
+
         :host, ha-app-layout {
           --page-gutter: var(--page-gutter-tablet);
           --hemma-rail-left: var(--page-gutter-tablet);
