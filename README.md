@@ -49,10 +49,15 @@ Under the hood it’s still YAML files you can read, copy, and modify. This repo
 ![livingroom-light-box](https://github.com/user-attachments/assets/d45fba70-b3a6-46b6-81cf-2c98d2d8389f)
 
 ## Mobile View (Light/Dark)
-<img src="![mobile-home-dark](https://github.com/user-attachments/assets/888599ee-497b-4ba6-b885-e0112e26b3d5)" width="300">
+<img src="https://github.com/user-attachments/assets/ac99f833-c742-4219-abe3-2eda7054d29c" width="400">
+<img src="https://github.com/user-attachments/assets/5b10405d-0a56-4de9-bd93-4a4b5383f96b" width="400">
 
+## Mobile Navigation
+<img src="https://github.com/user-attachments/assets/07548572-d15e-42a2-ad4c-9a04ec62b3a4" width="400">
+<img src="https://github.com/user-attachments/assets/dbd38b12-e279-4f26-8ae5-2bc8164222e9" width="400">
 
-![home-light-mobile](https://github.com/user-attachments/assets/5b04a7d0-d5bf-4101-ac2d-534a3bcd5113)  &nbsp; &nbsp; &nbsp;![home-dark-mobile](https://github.com/user-attachments/assets/c6791209-f7e3-4e0b-a5d6-adaf1324b9de)
+## Tablet View
+![tablet-livingroom-light](https://github.com/user-attachments/assets/b3cd4329-e246-443d-b76a-ec0bcddf1524)
 
 ---
 
