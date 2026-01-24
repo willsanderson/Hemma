@@ -16,10 +16,6 @@ hemma_room:
     - '[[[ return variables.media_player_2 ]]]'
     - '[[[ return variables.media_player_3 ]]]'
     - '[[[ return variables.media_player_4 ]]]'
-    - '[[[ return variables.psn_1 ]]]'
-    - '[[[ return variables.psn_2 ]]]'
-    - '[[[ return variables.media_plex_binary ]]]'
-    - '[[[ return variables.media_plex_session ]]]'
     - input_boolean.hemma_mobile_navigation
 
   variables:
@@ -55,16 +51,6 @@ hemma_room:
 
     show_media_player_4: false
     media_player_4:
-
-    show_media_plex: false
-    media_plex_binary:
-    media_plex_session:
-
-    show_psn_1: false
-    psn_1:
-
-    show_psn_2: false
-    psn_2:
 
     _hemma_mp_styles: !include /config/dashboards/templates/includes/hemma_media_player_styles.yaml
 
@@ -684,27 +670,6 @@ hemma_room:
               tap_action: { action: more-info, entity: '[[[ return variables.media_player_4 ]]]' }
               hold_action: { action: none }
             styles: '[[[ return variables._hemma_mp_styles ]]]'
-
-          # PlayStation
-          - type: custom:button-card
-            template: hemma_badge_activity
-            entity: '[[[ return variables.psn_1 ]]]'
-            variables:
-              enabled: '[[[ return variables.show_psn_1 ]]]'
-
-          - type: custom:button-card
-            template: hemma_badge_activity
-            entity: '[[[ return variables.psn_2 ]]]'
-            variables:
-              enabled: '[[[ return variables.show_psn_2 ]]]'
-
-          # Plex
-          - type: custom:button-card
-            template: hemma_badge_plex
-            entity: '[[[ return variables.media_plex_binary ]]]'
-            variables:
-              enabled: '[[[ return variables.show_media_plex ]]]'
-              session_entity: '[[[ return variables.media_plex_session ]]]'
 
     motion_detection: |
       [[[
