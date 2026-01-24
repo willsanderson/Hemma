@@ -3,8 +3,8 @@
 A modern, minimal, mobile-friendly dashboard for Home Assistant. Based on the [Homio](https://github.com/iamtherufus/Homio) dashboard by iamtherufus, Hemma features redesigned cards, light and dark mode, badge support, and media integration.
 
 ### Desktop View
-![home-light](https://github.com/user-attachments/assets/faf1c2a3-345a-4a9d-933a-e911be91d238)
-![livingroom-light](https://github.com/user-attachments/assets/3a3e89d7-8e4b-41a6-a5e9-a6e269b1fab9)
+![desktop-home-light](https://github.com/user-attachments/assets/b1e2d227-6071-4cff-9f93-9eb226356a0f)
+![desktop-livingroom-light](https://github.com/user-attachments/assets/072aa154-8ae8-4f9d-a32c-7467723ef8dd)
 
 ---
 
@@ -42,13 +42,16 @@ Hemma adds new features and changes including:
 Under the hood it’s still YAML files you can read, copy, and modify. This repo just collects my version into a reusable package.
 
 ### Light/Dark Mode
-![bedroom-light](https://github.com/user-attachments/assets/5daccd80-9e9a-4523-84a5-b1d281311d0c)
-![bedroom-dark](https://github.com/user-attachments/assets/1abee5db-f7d1-44bf-91ec-6bb3d0c34142)
+![desktop-bedroom-light](https://github.com/user-attachments/assets/dced24c2-a797-4a86-9ff1-5fb885f30c68)
+![desktop-bedroom-dark](https://github.com/user-attachments/assets/53ffa13d-9615-4026-8bea-ab1a029964a0)
 
 ### Boxy Button Cards
 ![livingroom-light-box](https://github.com/user-attachments/assets/d45fba70-b3a6-46b6-81cf-2c98d2d8389f)
 
 ## Mobile View (Light/Dark)
+<img src="![mobile-home-dark](https://github.com/user-attachments/assets/888599ee-497b-4ba6-b885-e0112e26b3d5)" width="300">
+
+
 ![home-light-mobile](https://github.com/user-attachments/assets/5b04a7d0-d5bf-4101-ac2d-534a3bcd5113)  &nbsp; &nbsp; &nbsp;![home-dark-mobile](https://github.com/user-attachments/assets/c6791209-f7e3-4e0b-a5d6-adaf1324b9de)
 
 ---
