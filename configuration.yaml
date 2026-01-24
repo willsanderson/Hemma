@@ -21,8 +21,6 @@ lovelace:
       url: "/hacsfiles/kiosk-mode/kiosk-mode.js"
     - type: "module"
       url: "/local/community/layout-card-modified/layout-card-modified.js?v=12"
-    - type: "module"
-      url: "/hacsfiles/mini-media-player-bundle.js"
     - type: "css"
       url: "https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@100..900&display=swap"
   dashboards:
