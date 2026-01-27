@@ -33,7 +33,7 @@ Hemma adds new features and changes including:
 
 - **New Navigation**  
   - Custom mobile navbar (`hemma_navbar_mobile.yaml`) tuned for smaller screens
-  - Custom desktop/tablet navbar ('hemma_room.yaml') tuned for larger screens
+  - Custom desktop/tablet navbar (`hemma_room.yaml`) tuned for larger screens
 
 - **Badges**  
   - New custom badges for room sensors and presence status  
