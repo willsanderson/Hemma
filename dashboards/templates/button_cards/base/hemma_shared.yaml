@@ -20,6 +20,7 @@ hemma_shared:
     :host{
       position: relative;
       z-index: 0;
+
       --hero-gutter: var(--content-rail,
                       var(--hemma-rail-left,
                       var(--page-gutter, 8vw)));
@@ -29,6 +30,18 @@ hemma_shared:
       --hero-temp-letter-spacing: 0.04em;
       --hero-temp-reserve: calc(var(--hero-temp-font-size) * 1.2);
       --hero-header-gap-current: var(--hero-header-gap-desktop, 6px);
+
+      --hero-img-blur: var(--hero-img-blur, 4px);
+      --hero-img-scale: var(--hero-img-scale, 1.08);
+
+      --hero-img-filter: blur(var(--hero-img-blur))
+        saturate(var(--hero-img-saturate, 1.02))
+        brightness(var(--hero-img-brightness, .985));
+
+      --hero-img-filter-from: blur(var(--hero-img-blur))
+        saturate(var(--hero-img-saturate-from, 1.0))
+        brightness(var(--hero-img-brightness-from, .97));
+
       --hemma-hover-filter: none !important;
       -webkit-tap-highlight-color: transparent !important;
       --mdc-ripple-press-opacity: 0 !important;
@@ -76,9 +89,13 @@ hemma_shared:
       background-size: cover;
       background-repeat: no-repeat;
       opacity:1;
-      filter: var(--hero-img-filter, saturate(1.02) brightness(.985));
-      transition: opacity .35s ease, filter .35s ease;
-      will-change: opacity, filter;
+
+      filter: var(--hero-img-filter);
+      transform: scale(var(--hero-img-scale, 1.08)) !important;
+      transform-origin: center;
+
+      transition: opacity .35s ease, filter .35s ease, transform .35s ease;
+      will-change: opacity, filter, transform;
       animation: heroSwap .35s ease;
     }
 
@@ -93,8 +110,8 @@ hemma_shared:
     }
 
     @keyframes heroSwap{
-      from{ opacity:.0; filter:saturate(1.0) brightness(.97); }
-      to{   opacity:1;  filter:saturate(1.02) brightness(.985); }
+      from{ opacity:0; filter: var(--hero-img-filter-from, var(--hero-img-filter)); }
+      to{   opacity:1; filter: var(--hero-img-filter); }
     }
 
     @media (prefers-reduced-motion: reduce){

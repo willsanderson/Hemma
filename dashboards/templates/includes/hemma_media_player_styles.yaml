@@ -2,6 +2,9 @@
   /* Hemma Media Player Styles */
 
   :host{
+    margin: 0 !important;
+    padding: 0 !important;
+
     --hemma-mp-h: calc(var(--badge-min-height-current, var(--badge-min-height, 50px)));
     --hemma-mp-title: var(--badge-font-size-current, var(--badge-font-size, 15px));
     --hemma-mp-artist: calc(var(--badge-font-size-current, var(--badge-font-size, 15px)) - 2px);
@@ -67,7 +70,7 @@
     max-width: min(var(--badge-media-max-width-current, 640px), calc(100vw - 24px)) !important;
     min-height: var(--hemma-mp-h) !important;
     margin: 0 !important;
-    padding: 8px !important;
+    padding: 0 8px 0 3px !important;
     border-radius: 9999px !important;
     overflow: hidden !important;
     border: 0 !important;
@@ -99,10 +102,6 @@
     display: none !important;
   }
 
-  .media-player-image:not(img):not(ha-img):not([style*="background-image"]):empty{
-    display: none !important;
-  }
-
   .media-player-bg{
     position: absolute !important;
     inset: 0 !important;
@@ -122,7 +121,9 @@
     inset:0 !important;
     border-radius:inherit !important;
     pointer-events:none !important;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10) !important;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.18),
+      0 0 0 1px rgba(255,255,255,0.14) !important;
     z-index: 1 !important;
   }
 
@@ -130,28 +131,6 @@
     position: relative !important;
     z-index: 2 !important;
   }
-
-  .media-player-image{
-    width: var(--hemma-mp-img) !important;
-    height: var(--hemma-mp-img) !important;
-    min-width: var(--hemma-mp-img) !important;
-    min-height: var(--hemma-mp-img) !important;
-    flex: 0 0 auto !important;
-    border-radius: 9999px !important;
-    overflow: hidden !important;
-    margin-left: -6px !important;
-    margin-right: 6px !important;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10) !important;
-  }
-
-  .media-player-image img{
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover !important;
-    display: block !important;
-  }
-
-  .media-player-image{ display: none !important; }
 
   .media-player-icon{
     width: var(--hemma-mp-icon) !important;

@@ -68,6 +68,8 @@ hemma_room:
       - box-shadow: none !important
       - transform: translateZ(0)
       - will-change: transform
+      - --hero-img-filter: blur(4px)
+      - --hero-img-scale: 1.08
       - --hero-img: >
           [[[
             const img = variables.image || 'default';
@@ -252,7 +254,73 @@ hemma_room:
         - display: >
             [[[
               const navOpen = states['input_boolean.hemma_mobile_navigation']?.state === 'on';
-              return navOpen ? 'none' : 'block';
+              if (navOpen) return 'none';
+
+              const enabled = (v) => {
+                if (v === undefined || v === null) return false;
+                if (typeof v === 'boolean') return v;
+                if (typeof v === 'number')  return v !== 0;
+                const s = String(v).trim().toLowerCase();
+                if (['false','0','no','off','disabled'].includes(s)) return false;
+                if (['true','1','yes','on','enabled'].includes(s))   return true;
+                return !!s;
+              };
+
+              const isMediaActive = (eid) => {
+                if (!eid) return false;
+                const s  = states[eid];
+                const st = s?.state;
+                const a  = s?.attributes || {};
+
+                if (st === 'playing' || st === 'buffering') return true;
+
+                if (st === 'paused') {
+                  const title  = String(a.media_title || '').trim();
+                  const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
+                  const app    = String(a.app_name || a.source || '').trim();
+
+                  const dur = Number(a.media_duration || 0);
+                  const pos = Number(a.media_position || 0);
+
+                  const badTitles = new Set(['idle','paused','unknown','unavailable']);
+                  const titleKey = title.toLowerCase();
+
+                  const hasText =
+                    (title && !badTitles.has(titleKey) && title !== app) || !!artist;
+
+                  const isYouTube =
+                    String(a.app_id || '') === 'com.google.ios.youtube' ||
+                    String(a.app_name || '').toLowerCase() === 'youtube';
+
+                  if (isYouTube) {
+                    const upd = a.media_position_updated_at;
+                    const ageMs = upd ? (Date.now() - new Date(upd).getTime()) : 999999999;
+                    const recent = ageMs < (3 * 60 * 1000);
+                    const hasTimingStrict = (dur > 0) && (pos > 0);
+                    return hasText && hasTimingStrict && recent;
+                  }
+
+                  const hasTimingDefault = (dur > 0) || (pos > 0);
+                  return hasText && hasTimingDefault;
+                }
+
+                return false;
+              };
+
+              const anyNowPlaying =
+                (enabled(variables.show_media_player_1) && isMediaActive(variables.media_player_1)) ||
+                (enabled(variables.show_media_player_2) && isMediaActive(variables.media_player_2)) ||
+                (enabled(variables.show_media_player_3) && isMediaActive(variables.media_player_3)) ||
+                (enabled(variables.show_media_player_4) && isMediaActive(variables.media_player_4));
+
+              const anyPsn =
+                (enabled(variables.show_psn_1) && states[variables.psn_1]) ||
+                (enabled(variables.show_psn_2) && states[variables.psn_2]);
+
+              const anyPlex =
+                enabled(variables.show_media_plex) && states[variables.media_plex_binary]?.state === 'on';
+
+              return (anyNowPlaying || anyPsn || anyPlex) ? 'block' : 'none';
             ]]]
 
       navigation:
@@ -332,48 +400,6 @@ hemma_room:
         type: custom:layout-card
         layout_type: custom:grid-layout
 
-        card_mod:
-          style: |
-            :host{
-              --layout-margin: 0px !important;
-              --layout-padding: 0px !important;
-              --layout-height: auto !important;
-              --layout-overflow: visible !important;
-              height: auto !important;
-            }
-
-            ha-card{
-              padding: 0 !important;
-              margin: 0 !important;
-              background: transparent !important;
-              box-shadow: none !important;
-              border-radius: 0 !important;
-              height: auto !important;
-            }
-
-            grid-layout{
-              --layout-margin: 0px !important;
-              --layout-padding: 0px !important;
-              --layout-height: auto !important;
-              --layout-overflow: visible !important;
-              height: auto !important;
-            }
-
-            grid-layout$ #root{
-              margin: 0 !important;
-              padding: 0 !important;
-              height: auto !important;
-              max-height: none !important;
-              min-height: 0 !important;
-              place-content: start !important;
-              align-content: start !important;
-            }
-
-            grid-layout$ #root > *{
-              align-self: start !important;
-              justify-self: start !important;
-            }
-
         layout:
           grid-auto-flow: column
           grid-auto-columns: max-content
@@ -413,132 +439,89 @@ hemma_room:
         type: custom:layout-card
         layout_type: custom:grid-layout
 
-        card_mod:
-          style: |
-            :host{
-              --layout-margin: 0 !important;
-              --layout-padding: 0 !important;
-              --layout-height: auto !important;
-              --layout-overflow: visible !important;
-              height: auto !important;
-            }
-
-            ha-card{
-              padding: 0 !important;
-              margin: 0 !important;
-              background: transparent !important;
-              box-shadow: none !important;
-              border-radius: 0 !important;
-              height: auto !important;
-            }
-
-            layout-card$ grid-layout{
-              --layout-margin: 0 !important;
-              --layout-padding: 0 !important;
-              --layout-height: auto !important;
-              --layout-overflow: visible !important;
-              height: auto !important;
-            }
-
-            layout-card$ grid-layout$ #root{
-              margin: 0 !important;
-              padding: 0 !important;
-              height: auto !important;
-              min-height: 0 !important;
-              overflow: visible !important;
-              place-content: start !important;
-              align-content: start !important;
-              justify-content: start !important;
-            }
-
-            layout-card$ grid-layout$ #container{
-              margin: 0 !important;
-              padding: 0 !important;
-              height: auto !important;
-              min-height: 0 !important;
-              align-items: start !important;
-              align-content: start !important;
-              justify-items: start !important;
-              justify-content: start !important;
-              text-align: left !important;
-            }
-
-            layout-card$ grid-layout$ #root > *:has(ha-card[style*="display: none"]) {
-              display: none !important;
-            }
-
-            layout-card$ grid-layout$ #root > *[hidden],
-            layout-card$ grid-layout$ #root > *[style*="display: none"] {
-              display: none !important;
-            }
-
-            layout-card$ grid-layout$ #root > *:has([hidden]),
-            layout-card$ grid-layout$ #root > *:has([style*="display: none"]) {
-              display: none !important;
-            }
-
         layout:
           grid-template-columns: 1fr
           grid-auto-flow: row
           grid-auto-rows: min-content
-          grid-row-gap: var(--badge-row-gap-current, var(--badge-row-gap, 6px))
           justify-items: start
           justify-content: start
           align-items: start
           align-content: start
+          grid-row-gap: var(--badge-row-gap-current, 2px)
 
         cards:
 
-          # Media Player 1
+          # Now Playing (single card that picks MP1–MP4)
           - type: custom:navbar-card
             desktop:
               min_width: 1
               hidden: >
                 [[[
-                  const eid = variables.media_player_1;
-                  const enabled = variables.show_media_player_1 && eid;
-                  if (!enabled) return true;
+                  const enabled = (v) => {
+                    if (v === undefined || v === null) return false;
+                    if (typeof v === 'boolean') return v;
+                    if (typeof v === 'number')  return v !== 0;
+                    const s = String(v).trim().toLowerCase();
+                    if (['false','0','no','off','disabled'].includes(s)) return false;
+                    if (['true','1','yes','on','enabled'].includes(s))   return true;
+                    return !!s;
+                  };
 
-                  const s  = states[eid];
-                  const st = s?.state;
-                  const a  = s?.attributes || {};
+                  const isMediaActive = (eid) => {
+                    if (!eid) return false;
+                    const s  = states[eid];
+                    const st = s?.state;
+                    const a  = s?.attributes || {};
 
-                  if (st === 'playing' || st === 'buffering') return false;
+                    if (st === 'playing' || st === 'buffering') return true;
 
-                  if (st === 'paused') {
-                    const title  = String(a.media_title || '').trim();
-                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                    const app    = String(a.app_name || a.source || '').trim();
+                    if (st === 'paused') {
+                      const title  = String(a.media_title || '').trim();
+                      const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
+                      const app    = String(a.app_name || a.source || '').trim();
 
-                    const dur = Number(a.media_duration || 0);
-                    const pos = Number(a.media_position || 0);
+                      const dur = Number(a.media_duration || 0);
+                      const pos = Number(a.media_position || 0);
 
-                    const badTitles = new Set(['idle','paused','unknown','unavailable']);
-                    const titleKey = title.toLowerCase();
+                      const badTitles = new Set(['idle','paused','unknown','unavailable']);
+                      const titleKey = title.toLowerCase();
 
-                    const hasText =
-                      (title && !badTitles.has(titleKey) && title !== app) ||
-                      !!artist;
+                      const hasText =
+                        (title && !badTitles.has(titleKey) && title !== app) || !!artist;
 
-                    const hasTimingDefault = (dur > 0) || (pos > 0);
+                      const isYouTube =
+                        String(a.app_id || '') === 'com.google.ios.youtube' ||
+                        String(a.app_name || '').toLowerCase() === 'youtube';
 
-                    const isYouTube =
-                      String(a.app_id || '') === 'com.google.ios.youtube' ||
-                      String(a.app_name || '').toLowerCase() === 'youtube';
+                      if (isYouTube) {
+                        const upd = a.media_position_updated_at;
+                        const ageMs = upd ? (Date.now() - new Date(upd).getTime()) : 999999999;
+                        const recent = ageMs < (3 * 60 * 1000);
+                        const hasTimingStrict = (dur > 0) && (pos > 0);
+                        return hasText && hasTimingStrict && recent;
+                      }
 
-                    if (isYouTube) {
-                      const upd = a.media_position_updated_at;
-                      const ageMs = upd ? (Date.now() - new Date(upd).getTime()) : 999999999;
-                      const recent = ageMs < (3 * 60 * 1000);
-
-                      const hasTimingStrict = (dur > 0) && (pos > 0);
-                      return !(hasText && hasTimingStrict && recent);
+                      const hasTimingDefault = (dur > 0) || (pos > 0);
+                      return hasText && hasTimingDefault;
                     }
 
-                    return !(hasText && hasTimingDefault);
-                  }
+                    return false;
+                  };
 
-                  return true;
+                  const pick = () => {
+                    const list = [
+                      [variables.show_media_player_1, variables.media_player_1],
+                      [variables.show_media_player_2, variables.media_player_2],
+                      [variables.show_media_player_3, variables.media_player_3],
+                      [variables.show_media_player_4, variables.media_player_4],
+                    ];
+                    for (const [flag, eid] of list) {
+                      if (enabled(flag) && eid && isMediaActive(eid)) return eid;
+                    }
+                    return null;
+                  };
+
+                  return !pick();
                 ]]]
               show_labels: false
               show_popup_label_backgrounds: false
@@ -546,382 +529,134 @@ hemma_room:
             mobile: { hidden: true }
             routes: []
             media_player:
-              entity: '[[[ return variables.media_player_1 ]]]'
-              show: |
+              entity: >
                 [[[
-                  const eid = variables.media_player_1;
-                  const enabled = variables.show_media_player_1 && eid;
-                  if (!enabled) return false;
+                  const enabled = (v) => {
+                    if (v === undefined || v === null) return false;
+                    if (typeof v === 'boolean') return v;
+                    if (typeof v === 'number')  return v !== 0;
+                    const s = String(v).trim().toLowerCase();
+                    if (['false','0','no','off','disabled'].includes(s)) return false;
+                    if (['true','1','yes','on','enabled'].includes(s))   return true;
+                    return !!s;
+                  };
 
-                  const s  = states[eid];
-                  const st = s?.state;
-                  const a  = s?.attributes || {};
+                  const isMediaActive = (eid) => {
+                    if (!eid) return false;
+                    const s  = states[eid];
+                    const st = s?.state;
+                    const a  = s?.attributes || {};
 
-                  if (st === 'playing' || st === 'buffering') return true;
+                    if (st === 'playing' || st === 'buffering') return true;
 
-                  if (st === 'paused') {
-                    const title  = String(a.media_title || '').trim();
-                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                    const app    = String(a.app_name || a.source || '').trim();
+                    if (st === 'paused') {
+                      const title  = String(a.media_title || '').trim();
+                      const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
+                      const app    = String(a.app_name || a.source || '').trim();
 
-                    const dur = Number(a.media_duration || 0);
-                    const pos = Number(a.media_position || 0);
+                      const dur = Number(a.media_duration || 0);
+                      const pos = Number(a.media_position || 0);
 
-                    const badTitles = new Set(['idle','paused','unknown','unavailable']);
-                    const titleKey = title.toLowerCase();
+                      const badTitles = new Set(['idle','paused','unknown','unavailable']);
+                      const titleKey = title.toLowerCase();
 
-                    const hasText =
-                      (title && !badTitles.has(titleKey) && title !== app) ||
-                      !!artist;
+                      const hasText =
+                        (title && !badTitles.has(titleKey) && title !== app) || !!artist;
 
-                    const hasTimingDefault = (dur > 0) || (pos > 0);
+                      const isYouTube =
+                        String(a.app_id || '') === 'com.google.ios.youtube' ||
+                        String(a.app_name || '').toLowerCase() === 'youtube';
 
-                    const isYouTube =
-                      String(a.app_id || '') === 'com.google.ios.youtube' ||
-                      String(a.app_name || '').toLowerCase() === 'youtube';
+                      if (isYouTube) {
+                        const upd = a.media_position_updated_at;
+                        const ageMs = upd ? (Date.now() - new Date(upd).getTime()) : 999999999;
+                        const recent = ageMs < (3 * 60 * 1000);
+                        const hasTimingStrict = (dur > 0) && (pos > 0);
+                        return hasText && hasTimingStrict && recent;
+                      }
 
-                    if (isYouTube) {
-                      const upd = a.media_position_updated_at;
-                      const ageMs = upd ? (Date.now() - new Date(upd).getTime()) : 999999999;
-                      const recent = ageMs < (3 * 60 * 1000);
-                      const hasTimingStrict = (dur > 0) && (pos > 0);
-                      return hasText && hasTimingStrict && recent;
+                      const hasTimingDefault = (dur > 0) || (pos > 0);
+                      return hasText && hasTimingDefault;
                     }
 
-                    return hasText && hasTimingDefault;
+                    return false;
+                  };
+
+                  const list = [
+                    [variables.show_media_player_1, variables.media_player_1],
+                    [variables.show_media_player_2, variables.media_player_2],
+                    [variables.show_media_player_3, variables.media_player_3],
+                    [variables.show_media_player_4, variables.media_player_4],
+                  ];
+
+                  for (const [flag, eid] of list) {
+                    if (enabled(flag) && eid && isMediaActive(eid)) return eid;
                   }
 
-                  return false;
+                  return variables.media_player_1 || variables.media_player_2 || variables.media_player_3 || variables.media_player_4;
                 ]]]
+              show: true
               album_cover_background: true
-              tap_action: { action: more-info, entity: '[[[ return variables.media_player_1 ]]]' }
-              hold_action: { action: none }
-            styles: '[[[ return variables._hemma_mp_styles ]]]'
+              tap_action:
+                action: more-info
+                entity: >
+                  [[[
+                    const enabled = (v) => {
+                      if (v === undefined || v === null) return false;
+                      if (typeof v === 'boolean') return v;
+                      if (typeof v === 'number')  return v !== 0;
+                      const s = String(v).trim().toLowerCase();
+                      if (['false','0','no','off','disabled'].includes(s)) return false;
+                      if (['true','1','yes','on','enabled'].includes(s))   return true;
+                      return !!s;
+                    };
 
-          # Media Player 2
-          - type: custom:navbar-card
-            desktop:
-              min_width: 1
-              hidden: >
-                [[[
-                  const eid = variables.media_player_2;
-                  const enabled = variables.show_media_player_2 && eid;
-                  if (!enabled) return true;
+                    const isMediaActive = (eid) => {
+                      if (!eid) return false;
+                      const s  = states[eid];
+                      const st = s?.state;
+                      const a  = s?.attributes || {};
+                      if (st === 'playing' || st === 'buffering') return true;
+                      if (st === 'paused') {
+                        const title  = String(a.media_title || '').trim();
+                        const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
+                        const app    = String(a.app_name || a.source || '').trim();
+                        const dur = Number(a.media_duration || 0);
+                        const pos = Number(a.media_position || 0);
+                        const badTitles = new Set(['idle','paused','unknown','unavailable']);
+                        const titleKey = title.toLowerCase();
+                        const hasText =
+                          (title && !badTitles.has(titleKey) && title !== app) || !!artist;
 
-                  const s  = states[eid];
-                  const st = s?.state;
-                  const a  = s?.attributes || {};
+                        const isYouTube =
+                          String(a.app_id || '') === 'com.google.ios.youtube' ||
+                          String(a.app_name || '').toLowerCase() === 'youtube';
 
-                  if (st === 'playing' || st === 'buffering') return false;
+                        if (isYouTube) {
+                          const upd = a.media_position_updated_at;
+                          const ageMs = upd ? (Date.now() - new Date(upd).getTime()) : 999999999;
+                          const recent = ageMs < (3 * 60 * 1000);
+                          const hasTimingStrict = (dur > 0) && (pos > 0);
+                          return hasText && hasTimingStrict && recent;
+                        }
 
-                  if (st === 'paused') {
-                    const title  = String(a.media_title || '').trim();
-                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                    const app    = String(a.app_name || a.source || '').trim();
+                        const hasTimingDefault = (dur > 0) || (pos > 0);
+                        return hasText && hasTimingDefault;
+                      }
+                      return false;
+                    };
 
-                    const dur = Number(a.media_duration || 0);
-                    const pos = Number(a.media_position || 0);
-
-                    const badTitles = new Set(['idle','paused','unknown','unavailable']);
-                    const titleKey = title.toLowerCase();
-
-                    const hasText =
-                      (title && !badTitles.has(titleKey) && title !== app) ||
-                      !!artist;
-
-                    const hasTimingDefault = (dur > 0) || (pos > 0);
-
-                    const isYouTube =
-                      String(a.app_id || '') === 'com.google.ios.youtube' ||
-                      String(a.app_name || '').toLowerCase() === 'youtube';
-
-                    if (isYouTube) {
-                      const upd = a.media_position_updated_at;
-                      const ageMs = upd ? (Date.now() - new Date(upd).getTime()) : 999999999;
-                      const recent = ageMs < (3 * 60 * 1000);
-
-                      const hasTimingStrict = (dur > 0) && (pos > 0);
-                      return !(hasText && hasTimingStrict && recent);
+                    const list = [
+                      [variables.show_media_player_1, variables.media_player_1],
+                      [variables.show_media_player_2, variables.media_player_2],
+                      [variables.show_media_player_3, variables.media_player_3],
+                      [variables.show_media_player_4, variables.media_player_4],
+                    ];
+                    for (const [flag, eid] of list) {
+                      if (enabled(flag) && eid && isMediaActive(eid)) return eid;
                     }
-
-                    return !(hasText && hasTimingDefault);
-                  }
-
-                  return true;
-                ]]]
-              show_labels: false
-              show_popup_label_backgrounds: false
-              mode: docked
-            mobile: { hidden: true }
-            routes: []
-            media_player:
-              entity: '[[[ return variables.media_player_2 ]]]'
-              show: |
-                [[[
-                  const eid = variables.media_player_2;
-                  const enabled = variables.show_media_player_2 && eid;
-                  if (!enabled) return false;
-
-                  const s  = states[eid];
-                  const st = s?.state;
-                  const a  = s?.attributes || {};
-
-                  if (st === 'playing' || st === 'buffering') return true;
-
-                  if (st === 'paused') {
-                    const title  = String(a.media_title || '').trim();
-                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                    const app    = String(a.app_name || a.source || '').trim();
-
-                    const dur = Number(a.media_duration || 0);
-                    const pos = Number(a.media_position || 0);
-
-                    const badTitles = new Set(['idle','paused','unknown','unavailable']);
-                    const titleKey = title.toLowerCase();
-
-                    const hasText =
-                      (title && !badTitles.has(titleKey) && title !== app) ||
-                      !!artist;
-
-                    const hasTimingDefault = (dur > 0) || (pos > 0);
-
-                    const isYouTube =
-                      String(a.app_id || '') === 'com.google.ios.youtube' ||
-                      String(a.app_name || '').toLowerCase() === 'youtube';
-
-                    if (isYouTube) {
-                      const upd = a.media_position_updated_at;
-                      const ageMs = upd ? (Date.now() - new Date(upd).getTime()) : 999999999;
-                      const recent = ageMs < (3 * 60 * 1000);
-                      const hasTimingStrict = (dur > 0) && (pos > 0);
-                      return hasText && hasTimingStrict && recent;
-                    }
-
-                    return hasText && hasTimingDefault;
-                  }
-
-                  return false;
-                ]]]
-              album_cover_background: true
-              tap_action: { action: more-info, entity: '[[[ return variables.media_player_2 ]]]' }
-              hold_action: { action: none }
-            styles: '[[[ return variables._hemma_mp_styles ]]]'
-
-          # Media Player 3
-          - type: custom:navbar-card
-            desktop:
-              min_width: 1
-              hidden: >
-                [[[
-                  const eid = variables.media_player_3;
-                  const enabled = variables.show_media_player_3 && eid;
-                  if (!enabled) return true;
-
-                  const s  = states[eid];
-                  const st = s?.state;
-                  const a  = s?.attributes || {};
-
-                  if (st === 'playing' || st === 'buffering') return false;
-
-                  if (st === 'paused') {
-                    const title  = String(a.media_title || '').trim();
-                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                    const app    = String(a.app_name || a.source || '').trim();
-
-                    const dur = Number(a.media_duration || 0);
-                    const pos = Number(a.media_position || 0);
-
-                    const badTitles = new Set(['idle','paused','unknown','unavailable']);
-                    const titleKey = title.toLowerCase();
-
-                    const hasText =
-                      (title && !badTitles.has(titleKey) && title !== app) ||
-                      !!artist;
-
-                    const hasTimingDefault = (dur > 0) || (pos > 0);
-
-                    const isYouTube =
-                      String(a.app_id || '') === 'com.google.ios.youtube' ||
-                      String(a.app_name || '').toLowerCase() === 'youtube';
-
-                    if (isYouTube) {
-                      const upd = a.media_position_updated_at;
-                      const ageMs = upd ? (Date.now() - new Date(upd).getTime()) : 999999999;
-                      const recent = ageMs < (3 * 60 * 1000);
-
-                      const hasTimingStrict = (dur > 0) && (pos > 0);
-                      return !(hasText && hasTimingStrict && recent);
-                    }
-
-                    return !(hasText && hasTimingDefault);
-                  }
-
-                  return true;
-                ]]]
-              show_labels: false
-              show_popup_label_backgrounds: false
-              mode: docked
-            mobile: { hidden: true }
-            routes: []
-            media_player:
-              entity: '[[[ return variables.media_player_3 ]]]'
-              show: |
-                [[[
-                  const eid = variables.media_player_3;
-                  const enabled = variables.show_media_player_3 && eid;
-                  if (!enabled) return false;
-
-                  const s  = states[eid];
-                  const st = s?.state;
-                  const a  = s?.attributes || {};
-
-                  if (st === 'playing' || st === 'buffering') return true;
-
-                  if (st === 'paused') {
-                    const title  = String(a.media_title || '').trim();
-                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                    const app    = String(a.app_name || a.source || '').trim();
-
-                    const dur = Number(a.media_duration || 0);
-                    const pos = Number(a.media_position || 0);
-
-                    const badTitles = new Set(['idle','paused','unknown','unavailable']);
-                    const titleKey = title.toLowerCase();
-
-                    const hasText =
-                      (title && !badTitles.has(titleKey) && title !== app) ||
-                      !!artist;
-
-                    const hasTimingDefault = (dur > 0) || (pos > 0);
-
-                    const isYouTube =
-                      String(a.app_id || '') === 'com.google.ios.youtube' ||
-                      String(a.app_name || '').toLowerCase() === 'youtube';
-
-                    if (isYouTube) {
-                      const upd = a.media_position_updated_at;
-                      const ageMs = upd ? (Date.now() - new Date(upd).getTime()) : 999999999;
-                      const recent = ageMs < (3 * 60 * 1000);
-                      const hasTimingStrict = (dur > 0) && (pos > 0);
-                      return hasText && hasTimingStrict && recent;
-                    }
-
-                    return hasText && hasTimingDefault;
-                  }
-
-                  return false;
-                ]]]
-              album_cover_background: true
-              tap_action: { action: more-info, entity: '[[[ return variables.media_player_3 ]]]' }
-              hold_action: { action: none }
-            styles: '[[[ return variables._hemma_mp_styles ]]]'
-
-          # Media Player 4
-          - type: custom:navbar-card
-            desktop:
-              min_width: 1
-              hidden: >
-                [[[
-                  const eid = variables.media_player_4;
-                  const enabled = variables.show_media_player_4 && eid;
-                  if (!enabled) return true;
-
-                  const s  = states[eid];
-                  const st = s?.state;
-                  const a  = s?.attributes || {};
-
-                  if (st === 'playing' || st === 'buffering') return false;
-
-                  if (st === 'paused') {
-                    const title  = String(a.media_title || '').trim();
-                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                    const app    = String(a.app_name || a.source || '').trim();
-
-                    const dur = Number(a.media_duration || 0);
-                    const pos = Number(a.media_position || 0);
-
-                    const badTitles = new Set(['idle','paused','unknown','unavailable']);
-                    const titleKey = title.toLowerCase();
-
-                    const hasText =
-                      (title && !badTitles.has(titleKey) && title !== app) ||
-                      !!artist;
-
-                    const hasTimingDefault = (dur > 0) || (pos > 0);
-
-                    const isYouTube =
-                      String(a.app_id || '') === 'com.google.ios.youtube' ||
-                      String(a.app_name || '').toLowerCase() === 'youtube';
-
-                    if (isYouTube) {
-                      const upd = a.media_position_updated_at;
-                      const ageMs = upd ? (Date.now() - new Date(upd).getTime()) : 999999999;
-                      const recent = ageMs < (3 * 60 * 1000);
-
-                      const hasTimingStrict = (dur > 0) && (pos > 0);
-                      return !(hasText && hasTimingStrict && recent);
-                    }
-
-                    return !(hasText && hasTimingDefault);
-                  }
-
-                  return true;
-                ]]]
-              show_labels: false
-              show_popup_label_backgrounds: false
-              mode: docked
-            mobile: { hidden: true }
-            routes: []
-            media_player:
-              entity: '[[[ return variables.media_player_4 ]]]'
-              show: |
-                [[[
-                  const eid = variables.media_player_4;
-                  const enabled = variables.show_media_player_4 && eid;
-                  if (!enabled) return false;
-
-                  const s  = states[eid];
-                  const st = s?.state;
-                  const a  = s?.attributes || {};
-
-                  if (st === 'playing' || st === 'buffering') return true;
-
-                  if (st === 'paused') {
-                    const title  = String(a.media_title || '').trim();
-                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                    const app    = String(a.app_name || a.source || '').trim();
-
-                    const dur = Number(a.media_duration || 0);
-                    const pos = Number(a.media_position || 0);
-
-                    const badTitles = new Set(['idle','paused','unknown','unavailable']);
-                    const titleKey = title.toLowerCase();
-
-                    const hasText =
-                      (title && !badTitles.has(titleKey) && title !== app) ||
-                      !!artist;
-
-                    const hasTimingDefault = (dur > 0) || (pos > 0);
-
-                    const isYouTube =
-                      String(a.app_id || '') === 'com.google.ios.youtube' ||
-                      String(a.app_name || '').toLowerCase() === 'youtube';
-
-                    if (isYouTube) {
-                      const upd = a.media_position_updated_at;
-                      const ageMs = upd ? (Date.now() - new Date(upd).getTime()) : 999999999;
-                      const recent = ageMs < (3 * 60 * 1000);
-                      const hasTimingStrict = (dur > 0) && (pos > 0);
-                      return hasText && hasTimingStrict && recent;
-                    }
-
-                    return hasText && hasTimingDefault;
-                  }
-
-                  return false;
-                ]]]
-              album_cover_background: true
-              tap_action: { action: more-info, entity: '[[[ return variables.media_player_4 ]]]' }
+                    return variables.media_player_1 || variables.media_player_2 || variables.media_player_3 || variables.media_player_4;
+                  ]]]
               hold_action: { action: none }
             styles: '[[[ return variables._hemma_mp_styles ]]]'
 

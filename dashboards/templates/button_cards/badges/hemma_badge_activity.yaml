@@ -23,7 +23,6 @@ hemma_badge_activity:
 
       - display: >
           [[[
-            // Respect variables.enabled using the same rules as base
             const v = variables?.enabled;
             const isEnabled = () => {
               if (v === undefined || v === null) return true;
@@ -39,10 +38,8 @@ hemma_badge_activity:
             const s = String(entity?.state || '').toLowerCase();
             const a = entity?.attributes || {};
 
-            // If the player looks active-ish, show
             if (['playing','buffering','paused'].includes(s)) return 'inline-grid';
 
-            // If it's not actively reporting anything, hide.
             const norm = (x) => String(x ?? '').trim();
             const title  = norm(a.media_title || a.title);
             const artist = norm(a.media_artist || a.artist || a.media_album_artist);
@@ -88,13 +85,10 @@ hemma_badge_activity:
     [[[
       const a = entity?.attributes || {};
       const friendly = a.friendly_name || 'Activity';
-
       const title  = String(a.media_title || a.title || '').trim();
       const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
       const app    = String(a.app_name || a.source || '').trim();
-
       const sub = (artist && title) ? `${artist} — ${title}` : (title || artist || app);
-
       const esc = (s) => String(s ?? '')
         .replace(/&/g,'&amp;')
         .replace(/</g,'&lt;')
@@ -135,7 +129,7 @@ hemma_badge_activity:
       border-radius: inherit;
       box-shadow:
         inset 0 0 0 1px rgba(255,255,255,0.18),
-        0 0 0 1px rgba(255,255,255,0.06);
+        0 0 0 1px rgba(255,255,255,0.14);
       z-index: 1;
     }
 
