@@ -3,8 +3,8 @@
 A modern, minimal, mobile-friendly dashboard for Home Assistant inspired by the [Homio](https://github.com/iamtherufus/Homio) dashboard by iamtherufus. Hemma features frosted glass entity cards, light and dark mode, sensor and media badges, and streamlined navigation controls for desktop, tablet, and mobile devices.
 
 ### Desktop View
-![desktop-home-light](https://github.com/user-attachments/assets/b1e2d227-6071-4cff-9f93-9eb226356a0f)
-![desktop-livingroom-light](https://github.com/user-attachments/assets/072aa154-8ae8-4f9d-a32c-7467723ef8dd)
+![home-desktop-light](https://github.com/user-attachments/assets/68449a58-4051-4aba-90d0-a56045ff3bfd)
+![livingroom-desktop-light](https://github.com/user-attachments/assets/3172f5ab-5da3-4c70-baea-140732f4067f)
 
 ---
 
@@ -42,19 +42,17 @@ Hemma adds new features and changes including:
 Under the hood it’s still YAML files you can read, copy, and modify. This repo just collects my version into a reusable package.
 
 ### Light/Dark Mode
-![desktop-bedroom-light](https://github.com/user-attachments/assets/dced24c2-a797-4a86-9ff1-5fb885f30c68)
-![desktop-bedroom-dark](https://github.com/user-attachments/assets/53ffa13d-9615-4026-8bea-ab1a029964a0)
+![bedroom-desktop-light](https://github.com/user-attachments/assets/8a186a9f-7da8-425d-9883-e282cd80b3f3)
+![bedroom-desktop-dark](https://github.com/user-attachments/assets/27da048f-8a8b-4b62-9290-4233b6e993c1)
+
 
 ## Mobile View (Light/Dark)
-<img src="https://github.com/user-attachments/assets/ac99f833-c742-4219-abe3-2eda7054d29c" width="400">
-<img src="https://github.com/user-attachments/assets/5b10405d-0a56-4de9-bd93-4a4b5383f96b" width="400">
-
-## Mobile Navigation
-<img src="https://github.com/user-attachments/assets/07548572-d15e-42a2-ad4c-9a04ec62b3a4" width="400">
-<img src="https://github.com/user-attachments/assets/dbd38b12-e279-4f26-8ae5-2bc8164222e9" width="400">
+<img src="https://github.com/user-attachments/assets/3a92731e-b67a-40e7-a0a2-80024f31f271" width="400">
+<img src="https://github.com/user-attachments/assets/751b66cd-1880-45c7-8d7a-b39a0c90ae73" width="400">
 
 ## Tablet View
-![tablet-livingroom-light](https://github.com/user-attachments/assets/b3cd4329-e246-443d-b76a-ec0bcddf1524)
+![tablet-livingroom-light](https://github.com/user-attachments/assets/019693ef-3969-4104-ac5e-ded769ab3ccb)
+![tablet-livingroom-dark](https://github.com/user-attachments/assets/ac0d1d67-0e6e-4cdb-8627-c1db13cfce13)
 
 ---
 
