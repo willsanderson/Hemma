@@ -1,5 +1,5 @@
 ## :heavy_exclamation_mark: IMPORTANT UPDATE
-Currently card-mod 4.2 is not compatible with Hemma, as it does not currently use the media query variables in the theme, causing the mobile/tablet view to use desktop variables. Please continue to use card-mod 4.1 until a fix is released.
+Currently card-mod 4.2 is not compatible with Hemma, as it does not use the media query variables in the theme, causing the mobile/tablet view to use desktop variables. Please continue to use card-mod 4.1 until a fix is released.
 
 ## :house_with_garden: Hemma
 
