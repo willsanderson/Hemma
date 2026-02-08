@@ -31,12 +31,12 @@ mediaquery:
     position: absolute
     z-index: 4
     inset: >
-      calc(var(--entity-top-mobile, 260px) + var(--hemma-entity-top-nudge-portrait, 180px))
+      calc(100vh - (var(--hemma-nav-height, 62px) + 22px + max(20px, env(safe-area-inset-bottom, 0px))) - 232px)
       var(--hemma-rail-left, var(--page-gutter-mobile, 14px))
       auto
       var(--hemma-rail-left, var(--page-gutter-mobile, 14px))
     margin: 0
-    padding: "0 0 calc(var(--hemma-nav-height, 62px) + max(20px, env(safe-area-inset-bottom, 0px)) + 18px) 0"
+    padding: 0
     width: auto
     max-width: none
     box-sizing: border-box
@@ -53,6 +53,9 @@ mediaquery:
     align-items: start
     overflow-x: visible
     overflow-y: visible
+    -webkit-overflow-scrolling: touch
+    scrollbar-width: none
+    -ms-overflow-style: none
     scroll-snap-type: none
 
   # -------- Mobile Landscape --------
