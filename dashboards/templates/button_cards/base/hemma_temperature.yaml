@@ -52,8 +52,10 @@ hemma_temperature:
   extra_styles: |
     :host,
     :host(:hover),
+    :host(:focus),
     :host(:focus-within),
-    :host(:active) {
+    :host(:active),
+    :host([active]) {
       background: transparent !important;
       background-color: transparent !important;
       border: 0 !important;
@@ -61,22 +63,43 @@ hemma_temperature:
 
     :host ha-card,
     :host(:hover) ha-card,
+    :host(:focus) ha-card,
     :host(:focus-within) ha-card,
-    :host(:active) ha-card {
+    :host(:active) ha-card,
+    :host([active]) ha-card {
       background: transparent !important;
       background-color: transparent !important;
       box-shadow: none !important;
       filter: none !important;
       transform: none !important;
       border: 0 !important;
-      border-radius: 0 !important;
+      border-radius: 8px !important;
+      opacity: 1 !important;
     }
 
     :host ha-card::before,
     :host ha-card::after,
     :host(:hover) ha-card::before,
-    :host(:hover) ha-card::after {
+    :host(:hover) ha-card::after,
+    :host(:active) ha-card::before,
+    :host(:active) ha-card::after,
+    :host(:focus) ha-card::before,
+    :host(:focus) ha-card::after {
       display: none !important;
+      content: none !important;
+      opacity: 0 !important;
+    }
+
+    ha-card {
+      background: transparent !important;
+      background-color: transparent !important;
+      border-radius: 8px !important;
+    }
+
+    ha-ripple {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
     }
 
   styles:
@@ -86,10 +109,10 @@ hemma_temperature:
       - box-shadow: none !important
       - border: 0 !important
       - outline: none !important
-      - pointer-events: none !important
-    name:
       - pointer-events: auto !important
       - cursor: pointer !important
+      - border-radius: 8px !important
+      - "-webkit-tap-highlight-color": transparent
 
     name:
       - margin: 0
@@ -100,6 +123,7 @@ hemma_temperature:
       - font-weight: 600
       - letter-spacing: 0.6px
       - line-height: 1
+      - cursor: pointer !important
 
   name: >
     [[[
@@ -107,7 +131,6 @@ hemma_temperature:
       const useOutdoorRow = (mode === 'outdoor') && !!variables.show_weather;
       const unit = String(variables.temp_unit || 'F').toUpperCase();
 
-      // Thresholds based on unit (F or C)
       const thresholds = (unit === 'C')
         ? { veryCold: 18, cool: 21, comfortable: 24, warm: 27, hot: 29 }
         : { veryCold: 65, cool: 70, comfortable: 76, warm: 81, hot: 85 };
@@ -149,7 +172,6 @@ hemma_temperature:
           if (loc && !loc.includes(`state.weather.${condKey}`)) pretty = loc;
         }
         if (!pretty) {
-          // Map common weather states to proper formatting
           const weatherMap = {
             'partlycloudy': 'Partly Cloudy',
             'clear-night': 'Clear Night',
