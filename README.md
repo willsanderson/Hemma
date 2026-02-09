@@ -22,10 +22,9 @@ Hemma is fully YAML-based and designed for:
   - Active media player badge
 - **Button-cards**
   - Thermostat, media, fan, curtain, lock, and more
-- **Climate**
-  - **Weather widget** for mobile view
-  - Supports outdoor temperature mode + room temperature mode, plus “comfort labels”
-
+- **Weather + Comfort**
+  - Mobile hero-row **weather widget**
+  - Outdoor mode + room mode, plus “comfort labels” (`temp_unit: 'F' | 'C'`)
 ---
 
 ### Requirements
@@ -41,8 +40,7 @@ Install via HACS (recommended) unless noted:
 - **[lovelace-navbar-card](https://github.com/joseluis9595/lovelace-navbar-card)** (Jose Luis Álvarez) - required for navigation + media badge
 
 #### Optional (but recommended)
-- **[kiosk-mode](https://github.com/NemesisRE/kiosk-mode)** (NemesisRE) - Dashboard is designed specifically for no header or sidebar
-
+- **[kiosk-mode](https://github.com/NemesisRE/kiosk-mode)** (NemesisRE) - Optional but recommended (Hemma looks best with no header/sidebar)
 ---
 
 ### Desktop View
@@ -246,6 +244,8 @@ Template: `hemma_lock`
     show_media_player_4: true
     media_player_4: media_player.bedroom
 ```
+
+Note: Media badges only appear when a player is active (playing/paused depending on your template logic).
 
 ---
 
