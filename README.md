@@ -3,11 +3,11 @@
 A modern, minimal, mobile-friendly dashboard for Home Assistant — inspired by the [Homio](https://github.com/iamtherufus/Homio) dashboard by @iamtherufus, but rebuilt and extended with new layouts, cards, and guided setup process.
 
 Hemma is fully YAML-based and designed for:
-- **Desktop, tablet, and mobile (portrait + landscape)**
-- **Light/Dark mode styling**
-- **Frosted-glass entity cards**
-- **Badges for sensors, presence, and active media**
-- **Clean navigation with a mobile navbar + desktop/tablet top navigation**
+- Desktop, tablet, and mobile (portrait + landscape)
+- Light/Dark mode styling
+- Frosted-glass entity cards
+- Badges for sensors, presence, and active media
+- Clean navigation with a mobile navbar + desktop/tablet top navigation
 
 ![hemma_devices](https://github.com/user-attachments/assets/f66ee922-6e95-45bc-afee-ba12c8869886)
 
@@ -16,11 +16,12 @@ Hemma is fully YAML-based and designed for:
 ![livingroom-desktop-light](https://github.com/user-attachments/assets/21378996-2ddc-4d7a-872f-5565a00422ef)
 
 ---
-### Highlights and Features
-- **Light/dark mode**
+## Highlights and Features
+- **Light/dark** mode with dynamic background images
 - **Layouts + spacing logic** for scaling across different devices
 - **Custom navigation** and Scene support
-  - Mobile navbar for tablet and phone
+- Mobile **weather widget** in the hero row
+- Mobile navbar for tablet and phone
 - **Badges**
   - Presence + sensor badges
   - Active media player badge
@@ -31,7 +32,7 @@ Hemma is fully YAML-based and designed for:
   - Supports outdoor temperature mode + room temperature mode, plus “comfort labels” with `temp_unit: 'F'|'C'`
 
 ---
-### Requirements
+## Requirements
 
 #### Home Assistant
 - Lovelace dashboards enabled, and **keep Lovelace in `storage` mode** (so you can still use the UI editor for other dashboards).
@@ -42,14 +43,13 @@ Install via HACS (recommended) unless noted:
 - **[button-card](https://github.com/custom-cards/button-card)** (RomRider)
 - **[layout-card](https://github.com/thomasloven/lovelace-layout-card)** (Thomas Lovén) — Hemma uses a **modified** version included in this repo (don’t install via HACS).
 - **[lovelace-navbar-card](https://github.com/joseluis9595/lovelace-navbar-card)** (Jose Luis Álvarez) - required for navigation + media badge
-- **[kiosk-mode](https://github.com/NemesisRE/kiosk-mode)** (NemesisRE) - Dashboard is designed specifically for no header or sidebar
 
-#### Optional (but common)
-- **browser_mod**, **auto-entities**, etc. (only if you use features that depend on them)
+#### Optional (but recommended)
+- **[kiosk-mode](https://github.com/NemesisRE/kiosk-mode)** (NemesisRE) - Dashboard is designed specifically for no header or sidebar
 
 ---
 
-### Light/Dark Mode
+## Light/Dark Mode
 ![bedroom-desktop-light](https://github.com/user-attachments/assets/370123ff-8dfb-4722-9926-522692392ef1)
 ![bedroom-desktop-dark](https://github.com/user-attachments/assets/63349d15-fd3d-41be-bc00-229f8f80dd69)
 
@@ -71,31 +71,33 @@ Example layout:
 
 ```text
 /config
-└── dashboards/
-    └── hemma/
-        └── hemma.yaml                  # Main Hemma dashboard
-└── dashboards/templates/button-cards/  # Card config files
-    ├── badges
-    ├── base
-    └── cards
-└── dashboards/templates/includes/      # Layout and navigation
-    ├── hemma_screen_layout.yaml
-    ├── hemma_entity_layout.yaml
-    ├── hemma_navbar_mobile.yaml
-    ├── hemma_navigation.yaml
-    └── hemma_media_player_styles.yaml
-└── themes/
-    └── hemma/
-        └── hemma.yaml                  # Hemma theme
-└── packages/
-    └── hemma_helpers.yaml              # Helpers required by the dashboard
+├── dashboards/
+│   ├── hemma/
+│   │   ├── hemma.yaml                    # Main Hemma dashboard (created from example file)
+│   │   └── hemma.yaml.example            # Example dashboard with placeholders
+│   └── templates/
+│       ├── button_cards/                 # Button-card templates
+│       │   ├── badges/
+│       │   ├── base/
+│       │   └── cards/
+│       └── includes/                     # Layout + navigation includes
+│           ├── hemma_screen_layout.yaml
+│           ├── hemma_entity_layout.yaml
+│           ├── hemma_navbar_mobile.yaml
+│           ├── hemma_navigation.yaml
+│           └── hemma_media_player_styles.yaml
+├── themes/
+│   └── hemma/
+│       └── hemma.yaml                    # Hemma theme
+├── packages/
+│   └── hemma_helpers.yaml                # Helpers required by the dashboard
 └── www/
-    └── hemma/
-        ├── icons/                      # UI icons
-        ├── rooms/                      # Room/Background images
-        └── weather/                    # Weather icons
+    ├── hemma/
+    │   ├── icons/                        # UI icons
+    │   ├── rooms/                        # Room/background images
+    │   └── weather/                      # Weather icons
     └── layout-card-modified/
-        └── layout-card-modified.js     # Layout Card
+        └── layout-card-modified.js       # Modified Layout Card build
 ```
 
 ## :rocket: Installation
@@ -117,7 +119,7 @@ Copy these folders/files from this repo into your HA `/config`:
 In Settings → Dashboards → Resources (or YAML), add:
 
 - `/hacsfiles/button-card/button-card.js` (should already be present if installed via HACS)
-- `/local/layout-card-modified/layout-card-modified.js?v=12` (from this repo)
+- `/local/layout-card-modified/layout-card-modified.js` (from this repo)
 - `/hacsfiles/lovelace-navbar-card/navbar-card.js` (should already be present if installed via HACS)
 
 (Exact resource paths can vary depending on how you installed the cards.)
@@ -139,7 +141,7 @@ lovelace:
 
 Restart Home Assistant.
 
-## 5) Create your dashboard from the example file
+### 5) Create your dashboard from the example file
 
 In `/config/dashboards/hemma/`:
 
@@ -148,12 +150,12 @@ In `/config/dashboards/hemma/`:
 
 This is the main file you edit to map Hemma to your devices/entities.
 
-## 6) Enable the Hemma theme
+### 6) Enable the Hemma theme
 
 - Settings → Appearance → Themes → choose **Hemma**  
   *(You may need to reload themes or restart after copying.)*
 
-## 7) Add your room images + icons
+### 7) Add your room images + icons
 
 - Room images live in: `/config/www/hemma/rooms/`  
   - Example: `home.jpg` (light) and `home-night.jpg` (dark)
@@ -179,7 +181,7 @@ You’ll mostly be adjusting `variables:` on the `hemma_room` hero card and chan
 
 ---
 
-## Weather widget (mobile portrait hero row)
+### Weather widget (mobile portrait hero row)
 
 Hemma includes a compact weather widget designed for **mobile portrait mode**.
 
@@ -202,12 +204,15 @@ Key variables:
 
 ---
 
-## Lock card (split actions)
+### Lock card (split actions)
 
 Hemma’s lock card supports:
 
 - Tap the card → **more-info**
 - Tap the icon/image → **lock/unlock toggle**
+
+Notes:
+- `show_icon: true` is required so `icon_tap_action` has a target.
 
 Template: `hemma_lock`
 
@@ -259,13 +264,13 @@ This repo is intended as a starting point:
 - Tweak theme colors, shadows, and typography in `themes/hemma/hemma.yaml`.
 - Adjust layouts (`hemma_entity_layout.yaml`, etc.) to match your devices and preferences.
 
-#### Button Card Icons
+### Button Card Icons
 
 To add additional button card icons, you can download them from the link below and place the icons in the `www/hemma/icons/` folder:
 
-https://fonts.google.com/icons?icon.query=light (Weight 200 is recommended)
+[Google Material Icons](https://fonts.google.com/icons?icon.query=light) (Weight 200 is recommended, file type: svg)
 
-#### Time
+### Time
 
 You can switch from 12hr to 24hr time in by switching the variables in `hemma_time.yaml`, example below:
 
