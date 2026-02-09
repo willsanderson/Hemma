@@ -1,4 +1,4 @@
-## :house_with_garden: Hemma
+### :house_with_garden: Hemma
 
 A modern, minimal, mobile-friendly dashboard for Home Assistant — inspired by the [Homio](https://github.com/iamtherufus/Homio) dashboard by @iamtherufus, but rebuilt and extended with new layouts, cards, and guided setup process.
 
@@ -16,7 +16,7 @@ Hemma is fully YAML-based and designed for:
 ![livingroom-desktop-light](https://github.com/user-attachments/assets/21378996-2ddc-4d7a-872f-5565a00422ef)
 
 ---
-## Highlights and Features
+### Highlights and Features
 - **Light/dark** mode with dynamic background images
 - **Layouts + spacing logic** for scaling across different devices
 - **Custom navigation** and Scene support
@@ -31,7 +31,7 @@ Hemma is fully YAML-based and designed for:
   - Supports outdoor temperature mode + room temperature mode, plus “comfort labels”
 
 ---
-## Requirements
+### Requirements
 
 #### Home Assistant
 - Lovelace dashboards enabled, and **keep Lovelace in `storage` mode** (so you can still use the UI editor for other dashboards).
@@ -48,15 +48,15 @@ Install via HACS (recommended) unless noted:
 
 ---
 
-## Light/Dark Mode
+### Light/Dark Mode
 ![bedroom-desktop-light](https://github.com/user-attachments/assets/370123ff-8dfb-4722-9926-522692392ef1)
 ![bedroom-desktop-dark](https://github.com/user-attachments/assets/63349d15-fd3d-41be-bc00-229f8f80dd69)
 
-## Mobile View (Light/Dark)
+### Mobile View (Light/Dark)
 <img src="https://github.com/user-attachments/assets/5566503b-c6b0-4ede-9acc-a7da136db883" width="404">
 <img src="https://github.com/user-attachments/assets/1710ad0f-e4f2-4596-961b-3203cacd5a4a" width="404">
 
-## Tablet View (Light/Dark)
+### Tablet View (Light/Dark)
 ![tablet-livingroom-light](https://github.com/user-attachments/assets/019693ef-3969-4104-ac5e-ded769ab3ccb)
 ![tablet-livingroom-dark](https://github.com/user-attachments/assets/ac0d1d67-0e6e-4cdb-8627-c1db13cfce13)
 
