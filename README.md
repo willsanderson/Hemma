@@ -16,7 +16,7 @@ Hemma is fully YAML-based and designed for:
 - **Light/dark** mode with dynamic background images
 - **Layouts + spacing logic** for scaling across different devices
 - **Custom navigation** and Scene support
-- Mobile navbar for tablet and phone
+  - Mobile navbar for tablet and phone
 - **Badges**
   - Presence + sensor badges
   - Active media player badge
