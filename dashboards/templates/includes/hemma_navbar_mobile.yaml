@@ -7,10 +7,10 @@
 # has a different URL, search for "routes:" in this file and update them.
 #
 # SECTIONS TO UPDATE:
-#   1. Phone Portrait (line ~286) - Has Home + Rooms dropdown + Scenes
-#   2. Phone Landscape (line ~642) - Has Home + Rooms dropdown + Scenes
-#   3. Tablet Portrait (line ~996) - Has Home + Rooms dropdown + Scenes
-#   4. Tablet Landscape (line ~1367) - Has individual room links + Scenes
+#   1. Phone Portrait (line ~30) - Has Home + Rooms dropdown + Scenes
+#   2. Phone Landscape (line ~380) - Has Home + Rooms dropdown + Scenes
+#   3. Tablet Portrait (line ~720) - Has Home + Rooms dropdown + Scenes
+#   4. Tablet Landscape (line ~1060) - Has individual room links + Scenes
 #
 # ROUTES TO CUSTOMIZE IN EACH SECTION:
 #   - Home: /dashboard-hemma/home
@@ -61,6 +61,11 @@ cards:
           :host{ z-index: 2147483647 !important; }
           ha-card{
             --mdc-ripple-press-opacity: 0 !important;
+            --mdc-ripple-hover-opacity: 0 !important;
+            --mdc-ripple-focus-opacity: 0 !important;
+            --mdc-ripple-color: transparent !important;
+            --state-layer-opacity: 0 !important;
+            --mdc-theme-on-surface: transparent !important;
             background: transparent !important;
             box-shadow: none !important;
             overflow: visible !important;
@@ -301,6 +306,30 @@ cards:
 
         .navbar-card, .navbar-card *{ box-sizing: border-box !important; }
 
+        :host, :host *{
+          -webkit-tap-highlight-color: transparent !important;
+          --mdc-ripple-press-opacity: 0 !important;
+          --mdc-ripple-hover-opacity: 0 !important;
+          --mdc-ripple-focus-opacity: 0 !important;
+          --mdc-ripple-color: transparent !important;
+          --state-layer-opacity: 0 !important;
+          --md-ripple-hover-opacity: 0 !important;
+          --md-ripple-focus-opacity: 0 !important;
+          --md-ripple-pressed-opacity: 0 !important;
+          --md-ripple-color: transparent !important;
+        }
+
+        ha-ripple, mwc-ripple, md-ripple{
+          display: none !important;
+        }
+
+        .mdc-ripple-surface,
+        .mdc-ripple-surface::before,
+        .mdc-ripple-surface::after{
+          display: none !important;
+          opacity: 0 !important;
+          content: none !important;
+        }
 
       # Buttons (Edit these)
       routes:
@@ -422,6 +451,11 @@ cards:
           :host{ z-index: 2147483647 !important; }
           ha-card{
             --mdc-ripple-press-opacity: 0 !important;
+            --mdc-ripple-hover-opacity: 0 !important;
+            --mdc-ripple-focus-opacity: 0 !important;
+            --mdc-ripple-color: transparent !important;
+            --state-layer-opacity: 0 !important;
+            --mdc-theme-on-surface: transparent !important;
             background: transparent !important;
             box-shadow: none !important;
             overflow: visible !important;
@@ -509,28 +543,6 @@ cards:
           opacity: 1 !important;
         }
 
-        /* Show carets ONLY on buttons with popup: property (Rooms=position 2, Scenes=position 3)
-           nth-child is +1 due to hidden DOM element (so 3 and 4) */
-        .navbar.desktop .route:nth-child(3) .label,
-        .navbar.desktop .route:nth-child(4) .label{
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          gap: 8px !important;
-        }
-
-        .navbar.desktop .route:nth-child(3) .label::after,
-        .navbar.desktop .route:nth-child(4) .label::after{
-          content: "" !important;
-          display: inline-block !important;
-          width: 7px !important;
-          height: 7px !important;
-          border-right: 2px solid currentColor !important;
-          border-bottom: 2px solid currentColor !important;
-          transform: translateY(-1px) rotate(45deg) !important;
-          opacity: 0.75 !important;
-        }
-
         .navbar-card.desktop .route{
           height: auto !important;
           min-height: 0 !important;
@@ -551,6 +563,14 @@ cards:
 
         .navbar-card.desktop{
           gap: 5px !important;
+        }
+
+        ha-ripple{ display:none !important; }
+        .mdc-ripple-surface::before,
+        .mdc-ripple-surface::after{
+          content: none !important;
+          display: none !important;
+          opacity: 0 !important;
         }
 
         .navbar-popup{
@@ -625,7 +645,7 @@ cards:
           font-weight: var(--hemma-popup-label-weight) !important;
           line-height: 1.1 !important;
           margin: 0 !important;
-          padding: 0 !important;
+          padding: 0 0 0 1px !important;
           color: rgba(255,255,255,0.92) !important;
           opacity: var(--hemma-popup-label-inactive-opacity) !important;
           background: transparent !important;
@@ -658,6 +678,31 @@ cards:
           --mdc-theme-secondary: rgba(255,255,255,0.92) !important;
           --icon-primary-color: rgba(255,255,255,0.92) !important;
           --icon-secondary-color: rgba(255,255,255,0.92) !important;
+        }
+
+        :host, :host *{
+          -webkit-tap-highlight-color: transparent !important;
+          --mdc-ripple-press-opacity: 0 !important;
+          --mdc-ripple-hover-opacity: 0 !important;
+          --mdc-ripple-focus-opacity: 0 !important;
+          --mdc-ripple-color: transparent !important;
+          --state-layer-opacity: 0 !important;
+          --md-ripple-hover-opacity: 0 !important;
+          --md-ripple-focus-opacity: 0 !important;
+          --md-ripple-pressed-opacity: 0 !important;
+          --md-ripple-color: transparent !important;
+        }
+
+        ha-ripple, mwc-ripple, md-ripple{
+          display: none !important;
+        }
+
+        .mdc-ripple-surface,
+        .mdc-ripple-surface::before,
+        .mdc-ripple-surface::after{
+          display: none !important;
+          opacity: 0 !important;
+          content: none !important;
         }
 
       # Buttons (Edit these)
@@ -778,6 +823,11 @@ cards:
           :host{ z-index: 2147483647 !important; }
           ha-card{
             --mdc-ripple-press-opacity: 0 !important;
+            --mdc-ripple-hover-opacity: 0 !important;
+            --mdc-ripple-focus-opacity: 0 !important;
+            --mdc-ripple-color: transparent !important;
+            --state-layer-opacity: 0 !important;
+            --mdc-theme-on-surface: transparent !important;
             background: transparent !important;
             box-shadow: none !important;
             overflow: visible !important;
@@ -865,28 +915,6 @@ cards:
           opacity: 1 !important;
         }
 
-        /* Show carets ONLY on buttons with popup: property (Rooms=position 2, Scenes=position 3)
-           nth-child is +1 due to hidden DOM element (so 3 and 4) */
-        .navbar.desktop .route:nth-child(3) .label,
-        .navbar.desktop .route:nth-child(4) .label{
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          gap: 8px !important;
-        }
-
-        .navbar.desktop .route:nth-child(3) .label::after,
-        .navbar.desktop .route:nth-child(4) .label::after{
-          content: "" !important;
-          display: inline-block !important;
-          width: 7px !important;
-          height: 7px !important;
-          border-right: 2px solid currentColor !important;
-          border-bottom: 2px solid currentColor !important;
-          transform: translateY(-1px) rotate(45deg) !important;
-          opacity: 0.75 !important;
-        }
-
         .navbar-card.desktop .route{
           height: auto !important;
           min-height: 0 !important;
@@ -907,6 +935,14 @@ cards:
 
         .navbar-card.desktop{
           gap: 5px !important;
+        }
+
+        ha-ripple{ display:none !important; }
+        .mdc-ripple-surface::before,
+        .mdc-ripple-surface::after{
+          content: none !important;
+          display: none !important;
+          opacity: 0 !important;
         }
 
         .navbar-popup{
@@ -975,7 +1011,7 @@ cards:
           font-weight: var(--hemma-popup-label-weight) !important;
           line-height: 1.1 !important;
           margin: 0 !important;
-          padding: 0 !important;
+          padding: 0 0 0 1px !important;
           color: rgba(255,255,255,0.92) !important;
           opacity: var(--hemma-popup-label-inactive-opacity) !important;
           background: transparent !important;
@@ -1015,6 +1051,31 @@ cards:
         }
         .navbar-popup .popup-item.active ha-icon{
           color: rgba(255,255,255,0.92) !important;
+        }
+
+        :host, :host *{
+          -webkit-tap-highlight-color: transparent !important;
+          --mdc-ripple-press-opacity: 0 !important;
+          --mdc-ripple-hover-opacity: 0 !important;
+          --mdc-ripple-focus-opacity: 0 !important;
+          --mdc-ripple-color: transparent !important;
+          --state-layer-opacity: 0 !important;
+          --md-ripple-hover-opacity: 0 !important;
+          --md-ripple-focus-opacity: 0 !important;
+          --md-ripple-pressed-opacity: 0 !important;
+          --md-ripple-color: transparent !important;
+        }
+
+        ha-ripple, mwc-ripple, md-ripple{
+          display: none !important;
+        }
+
+        .mdc-ripple-surface,
+        .mdc-ripple-surface::before,
+        .mdc-ripple-surface::after{
+          display: none !important;
+          opacity: 0 !important;
+          content: none !important;
         }
 
       # Buttons (Edit these)
@@ -1135,6 +1196,11 @@ cards:
           :host{ z-index: 2147483647 !important; }
           ha-card{
             --mdc-ripple-press-opacity: 0 !important;
+            --mdc-ripple-hover-opacity: 0 !important;
+            --mdc-ripple-focus-opacity: 0 !important;
+            --mdc-ripple-color: transparent !important;
+            --state-layer-opacity: 0 !important;
+            --mdc-theme-on-surface: transparent !important;
             background: transparent !important;
             box-shadow: none !important;
             overflow: visible !important;
@@ -1222,26 +1288,6 @@ cards:
           opacity: 1 !important;
         }
 
-        /* Show caret ONLY on button with popup: property (Scenes=position 5)
-           nth-child is +1 due to hidden DOM element (so 6) */
-        .navbar.desktop .route:nth-child(6) .label{
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          gap: 8px !important;
-        }
-
-        .navbar.desktop .route:nth-child(6) .label::after{
-          content: "" !important;
-          display: inline-block !important;
-          width: 7px !important;
-          height: 7px !important;
-          border-right: 2px solid currentColor !important;
-          border-bottom: 2px solid currentColor !important;
-          transform: translateY(-1px) rotate(45deg) !important;
-          opacity: 0.75 !important;
-        }
-
         .navbar-card.desktop .route{
           height: auto !important;
           min-height: 0 !important;
@@ -1262,6 +1308,14 @@ cards:
 
         .navbar-card.desktop {
             gap: 5px !important;
+        }
+
+        ha-ripple{ display:none !important; }
+        .mdc-ripple-surface::before,
+        .mdc-ripple-surface::after{
+          content: none !important;
+          display: none !important;
+          opacity: 0 !important;
         }
 
         .navbar-popup{
@@ -1362,7 +1416,7 @@ cards:
           font-weight: var(--hemma-popup-label-weight) !important;
           line-height: 1.1 !important;
           margin: 0 !important;
-          padding: 0 !important;
+          padding: 0 0 0 1px !important;
           color: rgba(255,255,255,0.92) !important;
           opacity: var(--hemma-popup-label-inactive-opacity) !important;
           background: transparent !important;
@@ -1387,6 +1441,46 @@ cards:
           content: none !important;
           display: none !important;
           opacity: 0 !important;
+        }
+
+        .navbar-popup,
+        .navbar-popup *{
+          --mdc-theme-primary: rgba(255,255,255,0.92) !important;
+          --mdc-theme-secondary: rgba(255,255,255,0.92) !important;
+          --icon-primary-color: rgba(255,255,255,0.92) !important;
+          --icon-secondary-color: rgba(255,255,255,0.92) !important;
+        }
+
+        .navbar-popup ha-icon{
+          color: rgba(255,255,255,0.92) !important;
+        }
+        .navbar-popup .popup-item.active ha-icon{
+          color: rgba(255,255,255,0.92) !important;
+        }
+
+        :host, :host *{
+          -webkit-tap-highlight-color: transparent !important;
+          --mdc-ripple-press-opacity: 0 !important;
+          --mdc-ripple-hover-opacity: 0 !important;
+          --mdc-ripple-focus-opacity: 0 !important;
+          --mdc-ripple-color: transparent !important;
+          --state-layer-opacity: 0 !important;
+          --md-ripple-hover-opacity: 0 !important;
+          --md-ripple-focus-opacity: 0 !important;
+          --md-ripple-pressed-opacity: 0 !important;
+          --md-ripple-color: transparent !important;
+        }
+
+        ha-ripple, mwc-ripple, md-ripple{
+          display: none !important;
+        }
+
+        .mdc-ripple-surface,
+        .mdc-ripple-surface::before,
+        .mdc-ripple-surface::after{
+          display: none !important;
+          opacity: 0 !important;
+          content: none !important;
         }
 
       # Buttons (Edit these)
@@ -1414,6 +1508,7 @@ cards:
         # Scenes (Dropdown Menu)
         - label: Scenes
           icon: mdi:layers
+          icon_selected: mdi:layers
           tap_action:
             action: open-popup
           popup: |

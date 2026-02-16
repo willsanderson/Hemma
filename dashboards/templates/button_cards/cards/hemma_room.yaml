@@ -65,122 +65,6 @@ hemma_room:
     weather_entity:
     weather_temp_sensor:
 
-    # =========================================================================
-    # ACTIVE MEDIA PLAYER SELECTOR
-    # =========================================================================
-    # Automatically selects the first active media player from up to 4 sources.
-    # You typically don't need to modify this unless changing media player logic.
-    # =========================================================================
-    active_media_player: >
-      [[[
-        const enabled = (v) => {
-          if (v === undefined || v === null) return false;
-          if (typeof v === 'boolean') return v;
-          if (typeof v === 'number')  return v !== 0;
-          const s = String(v).trim().toLowerCase();
-          if (['false','0','no','off','disabled'].includes(s)) return false;
-          if (['true','1','yes','on','enabled'].includes(s))   return true;
-          return !!s;
-        };
-
-        const isMediaActive = (eid) => {
-          if (!eid) return false;
-
-          const s  = states[eid];
-          const st = String(s?.state || '');
-          const a  = s?.attributes || {};
-
-          if (!s || ['unavailable', 'unknown'].includes(st)) return false;
-          if (['off', 'standby'].includes(st)) return false;
-
-          const title   = String(a.media_title || '').trim();
-          const artist  = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-          const hasContent = !!(title || artist);
-
-          if (st === 'playing' || st === 'buffering') return true;
-          if (st === 'paused') return hasContent;
-          if (st === 'idle' || st === 'on') return hasContent;
-
-          return false;
-        };
-
-        const list = [
-          [variables.show_media_player_1, variables.media_player_1],
-          [variables.show_media_player_2, variables.media_player_2],
-          [variables.show_media_player_3, variables.media_player_3],
-          [variables.show_media_player_4, variables.media_player_4],
-        ];
-
-        for (const [flag, eid] of list) {
-          if (enabled(flag) && eid && isMediaActive(eid)) return eid;
-        }
-
-        return '';
-      ]]]
-
-    # Media player styles
-    _hemma_mp_styles_base: !include /config/dashboards/templates/includes/hemma_media_player_styles.yaml
-
-    _hemma_mp_styles: >
-      [[[
-        let baseStyles = variables._hemma_mp_styles_base || '';
-
-        const eid = variables.active_media_player;
-        if (!eid) return baseStyles;
-
-        const a = states[eid]?.attributes || {};
-        const appName = String(a.app_name || a.source || '').toLowerCase();
-        const appId = String(a.app_id || '').toLowerCase();
-        const isYT = (appName.includes('youtube') || appId.includes('youtube'));
-
-        if (!isYT) return baseStyles;
-
-        const ytStyles = `
-
-          ha-icon.media-player-icon-fallback {
-            background: url("/local/hemma/icons/youtube.png") center/cover no-repeat !important;
-            border-radius: 50% !important;
-            width: var(--badge-icon-size-current, var(--hemma-mp-img, 36px)) !important;
-            height: var(--badge-icon-size-current, var(--hemma-mp-img, 36px)) !important;
-            min-width: var(--badge-icon-size-current, var(--hemma-mp-img, 36px)) !important;
-            min-height: var(--badge-icon-size-current, var(--hemma-mp-img, 36px)) !important;
-            color: transparent !important;
-            --mdc-icon-size: 0px !important;
-            opacity: 1 !important;
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14) !important;
-            flex-shrink: 0 !important;
-            margin-right: 2px !important;
-          }
-
-          ha-icon.media-player-icon-fallback::before,
-          ha-icon.media-player-icon-fallback::after {
-            display: none !important;
-          }
-
-          /* Mobile Portrait YouTube icon sizing */
-          @media (max-width: 767px) and (orientation: portrait) {
-            ha-icon.media-player-icon-fallback {
-              width: 32px !important;
-              height: 32px !important;
-              min-width: 32px !important;
-              min-height: 32px !important;
-            }
-          }
-
-          /* Mobile Landscape YouTube icon sizing */
-          @media (max-height: 600px) and (orientation: landscape) {
-            ha-icon.media-player-icon-fallback {
-              width: 26px !important;
-              height: 26px !important;
-              min-width: 26px !important;
-              min-height: 26px !important;
-            }
-          }
-        `;
-
-        return baseStyles + ytStyles;
-      ]]]
-
   tap_action: { action: none }
   hold_action: { action: none }
   double_tap_action: { action: none }
@@ -467,14 +351,16 @@ hemma_room:
             ]]]
 
       navigation:
-        - position: absolute
-        - top: "-8px"
+        - position: fixed
+        - top: 46px
         - left: 0
         - right: 0
+        - z-index: 50
+        - overflow: visible
+        - pointer-events: auto
         - "--mdc-ripple-press-opacity": 0
         - "-webkit-tap-highlight-color": transparent
         - filter: none
-        - pointer-events: auto
 
       menu:
         - position: fixed
@@ -606,90 +492,41 @@ hemma_room:
           justify-content: start
           align-items: start
           align-content: start
-          grid-row-gap: var(--hero-header-gap-current, 6px)
-
-        card_mod:
-          style:
-            grid-layout$: |
-              :host {
-                --layout-padding: 0 !important;
-                --layout-margin: 0 !important;
-              }
-              #root {
-                padding: 0 !important;
-                margin: 0 !important;
-                gap: var(--hero-header-gap-current, 6px) !important;
-              }
-              #root > * {
-                margin: 0 !important;
-                padding: 0 !important;
-              }
-              #root > *[hidden],
-              #root > *:has([hidden]),
-              #root > *:has([style*="display: none"]),
-              #root > *:has([style*="display:none"]),
-              #root > *:has(card-mod[style*="display: none"]),
-              #root > *:has(card-mod[style*="display:none"]) {
-                display: none !important;
-              }
+          grid-row-gap: 0px
 
         cards:
-          # Now Playing (active media badge)
-          - type: custom:navbar-card
-            desktop:
-              min_width: 1
-              hidden: >
-                [[[
-                  const amp = variables.active_media_player;
-                  if (!amp || amp === '') return true;
-                  const s = states[amp];
-                  if (!s || ['unavailable', 'unknown', 'off', 'standby'].includes(s.state)) return true;
 
-                  const a = s.attributes || {};
-                  const title = String(a.media_title || '').trim();
-                  const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                  const hasContent = !!(title || artist);
+          # Media Player 1
+          - type: custom:button-card
+            template: hemma_badge_media_player
+            variables:
+              enabled: '[[[ return variables.show_media_player_1 ]]]'
+              entity: '[[[ return variables.media_player_1 ]]]'
+              pause_timeout_minutes: '[[[ return variables.pause_timeout_minutes ]]]'
 
-                  if (['playing', 'buffering'].includes(s.state)) {
-                    return !hasContent;
-                  }
+          # Media Player 2
+          - type: custom:button-card
+            template: hemma_badge_media_player
+            variables:
+              enabled: '[[[ return variables.show_media_player_2 ]]]'
+              entity: '[[[ return variables.media_player_2 ]]]'
+              pause_timeout_minutes: '[[[ return variables.pause_timeout_minutes ]]]'
 
-                  if (s.state === 'paused') {
-                    if (!hasContent) return true;
-                    const pauseTimeoutMin = variables.pause_timeout_minutes ?? 5;
-                    if (pauseTimeoutMin <= 0) return !hasContent; // 0 = no timeout
-                    const lastChanged = new Date(s.last_changed);
-                    const now = new Date();
-                    const minutesPaused = (now - lastChanged) / 60000;
-                    return minutesPaused > pauseTimeoutMin;
-                  }
+          # Media Player 3
+          - type: custom:button-card
+            template: hemma_badge_media_player
+            variables:
+              enabled: '[[[ return variables.show_media_player_3 ]]]'
+              entity: '[[[ return variables.media_player_3 ]]]'
+              pause_timeout_minutes: '[[[ return variables.pause_timeout_minutes ]]]'
 
-                  if (['idle', 'on'].includes(s.state)) {
-                    return !hasContent;
-                  }
-
-                  return true;
-                ]]]
-              show_labels: false
-              show_popup_label_backgrounds: false
-              styles: ''
-
-            mobile: { hidden: true }
-            routes: []
-            media_player:
-              entity: '[[[ return variables.active_media_player ]]]'
-              show: true
-              album_cover_background: true
-              tap_action:
-                action: more-info
-                entity: '[[[ return variables.active_media_player ]]]'
-              hold_action: { action: none }
-            styles: '[[[ return variables._hemma_mp_styles ]]]'
-            card_mod:
-              style: |
-                :host {
-                  display: contents !important;
-                }
+          # Media Player 2
+          - type: custom:button-card
+            template: hemma_badge_media_player
+            variables:
+              enabled: '[[[ return variables.show_media_player_4 ]]]'
+              entity: '[[[ return variables.media_player_4 ]]]'
+              pause_timeout_minutes: '[[[ return variables.pause_timeout_minutes ]]]'
 
     motion_detection: |
       [[[

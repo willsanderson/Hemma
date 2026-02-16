@@ -27,6 +27,14 @@ hemma_weather:
 
   tap_action:
     action: more-info
+    entity: >
+      [[[
+        const mode = String(variables.weather_mode || '').toLowerCase();
+        if (mode === 'room' && variables.temp_sensor) {
+          return variables.temp_sensor;
+        }
+        return entity?.entity_id;
+      ]]]
 
   triggers_update:
     - '[[[ return entity?.entity_id ]]]'

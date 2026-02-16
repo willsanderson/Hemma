@@ -31,10 +31,10 @@ mediaquery:
     position: absolute
     z-index: 4
     inset: >
-      calc(100vh - (var(--hemma-nav-height, 62px) + 22px + 34px) - 234px)
+      calc(100svh - (var(--hemma-nav-height, 122px) + 22px + 34px) - 234px)
       var(--hemma-rail-left, var(--page-gutter-mobile, 14px))
       auto
-      var(--hemma-rail-left, var(--hemma-rail-left, var(--page-gutter-mobile, 14px))
+      var(--hemma-rail-left, var(--page-gutter-mobile, 14px))
     margin: 0
     padding: 0 0 calc(var(--hemma-nav-height, 62px) + 22px + 16px) 0
     width: auto

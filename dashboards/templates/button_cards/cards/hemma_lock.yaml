@@ -2,7 +2,7 @@ hemma_lock:
   template: [hemma_entity]
 
   show_entity_picture: true
-  show_icon: true   # <-- required so icon_tap_action actually has a target
+  show_icon: true
   show_label: false
 
   entity_picture: |
@@ -28,7 +28,6 @@ hemma_lock:
       }
     ]]]
 
-  # Tap anywhere on the card = more-info dialog
   tap_action:
     action: more-info
     entity: '[[[ return entity.entity_id ]]]'
@@ -37,7 +36,6 @@ hemma_lock:
     action: more-info
     entity: '[[[ return entity.entity_id ]]]'
 
-  # Tap ONLY the icon/picture area = toggle lock/unlock
   icon_tap_action:
     action: call-service
     service: |
@@ -47,7 +45,6 @@ hemma_lock:
     service_data:
       entity_id: '[[[ return entity.entity_id ]]]'
 
-  # Optional: you can keep icon hold as more-info too
   icon_hold_action:
     action: more-info
     entity: '[[[ return entity.entity_id ]]]'

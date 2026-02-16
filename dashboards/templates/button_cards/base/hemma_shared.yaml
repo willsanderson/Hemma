@@ -25,7 +25,7 @@ hemma_shared:
 
   styles:
     grid:
-      # Grid layout - temperature row only on desktop/tablet/mobile-landscape
+      # Grid layout
       - grid-template-columns: 1fr max-content
       - grid-template-areas: >
           [[[
@@ -61,23 +61,20 @@ hemma_shared:
 
   extra_styles: |
     [[[
-      // Force image preload - store images persistently to prevent garbage collection
       const rooms = variables.preload_rooms || [];
       const suffix = variables.preload_night_suffix || '-night';
       const basePath = variables.preload_path || '/local/hemma/rooms';
       const ext = variables.preload_extension || '.jpg';
 
       if (rooms.length > 0 && !window.hemmaPreloadedImages) {
-        // Store images on window to prevent garbage collection
         window.hemmaPreloadedImages = [];
 
         rooms.forEach(room => {
-          // Preload light version
+
           const imgLight = new Image();
           imgLight.src = `${basePath}/${room}${ext}`;
           window.hemmaPreloadedImages.push(imgLight);
 
-          // Preload dark version
           const imgDark = new Image();
           imgDark.src = `${basePath}/${room}${suffix}${ext}`;
           window.hemmaPreloadedImages.push(imgDark);

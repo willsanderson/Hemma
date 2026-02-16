@@ -82,7 +82,7 @@ hemma_thermostat:
                     ? 'rgba(255,255,255,0.06)'
                     : 'rgba(255,255,255,0.02)';
                 ]]]
-            - border: 1.8px solid
+            - border: 1.5px solid
             - border-color: |
                 [[[
                   const s = String(entity?.state || '').toLowerCase();

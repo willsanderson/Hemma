@@ -215,32 +215,13 @@ card:
           color: var(--navbar-active-color) !important;
         }
 
-        .navbar.desktop .route:nth-child(6) .label{
-          gap: 6px !important;
-          padding-right: 0 !important;
-          overflow: visible !important;
-        }
-
-        .navbar.desktop .route:nth-child(6) .label::after{
-          content: "\2304" !important;
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          line-height: 1 !important;
-          font-weight: 800 !important;
-          opacity: 0.8 !important;
-          width: 18px !important;
-          overflow: visible !important;
-          transform: translateY(-4px) scaleY(1.1) scaleX(1.5) !important;
-          transform-origin: center !important;
-        }
-
         .navbar-popup{
-          background: rgba(0,0,0,0.25) !important;
-          -webkit-backdrop-filter: blur(10px) saturate(110%) !important;
-          backdrop-filter: blur(10px) saturate(110%) !important;
-          box-shadow: var(--button-card-box-shadow) !important;
-          border-radius: 22px !important;
+          background: var(--hemma-popup-bg, rgba(0,0,0,0.25)) !important;
+          -webkit-backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
+          backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
+          border: 1px solid var(--wa-color-surface-border, rgba(255,255,255,.08)) !important;
+          box-shadow: none !important;
+          border-radius: var(--hemma-popup-br, 22px) !important;
           padding: 8px !important;
           width: max-content !important;
           max-width: calc(100vw - 24px) !important;

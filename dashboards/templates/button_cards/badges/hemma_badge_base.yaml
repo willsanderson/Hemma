@@ -2,16 +2,15 @@
 hemma_badge_base:
   styles:
     card:
-      - background: var(--badge-background)
-      - box-shadow: var(--badge-shadow)
-      - backdrop-filter: blur(8px)
-      - -webkit-backdrop-filter: blur(8px)
+      - background: var(--badge-background, rgba(0,0,0,0.18))
+      - box-shadow: var(--badge-shadow, none)
+      - backdrop-filter: blur(var(--badge-blur, 8px))
+      - -webkit-backdrop-filter: blur(var(--badge-blur, 8px))
       - border-radius: var(--badge-br, 9999px)
       - padding: var(--badge-padding-current, var(--badge-padding, 6px 14px))
       - min-height: var(--badge-min-height-current, var(--badge-min-height, 44px))
       - display: >
           [[[
-            // Robust enabled check - handles boolean, number, and string inputs
             const v = variables?.enabled;
             if (v === undefined || v === null) return 'inline-grid';
             if (typeof v === 'boolean') return v ? 'inline-grid' : 'none';
@@ -33,6 +32,10 @@ hemma_badge_base:
       - --badge-sub-color: var(--secondary-text-color)
       - background-clip: padding-box
       - overflow: hidden
+      - transition: background-color .22s ease,
+                    box-shadow .24s ease,
+                    transform .14s ease,
+                    filter .18s ease !important
 
     grid:
       - grid-template-areas: '"i l"'
@@ -96,15 +99,9 @@ hemma_badge_base:
         width: 32px !important;
         height: 32px !important;
       }
-      #name {
-        font-size: 13px !important;
-      }
-      .mp-title {
-        font-size: 13px !important;
-      }
-      .mp-sub {
-        font-size: 12px !important;
-      }
+      #name { font-size: 13px !important; }
+      .mp-title { font-size: 13px !important; }
+      .mp-sub { font-size: 12px !important; }
     }
 
     @media (max-height: 600px) and (orientation: landscape) {
@@ -116,15 +113,9 @@ hemma_badge_base:
         width: 26px !important;
         height: 26px !important;
       }
-      #name {
-        font-size: 12px !important;
-      }
-      .mp-title {
-        font-size: 12px !important;
-      }
-      .mp-sub {
-        font-size: 11px !important;
-      }
+      #name { font-size: 12px !important; }
+      .mp-title { font-size: 12px !important; }
+      .mp-sub { font-size: 11px !important; }
     }
 
     ha-card::after{  z-index: var(--badge-after-z, 2) !important; }
@@ -187,4 +178,3 @@ hemma_badge_base:
       overflow:hidden;
       text-overflow:ellipsis;
     }
-
