@@ -1211,38 +1211,82 @@ cards:
         .navbar-card.mobile{ display:none !important; }
 
         ha-card.navbar-card.desktop{
-          position: fixed !important;
-          left: 50% !important;
-          transform: translateX(-50%) !important;
-          top: 22px !important;
-          bottom: auto !important;
-          width: fit-content !important;
-          border-radius: 9999px !important;
+          position: relative !important;
+          inset: auto !important;
+          transform: none !important;
+          min-width: 0 !important;
+          border-radius: 0 !important;
           padding: 4px !important;
-          background: var(--hemma-nav-bg, rgba(255,255,255,0.11)) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          backdrop-filter: blur(12px) !important;
-          border: 1px solid var(--hemma-nav-border, rgba(255,255,255,0.12)) !important;
-          box-shadow: var(--hemma-nav-shadow, 0 18px 36px rgba(0,0,0,.04)) !important;
-          overflow: visible !important;
+          background: transparent !important;
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+          border: none !important;
+          box-shadow: none !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          -webkit-overflow-scrolling: touch !important;
+          scrollbar-width: none !important;
+          justify-content: safe center !important;
           --navbar-primary-color: var(--hemma-nav-icon, rgba(255,255,255,.78)) !important;
           --navbar-active-color: var(--hemma-nav-icon-active, rgba(255,255,255,1)) !important;
           --navbar-route-active-background: transparent !important;
           --navbar-route-active-color: inherit !important;
         }
 
+        ha-card.navbar-card.desktop::-webkit-scrollbar{
+          height: 0 !important;
+        }
+
+        @keyframes hemma-tablet-fade {
+          0% {
+            -webkit-mask-image: linear-gradient(to right, black, black calc(100% - 40px), transparent);
+            mask-image: linear-gradient(to right, black, black calc(100% - 40px), transparent);
+          }
+          1%, 99% {
+            -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0.2), rgba(0,0,0,0.4) 10px, black 50px, black calc(100% - 50px), transparent);
+            mask-image: linear-gradient(to right, rgba(0,0,0,0.2), rgba(0,0,0,0.4) 10px, black 50px, black calc(100% - 50px), transparent);
+          }
+          100% {
+            -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0.2), rgba(0,0,0,0.4) 10px, black 50px, black);
+            mask-image: linear-gradient(to right, rgba(0,0,0,0.2), rgba(0,0,0,0.4) 10px, black 50px, black);
+          }
+        }
+
+        @supports (animation-timeline: scroll()) {
+          ha-card.navbar-card.desktop{
+            animation: hemma-tablet-fade linear !important;
+            animation-timeline: scroll(self inline) !important;
+          }
+        }
+
         .navbar.desktop{
           --navbar-route-icon-size: 0px !important;
-          display:flex !important;
-          gap: 5px !important;
+          position: fixed !important;
+          left: 50% !important;
+          right: auto !important;
+          transform: translateX(-50%) !important;
+          top: 38px !important;
+          bottom: auto !important;
+          width: fit-content !important;
+          max-width: calc(75vw - 35px) !important;
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          gap: 0 !important;
           padding: 0 !important;
           margin: 0 !important;
+          border-radius: 9999px !important;
+          background: var(--hemma-nav-bg, rgba(255,255,255,0.11)) !important;
+          -webkit-backdrop-filter: blur(12px) !important;
+          backdrop-filter: blur(12px) !important;
+          border: 1px solid var(--hemma-nav-border, rgba(255,255,255,0.12)) !important;
+          box-shadow: var(--hemma-nav-shadow, 0 18px 36px rgba(0,0,0,.04)) !important;
+          overflow: hidden !important;
         }
 
         .icon, .image{ display:none !important; }
 
         .route{
-          flex: 1 1 0 !important;
+          flex: 0 0 auto !important;
           display:flex !important;
           align-items:center !important;
           justify-content:center !important;
@@ -1505,7 +1549,38 @@ cards:
           label: Bedroom
           icon: mdi:bed-king
 
-        # Scenes (Dropdown Menu)
+        - url: /dashboard-hemma/room4
+          label: Room4
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/room5
+          label: Room5
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/room6
+          label: Room6
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/room7
+          label: Room7
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/room8
+          label: Room8
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/room9
+          label: Room9
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/room10
+          label: Room10
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/room11
+          label: Room11
+          icon: mdi:bed-king
+
         - label: Scenes
           icon: mdi:layers
           icon_selected: mdi:layers

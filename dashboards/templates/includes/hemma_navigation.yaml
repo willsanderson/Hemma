@@ -1,17 +1,5 @@
 # Desktop Navbar
 # ============================================================================
-# CUSTOMIZATION REQUIRED: Update the routes section at the bottom of this file
-# to match your dashboard URL and view paths.
-#
-# ROUTES TO CUSTOMIZE (search for "# Navigation Buttons" or "routes:"):
-#   - Home: /dashboard-hemma/home
-#   - Living Room: /dashboard-hemma/living-room
-#   - Kitchen: /dashboard-hemma/kitchen
-#   - Bedroom: /dashboard-hemma/bedroom
-#   - Scenes: Dynamic popup (no URL change needed)
-#
-# Add or remove rooms by modifying the routes array at the bottom.
-# ============================================================================
 
 type: conditional
 conditions:
@@ -37,16 +25,17 @@ card:
         right: 0 !important;
         z-index: 50 !important;
         height: 0 !important;
+        --ha-card-padding: 0;
+        --ha-card-background: transparent;
+        --ha-card-border-color: transparent;
+        --ha-card-box-shadow: none;
       }
 
       ha-card{
-        background: transparent !important;
-        box-shadow: none !important;
-        border: 0 !important;
         margin: 0 !important;
-        padding: 0 !important;
         height: 0 !important;
         overflow: visible !important;
+        transition: none !important;
       }
 
       #root{
@@ -62,7 +51,7 @@ card:
 
   cards:
 
-    # Placeholder
+    # Left spacer / placeholder
     - type: custom:button-card
       show_name: false
       show_icon: false
@@ -104,19 +93,14 @@ card:
             --hemma-header-offset: var(--app-header-height, var(--header-height, 0px));
             --hemma-nav-popup-top: 80px;
             --hemma-nav-popup-nudge-x: -18px;
-            --hemma-desktop-media-top: 104px;
-            --hemma-desktop-media-w: 420px;
-            --hemma-desktop-media-h: 58px;
+            --ha-card-padding: 0;
+            --ha-card-background: transparent;
+            --ha-card-border-color: transparent;
+            --ha-card-box-shadow: none;
           }
           ha-card{
-            background: transparent !important;
-            box-shadow: none !important;
-            border: 0 !important;
-            padding: 0 !important;
             margin: 0 !important;
             overflow: visible !important;
-            justify-self: center !important;
-            align-self: center !important;
           }
 
       styles: |
@@ -130,18 +114,20 @@ card:
         ){
           position: relative !important;
           inset: auto !important;
-          top: auto !important;
-          bottom: auto !important;
-          left: auto !important;
-          right: auto !important;
-          width: fit-content !important;
-          max-width: 100% !important;
-          overflow: visible !important;
+          width: 100% !important;
+          max-width: var(--hemma-nav-safe-max, calc(100vw - 16vw - 320px)) !important;
           background: transparent !important;
           border: 0 !important;
           box-shadow: none !important;
           margin: 0 !important;
           padding: 0 !important;
+          border-radius: 0 !important;
+          display: flex !important;
+          justify-content: safe center !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          -webkit-overflow-scrolling: touch !important;
+          scrollbar-width: none !important;
 
           --navbar-primary-color: rgba(255,255,255,.82) !important;
           --navbar-active-color:  rgba(255,255,255,1) !important;
@@ -150,36 +136,45 @@ card:
           --navbar-active-background: transparent !important;
         }
 
-        .navbar-card.desktop{
-          gap: 40px !important;
+        :is(
+          ha-card.navbar-card.desktop,
+          .navbar-card.desktop
+        )::-webkit-scrollbar{
+          height: 0 !important;
         }
 
-        .navbar-card.desktop.top{
-          top: 4px !important;
+        @keyframes hemma-fade-mask {
+          0%, 100% {
+            -webkit-mask-image: linear-gradient(to right, black, black calc(100% - 80px), transparent);
+            mask-image: linear-gradient(to right, black, black calc(100% - 80px), transparent);
+          }
+        }
+
+        @supports (animation-timeline: scroll()) {
+          :is(ha-card.navbar-card.desktop, .navbar-card.desktop){
+            animation: hemma-fade-mask linear !important;
+            animation-timeline: scroll(self inline) !important;
+          }
         }
 
         .navbar.desktop{
           display: flex !important;
           flex-direction: row !important;
           align-items: center !important;
-          justify-content: center !important;
-          gap: 40px !important;
+          gap: 0 !important;
           padding: 0 !important;
           margin: 0 !important;
+          flex: 0 0 auto !important;
           background: transparent !important;
-          overflow: visible !important;
         }
 
         .navbar.desktop .route{
-          width: auto !important;
-          min-width: 0 !important;
           flex: 0 0 auto !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          padding: 0 !important;
+          width: auto !important;
+          padding: 0 20px !important;
           margin: 0 !important;
           background: transparent !important;
+          border: 0 !important;
         }
 
         .navbar.desktop .button{
@@ -200,19 +195,35 @@ card:
           align-items: center !important;
           justify-content: center !important;
           padding: 8px 0 14px !important;
-          font-size: 17px !important;
+          margin-bottom: -5px !important;
+          font-size: 18px !important;
           font-weight: 600 !important;
           line-height: 1 !important;
           color: var(--navbar-primary-color) !important;
           opacity: .88 !important;
-          background: transparent !important;
           white-space: nowrap !important;
-          overflow: visible !important;
         }
 
         .navbar.desktop :is(.route.active .label, .label.active){
           opacity: 1 !important;
           color: var(--navbar-active-color) !important;
+        }
+
+        .navbar.desktop :is(.route.active .label, .label.active)::before{
+          content: "" !important;
+          position: absolute !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 7px !important;
+          height: 2px !important;
+          border-radius: 2px !important;
+          background: rgba(255,255,255,0.85) !important;
+        }
+
+        ha-ripple{ display:none !important; }
+        .navbar.desktop .mdc-ripple-surface::before,
+        .navbar.desktop .mdc-ripple-surface::after{
+          display: none !important;
         }
 
         .navbar-popup{
@@ -237,17 +248,6 @@ card:
           --hemma-popup-label-weight: 400;
           --hemma-popup-label-active-weight: 550;
           --hemma-popup-label-inactive-opacity: .82;
-        }
-
-        .navbar.desktop :is(.route.active .label, .label.active)::before{
-          content: "" !important;
-          position: absolute !important;
-          left: 0 !important;
-          right: 0 !important;
-          bottom: 9px !important;
-          height: 2px !important;
-          border-radius: 2px !important;
-          background: rgba(255,255,255,0.85) !important;
         }
 
         .navbar-popup-backdrop.visible{
@@ -283,12 +283,6 @@ card:
           display: inline-flex !important;
           align-items: center !important;
           justify-content: center !important;
-        }
-
-        .navbar-popup .popup-item .button:hover,
-        .navbar-popup .popup-item .button:active{
-          background: transparent !important;
-          box-shadow: none !important;
         }
 
         .navbar-popup ha-icon{
@@ -351,136 +345,6 @@ card:
           z-index: 999998 !important;
         }
 
-        @media (hover: hover) and (pointer: fine){
-
-          .media-player{
-            position: fixed !important;
-            top: var(--hemma-desktop-media-top, 104px) !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-            z-index: 999997 !important;
-            width: min(var(--hemma-desktop-media-w, 420px), calc(100vw - 32px)) !important;
-            max-width: var(--hemma-desktop-media-w, 420px) !important;
-            min-height: var(--hemma-desktop-media-h, 58px) !important;
-            height: var(--hemma-desktop-media-h, 58px) !important;
-            padding: 8px 10px 8px 3px !important;
-            background-color: rgba(0,0,0,0.18) !important;
-            -webkit-backdrop-filter: blur(14px) saturate(1.2) !important;
-            backdrop-filter: blur(14px) saturate(1.2) !important;
-            box-shadow: var(--button-card-box-shadow, var(--ha-card-box-shadow)) !important;
-            border-radius: 9999px !important;
-            border: 0 !important;
-            overflow: hidden !important;
-          }
-
-          .media-player-bg{
-            position: absolute !important;
-            inset: 0 !important;
-            z-index: 0 !important;
-            pointer-events: none !important;
-            opacity: 0.38 !important;
-            filter: blur(26px) saturate(1.35) !important;
-            transform: scale(1.35) !important;
-            background-size: cover !important;
-            background-position: center !important;
-            background-repeat: no-repeat !important;
-          }
-
-          .media-player::before{
-            content:"" !important;
-            position:absolute !important;
-            inset:0 !important;
-            border-radius:inherit !important;
-            pointer-events:none !important;
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10) !important;
-            z-index: 1 !important;
-          }
-
-          .media-player::after{
-            content:"" !important;
-            position:absolute !important;
-            inset:0 !important;
-            border-radius: inherit !important;
-            pointer-events:none !important;
-            background: rgba(0,0,0,0.12) !important;
-            z-index: 1 !important;
-          }
-
-          .media-player > :not(.media-player-bg){
-            position: relative !important;
-            z-index: 2 !important;
-          }
-
-          .media-player-image{
-            width: 42px !important;
-            height: 42px !important;
-            aspect-ratio: 1 / 1 !important;
-            flex: 0 0 auto !important;
-            border-radius: 9999px !important;
-            overflow: hidden !important;
-            margin-left: -5px !important;
-            margin-right: 4px !important;
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10) !important;
-          }
-
-          .media-player-image img{
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: cover !important;
-            display: block !important;
-          }
-
-          /* typography */
-          .media-player-title{
-            font-family: var(--primary-font-family, var(--ha-font-family-body)) !important;
-            font-size: 15px !important;
-            font-weight: 650 !important;
-            color: var(--primary-text-color, #fff) !important;
-            text-shadow: var(--hemma-entity-text-shadow, 0 0 3px rgba(0,0,0,.15)) !important;
-          }
-
-          .media-player-artist{
-            font-family: var(--primary-font-family, var(--ha-font-family-body)) !important;
-            font-size: 13px !important;
-            font-weight: 600 !important;
-            opacity: 0.78 !important;
-            color: var(--secondary-text-color, rgba(240,240,240,.85)) !important;
-          }
-
-          .media-player :is(.media-player-progress-bar, .progress, .progress-bar){
-            background: var(--hemma-slider-track, rgba(255,255,255,0.22)) !important;
-            border-radius: 999px !important;
-            overflow: hidden !important;
-          }
-          .media-player :is(.media-player-progress-bar-fill, .progress-fill, .bar){
-            background: var(--hemma-slider-progress, rgba(255,255,255,0.95)) !important;
-            border-radius: 999px !important;
-          }
-
-          .media-player :is(ha-icon-button, mwc-icon-button, button, .button){
-            border-radius: 999px !important;
-            background: rgba(255,255,255,0.10) !important;
-            box-shadow: none !important;
-            padding: 6px !important;
-            transition: background .16s ease, transform .12s ease !important;
-          }
-
-          .media-player :is(ha-icon-button, mwc-icon-button, button, .button):hover{
-            background: rgba(255,255,255,0.14) !important;
-          }
-
-          .media-player :is(ha-icon-button, mwc-icon-button, button, .button):active{
-            background: rgba(255,255,255,0.18) !important;
-            transform: translateY(.5px) !important;
-          }
-
-          .media-player :is(ha-icon, svg){
-            color: rgba(255,255,255,0.92) !important;
-            fill: rgba(255,255,255,0.92) !important;
-          }
-        }
-
-      # Navigation Buttons (Edit these)
       routes:
         - url: /dashboard-hemma/home
           label: Home
@@ -514,13 +378,11 @@ card:
 
               const isHidden = (id) => {
                 const e = getRegEntry(id);
-                // Different HA versions expose slightly different fields
                 return !!(e && (e.hidden || e.hidden_by || e.disabled || e.disabled_by));
               };
 
               const scenes = Object.values(hass.states || {})
                 .filter(e => e?.entity_id?.startsWith('scene.'))
-                // Keep only scenes that are NOT hidden/disabled in HA
                 .filter(s => !isHidden(s.entity_id))
                 .slice()
                 .sort((a,b) => (a.attributes?.friendly_name || a.entity_id)
@@ -552,12 +414,14 @@ card:
           :host{
             justify-self: end !important;
             width: max-content !important;
+            --ha-card-padding: 0;
+            --ha-card-background: transparent;
+            --ha-card-border-color: transparent;
+            --ha-card-box-shadow: none;
           }
           ha-card{
-            background: transparent !important;
-            box-shadow: none !important;
-            border: 0 !important;
             width: max-content !important;
+            transition: none !important;
           }
 
       cards:
