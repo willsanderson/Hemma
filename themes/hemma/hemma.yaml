@@ -11,6 +11,7 @@ Hemma:
       wa-color-neutral-fill-normal: var(--ha-card-background-active)
       mdc-text-field-fill-color: rgba(50,50,50,0.4)
       mdc-theme-surface: var(--ha-card-background)
+      md-list-container-color: var(--ha-card-background)
       ha-color-border-neutral-normal: transparent
       ha-dialog-background: rgba(255,255,255,0.1)
       ha-dialog-surface-background: rgba(255,255,255,0.1)
@@ -63,6 +64,7 @@ Hemma:
       ha-color-border-neutral-normal: transparent
       mdc-text-field-fill-color: var(--primary-background-color)
       mdc-theme-surface: var(--ha-card-background)
+      md-list-container-color: var(--ha-card-background)
       wa-color-text-quiet: var(--secondary-text-color)
       wa-color-neutral-fill-normal: var(--ha-card-background-active)
       hemma-control-off: rgba(150,150,150,0.12)
@@ -126,10 +128,11 @@ Hemma:
   # ============================================================================
 
   ha-color-on-neutral-normal: var(--secondary-text-color)
-  ha-border-radius-lg: 0px
+  ha-border-radius-lg: 12px
   ha-border-radius-sm: 30px
   ha-card-features-border-radius: 30px
   border-end-end-radius: 30px
+  state-icon-color: "#ffffff"
   wa-color-on-normal: rgba(255,255,255,.95)
   wa-border-radius-m: 24px
   wa-border-radius-s: 30px

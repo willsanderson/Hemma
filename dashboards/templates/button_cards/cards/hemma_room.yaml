@@ -143,7 +143,7 @@ hemma_room:
                 : 'translateY(100%)';
             ]]]
         - transition: transform 0.5s
-        - padding: 18px
+        - padding: 14px
         - color: white
         - font-size: 13px
         - text-transform: uppercase
