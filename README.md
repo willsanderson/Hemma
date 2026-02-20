@@ -38,7 +38,7 @@ Install via HACS (recommended) unless noted:
 - **[button-card](https://github.com/custom-cards/button-card)** (RomRider)
 - **[layout-card](https://github.com/thomasloven/lovelace-layout-card)** (Thomas Lovén) — Hemma uses a **modified** version included in this repo (don’t install via HACS).
 - **[lovelace-navbar-card](https://github.com/joseluis9595/lovelace-navbar-card)** (Jose Luis Álvarez) - required for navigation + media badge
-- **navbar-popup-caret** - custom js required for navbar dropdown menus (file already included in local folder)
+- **navbar-popup-caret** - custom js required for navbar dropdown menus (included in this repo)
 #### Optional
 - **[kiosk-mode](https://github.com/NemesisRE/kiosk-mode)** (NemesisRE) - Optional but recommended (Hemma looks best with no header/sidebar)
 ---
