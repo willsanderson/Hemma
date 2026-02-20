@@ -25,37 +25,9 @@ hemma_shared:
 
   styles:
     grid:
-      # Grid layout
       - grid-template-columns: 1fr max-content
-      - grid-template-areas: >
-          [[[
-            const mm = (q) => (window.matchMedia ? window.matchMedia(q).matches : false);
-            const isPhonePortrait =
-              (mm('(pointer: coarse)') || mm('(hover: none)')) &&
-              mm('(max-width: 767px)') &&
-              mm('(orientation: portrait)');
-
-            return isPhonePortrait
-              ? `"n            weather"
-                 "badges       badges"
-                 "badges_media badges_media"`
-              : `"temperature weather"
-                 "n           weather"
-                 "badges      badges"
-                 "badges_media badges_media"`;
-          ]]]
-      - grid-template-rows: >
-          [[[
-            const mm = (q) => (window.matchMedia ? window.matchMedia(q).matches : false);
-            const isPhonePortrait =
-              (mm('(pointer: coarse)') || mm('(hover: none)')) &&
-              mm('(max-width: 767px)') &&
-              mm('(orientation: portrait)');
-
-            return isPhonePortrait
-              ? "min-content min-content min-content"
-              : "var(--hero-temp-reserve, 22px) min-content min-content min-content";
-          ]]]
+      - grid-template-areas: '"temperature weather" "n weather" "badges badges" "badges_media badges_media"'
+      - grid-template-rows: var(--hero-temp-reserve, 22px) min-content min-content min-content
       - row-gap: var(--hero-header-gap-current, 6px)
       - align-content: start
 
@@ -346,6 +318,22 @@ hemma_shared:
 
       .hemma-weather-glance{
         max-width: min(72vw, 520px);
+      }
+    }
+
+    @media (max-width: 767px) and (orientation: portrait) and (pointer: coarse),
+           (max-width: 767px) and (orientation: portrait) and (hover: none) {
+      :host .button-card-content,
+      :host .grid {
+        grid-template-areas: "n weather" "badges badges" "badges_media badges_media" !important;
+        grid-template-rows: min-content min-content min-content !important;
+      }
+    }
+
+    @media (orientation: landscape) and (pointer: coarse),
+           (orientation: landscape) and (hover: none) {
+      :host #weather {
+        display: none !important;
       }
     }`;
     ]]]

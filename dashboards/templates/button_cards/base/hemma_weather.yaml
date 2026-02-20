@@ -55,12 +55,11 @@ hemma_weather:
       - "-webkit-tap-highlight-color": transparent
 
     grid:
-      # Matches the hemma_room.yaml weather widget layout
       - grid-template-areas: '"n i" "l i"'
       - grid-template-columns: max-content max-content
       - grid-template-rows: min-content min-content
       - column-gap: 4px
-      - row-gap: 0px
+      - row-gap: 1px
       - justify-content: end
       - justify-items: end
       - align-items: start
@@ -86,7 +85,7 @@ hemma_weather:
       - text-align: right
       - font-size: var(--hero-weather-sub-size, 12px)
       - font-weight: 500
-      - line-height: 1.2
+      - line-height: 1.1
       - margin-top: -2px
       - opacity: 0.76
       - white-space: nowrap
@@ -95,8 +94,8 @@ hemma_weather:
       - max-width: 100%
 
     icon:
-      - width: var(--hero-weather-icon-size, 30px)
-      - height: var(--hero-weather-icon-size, 30px)
+      - width: var(--hero-weather-icon-size, 28px)
+      - height: var(--hero-weather-icon-size, 28px)
       - opacity: 0.92
 
   name: >

@@ -63,7 +63,7 @@ mediaquery:
     position: absolute
     z-index: 4
     inset: >
-      calc(var(--hemma-tiles-top-landscape, calc(env(safe-area-inset-top, 0px) + 105px)) + var(--hemma-entity-top-nudge-landscape, 0px))
+      calc(var(--hemma-tiles-top-landscape, calc(env(safe-area-inset-top, 0px) + 105px)))
       var(--hemma-tiles-right-pad-landscape, 0px)
       auto
       auto

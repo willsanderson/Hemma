@@ -251,7 +251,6 @@ Hemma:
   hemma-entity-icon-size-landscape: 24px
   hemma-tiles-top-landscape-nudge: 0px
   hemma-hero-top-landscape-nudge: 16px
-  hemma-entity-top-nudge-landscape: -10px
 
   # Entity Variables
   hemma-entity-active: rgba(255,255,255,1)
@@ -387,6 +386,9 @@ Hemma:
   badge-media-max-width-desktop: 640px
   badge-media-max-width-tablet: 520px
   badge-media-max-width-mobile: 100%
+
+  # Weather Widget
+  hero-weather-icon-size: 30px
 
   # ============================================================================
   # DIALOGS, CARDS & UI COMPONENTS

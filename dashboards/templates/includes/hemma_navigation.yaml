@@ -92,7 +92,7 @@ card:
           :host{
             --hemma-header-offset: var(--app-header-height, var(--header-height, 0px));
             --hemma-nav-popup-top: 80px;
-            --hemma-nav-popup-nudge-x: -18px;
+            --hemma-nav-popup-nudge-x: -1px;
             --ha-card-padding: 0;
             --ha-card-background: transparent;
             --ha-card-border-color: transparent;

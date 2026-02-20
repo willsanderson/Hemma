@@ -203,12 +203,13 @@ cards:
         }
 
         .navbar-popup{
-          background: rgba(0,0,0,0.25) !important;
-          -webkit-backdrop-filter: blur(10px) saturate(110%) !important;
-          backdrop-filter: blur(10px) saturate(110%) !important;
-          box-shadow: var(--button-card-box-shadow) !important;
-          border-radius: 22px !important;
-          padding: 12px !important;
+          background: var(--hemma-popup-bg, rgba(0,0,0,0.25)) !important;
+          -webkit-backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
+          backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
+          border: 1px solid var(--wa-color-surface-border, rgba(255,255,255,.08)) !important;
+          box-shadow: none !important;
+          border-radius: var(--hemma-popup-br, 22px) !important;
+          padding: 4px !important;
           width: max-content !important;
           max-width: calc(100vw - (var(--hemma-popup-edge) * 2)) !important;
           max-height: calc(100vh - 140px) !important;
@@ -262,8 +263,8 @@ cards:
           align-items: center !important;
           justify-items: start !important;
           column-gap: 9px !important;
-          padding: 12px 12px 12px 8px !important;
-          border-radius: 12px !important;
+          padding: 9px 12px !important;
+          border-radius: var(--hemma-popup-br, 22px) !important;
           width: 100% !important;
           color: rgba(255,255,255,0.92) !important;
           box-sizing: border-box !important;
@@ -574,12 +575,14 @@ cards:
         }
 
         .navbar-popup{
-          background: rgba(0,0,0,0.25) !important;
-          -webkit-backdrop-filter: blur(10px) saturate(110%) !important;
-          backdrop-filter: blur(10px) saturate(110%) !important;
-          box-shadow: var(--button-card-box-shadow) !important;
-          border-radius: 22px !important;
-          padding: 8px !important;
+          background: var(--hemma-popup-bg, rgba(0,0,0,0.25)) !important;
+          -webkit-backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
+          backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
+          border: 1px solid var(--wa-color-surface-border, rgba(255,255,255,.08)) !important;
+          box-shadow: none !important;
+          border-radius: var(--hemma-popup-br, 22px) !important;
+          padding: 6px !important;
+          gap: 4px !important;
           width: max-content !important;
           max-width: calc(100vw - 24px) !important;
           box-sizing: border-box !important;
@@ -615,7 +618,7 @@ cards:
           align-items: center !important;
           justify-items: start !important;
           column-gap: 11px !important;
-          padding: 10px 12px 10px 10px !important;
+          padding: 8px 12px 8px 10px !important;
           border-radius: 16px !important;
           width: 100% !important;
           box-sizing: border-box !important;
@@ -946,11 +949,12 @@ cards:
         }
 
         .navbar-popup{
-          background: rgba(0,0,0,0.25) !important;
-          -webkit-backdrop-filter: blur(10px) saturate(110%) !important;
-          backdrop-filter: blur(10px) saturate(110%) !important;
-          box-shadow: var(--button-card-box-shadow) !important;
-          border-radius: 22px !important;
+          background: var(--hemma-popup-bg, rgba(0,0,0,0.25)) !important;
+          -webkit-backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
+          backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
+          border: 1px solid var(--wa-color-surface-border, rgba(255,255,255,.08)) !important;
+          box-shadow: none !important;
+          border-radius: var(--hemma-popup-br, 22px) !important;
           padding: 8px !important;
           width: max-content !important;
           max-width: calc(100vw - 24px) !important;
@@ -981,7 +985,7 @@ cards:
           align-items: center !important;
           justify-items: start !important;
           column-gap: 11px !important;
-          padding: 10px 12px 10px 10px !important;
+          padding: 8px 12px 8px 10px !important;
           border-radius: 16px !important;
           width: 100% !important;
           box-sizing: border-box !important;
@@ -1363,11 +1367,12 @@ cards:
         }
 
         .navbar-popup{
-          background: rgba(0,0,0,0.25) !important;
-          -webkit-backdrop-filter: blur(10px) saturate(110%) !important;
-          backdrop-filter: blur(10px) saturate(110%) !important;
-          box-shadow: var(--button-card-box-shadow) !important;
-          border-radius: 22px !important;
+          background: var(--hemma-popup-bg, rgba(0,0,0,0.25)) !important;
+          -webkit-backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
+          backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
+          border: 1px solid var(--wa-color-surface-border, rgba(255,255,255,.08)) !important;
+          box-shadow: none !important;
+          border-radius: var(--hemma-popup-br, 22px) !important;
           padding: 8px !important;
           width: max-content !important;
           max-width: calc(100vw - 24px) !important;
@@ -1410,7 +1415,7 @@ cards:
           align-items: center !important;
           justify-items: start !important;
           column-gap: 11px !important;
-          padding: 10px 12px 10px 10px !important;
+          padding: 8px 12px 8px 10px !important;
           border-radius: 16px !important;
           width: 100% !important;
           box-sizing: border-box !important;
@@ -1547,38 +1552,6 @@ cards:
         # Bedroom
         - url: /dashboard-hemma/bedroom
           label: Bedroom
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/room4
-          label: Room4
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/room5
-          label: Room5
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/room6
-          label: Room6
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/room7
-          label: Room7
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/room8
-          label: Room8
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/room9
-          label: Room9
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/room10
-          label: Room10
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/room11
-          label: Room11
           icon: mdi:bed-king
 
         - label: Scenes
