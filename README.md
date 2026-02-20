@@ -38,7 +38,7 @@ Install via HACS (recommended) unless noted:
 - **[button-card](https://github.com/custom-cards/button-card)** (RomRider)
 - **[layout-card](https://github.com/thomasloven/lovelace-layout-card)** (Thomas Lovén) — Hemma uses a **modified** version included in this repo (don’t install via HACS).
 - **[lovelace-navbar-card](https://github.com/joseluis9595/lovelace-navbar-card)** (Jose Luis Álvarez) - required for navigation + media badge
-
+- **navbar-popup-caret** - custom js required for navbar dropdown menus (file already included in local folder)
 #### Optional
 - **[kiosk-mode](https://github.com/NemesisRE/kiosk-mode)** (NemesisRE) - Optional but recommended (Hemma looks best with no header/sidebar)
 ---
@@ -94,8 +94,10 @@ Example layout:
     │   ├── icons/                      # UI icons
     │   ├── rooms/                      # Room/background images
     │   └── weather/                    # Weather icons
-    └── layout-card-modified/
-        └── layout-card-modified.js     # Modified Layout Card build
+    ├── layout-card-modified/
+    │   └── layout-card-modified.js     # Modified Layout Card build
+    └── navbar-popup-caret/
+        └── navbar-popup-caret.js       # Custom JavaScript for adding dropdown icon on navbar
 ```
 
 ## :rocket: Installation
@@ -116,8 +118,9 @@ Copy these folders/files from this repo into your HA `/config`:
 ### 3) Add Lovelace resources
 In Settings → Dashboards → Resources (or YAML), add:
 
-- `/hacsfiles/button-card/button-card.js` (should already be present if installed via HACS)
 - `/local/layout-card-modified/layout-card-modified.js` (from this repo)
+- `/local/navbar-popup-caret/navbar-popup-caret.js`(from this repo)
+- `/hacsfiles/button-card/button-card.js` (should already be present if installed via HACS)
 - `/hacsfiles/lovelace-navbar-card/navbar-card.js` (should already be present if installed via HACS)
 
 (Exact resource paths can vary depending on how you installed the cards.)
