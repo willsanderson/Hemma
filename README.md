@@ -97,7 +97,7 @@ Example layout:
     ├── layout-card-modified/
     │   └── layout-card-modified.js     # Modified Layout Card build
     └── navbar-popup-caret/
-        └── navbar-popup-caret.js       # Custom JavaScript for adding dropdown icon on navbar
+        └── navbar-popup-caret.js       # Add dropdown icon to navbar
 ```
 
 ## :rocket: Installation
