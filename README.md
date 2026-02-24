@@ -260,6 +260,10 @@ This repo is intended as a starting point:
 - Tweak theme colors, shadows, and typography in `themes/hemma/hemma.yaml`.
 - Adjust layouts (`hemma_entity_layout.yaml`, etc.) to match your devices and preferences.
 
+### HA Companion App iOS Settings
+
+Hemma is designed for edge-to-edge screens. If you are using the HA iOS Companion app, please ensure to enable **Edge to edge display** found in Settings → Companion app → General → Edge to edge display
+
 ### Button Card Icons
 
 To add additional button card icons, you can download them from the link below and place the icons in the `www/hemma/icons/` folder:
