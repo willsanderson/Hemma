@@ -75,7 +75,7 @@ hemma_weather:
           [[[
             return variables.hero_mode ? 'min-content' : 'min-content min-content';
           ]]]
-      - column-gap: 4px
+      - column-gap: 5px
       - row-gap: 2px
       - justify-content: >
           [[[
@@ -131,7 +131,7 @@ hemma_weather:
       - top: 50%
       - left: 50%
       - transform: translate(-50%, -50%)
-      - width: var(--weather-icon-size, 34px)
+      - width: auto
       - height: var(--weather-icon-size, 34px)
       - object-fit: contain
       - border-radius: 0
@@ -197,7 +197,7 @@ hemma_weather:
           };
           const file = svgMap[condRaw];
           if (file) {
-            iconHtml = `<img src="/local/hemma/weather/${file}.svg" style="width:var(--weather-icon-size,34px);height:var(--weather-icon-size,34px);object-fit:contain;opacity:0.92;flex-shrink:0;" />`;
+            iconHtml = `<img src="/local/hemma/weather/${file}.svg" style="width:auto;height:var(--weather-icon-size,34px);object-fit:contain;opacity:0.92;flex-shrink:0;" />`;
           }
         }
 

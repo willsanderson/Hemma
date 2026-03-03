@@ -77,9 +77,9 @@ hemma_thermostat:
             - background: |
                 [[[
                   const s = String(entity?.state || '').toLowerCase();
-                  if (s === 'cool') return 'rgba(180, 180, 180, 0.02)';
-                  if (s === 'heat') return 'rgba(0, 0, 0, 0.08)';
-                  return 'rgba(255,255,255,0)';
+                  if (s === 'cool') return 'var(--ha-card-background-active)';
+                  if (s === 'heat') return 'var(--ha-card-background-active)';
+                  return 'transparent';
                 ]]]
             - border: 1.5px solid
             - border-color: |
@@ -168,7 +168,7 @@ hemma_thermostat:
               [[[
                 return ['cool','heat'].includes(entity.state)
                   ? '/local/hemma/icons/power_on.svg'
-                  : '/local/hemma/icons/power_off.svg';
+                  : '/local/hemma/icons/power_on.svg';
               ]]]
             tap_action:
               action: call-service
@@ -183,6 +183,8 @@ hemma_thermostat:
                 - padding: 0
                 - box-shadow: none !important
                 - backdrop-filter: none !important
+                - "--button-card-ripple-color": rgba(255,255,255,.2) !important
+                - "-webkit-tap-highlight-color": rgba(255,255,255,.2) !important
                 - background: |
                     [[[
                       return entity.state === 'off'
@@ -190,6 +192,8 @@ hemma_thermostat:
                         : 'var(--hemma-control-off)';
                     ]]]
               img_cell: [ { width: '70%' }, { aspect-ratio: '1' } ]
+            extra_styles: |
+              #img-cell { opacity: var(--thermostat-control-opacity, 1) !important; }
 
           - type: custom:button-card
             template: [hemma_default]
@@ -230,6 +234,8 @@ hemma_thermostat:
                 - padding: 0
                 - box-shadow: none !important
                 - backdrop-filter: none !important
+                - "--button-card-ripple-color": rgba(255,255,255,.2) !important
+                - "-webkit-tap-highlight-color": rgba(255,255,255,.2) !important
                 - background: |
                     [[[
                       return ['cool','heat'].includes(entity.state)
@@ -237,6 +243,8 @@ hemma_thermostat:
                         : 'var(--hemma-control-off)';
                     ]]]
               img_cell: [ { width: '74%' }, { aspect-ratio: '1' } ]
+            extra_styles: |
+              #img-cell { opacity: var(--thermostat-control-opacity, 1) !important; }
 
     target_temperature:
       card:
@@ -379,6 +387,10 @@ hemma_thermostat:
           [[[
             const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
             return isMobile ? '5px' : '7px';
+          ]]]
+      - --thermostat-control-opacity: |
+          [[[
+            return ['cool','heat'].includes(entity.state) ? '1' : '0.6';
           ]]]
     name:
       - opacity: |

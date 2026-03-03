@@ -253,6 +253,7 @@ hemma_shared:
       :host{
         --hero-weather-title-size: 13px;
         --hero-weather-sub-size: 12px;
+        --hero-weather-icon-size: 26px;
       }
     }
 

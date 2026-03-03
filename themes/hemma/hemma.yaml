@@ -4,7 +4,7 @@ Hemma:
       primary-background-color: rgb(50, 50, 50)
       secondary-background-color: rgb(40, 40, 40)
       app-header-background-color: rgba(76, 80, 84, 0.3)
-      ha-card-background: rgba(200,200,200,0.08)
+      ha-card-background: rgba(20,20,20,0.18)
       ha-card-background-active: rgba(255,255,255,0.3)
       ha-color-fill-primary-normal-resting: var(--hemma-nav-bg)
       wa-color-text-quiet: var(--secondary-text-color)
@@ -23,6 +23,7 @@ Hemma:
       button-card-box-shadow: var(--ha-shadow-light)
       button-card-box-shadow-active: var(--ha-shadow-light-active)
       navbar-primary-color: var(--hemma-nav-icon-active)
+      hemma-entity-inactive: rgba(240,240,240,0.8)
       hemma-nav-bg: rgba(255,255,255,0.08)
       hemma-nav-border: rgba(255,255,255,0.18)
       hemma-nav-shadow: >
@@ -46,7 +47,7 @@ Hemma:
         )
       primary-text-color: "#ffffff"
       text-primary-color: rgba(255,255,255,.95)
-      secondary-text-color: rgba(240,240,240,0.8)
+      secondary-text-color: rgba(245,245,245,0.8)
       disabled-text-color: rgba(208,208,208,0.5)
       sidebar-background-color: var(--ha-card-background)
       sidebar-icon-color: '#aaaaad'
@@ -57,8 +58,8 @@ Hemma:
       primary-background-color: rgb(40, 40, 40)
       secondary-background-color: rgb(20, 20, 20)
       app-header-background-color: rgba(76, 80, 84, 0.3)
-      ha-card-background-active: rgba(100,100,100,0.25)
-      ha-card-background: rgba(0,0,0,0.35)
+      ha-card-background-active: rgba(240,240,240,0.07)
+      ha-card-background: rgba(0,0,0,0.4)
       ha-dialog-background: rgba(0,0,0,0.35)
       ha-dialog-surface-background: rgba(0,0,0,0.35)
       ha-color-fill-primary-normal-resting: var(--hemma-nav-bg)
@@ -69,13 +70,14 @@ Hemma:
       md-list-container-color: var(--ha-card-background)
       wa-color-text-quiet: var(--secondary-text-color)
       wa-color-neutral-fill-normal: var(--ha-card-background-active)
-      hemma-control-off: rgba(150,150,150,0.12)
-      hemma-control-on: rgba(255,255,255,0.12)
+      hemma-control-off: rgba(0,0,0,0.13)
+      hemma-control-on: rgba(255,255,255,0.03)
       thermostat-card-off: var(--hemma-control-off)
       thermostat-card-on: var(--hemma-control-on)
       button-card-box-shadow: var(--ha-shadow-dark)
       button-card-box-shadow-active: var(--ha-shadow-dark-active)
       navbar-primary-color: var(--hemma-nav-icon-active)
+      hemma-entity-inactive: rgba(240,240,240,0.7)
       hemma-nav-bg: rgba(0,0,0,.3)
       hemma-nav-border: rgba(240,240,240,0.18)
       hemma-nav-inactive-opacity: .72
@@ -121,7 +123,7 @@ Hemma:
   # ============================================================================
 
   ha-shadow-light: >
-    inset 0 0 0 1px rgba(255,255,255,0.06),
+    inset 0 0 0 1px rgba(250,250,250,0.07),
     inset 6px 6px 10px -10px rgba(255,255,255,0.13),
     inset -6px -6px 10px -10px rgba(255,255,255,0.16),
     inset 0 0 3px -1px rgba(255,255,255,0.24),
@@ -141,7 +143,7 @@ Hemma:
     0 18px 20px rgba(0,0,0,0.04)
 
   ha-shadow-dark-active: >
-    inset 0 0 0 1px rgba(220,220,220,0.09),
+    inset 0 0 0 1px rgba(220,220,220,0.08),
     inset 0 10px 16px -16px rgba(255,255,255,0.16),
     inset 0 -10px 18px -16px rgba(255,255,255,0.13),
     inset 1.5px 1.5px 1px -1.5px rgba(255,255,255,0.16),
@@ -302,8 +304,8 @@ Hemma:
   page-gutter-mobile: 11px
 
   # Header Top
-  header-top-desktop: clamp(280px, 24vh, 300px)
-  header-top-tablet: clamp(220px, 24vh, 320px)
+  header-top-desktop: clamp(400px, 24vh, 420px)
+  header-top-tablet: clamp(250px, 24vh, 340px)
   header-top-mobile: clamp(30px, 16vh, 70px)
   header-top-mobile-nudge: -10px
 
@@ -326,7 +328,7 @@ Hemma:
   hemma-nav-top-tablet: 55px
 
   # Hero Title Sizing
-  hero-title-size-desktop: clamp(52px, 4.6vw + 8px, 96px)
+  hero-title-size-desktop: clamp(75px, 4.6vw + 8px, 105px)
   hero-title-size-tablet: clamp(68px, 5.5vw + 8px, 90px)
   hero-title-size-mobile: clamp(38px, 4vw + 2px, 64px)
   hero-title-size-landscape: clamp(28px, 4.6vw + 4px, 40px)
@@ -353,9 +355,9 @@ Hemma:
   hero-img-brightness-from: 0.97
 
   # Weather
-  weather-icon-size-mobile: 28px
-  weather-icon-size-tablet: 28px
-  weather-icon-size-desktop: 28px
+  weather-icon-size-mobile: 26px
+  weather-icon-size-tablet: 26px
+  weather-icon-size-desktop: 26px
   hemma-weather-bottom-nudge: -5px
 
   # ============================================================================
