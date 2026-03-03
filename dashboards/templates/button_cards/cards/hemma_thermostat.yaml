@@ -386,7 +386,7 @@ hemma_thermostat:
       - --puck-padding: |
           [[[
             const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-            return isMobile ? '5px' : '7px';
+            return isMobile ? '5px' : '6px';
           ]]]
       - --thermostat-control-opacity: |
           [[[
