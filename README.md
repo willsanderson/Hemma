@@ -9,7 +9,7 @@ Hemma is fully YAML-based and designed for:
 - Badges for climate, sensors, presence, and active media
 - Clean navigation with a mobile navbar + desktop/tablet top navigation
 
-![hemma_devices](https://github.com/user-attachments/assets/f66ee922-6e95-45bc-afee-ba12c8869886)
+![hemma_devices](https://github.com/user-attachments/assets/d026e4b3-222d-418b-92ab-7beb3b4a7812)
 
 ---
 ### Highlights and Features
@@ -58,8 +58,8 @@ Install via HACS (recommended) unless noted:
 <img src="https://github.com/user-attachments/assets/2e562b7b-811e-4070-afbc-a958be7efa25" width="404">
 
 ### Tablet View (Light/Dark)
-![tablet-livingroom-light](https://github.com/user-attachments/assets/019693ef-3969-4104-ac5e-ded769ab3ccb)
-![tablet-livingroom-dark](https://github.com/user-attachments/assets/ac0d1d67-0e6e-4cdb-8627-c1db13cfce13)
+![livingroom-tablet-light](https://github.com/user-attachments/assets/be178690-0347-4746-bd40-4fffc6af44de)
+![livingroom-tablet-dark](https://github.com/user-attachments/assets/5051fb90-e178-4af0-a6fd-e43fbc8b8f98)
 
 ---
 
