@@ -121,7 +121,7 @@ hemma_badge_media_group:
       - background: >
           [[[
             return entity?.state === 'media'
-              ? 'var(--badge-active-color, rgba(255,255,255,0.65))'
+              ? 'var(--badge-active-color, rgba(255,255,255,0.85))'
               : 'var(--badge-background, rgba(0,0,0,0.18))';
           ]]]
       - display: >
