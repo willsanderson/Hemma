@@ -145,9 +145,13 @@ card:
         }
 
         @keyframes hemma-fade-mask {
-          0%, 100% {
-            -webkit-mask-image: linear-gradient(to right, black, black calc(100% - 80px), transparent);
-            mask-image: linear-gradient(to right, black, black calc(100% - 80px), transparent);
+          0% {
+            -webkit-mask-image: linear-gradient(to right, transparent 0px, black 0px, black calc(100% - 80px), transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0px, black 0px, black calc(100% - 80px), transparent 100%);
+          }
+          100% {
+            -webkit-mask-image: linear-gradient(to right, transparent 0px, black 80px, black 100%, transparent calc(100% + 80px));
+            mask-image: linear-gradient(to right, transparent 0px, black 80px, black 100%, transparent calc(100% + 80px));
           }
         }
 
@@ -378,6 +382,34 @@ card:
 
         - url: /dashboard-hemma/bedroom
           label: Bedroom
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/bedroom
+          label: Room 4
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/bedroom
+          label: Room 5
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/bedroom
+          label: Room 6
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/bedroom
+          label: Room 7
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/bedroom
+          label: Room 8
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/bedroom
+          label: Room 9
+          icon: mdi:bed-king
+
+        - url: /dashboard-hemma/bedroom
+          label: Room 10
           icon: mdi:bed-king
 
         - label: Scenes
