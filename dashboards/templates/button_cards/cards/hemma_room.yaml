@@ -48,6 +48,7 @@ hemma_room:
     image_position:
 
     show_climate: false
+    show_climate_inline: false  # true = show individual badges (temp/humidity/air quality) directly on the top row instead of the group badge
     climate_entity_1:
     climate_entity_2:
     climate_entity_3:
@@ -378,7 +379,7 @@ hemma_room:
         - max-width: 100%
         - margin-top: >
             [[[
-              if (!variables.show_climate) return '0';
+              if (!variables.show_climate || variables.show_climate_inline) return '0';
               if (states['input_boolean.hemma_mobile_navigation']?.state === 'on') return '0';
               return states['input_select.hemma_expanded_row']?.state === 'climate'
                 ? 'var(--hero-header-gap-current, 6px)' : '0';
@@ -390,12 +391,12 @@ hemma_room:
         - display: >
             [[[
               if (states['input_boolean.hemma_mobile_navigation']?.state === 'on') return 'none';
-              if (!variables.show_climate) return 'none';
+              if (!variables.show_climate || variables.show_climate_inline) return 'none';
               return 'block';
             ]]]
         - max-height: >
             [[[
-              if (!variables.show_climate) return '0';
+              if (!variables.show_climate || variables.show_climate_inline) return '0';
               if (states['input_boolean.hemma_mobile_navigation']?.state === 'on') return '0';
               return states['input_select.hemma_expanded_row']?.state === 'climate' ? '200px' : '0';
             ]]]
@@ -403,7 +404,7 @@ hemma_room:
         - overflow-y: hidden
         - --hemma-row-fade: >
             [[[
-              if (!variables.show_climate) return 0;
+              if (!variables.show_climate || variables.show_climate_inline) return 0;
               if (states['input_boolean.hemma_mobile_navigation']?.state === 'on') return 0;
               return states['input_select.hemma_expanded_row']?.state === 'climate' ? 1 : 0;
             ]]]
@@ -704,7 +705,7 @@ hemma_room:
           - type: custom:button-card
             template: hemma_badge_climate_group
             variables:
-              enabled: '[[[ return variables.show_climate ]]]'
+              enabled: '[[[ return variables.show_climate && !variables.show_climate_inline ]]]'
               temp_sensor: '[[[ return variables.temp_sensor_1 ]]]'
               temp_sensor_2: '[[[ return variables.temp_sensor_2 ]]]'
               temp_sensor_3: '[[[ return variables.temp_sensor_3 ]]]'
@@ -715,6 +716,25 @@ hemma_room:
               climate_entity: '[[[ return variables.climate_entity_1 ]]]'
               climate_entity_2: '[[[ return variables.climate_entity_2 ]]]'
               climate_entity_3: '[[[ return variables.climate_entity_3 ]]]'
+
+          - type: custom:button-card
+            template: hemma_badge_temp
+            entity: '[[[ return variables.temp_sensor_1 ]]]'
+            variables:
+              enabled: '[[[ return !!(variables.show_climate && variables.show_climate_inline && variables.temp_sensor_1) ]]]'
+              temp_unit: '[[[ return variables.temp_unit ]]]'
+
+          - type: custom:button-card
+            template: hemma_badge_humidity
+            entity: '[[[ return variables.humidity_sensor ]]]'
+            variables:
+              enabled: '[[[ return !!(variables.show_climate && variables.show_climate_inline && variables.humidity_sensor) ]]]'
+
+          - type: custom:button-card
+            template: hemma_badge_air_quality
+            entity: '[[[ return variables.quality_sensor ]]]'
+            variables:
+              enabled: '[[[ return !!(variables.show_climate && variables.show_climate_inline && variables.quality_sensor) ]]]'
 
           - type: custom:button-card
             template: hemma_badge_light_group
@@ -848,6 +868,11 @@ hemma_room:
             will-change: auto !important;
             isolation: auto !important;
           }
+          #mp1, #mp2, #mp3, #mp4,
+          #plex, #plex_2,
+          #activity1, #activity2 {
+            overflow: hidden;
+          }
 
         styles:
           card:
@@ -866,7 +891,7 @@ hemma_room:
             - display: flex !important
             - flex-direction: row !important
             - flex-wrap: nowrap !important
-            - gap: var(--badge-gap-current, var(--badge-gap, 10px)) !important
+            - gap: 0 !important
             - align-items: flex-start !important
             - justify-content: flex-start !important
             - overflow: visible !important
@@ -875,76 +900,253 @@ hemma_room:
             - width: max-content !important
           custom_fields:
             mp1:
-              - display: >
+              - max-width: >
                   [[[
-                    if (!variables.show_media_player_1 || !variables.media_player_1) return 'none';
-                    const s = states[variables.media_player_1];
-                    if (!s) return 'none';
+                    if (!variables.show_media_player_1 || !variables.media_player_1) return '0px';
+                    const s = states[variables.media_player_1]; if (!s) return '0px';
                     const st = String(s.state || '');
-                    if (['unavailable','unknown','off','standby'].includes(st)) return 'none';
+                    if (['unavailable','unknown','off','standby'].includes(st)) return '0px';
                     const a = s.attributes || {};
-                    const title  = String(a.media_title || '').trim();
-                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                    if (!title && !artist) return 'none';
-                    if (st === 'paused') {
-                      const t = Number(variables.pause_timeout_minutes ?? 5);
-                      if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return 'none';
-                    }
-                    return 'block';
+                    if (!String(a.media_title||'').trim() && !String(a.media_artist||a.artist||a.media_album_artist||'').trim()) return '0px';
+                    if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return '0px'; }
+                    return '350px';
+                  ]]]
+              - margin-right: >
+                  [[[
+                    if (!variables.show_media_player_1 || !variables.media_player_1) return '0px';
+                    const s = states[variables.media_player_1]; if (!s) return '0px';
+                    const st = String(s.state || '');
+                    if (['unavailable','unknown','off','standby'].includes(st)) return '0px';
+                    const a = s.attributes || {};
+                    if (!String(a.media_title||'').trim() && !String(a.media_artist||a.artist||a.media_album_artist||'').trim()) return '0px';
+                    if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return '0px'; }
+                    return 'var(--badge-gap-current, var(--badge-gap, 10px))';
+                  ]]]
+              - transition: >
+                  [[[
+                    if (!variables.show_media_player_1 || !variables.media_player_1) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const s = states[variables.media_player_1]; if (!s) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const st = String(s.state || '');
+                    if (['unavailable','unknown','off','standby'].includes(st)) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const a = s.attributes || {};
+                    if (!String(a.media_title||'').trim() && !String(a.media_artist||a.artist||a.media_album_artist||'').trim()) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s'; }
+                    return 'max-width 0.001s ease, margin-right 0.001s ease';
                   ]]]
             mp2:
-              - display: >
+              - max-width: >
                   [[[
-                    if (!variables.show_media_player_2 || !variables.media_player_2) return 'none';
-                    const s = states[variables.media_player_2];
-                    if (!s) return 'none';
+                    if (!variables.show_media_player_2 || !variables.media_player_2) return '0px';
+                    const s = states[variables.media_player_2]; if (!s) return '0px';
                     const st = String(s.state || '');
-                    if (['unavailable','unknown','off','standby'].includes(st)) return 'none';
+                    if (['unavailable','unknown','off','standby'].includes(st)) return '0px';
                     const a = s.attributes || {};
-                    const title  = String(a.media_title || '').trim();
-                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                    if (!title && !artist) return 'none';
-                    if (st === 'paused') {
-                      const t = Number(variables.pause_timeout_minutes ?? 5);
-                      if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return 'none';
-                    }
-                    return 'block';
+                    if (!String(a.media_title||'').trim() && !String(a.media_artist||a.artist||a.media_album_artist||'').trim()) return '0px';
+                    if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return '0px'; }
+                    return '350px';
+                  ]]]
+              - margin-right: >
+                  [[[
+                    if (!variables.show_media_player_2 || !variables.media_player_2) return '0px';
+                    const s = states[variables.media_player_2]; if (!s) return '0px';
+                    const st = String(s.state || '');
+                    if (['unavailable','unknown','off','standby'].includes(st)) return '0px';
+                    const a = s.attributes || {};
+                    if (!String(a.media_title||'').trim() && !String(a.media_artist||a.artist||a.media_album_artist||'').trim()) return '0px';
+                    if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return '0px'; }
+                    return 'var(--badge-gap-current, var(--badge-gap, 10px))';
+                  ]]]
+              - transition: >
+                  [[[
+                    if (!variables.show_media_player_2 || !variables.media_player_2) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const s = states[variables.media_player_2]; if (!s) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const st = String(s.state || '');
+                    if (['unavailable','unknown','off','standby'].includes(st)) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const a = s.attributes || {};
+                    if (!String(a.media_title||'').trim() && !String(a.media_artist||a.artist||a.media_album_artist||'').trim()) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s'; }
+                    return 'max-width 0.001s ease, margin-right 0.001s ease';
                   ]]]
             mp3:
-              - display: >
+              - max-width: >
                   [[[
-                    if (!variables.show_media_player_3 || !variables.media_player_3) return 'none';
-                    const s = states[variables.media_player_3];
-                    if (!s) return 'none';
+                    if (!variables.show_media_player_3 || !variables.media_player_3) return '0px';
+                    const s = states[variables.media_player_3]; if (!s) return '0px';
                     const st = String(s.state || '');
-                    if (['unavailable','unknown','off','standby'].includes(st)) return 'none';
+                    if (['unavailable','unknown','off','standby'].includes(st)) return '0px';
                     const a = s.attributes || {};
-                    const title  = String(a.media_title || '').trim();
-                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                    if (!title && !artist) return 'none';
-                    if (st === 'paused') {
-                      const t = Number(variables.pause_timeout_minutes ?? 5);
-                      if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return 'none';
-                    }
-                    return 'block';
+                    if (!String(a.media_title||'').trim() && !String(a.media_artist||a.artist||a.media_album_artist||'').trim()) return '0px';
+                    if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return '0px'; }
+                    return '350px';
+                  ]]]
+              - margin-right: >
+                  [[[
+                    if (!variables.show_media_player_3 || !variables.media_player_3) return '0px';
+                    const s = states[variables.media_player_3]; if (!s) return '0px';
+                    const st = String(s.state || '');
+                    if (['unavailable','unknown','off','standby'].includes(st)) return '0px';
+                    const a = s.attributes || {};
+                    if (!String(a.media_title||'').trim() && !String(a.media_artist||a.artist||a.media_album_artist||'').trim()) return '0px';
+                    if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return '0px'; }
+                    return 'var(--badge-gap-current, var(--badge-gap, 10px))';
+                  ]]]
+              - transition: >
+                  [[[
+                    if (!variables.show_media_player_3 || !variables.media_player_3) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const s = states[variables.media_player_3]; if (!s) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const st = String(s.state || '');
+                    if (['unavailable','unknown','off','standby'].includes(st)) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const a = s.attributes || {};
+                    if (!String(a.media_title||'').trim() && !String(a.media_artist||a.artist||a.media_album_artist||'').trim()) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s'; }
+                    return 'max-width 0.001s ease, margin-right 0.001s ease';
                   ]]]
             mp4:
-              - display: >
+              - max-width: >
                   [[[
-                    if (!variables.show_media_player_4 || !variables.media_player_4) return 'none';
-                    const s = states[variables.media_player_4];
-                    if (!s) return 'none';
+                    if (!variables.show_media_player_4 || !variables.media_player_4) return '0px';
+                    const s = states[variables.media_player_4]; if (!s) return '0px';
                     const st = String(s.state || '');
-                    if (['unavailable','unknown','off','standby'].includes(st)) return 'none';
+                    if (['unavailable','unknown','off','standby'].includes(st)) return '0px';
                     const a = s.attributes || {};
-                    const title  = String(a.media_title || '').trim();
+                    if (!String(a.media_title||'').trim() && !String(a.media_artist||a.artist||a.media_album_artist||'').trim()) return '0px';
+                    if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return '0px'; }
+                    return '350px';
+                  ]]]
+              - margin-right: >
+                  [[[
+                    if (!variables.show_media_player_4 || !variables.media_player_4) return '0px';
+                    const s = states[variables.media_player_4]; if (!s) return '0px';
+                    const st = String(s.state || '');
+                    if (['unavailable','unknown','off','standby'].includes(st)) return '0px';
+                    const a = s.attributes || {};
+                    if (!String(a.media_title||'').trim() && !String(a.media_artist||a.artist||a.media_album_artist||'').trim()) return '0px';
+                    if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return '0px'; }
+                    return 'var(--badge-gap-current, var(--badge-gap, 10px))';
+                  ]]]
+              - transition: >
+                  [[[
+                    if (!variables.show_media_player_4 || !variables.media_player_4) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const s = states[variables.media_player_4]; if (!s) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const st = String(s.state || '');
+                    if (['unavailable','unknown','off','standby'].includes(st)) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const a = s.attributes || {};
+                    if (!String(a.media_title||'').trim() && !String(a.media_artist||a.artist||a.media_album_artist||'').trim()) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s'; }
+                    return 'max-width 0.001s ease, margin-right 0.001s ease';
+                  ]]]
+            plex:
+              - max-width: >
+                  [[[
+                    if (!variables.show_plex_1 || !variables.plex_binary_1) return '0px';
+                    const s = states[variables.plex_binary_1];
+                    return (s && s.state === 'on') ? '350px' : '0px';
+                  ]]]
+              - margin-right: >
+                  [[[
+                    if (!variables.show_plex_1 || !variables.plex_binary_1) return '0px';
+                    const s = states[variables.plex_binary_1];
+                    return (s && s.state === 'on') ? 'var(--badge-gap-current, var(--badge-gap, 10px))' : '0px';
+                  ]]]
+              - transition: >
+                  [[[
+                    if (!variables.show_plex_1 || !variables.plex_binary_1) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const s = states[variables.plex_binary_1];
+                    return (s && s.state === 'on') ? 'max-width 0.001s ease, margin-right 0.001s ease' : 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                  ]]]
+
+            plex_2:
+              - max-width: >
+                  [[[
+                    if (!variables.show_plex_2 || !variables.plex_binary_2) return '0px';
+                    const s = states[variables.plex_binary_2];
+                    return (s && s.state === 'on') ? '350px' : '0px';
+                  ]]]
+              - margin-right: >
+                  [[[
+                    if (!variables.show_plex_2 || !variables.plex_binary_2) return '0px';
+                    const s = states[variables.plex_binary_2];
+                    return (s && s.state === 'on') ? 'var(--badge-gap-current, var(--badge-gap, 10px))' : '0px';
+                  ]]]
+              - transition: >
+                  [[[
+                    if (!variables.show_plex_2 || !variables.plex_binary_2) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const s = states[variables.plex_binary_2];
+                    return (s && s.state === 'on') ? 'max-width 0.001s ease, margin-right 0.001s ease' : 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                  ]]]
+            activity1:
+              - max-width: >
+                  [[[
+                    if (!variables.show_psn_1 || !variables.psn_1) return '0px';
+                    const s = states[variables.psn_1]; if (!s) return '0px';
+                    const st = String(s.state || '').toLowerCase();
+                    const a = s.attributes || {};
+                    if (['playing','buffering','paused'].includes(st)) return '350px';
+                    const title = String(a.media_title || a.title || '').trim();
                     const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
-                    if (!title && !artist) return 'none';
-                    if (st === 'paused') {
-                      const t = Number(variables.pause_timeout_minutes ?? 5);
-                      if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return 'none';
-                    }
-                    return 'block';
+                    const app = String(a.app_name || a.source || '').trim();
+                    return (title || artist || app) ? '350px' : '0px';
+                  ]]]
+              - margin-right: >
+                  [[[
+                    if (!variables.show_psn_1 || !variables.psn_1) return '0px';
+                    const s = states[variables.psn_1]; if (!s) return '0px';
+                    const st = String(s.state || '').toLowerCase();
+                    const a = s.attributes || {};
+                    if (['playing','buffering','paused'].includes(st)) return 'var(--badge-gap-current, var(--badge-gap, 10px))';
+                    const title = String(a.media_title || a.title || '').trim();
+                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
+                    const app = String(a.app_name || a.source || '').trim();
+                    return (title || artist || app) ? 'var(--badge-gap-current, var(--badge-gap, 10px))' : '0px';
+                  ]]]
+              - transition: >
+                  [[[
+                    if (!variables.show_psn_1 || !variables.psn_1) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const s = states[variables.psn_1]; if (!s) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const st = String(s.state || '').toLowerCase();
+                    const a = s.attributes || {};
+                    if (['playing','buffering','paused'].includes(st)) return 'max-width 0.001s ease, margin-right 0.001s ease';
+                    const title = String(a.media_title || a.title || '').trim();
+                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
+                    const app = String(a.app_name || a.source || '').trim();
+                    return (title || artist || app) ? 'max-width 0.001s ease, margin-right 0.001s ease' : 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                  ]]]
+            activity2:
+              - max-width: >
+                  [[[
+                    if (!variables.show_psn_2 || !variables.psn_2) return '0px';
+                    const s = states[variables.psn_2]; if (!s) return '0px';
+                    const st = String(s.state || '').toLowerCase();
+                    const a = s.attributes || {};
+                    if (['playing','buffering','paused'].includes(st)) return '350px';
+                    const title = String(a.media_title || a.title || '').trim();
+                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
+                    const app = String(a.app_name || a.source || '').trim();
+                    return (title || artist || app) ? '350px' : '0px';
+                  ]]]
+              - margin-right: >
+                  [[[
+                    if (!variables.show_psn_2 || !variables.psn_2) return '0px';
+                    const s = states[variables.psn_2]; if (!s) return '0px';
+                    const st = String(s.state || '').toLowerCase();
+                    const a = s.attributes || {};
+                    if (['playing','buffering','paused'].includes(st)) return 'var(--badge-gap-current, var(--badge-gap, 10px))';
+                    const title = String(a.media_title || a.title || '').trim();
+                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
+                    const app = String(a.app_name || a.source || '').trim();
+                    return (title || artist || app) ? 'var(--badge-gap-current, var(--badge-gap, 10px))' : '0px';
+                  ]]]
+              - transition: >
+                  [[[
+                    if (!variables.show_psn_2 || !variables.psn_2) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const s = states[variables.psn_2]; if (!s) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
+                    const st = String(s.state || '').toLowerCase();
+                    const a = s.attributes || {};
+                    if (['playing','buffering','paused'].includes(st)) return 'max-width 0.001s ease, margin-right 0.001s ease';
+                    const title = String(a.media_title || a.title || '').trim();
+                    const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
+                    const app = String(a.app_name || a.source || '').trim();
+                    return (title || artist || app) ? 'max-width 0.001s ease, margin-right 0.001s ease' : 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
                   ]]]
 
         custom_fields:
@@ -1158,6 +1360,12 @@ hemma_room:
       ]]]
 
   extra_styles: |
+    #mp1, #mp2, #mp3, #mp4,
+    #plex, #plex_2,
+    #activity1, #activity2 {
+      overflow: hidden;
+    }
+
     #badges,
     #badges_climate,
     #badges_presence,
@@ -1219,10 +1427,6 @@ hemma_room:
         ) !important;
       }
 
-      /* mask-image is intentionally excluded from #badges_media — applying mask-image to
-         a parent creates a new compositing stacking context that breaks backdrop-filter
-         on descendant media badge cards. Other badge containers keep the fade since
-         their backdrop-filter blur is less visually prominent. */
       #badges_media {
         -webkit-mask-image: none !important;
         mask-image: none !important;
