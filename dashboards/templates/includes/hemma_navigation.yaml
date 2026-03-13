@@ -10,10 +10,10 @@ card:
   type: custom:layout-card
   layout_type: custom:grid-layout
   layout:
-    grid-template-columns: max-content 1fr max-content
+    grid-template-columns: calc(8vw + 100px) 1fr calc(8vw + 100px)
     align-items: center
-    column-gap: 50px
-    margin: 0 8vw
+    column-gap: 0px
+    margin: 0
     padding: 0
 
   card_mod:
@@ -36,6 +36,11 @@ card:
         height: 0 !important;
         overflow: visible !important;
         transition: none !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
       }
 
       #root{
@@ -51,7 +56,7 @@ card:
 
   cards:
 
-    # Left spacer / placeholder
+    # Left spacer — column is fixed calc(8vw + 100px), matches right column for centering
     - type: custom:button-card
       show_name: false
       show_icon: false
@@ -61,11 +66,9 @@ card:
           - background: none
           - box-shadow: none
           - border: 0
-          - width: 1px
           - height: 1px
           - opacity: 0
           - pointer-events: none
-          - margin-left: 2px
 
     # Navbar (center)
     - type: custom:navbar-card
@@ -102,6 +105,12 @@ card:
           ha-card{
             margin: 0 !important;
             overflow: visible !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            transition: none !important;
           }
 
       styles: |
@@ -120,6 +129,7 @@ card:
           background: transparent !important;
           border: 0 !important;
           box-shadow: none !important;
+          backdrop-filter: none !important;
           margin: 0 !important;
           padding: 0 !important;
           border-radius: 0 !important;
@@ -384,34 +394,6 @@ card:
           label: Bedroom
           icon: mdi:bed-king
 
-        - url: /dashboard-hemma/bedroom
-          label: Room 4
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/bedroom
-          label: Room 5
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/bedroom
-          label: Room 6
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/bedroom
-          label: Room 7
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/bedroom
-          label: Room 8
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/bedroom
-          label: Room 9
-          icon: mdi:bed-king
-
-        - url: /dashboard-hemma/bedroom
-          label: Room 10
-          icon: mdi:bed-king
-
         - label: Scenes
           icon: mdi:layers
           tap_action:
@@ -451,36 +433,11 @@ card:
             ]]]
 
     # Time (right)
-    - type: custom:layout-card
-      layout_type: custom:grid-layout
-      layout:
-        grid-template-columns: max-content
-        grid-template-rows: min-content
-        justify-content: end
-        justify-items: end
-        align-items: start
-
-      card_mod:
-        style: |
-          :host{
-            justify-self: end !important;
-            width: max-content !important;
-            --ha-card-padding: 0;
-            --ha-card-background: transparent;
-            --ha-card-border-color: transparent;
-            --ha-card-box-shadow: none;
-          }
-          ha-card{
-            width: max-content !important;
-            transition: none !important;
-          }
-
-      cards:
-        - type: custom:button-card
-          template: hemma_time
-          styles:
-            card:
-              - padding-top: 3px
-              - width: 100%
-              - justify-self: end
-              - text-align: right
+    - type: custom:button-card
+      template: hemma_time
+      styles:
+        card:
+          - width: 100%
+          - text-align: right
+          - padding-right: 8vw
+          - padding-top: 5px
