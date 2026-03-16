@@ -189,7 +189,11 @@ hemma_room:
                 variables.show_media_player_3 && variables.media_player_3,
                 variables.show_media_player_4 && variables.media_player_4,
               ].filter(Boolean);
-              const opt = mediaEids.some(isActive) ? 'media' : 'none';
+              const _steamOnline = variables.show_discord_steam && variables.discord_steam_online && variables.discord_steam_game &&
+                (hass.states[variables.discord_steam_online]?.state || '').toLowerCase() === 'online';
+              const _steamGame = String(hass.states[variables.discord_steam_game]?.state || '').toLowerCase();
+              const steamActive = _steamOnline && !!_steamGame && _steamGame !== 'unknown' && _steamGame !== 'unavailable';
+              const opt = (mediaEids.some(isActive) || steamActive) ? 'media' : 'none';
               hass.callService('input_select', 'select_option', {
                 entity_id: 'input_select.hemma_expanded_row',
                 option: opt
@@ -489,7 +493,11 @@ hemma_room:
             [[[
               if (!variables.show_media) return '0';
               if (states['input_boolean.hemma_mobile_navigation']?.state === 'on') return '0';
-              return states['input_select.hemma_expanded_row']?.state === 'media'
+              const _so = variables.show_discord_steam && variables.discord_steam_online && variables.discord_steam_game &&
+                (states[variables.discord_steam_online]?.state || '').toLowerCase() === 'online';
+              const _sg = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
+              const isSteamOnline = _so && !!_sg && _sg !== 'unknown' && _sg !== 'unavailable';
+              return (states['input_select.hemma_expanded_row']?.state === 'media' || isSteamOnline)
                 ? 'var(--hero-header-gap-current, 6px)' : '0';
             ]]]
         - margin-right: auto !important
@@ -514,7 +522,11 @@ hemma_room:
             [[[
               if (!variables.show_media) return '0';
               if (states['input_boolean.hemma_mobile_navigation']?.state === 'on') return '0';
-              return states['input_select.hemma_expanded_row']?.state === 'media' ? '500px' : '0';
+              const _so = variables.show_discord_steam && variables.discord_steam_online && variables.discord_steam_game &&
+                (states[variables.discord_steam_online]?.state || '').toLowerCase() === 'online';
+              const _sg = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
+              const isSteamOnline = _so && !!_sg && _sg !== 'unknown' && _sg !== 'unavailable';
+              return (states['input_select.hemma_expanded_row']?.state === 'media' || isSteamOnline) ? '500px' : '0';
             ]]]
         - overflow-x: auto
         - overflow-y: hidden
@@ -522,11 +534,19 @@ hemma_room:
             [[[
               if (!variables.show_media) return 0;
               if (states['input_boolean.hemma_mobile_navigation']?.state === 'on') return 0;
-              return states['input_select.hemma_expanded_row']?.state === 'media' ? 1 : 0;
+              const _so = variables.show_discord_steam && variables.discord_steam_online && variables.discord_steam_game &&
+                (states[variables.discord_steam_online]?.state || '').toLowerCase() === 'online';
+              const _sg = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
+              const isSteamOnline = _so && !!_sg && _sg !== 'unknown' && _sg !== 'unavailable';
+              return (states['input_select.hemma_expanded_row']?.state === 'media' || isSteamOnline) ? 1 : 0;
             ]]]
         - transition: >
             [[[
-              const isExpanded = states['input_select.hemma_expanded_row']?.state === 'media';
+              const _so = variables.show_discord_steam && variables.discord_steam_online && variables.discord_steam_game &&
+                (states[variables.discord_steam_online]?.state || '').toLowerCase() === 'online';
+              const _sg = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
+              const isSteamOnline = _so && !!_sg && _sg !== 'unknown' && _sg !== 'unavailable';
+              const isExpanded = states['input_select.hemma_expanded_row']?.state === 'media' || isSteamOnline;
               if (isExpanded) return 'max-height 0s, margin-top 0s';
               const isSwitching = states['input_select.hemma_expanded_row']?.state !== 'none';
               return isSwitching
@@ -535,7 +555,11 @@ hemma_room:
             ]]]
         - pointer-events: >
             [[[
-              return states['input_select.hemma_expanded_row']?.state === 'media' ? 'auto' : 'none';
+              const _so = variables.show_discord_steam && variables.discord_steam_online && variables.discord_steam_game &&
+                (states[variables.discord_steam_online]?.state || '').toLowerCase() === 'online';
+              const _sg = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
+              const isSteamOnline = _so && !!_sg && _sg !== 'unknown' && _sg !== 'unavailable';
+              return (states['input_select.hemma_expanded_row']?.state === 'media' || isSteamOnline) ? 'auto' : 'none';
             ]]]
 
       badges_lights:
@@ -843,10 +867,6 @@ hemma_room:
 
     badges_media:
       card:
-        # layout-card cannot eliminate phantom column-gaps for hidden badge slots because
-        # the wrapper divs are always grid items even when the badge inside is display:none.
-        # A flex button-card wrapper where each slot div has display:none when inactive
-        # is the only reliable way to eliminate phantom gaps.
         type: custom:button-card
         show_icon: false
         show_name: false
@@ -1035,45 +1055,6 @@ hemma_room:
                     if (st === 'paused') { const t = Number(variables.pause_timeout_minutes ?? 5); if (t > 0 && (new Date() - new Date(s.last_changed)) / 60000 > t) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s'; }
                     return 'max-width 0.001s ease, margin-right 0.001s ease';
                   ]]]
-            plex:
-              - max-width: >
-                  [[[
-                    if (!variables.show_plex_1 || !variables.plex_binary_1) return '0px';
-                    const s = states[variables.plex_binary_1];
-                    return (s && s.state === 'on') ? '350px' : '0px';
-                  ]]]
-              - margin-right: >
-                  [[[
-                    if (!variables.show_plex_1 || !variables.plex_binary_1) return '0px';
-                    const s = states[variables.plex_binary_1];
-                    return (s && s.state === 'on') ? 'var(--badge-gap-current, var(--badge-gap, 10px))' : '0px';
-                  ]]]
-              - transition: >
-                  [[[
-                    if (!variables.show_plex_1 || !variables.plex_binary_1) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
-                    const s = states[variables.plex_binary_1];
-                    return (s && s.state === 'on') ? 'max-width 0.001s ease, margin-right 0.001s ease' : 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
-                  ]]]
-
-            plex_2:
-              - max-width: >
-                  [[[
-                    if (!variables.show_plex_2 || !variables.plex_binary_2) return '0px';
-                    const s = states[variables.plex_binary_2];
-                    return (s && s.state === 'on') ? '350px' : '0px';
-                  ]]]
-              - margin-right: >
-                  [[[
-                    if (!variables.show_plex_2 || !variables.plex_binary_2) return '0px';
-                    const s = states[variables.plex_binary_2];
-                    return (s && s.state === 'on') ? 'var(--badge-gap-current, var(--badge-gap, 10px))' : '0px';
-                  ]]]
-              - transition: >
-                  [[[
-                    if (!variables.show_plex_2 || !variables.plex_binary_2) return 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
-                    const s = states[variables.plex_binary_2];
-                    return (s && s.state === 'on') ? 'max-width 0.001s ease, margin-right 0.001s ease' : 'max-width 0.001s ease 0.3s, margin-right 0.001s ease 0.3s';
-                  ]]]
             activity1:
               - max-width: >
                   [[[
@@ -1182,6 +1163,46 @@ hemma_room:
                 enabled: '[[[ return variables.show_media_player_4 ]]]'
                 entity: '[[[ return variables.media_player_4 ]]]'
                 pause_timeout_minutes: '[[[ return variables.pause_timeout_minutes ]]]'
+          activity1:
+            card:
+              type: custom:button-card
+              template: hemma_badge_activity
+              entity: '[[[ return variables.psn_1 ]]]'
+              variables:
+                enabled: '[[[ return variables.show_psn_1 ]]]'
+          activity2:
+            card:
+              type: custom:button-card
+              template: hemma_badge_activity
+              entity: '[[[ return variables.psn_2 ]]]'
+              variables:
+                enabled: '[[[ return variables.show_psn_2 ]]]'
+              styles:
+                card:
+                  - --hemma-badge-opacity: >
+                      [[[
+                        if (!variables.show_discord_steam) return '0';
+                        const online = states[variables.discord_steam_online];
+                        if (!online || String(online.state || '').toLowerCase() !== 'online') return '0';
+                        const g = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
+                        return (g && g !== 'unknown' && g !== 'unavailable') ? '1' : '0';
+                      ]]]
+                  - --hemma-badge-ptr: >
+                      [[[
+                        if (!variables.show_discord_steam) return 'none';
+                        const online = states[variables.discord_steam_online];
+                        if (!online || String(online.state || '').toLowerCase() !== 'online') return 'none';
+                        const g = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
+                        return (g && g !== 'unknown' && g !== 'unavailable') ? 'auto' : 'none';
+                      ]]]
+              name: >
+                [[[
+                  const gameState = String(states[variables.discord_steam_game]?.state || '').trim();
+                  const isPlaying = gameState && gameState.toLowerCase() !== 'unknown' && gameState.toLowerCase() !== 'unavailable';
+                  const sub = isPlaying ? `Playing - ${gameState}` : 'Online';
+                  const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+                  return `<div class="badge-wrap"><div class="badge-title">Steam</div><div class="badge-sub">${esc(sub)}</div></div>`;
+                ]]]
 
     badges_lights:
       card:
