@@ -42,6 +42,7 @@ Install via HACS (recommended) unless noted:
 - **[lovelace-navbar-card](https://github.com/joseluis9595/lovelace-navbar-card)** (Jose Luis Álvarez) - required for navigation + media badge
 - **[uix](https://github.com/Lint-Free-Technology/uix)** (Lint Free Technology) - required for card-mod code and transparent sidebar
 - **navbar-popup-caret** - custom js required for navbar dropdown menus (included in this repo)
+- **navbar-sidebar-offset** - custom js required for adjusting navigation menu when sidebar is present (included in this repo)
 #### Optional
 - **[kiosk-mode](https://github.com/NemesisRE/kiosk-mode)** (NemesisRE) - Optional but recommended (Hemma looks best with no header/sidebar)
 
@@ -100,6 +101,8 @@ Example layout:
     │   └── weather/                    # Weather icons
     ├── layout-card-modified/
     │   └── layout-card-modified.js     # Modified Layout Card build
+    ├── navbar-sidebar-offset/
+    │   └── navbar-sidebar-offset.js    # Navbar adjusts with sidebar visibility
     └── navbar-popup-caret/
         └── navbar-popup-caret.js       # Add dropdown icon to navbar
 ```
@@ -124,6 +127,7 @@ In Settings → Dashboards → Resources (or YAML), add:
 
 - `/local/layout-card-modified/layout-card-modified.js` (from this repo)
 - `/local/navbar-popup-caret/navbar-popup-caret.js`(from this repo)
+- `/local/navbar-sidebar-offset/navbar-sidebar-offset.js`(from this repo)
 - `/hacsfiles/button-card/button-card.js` (should already be present if installed via HACS)
 - `/hacsfiles/lovelace-navbar-card/navbar-card.js` (should already be present if installed via HACS)
 
