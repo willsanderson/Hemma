@@ -17,6 +17,7 @@ Hemma is fully YAML-based and designed for:
 - **Layouts + spacing logic** for scaling across different devices
 - **Custom navigation** and Scene support
   - Mobile navbar for tablet and phone
+  - Motion detection built into navigation menu
 - **Badges** (shown in the hero section of each room card)
   - Climate group badge — temperature range, HVAC state, humidity, air quality
   - Light group badge
@@ -87,8 +88,7 @@ Example layout:
 │           ├── hemma_screen_layout.yaml
 │           ├── hemma_entity_layout.yaml
 │           ├── hemma_navbar_mobile.yaml
-│           ├── hemma_navigation.yaml
-│           └── hemma_media_player_styles.yaml
+│           └── hemma_navigation.yaml
 ├── themes/
 │   └── hemma/
 │       └── hemma.yaml                  # Hemma theme
