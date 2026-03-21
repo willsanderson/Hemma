@@ -96,6 +96,7 @@ Example layout:
 │   └── hemma_helpers.yaml              # Helpers required by the dashboard
 └── www/
     ├── hemma/
+    │   ├── fonts/                      # UI fonts
     │   ├── icons/                      # UI icons
     │   ├── rooms/                      # Room/background images
     │   └── weather/                    # Weather icons
