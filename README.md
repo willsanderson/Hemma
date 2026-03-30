@@ -364,3 +364,7 @@ hemma_time:
 
 - Original Homio concept and base implementation: [iamtherufus/Homio](https://github.com/iamtherufus/Homio)
 - Hemma customization and ongoing tweaks: [@willsanderson](https://github.com/willsanderson)
+
+#### Enjoying Hemma? Buy me a coffee :v::smiley:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V31RK6FB)
