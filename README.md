@@ -1,3 +1,7 @@
+## Important Note (3/31/26)
+
+The latest update (version 1.1) includes many changes and new features, requiring updated code for most all files in the repo. When updating, please ensure you replace/overwrite all files to ensure compatibility. 
+
 # :house_with_garden: Hemma
 
 A modern, minimal, mobile-friendly dashboard for Home Assistant.  Inspired by the [Homio](https://github.com/iamtherufus/Homio) dashboard by @iamtherufus, Hemma is rebuilt and extended with new layouts, cards, and a streamlined setup process.
@@ -9,7 +13,7 @@ Hemma is fully YAML-based and designed for:
 - Badges for climate, sensors, presence, and active media
 - Clean navigation with a mobile navbar + desktop/tablet top navigation
 
-![hemma_devices](https://github.com/user-attachments/assets/d026e4b3-222d-418b-92ab-7beb3b4a7812)
+![hemma_devices](https://github.com/user-attachments/assets/c5c2b6f0-f444-4b48-af4a-abca584b0461)
 
 ---
 ### Highlights and Features
@@ -41,7 +45,8 @@ Install via HACS (recommended) unless noted:
 - **[button-card](https://github.com/custom-cards/button-card)** (RomRider)
 - **[layout-card](https://github.com/thomasloven/lovelace-layout-card)** (Thomas Lovén) — Hemma uses a **modified** version included in this repo (don't install via HACS).
 - **[lovelace-navbar-card](https://github.com/joseluis9595/lovelace-navbar-card)** (Jose Luis Álvarez) - required for navigation + media badge
-- **[uix](https://github.com/Lint-Free-Technology/uix)** (Lint Free Technology) - required for card-mod code and transparent sidebar
+- **[browser_mod](https://github.com/joseluis9595/lovelace-navbar-card)** (Thomas Lovén) - required for navigation + media badge
+- **[uix](https://github.com/Lint-Free-Technology/uix)** (Lint Free Technology) - required for custom popup windows
 - **navbar-popup-caret** - custom js required for navbar dropdown menus (included in this repo)
 - **navbar-sidebar-offset** - custom js required for adjusting navigation menu when sidebar is present (included in this repo)
 #### Optional
@@ -50,20 +55,21 @@ Install via HACS (recommended) unless noted:
 ---
 
 ### Desktop View
-![home-desktop-light](https://github.com/user-attachments/assets/903b740d-05b9-4f6e-b56c-56f39b6071c4)
-![livingroom-desktop-light](https://github.com/user-attachments/assets/51aaef79-d163-4739-9f7d-056b1a433cf3)
+![desktop-home-light](https://github.com/user-attachments/assets/b7597e0b-5559-4790-aec1-cf7e0a6ef472)
+![desktop-livingroom-light](https://github.com/user-attachments/assets/7e90d921-abc3-49a7-8a92-c2717c7baa45)
 
 ### Light/Dark Mode
-![bedroom-desktop-light](https://github.com/user-attachments/assets/5e9d6d51-3cc2-4e44-9ffa-628c7b910afd)
-![bedroom-desktop-dark](https://github.com/user-attachments/assets/fa2bbd8b-e9b0-4b16-87ac-af8ede195a1b)
+![desktop-bedroom-light](https://github.com/user-attachments/assets/a40d65d0-b723-492a-97dc-bb936c17affa)
+![desktop-bedroom-dark](https://github.com/user-attachments/assets/aa904c06-7d6e-47b4-ab26-24e676bf6095)
 
 ### Mobile View (Light/Dark)
-<img src="https://github.com/user-attachments/assets/5f49dca8-c097-4e38-864a-22db7ea291ab" width="404">
-<img src="https://github.com/user-attachments/assets/2e562b7b-811e-4070-afbc-a958be7efa25" width="404">
+<img src="https://github.com/user-attachments/assets/c6f66f68-ad54-492b-860e-0b0ba0c765e6" width="404">
+<img src="https://github.com/user-attachments/assets/4eb7b0cf-c75c-451b-9f26-b35130d17f93" width="404">
 
 ### Tablet View (Light/Dark)
-![livingroom-tablet-light](https://github.com/user-attachments/assets/be178690-0347-4746-bd40-4fffc6af44de)
-![livingroom-tablet-dark](https://github.com/user-attachments/assets/5051fb90-e178-4af0-a6fd-e43fbc8b8f98)
+![tablet-livingroom-light 2](https://github.com/user-attachments/assets/41ef6a99-2634-4026-a188-ec20979cc088)
+![tablet-livingroom-dark](https://github.com/user-attachments/assets/12bac700-a2a2-4f6c-aba7-f6e86123d7e2)
+
 
 ---
 
