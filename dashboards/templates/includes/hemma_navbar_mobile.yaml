@@ -250,7 +250,7 @@ cards:
           -webkit-backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
           backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
           border-radius: var(--hemma-popup-br, 22px) !important;
-          box-shadow: var(--hemma-popup-shadow, 0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12)) !important;
+          box-shadow: var(--hemma-popup-shadow, 0 3px 14px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.06)) !important;
           padding: 7px !important;
           width: max-content !important;
           max-width: calc(100vw - (var(--hemma-popup-edge) * 2)) !important;
@@ -271,7 +271,7 @@ cards:
           --hemma-popup-label-size: 15px;
           --hemma-popup-label-weight: 400;
           --hemma-popup-label-active-weight: 550;
-          --hemma-popup-label-inactive-opacity: .82;
+          --hemma-popup-label-inactive-opacity: .92;
         }
 
         .navbar-popup::before{
@@ -320,10 +320,10 @@ cards:
 
         .navbar-popup,
         .navbar-popup *{
-          --mdc-theme-primary: rgba(255,255,255,0.92) !important;
-          --mdc-theme-secondary: rgba(255,255,255,0.92) !important;
-          --icon-primary-color: rgba(255,255,255,0.92) !important;
-          --icon-secondary-color: rgba(255,255,255,0.92) !important;
+          --mdc-theme-primary: rgba(255,255,255,0.97) !important;
+          --mdc-theme-secondary: rgba(255,255,255,0.97) !important;
+          --icon-primary-color: rgba(255,255,255,0.97) !important;
+          --icon-secondary-color: rgba(255,255,255,0.97) !important;
         }
 
         .navbar-popup .popup-item{
@@ -335,7 +335,7 @@ cards:
           padding: 9px 15px 9px 12px !important;
           border-radius: 9999px !important;
           width: 100% !important;
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
           box-sizing: border-box !important;
           text-align: left !important;
           background: transparent !important;
@@ -378,7 +378,7 @@ cards:
           align-items: center !important;
           justify-content: center !important;
           line-height: 1 !important;
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
           opacity: var(--hemma-popup-label-inactive-opacity) !important;
         }
 
@@ -407,7 +407,7 @@ cards:
           line-height: 1.4 !important;
           margin: 0 !important;
           padding: 0 !important;
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
           opacity: var(--hemma-popup-label-inactive-opacity) !important;
         }
 
@@ -612,7 +612,7 @@ cards:
         entity: input_boolean.hemma_mobile_navigation
         state: "off"
       - condition: screen
-        media_query: "(orientation: landscape) and (max-height: 600px) and (pointer: coarse) and (hover: none)"
+        media_query: "(orientation: landscape) and (max-width: 719px) and (pointer: coarse) and (hover: none)"
 
     card:
       type: custom:navbar-card
@@ -805,7 +805,7 @@ cards:
           -webkit-backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
           backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
           border-radius: var(--hemma-popup-br, 22px) !important;
-          box-shadow: var(--hemma-popup-shadow, 0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12)) !important;
+          box-shadow: var(--hemma-popup-shadow, 0 3px 14px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.06)) !important;
           padding: 6px !important;
           gap: 4px !important;
           width: max-content !important;
@@ -820,7 +820,7 @@ cards:
           --hemma-popup-label-size: 15px;
           --hemma-popup-label-weight: 400;
           --hemma-popup-label-active-weight: 550;
-          --hemma-popup-label-inactive-opacity: .82;
+          --hemma-popup-label-inactive-opacity: .92;
           transform: none !important;
           transform-origin: top center !important;
         }
@@ -913,7 +913,7 @@ cards:
           align-items: center !important;
           justify-content: center !important;
           line-height: 1 !important;
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
           opacity: var(--hemma-popup-label-inactive-opacity) !important;
           padding: 0 !important;
           margin: 0 !important;
@@ -925,7 +925,7 @@ cards:
           line-height: 1.4 !important;
           margin: 0 !important;
           padding: 0 0 0 1px !important;
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
           opacity: var(--hemma-popup-label-inactive-opacity) !important;
           background: transparent !important;
           width: 100% !important;
@@ -953,10 +953,10 @@ cards:
 
         .navbar-popup,
         .navbar-popup *{
-          --mdc-theme-primary: rgba(255,255,255,0.92) !important;
-          --mdc-theme-secondary: rgba(255,255,255,0.92) !important;
-          --icon-primary-color: rgba(255,255,255,0.92) !important;
-          --icon-secondary-color: rgba(255,255,255,0.92) !important;
+          --mdc-theme-primary: rgba(255,255,255,0.97) !important;
+          --mdc-theme-secondary: rgba(255,255,255,0.97) !important;
+          --icon-primary-color: rgba(255,255,255,0.97) !important;
+          --icon-secondary-color: rgba(255,255,255,0.97) !important;
         }
 
         :host, :host *{
@@ -1294,7 +1294,7 @@ cards:
           -webkit-backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
           backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
           border-radius: var(--hemma-popup-br, 22px) !important;
-          box-shadow: var(--hemma-popup-shadow, 0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12)) !important;
+          box-shadow: var(--hemma-popup-shadow, 0 3px 14px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.06)) !important;
           padding: 8px !important;
           width: max-content !important;
           max-width: calc(100vw - 24px) !important;
@@ -1308,7 +1308,7 @@ cards:
           --hemma-popup-label-size: 15px;
           --hemma-popup-label-weight: 400;
           --hemma-popup-label-active-weight: 550;
-          --hemma-popup-label-inactive-opacity: .82;
+          --hemma-popup-label-inactive-opacity: .92;
           transform: none !important;
           transform-origin: top center !important;
         }
@@ -1395,7 +1395,7 @@ cards:
           align-items: center !important;
           justify-content: center !important;
           line-height: 1 !important;
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
           opacity: var(--hemma-popup-label-inactive-opacity) !important;
           padding: 0 !important;
           margin: 0 !important;
@@ -1407,7 +1407,7 @@ cards:
           line-height: 1.4 !important;
           margin: 0 !important;
           padding: 0 0 0 1px !important;
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
           opacity: var(--hemma-popup-label-inactive-opacity) !important;
           background: transparent !important;
           width: 100% !important;
@@ -1435,17 +1435,17 @@ cards:
 
         .navbar-popup,
         .navbar-popup *{
-          --mdc-theme-primary: rgba(255,255,255,0.92) !important;
-          --mdc-theme-secondary: rgba(255,255,255,0.92) !important;
-          --icon-primary-color: rgba(255,255,255,0.92) !important;
-          --icon-secondary-color: rgba(255,255,255,0.92) !important;
+          --mdc-theme-primary: rgba(255,255,255,0.97) !important;
+          --mdc-theme-secondary: rgba(255,255,255,0.97) !important;
+          --icon-primary-color: rgba(255,255,255,0.97) !important;
+          --icon-secondary-color: rgba(255,255,255,0.97) !important;
         }
 
         .navbar-popup ha-icon{
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
         }
         .navbar-popup .popup-item.active ha-icon{
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
         }
 
         :host, :host *{
@@ -1590,7 +1590,7 @@ cards:
         entity: input_boolean.hemma_mobile_navigation
         state: "off"
       - condition: screen
-        media_query: "(orientation: landscape) and (min-width: 863px) and (max-width: 1400px) and (min-height: 601px) and (pointer: coarse) and (hover: none)"
+        media_query: "(orientation: landscape) and (min-width: 720px) and (max-width: 1400px) and (pointer: coarse) and (hover: none)"
 
     card:
       type: custom:navbar-card
@@ -1827,7 +1827,7 @@ cards:
           -webkit-backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
           backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
           border-radius: var(--hemma-popup-br, 22px) !important;
-          box-shadow: var(--hemma-popup-shadow, 0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12)) !important;
+          box-shadow: var(--hemma-popup-shadow, 0 3px 14px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.06)) !important;
           padding: 8px !important;
           width: max-content !important;
           max-width: calc(100vw - 24px) !important;
@@ -1841,7 +1841,7 @@ cards:
           --hemma-popup-label-size: 15px;
           --hemma-popup-label-weight: 400;
           --hemma-popup-label-active-weight: 550;
-          --hemma-popup-label-inactive-opacity: .82;
+          --hemma-popup-label-inactive-opacity: .92;
           transform: none !important;
           transform-origin: top center !important;
         }
@@ -1949,7 +1949,7 @@ cards:
           align-items: center !important;
           justify-content: center !important;
           line-height: 1 !important;
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
           opacity: var(--hemma-popup-label-inactive-opacity) !important;
           padding: 0 !important;
           margin: 0 !important;
@@ -1961,7 +1961,7 @@ cards:
           line-height: 1.4 !important;
           margin: 0 !important;
           padding: 0 0 0 1px !important;
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
           opacity: var(--hemma-popup-label-inactive-opacity) !important;
           background: transparent !important;
           width: 100% !important;
@@ -1989,17 +1989,17 @@ cards:
 
         .navbar-popup,
         .navbar-popup *{
-          --mdc-theme-primary: rgba(255,255,255,0.92) !important;
-          --mdc-theme-secondary: rgba(255,255,255,0.92) !important;
-          --icon-primary-color: rgba(255,255,255,0.92) !important;
-          --icon-secondary-color: rgba(255,255,255,0.92) !important;
+          --mdc-theme-primary: rgba(255,255,255,0.97) !important;
+          --mdc-theme-secondary: rgba(255,255,255,0.97) !important;
+          --icon-primary-color: rgba(255,255,255,0.97) !important;
+          --icon-secondary-color: rgba(255,255,255,0.97) !important;
         }
 
         .navbar-popup ha-icon{
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
         }
         .navbar-popup .popup-item.active ha-icon{
-          color: rgba(255,255,255,0.92) !important;
+          color: rgba(255,255,255,0.97) !important;
         }
 
         :host, :host *{
