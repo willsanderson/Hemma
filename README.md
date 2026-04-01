@@ -1,7 +1,7 @@
-## Important Note (3/31/26)
+## Important Update (3/31/26)
 
-The latest update (version 1.1) includes many changes and new features, requiring updated code for most all files in the repo. When updating, please ensure you replace/overwrite all files to ensure compatibility. 
-
+The latest update (version 1.2.1) includes many changes and new features, requiring updated code for most all files in the repo. When updating, please ensure you replace/overwrite all files to ensure compatibility. 
+![hemma_devices](https://github.com/user-attachments/assets/74b780bc-fc58-4323-9c58-59961014d551)
 # :house_with_garden: Hemma
 
 A modern, minimal, mobile-friendly dashboard for Home Assistant.  Inspired by the [Homio](https://github.com/iamtherufus/Homio) dashboard by @iamtherufus, Hemma is rebuilt and extended with new layouts, cards, and a streamlined setup process.
@@ -12,8 +12,6 @@ Hemma is fully YAML-based and designed for:
 - Frosted-glass entity cards
 - Badges for climate, sensors, presence, and active media
 - Clean navigation with a mobile navbar + desktop/tablet top navigation
-
-![hemma_devices](https://github.com/user-attachments/assets/c5c2b6f0-f444-4b48-af4a-abca584b0461)
 
 ---
 ### Highlights and Features
@@ -29,9 +27,6 @@ Hemma is fully YAML-based and designed for:
   - Active media player badge
 - **Button-cards**
   - Thermostat, media, fan, curtain, lock, and more
-- **Weather + Comfort**
-  - Mobile **weather widget**
-  - Comfort labels based on `temp_unit: 'F' | 'C'`
 ---
 
 ### Requirements
@@ -45,7 +40,7 @@ Install via HACS (recommended) unless noted:
 - **[button-card](https://github.com/custom-cards/button-card)** (RomRider)
 - **[layout-card](https://github.com/thomasloven/lovelace-layout-card)** (Thomas Lovén) — Hemma uses a **modified** version included in this repo (don't install via HACS).
 - **[lovelace-navbar-card](https://github.com/joseluis9595/lovelace-navbar-card)** (Jose Luis Álvarez) - required for navigation + media badge
-- **[browser_mod](https://github.com/joseluis9595/lovelace-navbar-card)** (Thomas Lovén) - required for navigation + media badge
+- **[browser_mod](https://github.com/joseluis9595/lovelace-navbar-card)** (Thomas Lovén) - required for custom popups
 - **[uix](https://github.com/Lint-Free-Technology/uix)** (Lint Free Technology) - required for custom popup windows
 - **navbar-popup-caret** - custom js required for navbar dropdown menus (included in this repo)
 - **navbar-sidebar-offset** - custom js required for adjusting navigation menu when sidebar is present (included in this repo)
@@ -310,19 +305,6 @@ Example home view with all badge types enabled:
 ```
 
 Note: Media badges only appear when a player is active (playing, buffering, or recently paused within `pause_timeout_minutes`).
-
----
-
-### Lock card (split actions)
-
-Hemma's lock card supports:
-
-- Tap the card → **more-info**
-- Tap the icon/image → **lock/unlock toggle**
-
-Note: `show_icon: true` is required so `icon_tap_action` has a target.
-
-Template: `hemma_lock`
 
 ---
 
