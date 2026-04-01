@@ -13,7 +13,7 @@ Hemma:
       secondary-text-color: rgba(245,245,245,0.8)
       disabled-text-color: rgba(208,208,208,0.5)
       sidebar-background-color: var(--ha-card-background)
-      sidebar-icon-color: "#aaaaad"
+      sidebar-icon-color: var(--primary-text-color)
       sidebar-text-color: "#c9c9c9"
       dark-vignette: 0
 
@@ -263,7 +263,7 @@ Hemma:
   app-theme-color: rgb(0,0,0)
   state-inactive-color: "#bdbdbd"
   primary-text-color: "#ffffff"
-  icon-primary-color: var(--primary-text-color)
+  icon-primary-color: var(--sidebar-icon-color)
   scrollbar-thumb-color: rgba(255,255,255,0.15)
   lumo-body-text-color: var(--primary-text-color)
   clear-background-color: var(--ha-card-background)
@@ -307,6 +307,7 @@ Hemma:
   # HA / MDC system
   ha-border-radius-lg: 12px
   ha-border-radius-sm: 30px
+  ha-color-form-background: var(--ha-card-background)
   ha-card-features-border-radius: 30px
   border-end-end-radius: 30px
   wa-border-radius-m: 24px
@@ -388,6 +389,7 @@ Hemma:
   hemma-nav-gap-tablet: 45px
   hemma-nav-top-desktop: 60px
   hemma-nav-top-tablet: 55px
+  hemma-nav-backdrop-filter: blur(8px) saturate(1.2)
 
   # Navigation popup styling
   hemma-popup-br: 25px
@@ -404,7 +406,7 @@ Hemma:
   page-gutter-mobile: 11px
 
   # Header top
-  header-top-desktop: clamp(380px, 24vh, 440px)
+  header-top-desktop: clamp(300px, 36vh, 400px)
   header-top-tablet: clamp(140px, 30vh, 320px)
   header-top-tablet-portrait: clamp(260px, 28vh, 400px)
   header-top-mobile: clamp(30px, 16vh, 70px)
