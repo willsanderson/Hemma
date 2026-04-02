@@ -1,6 +1,6 @@
-## Important Update (3/31/26)
+## Important Update (4/2/26)
 
-The latest update (version 1.2.1) includes many changes and new features, requiring updated code for most all files in the repo. When updating, please ensure you replace/overwrite all files to ensure compatibility. 
+The latest update (version 1.2.2) includes many changes and new features, requiring updated code for most all files in the repo. When updating, please ensure you replace/overwrite all files to ensure compatibility. 
 
 **Note**: This update also includes changes to the `layout-card-modified.js` file which will require clearing browser cache and restarting HA for changes to apply.
 
