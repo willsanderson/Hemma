@@ -28,16 +28,23 @@ scrollbar-width: none
 mediaquery:
 # -------- Mobile Portrait --------
   "(max-width: 767px) and (orientation: portrait), (max-height: 500px) and (orientation: portrait)":
-    position: absolute
+    position: relative
     z-index: 4
-    inset: >-
-      auto 0 calc(var(--hemma-nav-height, 112px) + env(safe-area-inset-bottom, 0px) + var(--hemma-entity-bottom-gap, 8px)) 0
-    max-height: >-
-      calc(100dvh - var(--hero-top) - var(--hemma-entity-header-buffer, 220px) - var(--hemma-nav-height, 112px) - env(safe-area-inset-bottom, 0px) - var(--hemma-entity-bottom-gap, 8px))
-    margin: 0
-    padding: 0 var(--hemma-rail-left, var(--page-gutter-mobile, 11px)) 0 var(--hemma-rail-left, var(--page-gutter-mobile, 11px))
+    inset: auto
+    margin: >-
+      calc(var(--hero-top) + var(--hemma-header-stack-h-current, 240px) + var(--hemma-entity-mobile-top-gap, -40px))
+      0
+      calc(env(safe-area-inset-bottom, 0px) + var(--hemma-entity-bottom-gap, 0px))
+      0
+    padding: >-
+      0
+      var(--hemma-rail-left, var(--page-gutter-mobile, 11px))
+      calc(env(safe-area-inset-bottom, 0px) + var(--hemma-entity-bottom-gap, 0px))
+      var(--hemma-rail-left, var(--page-gutter-mobile, 11px))
     max-width: none
-    min-height: 0
+    min-height: >-
+      calc((3 * var(--hemma-entity-height-current, 115px)) + (2 * 8px))
+    align-content: end
     box-sizing: border-box
     display: grid
     grid-auto-flow: row
@@ -48,16 +55,14 @@ mediaquery:
     justify-content: stretch
     justify-items: stretch
     align-items: stretch
-    align-content: start
-    overflow-x: hidden
-    overflow-y: auto
-    -webkit-overflow-scrolling: touch
-    overscroll-behavior-y: contain
-    touch-action: pan-y
+    overflow: visible
+    -webkit-overflow-scrolling: auto
+    overscroll-behavior-y: auto
+    touch-action: auto
     overflow-anchor: none
     scrollbar-width: none
     -ms-overflow-style: none
-    scroll-snap-type: y mandatory
+    scroll-snap-type: none
 
   # -------- Mobile Landscape --------
   "(max-height: 600px) and (orientation: landscape)":

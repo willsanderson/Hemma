@@ -389,7 +389,7 @@ Hemma:
   hemma-nav-gap-tablet: 45px
   hemma-nav-top-desktop: 60px
   hemma-nav-top-tablet: 55px
-  hemma-nav-backdrop-filter: blur(8px) saturate(1.2)
+  hemma-nav-backdrop-filter: blur(15px) saturate(1.2)
 
   # Navigation popup styling
   hemma-popup-br: 25px
@@ -512,6 +512,9 @@ Hemma:
   hemma-entity-state-font-mobile: 14px
   hemma-time-nudge-mobile: 8px
   hemma-entity-icon-size-mobile: 26px
+  hemma-entity-mobile-top-gap: -40px
+  hemma-entity-mobile-scroll-runway: 0px
+  hemma-entity-bottom-gap: 0px
 
   # Mobile Landscape
   hemma-entity-col-width-landscape: 160px
