@@ -57,8 +57,8 @@ Install via HACS (recommended) unless noted:
 ![desktop-bedroom-dark](https://github.com/user-attachments/assets/aa904c06-7d6e-47b4-ab26-24e676bf6095)
 
 ### Mobile View (Light/Dark)
-<img src="https://github.com/user-attachments/assets/c6f66f68-ad54-492b-860e-0b0ba0c765e6" width="404">
-<img src="https://github.com/user-attachments/assets/4eb7b0cf-c75c-451b-9f26-b35130d17f93" width="404">
+<img src="https://github.com/user-attachments/assets/254a44d4-0080-4161-926e-732d2b503060" width="404">
+<img src="https://github.com/user-attachments/assets/97e403d3-48af-43ac-8077-46992825b337" width="404">
 
 ### Tablet View (Light/Dark)
 ![tablet-livingroom-light 2](https://github.com/user-attachments/assets/41ef6a99-2634-4026-a188-ec20979cc088)
