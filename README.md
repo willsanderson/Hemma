@@ -1,4 +1,5 @@
-![hemma_devices](https://github.com/user-attachments/assets/74b780bc-fc58-4323-9c58-59961014d551)
+<img width="1473" height="936" alt="hemma" src="https://github.com/user-attachments/assets/829dc49d-4ad5-4081-8dc0-53a7f41576dc" />
+
 # :house_with_garden: Hemma
 
 A modern, minimal, mobile-friendly dashboard for Home Assistant.  Inspired by the [Homio](https://github.com/iamtherufus/Homio) dashboard by @iamtherufus, Hemma is rebuilt and extended with new layouts, cards, and a streamlined setup process.
