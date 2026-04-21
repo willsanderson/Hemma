@@ -1,9 +1,3 @@
-## Important Update (4/2/26)
-
-The latest update (version 1.2.2) includes many changes and new features, requiring updated code for most all files in the repo. When updating, please ensure you replace/overwrite all files to ensure compatibility. 
-
-**Note**: This update also includes changes to the `layout-card-modified.js` file which will require clearing browser cache and restarting HA for changes to apply.
-
 ![hemma_devices](https://github.com/user-attachments/assets/74b780bc-fc58-4323-9c58-59961014d551)
 # :house_with_garden: Hemma
 
