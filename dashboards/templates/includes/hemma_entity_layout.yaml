@@ -18,7 +18,6 @@ align-content: end
 box-sizing: border-box
 overflow-x: auto
 overflow-y: var(--hemma-entity-overflow-y-current, var(--hemma-entity-overflow-y-desktop, hidden))
--webkit-overflow-scrolling: touch
 scroll-snap-type: x proximity
 overflow-anchor: none
 direction: ltr
@@ -26,7 +25,7 @@ scrollbar-width: none
 -ms-overflow-style: none
 
 mediaquery:
-# -------- Mobile Portrait --------
+  # -------- Mobile Portrait --------
   "(max-width: 767px) and (orientation: portrait), (max-height: 500px) and (orientation: portrait)":
     position: relative
     z-index: 4
@@ -34,35 +33,31 @@ mediaquery:
     margin: >-
       calc(var(--hero-top) + var(--hemma-header-stack-h-current, 240px) + var(--hemma-entity-mobile-top-gap, -40px))
       0
-      calc(env(safe-area-inset-bottom, 0px) + var(--hemma-entity-bottom-gap, 0px))
+        calc(env(safe-area-inset-bottom, 0px) + var(--hemma-nav-height, 0px) + var(--hemma-entity-bottom-gap, 0px))
       0
     padding: >-
       0
       var(--hemma-rail-left, var(--page-gutter-mobile, 11px))
-      calc(env(safe-area-inset-bottom, 0px) + var(--hemma-entity-bottom-gap, 0px))
+      calc(env(safe-area-inset-bottom, 0px) + var(--hemma-nav-height, 0px) + 8px)
       var(--hemma-rail-left, var(--page-gutter-mobile, 11px))
-    max-width: none
     min-height: >-
-      calc((3 * var(--hemma-entity-height-current, 115px)) + (2 * 8px))
-    align-content: end
-    box-sizing: border-box
+      calc((3 * var(--hemma-entity-height-current, 115px)) + (2 * var(--hemma-entity-gap, 8px)))
     display: grid
-    grid-auto-flow: row
     grid-template-columns: repeat(2, minmax(0, 1fr))
     grid-auto-rows: var(--hemma-entity-height-current, 115px)
-    grid-column-gap: 8px
-    grid-row-gap: 8px
+    grid-auto-flow: row
+    gap: var(--hemma-entity-gap, 8px)
     justify-content: stretch
     justify-items: stretch
     align-items: stretch
-    overflow: visible
-    -webkit-overflow-scrolling: auto
-    overscroll-behavior-y: auto
-    touch-action: auto
-    overflow-anchor: none
+    align-content: end
+    box-sizing: border-box
+    overflow-y: scroll
+    overflow-x: hidden
+    -webkit-overflow-scrolling: touch
+    overscroll-behavior-y: contain
     scrollbar-width: none
     -ms-overflow-style: none
-    scroll-snap-type: none
 
   # -------- Mobile Landscape --------
   "(max-height: 600px) and (orientation: landscape)":

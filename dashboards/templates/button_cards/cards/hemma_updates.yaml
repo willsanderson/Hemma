@@ -33,7 +33,16 @@ hemma_updates:
                   padding-top: 0 !important;
                   padding-bottom: 0 !important;
                   backdrop-filter: none !important;
+                  --ha-card-box-shadow: none !important;
                 }
+
+                ha-card:hover,
+                ha-card:focus,
+                ha-card:active {
+                  box-shadow: none !important;
+                  --ha-card-box-shadow: none !important;
+                }
+                
           filter:
             include:
               - domain: update

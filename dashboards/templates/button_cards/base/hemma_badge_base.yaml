@@ -1,5 +1,8 @@
 # Base Badge Template
 hemma_badge_base:
+  classes:
+    card:
+      - hemma-badge
   styles:
     card:
       - background: var(--badge-background, rgba(0,0,0,0.18))
@@ -8,6 +11,8 @@ hemma_badge_base:
       - box-shadow: none
       - --ha-card-box-shadow: none
       - --ha-shadow-light-hover: none
+      - --ha-shadow-dark-hover: none
+      - --hemma-badge-hover-shadow: none
       - border: none !important
       - border-radius: var(--badge-br, 9999px)
       - padding: var(--badge-padding-current, var(--badge-padding, 6px 14px))
@@ -92,6 +97,7 @@ hemma_badge_base:
       --badge-sub-opacity: .82;
       --badge-after-z:  2;
       --badge-before-z: 3;
+      --hemma-badge-hover-shadow: none;
     }
 
     @media (max-width: 767px) and (orientation: portrait) {
@@ -129,7 +135,7 @@ hemma_badge_base:
       box-shadow: none !important;
     }
 
-    ha-card:hover {
+    ha-card:not(#hemma-badge-shadow-suppress):hover {
       box-shadow: none !important;
     }
 

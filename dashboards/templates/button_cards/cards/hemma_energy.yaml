@@ -42,7 +42,7 @@ hemma_energy:
         name:
           - color: var(--hemma-entity-active, var(--primary-text-color))
         state:
-          - color: var(--hemma-state-color)
+          - color: var(--hemma-state-active-color)
         img_cell:
           - opacity: var(--hemma-entity-picture-active-opacity, 1) !important
           - filter: var(--hemma-entity-picture-active-filter, none) !important

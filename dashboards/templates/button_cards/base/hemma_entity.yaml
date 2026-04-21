@@ -42,7 +42,7 @@ hemma_entity:
       box-sizing: border-box;
       background: linear-gradient(
         to bottom right,
-        var(--hemma-card-specular-start, rgba(255,255,255,0.45)) 0%,
+        var(--hemma-card-specular-start, rgba(255,255,255,0.35)) 0%,
         var(--hemma-card-specular-mid, rgba(255,255,255,0.18)) 45%,
         var(--hemma-card-specular-mid, rgba(255,255,255,0.18)) 55%,
         var(--hemma-card-specular-end, rgba(255,255,255,0.35)) 100%
@@ -74,6 +74,19 @@ hemma_entity:
 
     @media (hover: none) and (pointer: coarse){
       #battery{ opacity: 0; }
+    }
+
+    /* ── Mobile portrait animation ── */
+    @keyframes hemmaFadeIn {
+      from { opacity: 0; transform: translateY(300px); }
+      to   { opacity: 1; transform: translateY(0);   }
+    }
+
+    @media (max-width: 767px) and (orientation: portrait) {
+      ha-card {
+        animation: var(--hemma-entity-anim-name, hemmaFadeIn) 0.22s;
+        will-change: opacity, transform;
+      }
     }
 
     #progress {
@@ -213,7 +226,7 @@ hemma_entity:
         const threshold = Number(variables.battery_low_threshold ?? 20);
         const isLowNum = hasNum && n <= threshold;
         if (!(isLowWord || isLowNum)) return "";
-        const size = (window.innerWidth <= 768) ? 20 : 24;
+        const size = (window.innerWidth < 768) ? 20 : 24;
         return `
           <ha-icon
             icon="mdi:battery-alert"
@@ -268,7 +281,7 @@ hemma_entity:
       styles:
         card:
           - background-color: var(--hemma-entity-background-active)
-          - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
+          - box-shadow: var(--hemma-button-card-box-shadow-active-current, var(--button-card-box-shadow-active, var(--button-card-box-shadow))) !important
         name:
           - color: var(--hemma-entity-active, var(--primary-text-color))
         state:
@@ -284,18 +297,37 @@ hemma_entity:
 
   styles:
     card:
+      - --hemma-entity-anim-name: |
+          [[[
+            if (!window._hemmaAnimSetup) {
+              window._hemmaAnimSetup = true;
+              window._hemmaFromBg = false;
+              window._hemmaLastPath = window.location.pathname;
+              document.addEventListener('visibilitychange', () => {
+                if (document.hidden) window._hemmaFromBg = true;
+              });
+              window.addEventListener('location-changed', () => {
+                const newPath = window.location.pathname;
+                if (newPath !== window._hemmaLastPath) {
+                  window._hemmaFromBg = false;
+                }
+                window._hemmaLastPath = newPath;
+              });
+            }
+            return window._hemmaFromBg ? 'none' : 'hemmaFadeIn';
+          ]]]
       - --hemma-toggle-w: |
           [[[
             const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
             return isMobile ? '34px' : '46px';
           ]]]
       - background-color: var(--hemma-entity-background)
-      - border-radius: var(--ha-card-border-radius, 30px)
-      - box-shadow: var(--button-card-box-shadow)
-      - position: relative
-      - height: var(--hemma-entity-height-current, var(--hemma-entity-height-desktop, 180px))
-      - padding: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 22px))
+      - border-radius: var(--ha-card-border-radius, 28px)
+      - box-shadow: var(--hemma-button-card-box-shadow-current, var(--button-card-box-shadow))
+      - height: var(--hemma-entity-height-current, var(--hemma-entity-height-desktop, 200px))
+      - padding: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
       - scroll-snap-align: start
+      - position: relative
       - display: |
           [[[
             return (states['input_boolean.hemma_mobile_navigation'].state === 'on') ? 'none' : 'block';
@@ -379,7 +411,7 @@ hemma_entity:
       toggle:
         - position: absolute
         - top: calc(var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px)) + (var(--hemma-entity-icon-size-current, var(--hemma-entity-icon-size-desktop, 34px)) - 20px) / 2)
-        - right: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 22px))
+        - right: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
         - z-index: 2
         - line-height: 0
         - display: |
@@ -395,8 +427,8 @@ hemma_entity:
 
       battery:
         - position: absolute
-        - bottom: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 22px))
-        - right: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 22px))
+        - bottom: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
+        - right: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
         - line-height: 0
         - z-index: 3
         - pointer-events: none
@@ -404,8 +436,8 @@ hemma_entity:
 
       progress:
         - position: absolute
-        - top: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 22px))
-        - right: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 22px))
+        - top: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
+        - right: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
         - width: |
             [[[
               const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
@@ -425,10 +457,10 @@ hemma_entity:
     name:
       - color: var(--hemma-entity-inactive, var(--secondary-text-color)) !important
       - font-weight: 600
-      - text-shadow: var(--hemma-entity-text-shadow, 0 0 3px rgba(0, 0, 0, 0.3))
+      - text-shadow: var(--hemma-entity-text-shadow, 0 0 5px rgba(0,0,0,0.1))
       - justify-self: start
       - margin-bottom: 0px
-      - font-size: var(--hemma-entity-name-font-current, var(--hemma-entity-name-font-desktop, 16px))
+      - font-size: var(--hemma-entity-name-font-current, var(--hemma-entity-name-font-desktop, 18px))
       - line-height: 1.15
       - white-space: nowrap
       - overflow: hidden
@@ -438,8 +470,8 @@ hemma_entity:
     state:
       - text-transform: capitalize
       - color: var(--hemma-entity-inactive, var(--secondary-text-color)) !important
-      - font-size: var(--hemma-entity-state-font-current, var(--hemma-entity-state-font-desktop, 14px))
-      - text-shadow: var(--hemma-entity-text-shadow, 0 0 3px rgba(0, 0, 0, 0.3))
+      - font-size: var(--hemma-entity-state-font-current, var(--hemma-entity-state-font-desktop, 15px))
+      - text-shadow: var(--hemma-entity-text-shadow, 0 0 5px rgba(0,0,0,0.1))
       - justify-self: start
       - font-weight: 700
       - opacity: 0.75
@@ -461,14 +493,14 @@ hemma_entity:
       - justify-self: start
       - align-self: start
       - color: var(--hemma-entity-inactive, var(--secondary-text-color)) !important
-      - width: var(--hemma-entity-icon-size-current, var(--hemma-entity-icon-size-desktop, 30px))
-      - height: var(--hemma-entity-icon-size-current, var(--hemma-entity-icon-size-desktop, 30px))
+      - width: var(--hemma-entity-icon-size-current, var(--hemma-entity-icon-size-desktop, 34px))
+      - height: var(--hemma-entity-icon-size-current, var(--hemma-entity-icon-size-desktop, 34px))
       - background: transparent
       - transition: opacity .18s ease, filter .18s ease
 
     entity_picture:
       - opacity: var(--hemma-entity-picture-inactive-opacity, .9)
-      - filter: var(--hemma-entity-picture-inactive-filter, brightness(0.9) saturate(0.9))
+      - filter: var(--hemma-entity-picture-inactive-filter, brightness(0.85) saturate(0.9))
       - transition: opacity .18s ease, filter .18s ease
 
     icon:

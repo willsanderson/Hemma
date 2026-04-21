@@ -21,7 +21,14 @@ hemma_shared:
       - bedroom
     preload_night_suffix: "-night"
     preload_path: "/local/hemma/rooms"
+    mobile_preload_path: "/local/hemma/mobile"
+    preload_mobile_dark_suffix: "-dark"
     preload_extension: ".jpg"
+    preload_mobile_shared_prefix: "mobile"
+    preload_mobile_shared_phases:
+      - morning
+      - day
+      - night
 
   styles:
     grid:
@@ -37,18 +44,31 @@ hemma_shared:
       const suffix = variables.preload_night_suffix || '-night';
       const basePath = variables.preload_path || '/local/hemma/rooms';
       const ext = variables.preload_extension || '.jpg';
+      const mobilePrefix = variables.preload_mobile_shared_prefix || 'mobile';
+      const mobilePhases = variables.preload_mobile_shared_phases || ['morning', 'day', 'night'];
 
-      if (rooms.length > 0 && !window.hemmaPreloadedImages) {
+      if (!window.hemmaPreloadedImages) {
         window.hemmaPreloadedImages = [];
 
         rooms.forEach(room => {
-
           const imgLight = new Image();
           imgLight.src = `${basePath}/${room}${ext}`;
           window.hemmaPreloadedImages.push(imgLight);
 
           const imgDark = new Image();
           imgDark.src = `${basePath}/${room}${suffix}${ext}`;
+          window.hemmaPreloadedImages.push(imgDark);
+        });
+
+        mobilePhases.forEach(phase => {
+          const mobilePath = variables.mobile_preload_path || '/local/hemma/mobile';
+
+          const imgLight = new Image();
+          imgLight.src = `${mobilePath}/${mobilePrefix}-${phase}${ext}`;
+          window.hemmaPreloadedImages.push(imgLight);
+
+          const imgDark = new Image();
+          imgDark.src = `${mobilePath}/${mobilePrefix}-${phase}-dark${ext}`;
           window.hemmaPreloadedImages.push(imgDark);
         });
       }
@@ -68,7 +88,7 @@ hemma_shared:
       --hero-temp-letter-spacing: 0.04em;
       --hero-temp-reserve: calc(var(--hero-temp-font-size) * 1.2);
       --hero-header-gap-current: var(--hero-header-gap-desktop, 6px);
-      --hero-img-blur-current: var(--hero-img-blur, 4px);
+      --hero-img-blur-current: var(--hero-img-blur, 4px) !important;
       --hero-img-scale-current: var(--hero-img-scale, 1.08);
       --hero-img-filter: blur(var(--hero-img-blur-current))
         saturate(var(--hero-img-saturate, 1.02))
@@ -76,7 +96,6 @@ hemma_shared:
       --hero-img-filter-from: blur(var(--hero-img-blur-current))
         saturate(var(--hero-img-saturate-from, 1.0))
         brightness(var(--hero-img-brightness-from, .97));
-      --hero-title-to-badges-gap-mobile: 8px;
       --hemma-hover-filter: none !important;
       -webkit-tap-highlight-color: transparent !important;
       --mdc-ripple-press-opacity: 0 !important;
@@ -90,6 +109,7 @@ hemma_shared:
       opacity: 1 !important;
       transform: none !important;
       box-shadow: none !important;
+      --ha-card-box-shadow: none !important;
       transition: none !important;
       -webkit-tap-highlight-color: transparent !important;
       --mdc-ripple-press-opacity: 0 !important;
@@ -109,6 +129,7 @@ hemma_shared:
       box-shadow:none !important;
       transform:none !important;
       cursor:default !important;
+      --ha-card-box-shadow: none !important;
     }
 
     /* Background image */
@@ -118,7 +139,7 @@ hemma_shared:
       inset:0;
       border-radius:inherit;
       pointer-events:none;
-      z-index:-2;
+      z-index:-10;
       background-image: var(--hero-img);
       background-position: var(--hero-img-pos, center center);
       background-size: cover;
@@ -138,7 +159,7 @@ hemma_shared:
       inset:0;
       border-radius:inherit;
       pointer-events:none;
-      z-index:-1;
+      z-index:-9;
       background: var(--hero-tint, rgba(56,56,56,0.50))
     }
 
@@ -147,51 +168,56 @@ hemma_shared:
       to{   opacity:1; filter: var(--hero-img-filter); }
     }
 
-    @media (prefers-reduced-motion: reduce){
-      :host ha-card::after{
-        transition:none;
-        animation:none;
-      }
-    }
-
-    /* Tablet */
-    @media (min-width:768px) and (max-width:1366px){
-      :host{
-        --hero-top: var(--header-top-tablet, clamp(180px, 22vh, 280px));
-        --hero-temp-font-size: var(--hero-temp-font-size-tablet, var(--hero-temp-font-size-desktop, 18px));
-        --hero-header-gap-current: var(--hero-header-gap-tablet, var(--hero-header-gap-desktop, 6px));
-      }
-    }
-
-    /* Tablet Portrait */
-    @media (min-width:768px) and (max-width:1366px) and (orientation:portrait){
-      :host{
-        --hero-top: var(--header-top-tablet-portrait, clamp(320px, 30vh, 420px));
-      }
+    @keyframes hemmaRoomReveal{
+      from{ background: rgba(56,56,56,0.8); }
+      to{   background: var(--hero-tint, rgba(56,56,56,0.50)); }
     }
 
     /* Mobile */
     @media (max-width: 767px), (max-height: 500px){
       :host{
+        --hero-img-blur: 0px !important;
+        --hero-img-saturate: var(--hero-img-saturate-mobile, 1.02);
+        --hero-img-brightness: var(--hero-img-brightness-mobile, .985);
+        --hero-img-scale-current: 1 !important;
+        --hero-tint: var(--hero-tint-mobile, rgba(56,56,56,0.50));
         --hero-top: calc(var(--header-top-mobile, clamp(80px, 12vh, 120px)) - var(--header-top-mobile-nudge, 0px));
         --hero-temp-font-size: var(--hero-temp-font-size-mobile, 13px);
         --hero-temp-reserve: 0px;
         --hero-header-gap-current: var(--hero-header-gap-mobile, 5px);
-        --tiles-pad-bottom: 164px;
+        --tiles-pad-bottom: calc(
+          var(--hemma-nav-height, 112px)
+          + env(safe-area-inset-bottom, 0px)
+          - 6px
+        );
         --hero-gutter: var(--content-rail,
                       var(--hemma-rail-left,
                       var(--page-gutter-mobile, 10px)));
+        --hemma-header-shield-h: calc(var(--hero-top) + var(--hemma-header-stack-h-current, 240px));
+      }
+
+      :host ha-card::after{
+        animation: none !important;
+        transition: none !important;
+        filter:
+          saturate(var(--hero-img-saturate-mobile, 1.02))
+          brightness(var(--hero-img-brightness-mobile, .985)) !important;
+        transform: scale(1) !important;
       }
 
       :host ha-card{
         position: fixed !important;
         inset: 0 !important;
-        height: 100svh !important;
-        min-height: 100svh !important;
-        max-height: 100svh !important;
+        height: 100dvh !important;
+        min-height: 100dvh !important;
+        max-height: 100dvh !important;
         overflow: hidden !important;
         padding: 0 !important;
         touch-action: none !important;
+        overscroll-behavior: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: transparent !important;
       }
 
       :host .button-card-main{
@@ -204,7 +230,6 @@ hemma_shared:
           var(--tiles-pad-bottom)
           var(--hero-gutter) !important;
       }
-    }
 
       :host .container{
         position: relative !important;
@@ -269,12 +294,30 @@ hemma_shared:
         grid-template-areas: "n weather" "badges badges" "badges_climate badges_climate" "badges_presence badges_presence" "badges_media badges_media" "badges_lights badges_lights" !important;
         grid-template-rows: min-content min-content min-content min-content min-content min-content !important;
       }
+
     }
 
     @media (orientation: landscape) and (pointer: coarse),
            (orientation: landscape) and (hover: none) {
       :host #weather {
         display: none !important;
+      }
+    }
+
+    /* Tablet touch (iPad) — prevent pull-to-refresh / background scroll bounce.
+       min-height: 601px excludes landscape phones (already handled by the
+       max-height: 600px landscape-mobile block above). */
+    @media (min-width: 768px) and (min-height: 601px) and (pointer: coarse),
+           (min-width: 768px) and (min-height: 601px) and (hover: none) {
+      :host ha-card {
+        position: fixed !important;
+        inset: 0 !important;
+        height: 100dvh !important;
+        min-height: 100dvh !important;
+        max-height: 100dvh !important;
+        overflow: hidden !important;
+        touch-action: none !important;
+        overscroll-behavior: none !important;
       }
     }`;
     ]]]

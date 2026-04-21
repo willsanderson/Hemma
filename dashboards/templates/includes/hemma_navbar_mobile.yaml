@@ -8,7 +8,7 @@
 #
 # SECTIONS TO UPDATE:
 #   1. Phone Portrait (line ~30) - Has Home + Rooms dropdown + Scenes
-#   2. Tablet Portrait (line ~380) - Has Home + Rooms dropdown + Scenes
+#   2. Tablet Portrait (line ~380) - Has individual room links + Scenes
 #   3. Tablet Landscape (line ~570) - Has individual room links + Scenes
 #
 # ROUTES TO CUSTOMIZE IN EACH SECTION:
@@ -578,17 +578,16 @@ cards:
                 return reg[id] || (reg.get ? reg.get(id) : null) || null;
               };
 
-              const isHidden = (id) => {
-                const e = getRegEntry(id);
-                // Different HA versions expose slightly different fields
-                return !!(e && (e.hidden || e.hidden_by || e.disabled || e.disabled_by));
-              };
-
               const scenes = Object.values(hass.states || {})
                 .filter(e => e?.entity_id?.startsWith('scene.'))
-                .filter(s => !s.entity_id.startsWith('scene.hemma_restore_'))
-                // Keep only scenes that are NOT hidden/disabled in HA
-                .filter(s => !isHidden(s.entity_id))
+                .filter(s => !s.entity_id.startsWith('scene.hemma'))
+                // Exclude dynamically-created scenes (not in the entity registry)
+                .filter(s => !!getRegEntry(s.entity_id))
+                // Exclude scenes hidden/disabled in HA
+                .filter(s => {
+                  const e = getRegEntry(s.entity_id);
+                  return !(e.hidden || e.hidden_by || e.disabled || e.disabled_by);
+                })
                 .slice()
                 .sort((a,b) => (a.attributes?.friendly_name || a.entity_id)
                   .localeCompare(b.attributes?.friendly_name || b.entity_id));
@@ -653,27 +652,93 @@ cards:
         .navbar-card.mobile{ display:none !important; }
 
         ha-card.navbar-card.desktop{
-          position: fixed !important;
-          left: 50% !important;
-          transform: translateX(-50%) !important;
-          top: 22px !important;
-          bottom: auto !important;
-          width: fit-content !important;
-          border-radius: 9999px !important;
+          position: relative !important;
+          inset: auto !important;
+          transform: none !important;
+          min-width: 0 !important;
+          border-radius: 0 !important;
           padding: 4px !important;
-          background: var(--hemma-nav-bg, rgba(255,255,255,0.11)) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          backdrop-filter: blur(12px) !important;
+          background: transparent !important;
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
           border: none !important;
-          box-shadow: var(--hemma-nav-shadow, 0 18px 36px rgba(0,0,0,.04)) !important;
-          overflow: visible !important;
+          box-shadow: none !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          scrollbar-width: none !important;
+          -webkit-overflow-scrolling: touch !important;
+          justify-content: safe center !important;
           --navbar-primary-color: var(--hemma-nav-icon, rgba(255,255,255,.78)) !important;
           --navbar-active-color: var(--hemma-nav-icon-active, rgba(255,255,255,1)) !important;
           --navbar-route-active-background: transparent !important;
           --navbar-route-active-color: inherit !important;
         }
 
-        ha-card.navbar-card.desktop::before{
+        ha-card.navbar-card.desktop::-webkit-scrollbar{
+          height: 0 !important;
+          display: none !important;
+        }
+
+        @keyframes hemma-tablet-portrait-fade {
+          0% {
+            -webkit-mask-image: linear-gradient(to right, black, black calc(100% - 40px), transparent);
+            mask-image: linear-gradient(to right, black, black calc(100% - 40px), transparent);
+          }
+          1%, 99% {
+            -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0.2), rgba(0,0,0,0.4) 10px, black 50px, black calc(100% - 50px), transparent);
+            mask-image: linear-gradient(to right, rgba(0,0,0,0.2), rgba(0,0,0,0.4) 10px, black 50px, black calc(100% - 50px), transparent);
+          }
+          100% {
+            -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0.2), rgba(0,0,0,0.4) 10px, black 50px, black);
+            mask-image: linear-gradient(to right, rgba(0,0,0,0.2), rgba(0,0,0,0.4) 10px, black 50px, black);
+          }
+        }
+
+        @supports (animation-timeline: scroll()) {
+          ha-card.navbar-card.desktop{
+            animation: hemma-tablet-portrait-fade linear !important;
+            animation-timeline: scroll(self inline) !important;
+          }
+        }
+
+        @keyframes hemma-badge-pulse {
+          0%, 100% { opacity: .9; transform: scale(1); }
+          50%       { opacity: 0; transform: scale(0.85); }
+        }
+
+        .badge{
+          width: 6px !important;
+          height: 6px !important;
+          border-radius: 999px !important;
+          top: 9px !important;
+          left: 44px !important;
+          animation: hemma-badge-pulse 3s ease-in-out infinite !important;
+        }
+
+        .navbar.desktop{
+          --navbar-route-icon-size: 0px !important;
+          position: fixed !important;
+          left: 50% !important;
+          right: auto !important;
+          transform: translateX(-50%) !important;
+          top: 40px !important;
+          bottom: auto !important;
+          width: fit-content !important;
+          max-width: calc(75vw - 35px) !important;
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          gap: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border-radius: 9999px !important;
+          background: var(--hemma-nav-bg, rgba(255,255,255,0.11)) !important;
+          -webkit-backdrop-filter: blur(12px) !important;
+          backdrop-filter: blur(12px) !important;
+          box-shadow: var(--hemma-nav-shadow, 0 14px 18px rgba(0,0,0,.04)) !important;
+          overflow: hidden !important;
+        }
+
+        .navbar.desktop::before{
           content: "";
           position: absolute;
           inset: 0;
@@ -684,7 +749,7 @@ cards:
           background: linear-gradient(
             to bottom right,
             var(--hemma-nav-specular-start, rgba(255,255,255,0.55)) 0%,
-            var(--hemma-nav-specular-mid, rgba(255,255,255,0.21)) 45%,
+            var(--hemma-nav-specular-mid, rgba(255,255,255,0.21)) 55%,
             var(--hemma-nav-specular-mid, rgba(255,255,255,0.21)) 55%,
             var(--hemma-nav-specular-end, rgba(255,255,255,0.46)) 100%
           );
@@ -698,32 +763,10 @@ cards:
           mask-composite: exclude;
         }
 
-        @keyframes hemma-badge-pulse {
-          0%, 100% { opacity: .9; transform: scale(1); }
-          50%       { opacity: 0; transform: scale(0.85); }
-        }
-
-        .badge{
-          width: 6px !important;
-          height: 6px !important;
-          border-radius: 999px !important;
-          top: 6px !important;
-          left: 14px !important;
-          animation: hemma-badge-pulse 3s ease-in-out infinite !important;
-        }
-
-        .navbar.desktop{
-          --navbar-route-icon-size: 0px !important;
-          display:flex !important;
-          gap: 5px !important;
-          padding: 0 !important;
-          margin: 0 !important;
-        }
-
         .icon, .image, ha-icon{ display:none !important; }
 
         .route{
-          flex: 1 1 0 !important;
+          flex: 0 0 auto !important;
           display:flex !important;
           align-items:center !important;
           justify-content:center !important;
@@ -991,67 +1034,36 @@ cards:
           icon: mdi:home-variant
           icon_selected: mdi:home-variant
 
-        # Rooms (Dropdown Menu)
-        - label: Rooms
-          icon: >
-            [[[
-              const p = window.location.pathname || '';
-              if (p === '/dashboard-hemma/bedroom') return 'mdi:bed-king';
-              if (p === '/dashboard-hemma/kitchen') return 'mdi:fridge';
-              if (p === '/dashboard-hemma/living-room') return 'mdi:sofa';
-              return 'mdi:sofa';
-            ]]]
-          icon_selected: >
-            [[[
-              const p = window.location.pathname || '';
-              if (p === '/dashboard-hemma/bedroom') return 'mdi:bed-king';
-              if (p === '/dashboard-hemma/kitchen') return 'mdi:fridge';
-              if (p === '/dashboard-hemma/living-room') return 'mdi:sofa';
-              return 'mdi:sofa';
-            ]]]
-          tap_action:
-            action: open-popup
-          selected: >
-            [[[
-              const p = window.location.pathname;
-              return p.startsWith('/dashboard-hemma/')
-                && !['/dashboard-hemma/home','/dashboard-hemma/scenes'].includes(p);
-            ]]]
+        # Living Room
+        - url: /dashboard-hemma/living-room
+          label: Living Room
+          icon: mdi:sofa
           badge:
             show: >
               [[[
-                const _sensors = ['input_text.hemma_motion_living_room','input_text.hemma_motion_bedroom','input_text.hemma_motion_kitchen']
-                  .map(h => hass.states[h]?.state?.trim()).filter(Boolean);
+                const _s = hass.states['input_text.hemma_motion_living_room']?.state?.trim();
                 return hass.states['input_boolean.hemma_motion_badges']?.state === 'on'
-                  && _sensors.some(id => hass.states[id]?.state === 'on');
+                  && !!_s && hass.states[_s]?.state === 'on';
               ]]]
             color: '#ffd700'
-          popup:
-            - label: Bedroom
-              url: /dashboard-hemma/bedroom
-              icon: mdi:bed-king
-              badge:
-                show: >
-                  [[[
-                    const _s = hass.states['input_text.hemma_motion_bedroom']?.state?.trim();
-                    return hass.states['input_boolean.hemma_motion_badges']?.state === 'on'
-                      && !!_s && hass.states[_s]?.state === 'on';
-                  ]]]
-                color: '#ffd700'
-            - label: Kitchen
-              url: /dashboard-hemma/kitchen
-              icon: mdi:fridge
-            - label: Living Room
-              url: /dashboard-hemma/living-room
-              icon: mdi:sofa
-              badge:
-                show: >
-                  [[[
-                    const _s = hass.states['input_text.hemma_motion_living_room']?.state?.trim();
-                    return hass.states['input_boolean.hemma_motion_badges']?.state === 'on'
-                      && !!_s && hass.states[_s]?.state === 'on';
-                  ]]]
-                color: '#ffd700'
+
+        # Kitchen
+        - url: /dashboard-hemma/kitchen
+          label: Kitchen
+          icon: mdi:fridge
+
+        # Bedroom
+        - url: /dashboard-hemma/bedroom
+          label: Bedroom
+          icon: mdi:bed-king
+          badge:
+            show: >
+              [[[
+                const _s = hass.states['input_text.hemma_motion_bedroom']?.state?.trim();
+                return hass.states['input_boolean.hemma_motion_badges']?.state === 'on'
+                  && !!_s && hass.states[_s]?.state === 'on';
+              ]]]
+            color: '#ffd700'
 
         # Scenes (Dropdown Menu)
         - label: Scenes
@@ -1069,15 +1081,16 @@ cards:
                 return reg[id] || (reg.get ? reg.get(id) : null) || null;
               };
 
-              const isHidden = (id) => {
-                const e = getRegEntry(id);
-                return !!(e && (e.hidden || e.hidden_by || e.disabled || e.disabled_by));
-              };
-
               const scenes = Object.values(hass.states || {})
                 .filter(e => e?.entity_id?.startsWith('scene.'))
-                .filter(s => !s.entity_id.startsWith('scene.hemma_restore_'))
-                .filter(s => !isHidden(s.entity_id))
+                .filter(s => !s.entity_id.startsWith('scene.hemma'))
+                // Exclude dynamically-created scenes (not in the entity registry)
+                .filter(s => !!getRegEntry(s.entity_id))
+                // Exclude scenes hidden/disabled in HA
+                .filter(s => {
+                  const e = getRegEntry(s.entity_id);
+                  return !(e.hidden || e.hidden_by || e.disabled || e.disabled_by);
+                })
                 .slice()
                 .sort((a,b) => (a.attributes?.friendly_name || a.entity_id)
                   .localeCompare(b.attributes?.friendly_name || b.entity_id));
@@ -1223,7 +1236,6 @@ cards:
           background: var(--hemma-nav-bg, rgba(255,255,255,0.11)) !important;
           -webkit-backdrop-filter: blur(12px) !important;
           backdrop-filter: blur(12px) !important;
-          border: 1px solid var(--hemma-nav-border, rgba(255,255,255,0.12)) !important;
           box-shadow: var(--hemma-nav-shadow, 0 18px 36px rgba(0,0,0,.04)) !important;
           overflow: hidden !important;
         }
@@ -1590,15 +1602,16 @@ cards:
                 return reg[id] || (reg.get ? reg.get(id) : null) || null;
               };
 
-              const isHidden = (id) => {
-                const e = getRegEntry(id);
-                return !!(e && (e.hidden || e.hidden_by || e.disabled || e.disabled_by));
-              };
-
               const scenes = Object.values(hass.states || {})
                 .filter(e => e?.entity_id?.startsWith('scene.'))
-                .filter(s => !s.entity_id.startsWith('scene.hemma_restore_'))
-                .filter(s => !isHidden(s.entity_id))
+                .filter(s => !s.entity_id.startsWith('scene.hemma'))
+                // Exclude dynamically-created scenes (not in the entity registry)
+                .filter(s => !!getRegEntry(s.entity_id))
+                // Exclude scenes hidden/disabled in HA
+                .filter(s => {
+                  const e = getRegEntry(s.entity_id);
+                  return !(e.hidden || e.hidden_by || e.disabled || e.disabled_by);
+                })
                 .slice()
                 .sort((a,b) => (a.attributes?.friendly_name || a.entity_id)
                   .localeCompare(b.attributes?.friendly_name || b.entity_id));

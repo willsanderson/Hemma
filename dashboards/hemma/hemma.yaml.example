@@ -22,7 +22,7 @@ button_card_templates: !include_dir_merge_named /config/dashboards/templates/but
 #     hide_sidebar: false
 #   user_settings:
 #     - users:
-#       - "tablet"
+#         - "tablet"
 #       hide_header: true
 #       hide_sidebar: false
 #       hide_dialog_logbook: true
@@ -53,6 +53,7 @@ views:
           #                       /config/www/hemma/rooms/home-night.jpg (dark mode)
           image: home
           image_position: center center
+          # mobile_background: true # Enable this if you add mobile backgrounds to /local/hemma/mobile/
 
           # Climate (shows group badge + expandable sub-badges for temp/humidity/quality)
           show_climate: false
@@ -188,6 +189,7 @@ views:
         variables:
           image: livingroom
           image_position: center center
+          # mobile_background: true # Enable this if you add mobile backgrounds to /local/hemma/mobile/
 
           # Climate (optional - shows group badge + expandable sub-badges for temp/humidity/quality)
           show_climate: false
@@ -275,7 +277,7 @@ views:
             variables:
               sensors:
                 - sensor.YOUR_PLANT_MOISTURE
-                - sensor.YOUR_PLANET_ILLUMINANCE
+                - sensor.YOUR_PLANT_ILLUMINANCE
                 - sensor.YOUR_PLANT_TEMPERATURE
                 - sensor.YOUR_PLANT_AIR_HUMIDITY
                 - sensor.YOUR_PLANT_CONDUCTIVITY
@@ -295,6 +297,7 @@ views:
         variables:
           image: kitchen
           image_position: center center
+          # mobile_background: true # Enable this if you add mobile backgrounds to /local/hemma/mobile/
 
           # Climate (optional - shows group badge + expandable sub-badges for temp/humidity/quality)
           show_climate: false
@@ -364,7 +367,8 @@ views:
         variables:
           image: bedroom
           image_position: center center
-
+          # mobile_background: true # Enable this if you add mobile backgrounds to /local/hemma/mobile/
+          
           # Climate (optional - shows group badge + expandable sub-badges for temp/humidity/quality)
           show_climate: false
           # climate_entity_1: climate.YOUR_BEDROOM_CLIMATE
@@ -412,8 +416,8 @@ views:
               icon: apple_tv
 
           - type: custom:button-card
-            template: hemma_entity
-            entity: media_player.YOUR_BEDROOM_TV_ENTITY
+            template: hemma_media
+            entity: media_player.YOUR_BEDROOM_TV
             name: TV
             variables:
               icon: tv

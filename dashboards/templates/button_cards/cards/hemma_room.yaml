@@ -40,6 +40,7 @@ hemma_room:
     - '[[[ return variables.image ]]]'
     - '[[[ return variables.image_night ]]]'
     - '[[[ return variables.image_position ]]]'
+    - '[[[ return variables.mobile_background_entity || "sensor.hemma_mobile_dynamic_background" ]]]'
     - '[[[ return variables.show_weather ]]]'
     - '[[[ return variables.weather_entity ]]]'
     - '[[[ return variables.weather_temp_sensor ]]]'
@@ -53,6 +54,8 @@ hemma_room:
     image:
     image_night:
     image_position:
+    mobile_background: false
+    mobile_background_entity: sensor.hemma_mobile_dynamic_background
 
     show_climate: false
     show_climate_inline: false  # true = show individual badges (temp/humidity/air quality) directly on the top row instead of the group badge
@@ -162,15 +165,32 @@ hemma_room:
       - box-shadow: none !important
       - transform: translateZ(0)
       - will-change: transform
-      - --hero-img-filter: blur(4px)
       - --hero-img-scale: 1.08
       - --hero-img: >
-          [[[
+          [[[ 
+            const w = window?.innerWidth || 1024;
+            const h = window?.innerHeight || 800;
+            const isMobile = (w <= 767 || h <= 500);
+            const isDark =
+              typeof hass?.themes?.darkMode === 'boolean'
+                ? hass.themes.darkMode
+                : window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            if (isMobile && (variables.mobile_background ?? false)) {
+              const phaseEntity = variables.mobile_background_entity || 'sensor.hemma_mobile_dynamic_background';
+              const phaseRaw = String(states[phaseEntity]?.state || 'day').toLowerCase();
+
+              let phase = 'day';
+              if (['morning', 'dawn'].includes(phaseRaw)) phase = 'morning';
+              else if (['day', 'midday', 'afternoon', 'goldenhour'].includes(phaseRaw)) phase = 'day';
+              else if (['night', 'sunset', 'evening'].includes(phaseRaw)) phase = 'night';
+
+              return `url("/local/hemma/mobile/mobile-${phase}${isDark ? '-dark' : ''}.jpg")`;
+            }
+
             const base = variables.image || 'default';
-            const isDark = !!(hass?.themes?.darkMode);
             const picked = isDark ? (variables.image_night || `${base}-night`) : base;
-            const url = `/local/hemma/rooms/${picked}.jpg`;
-            return `url("${url}")`;
+            return `url("/local/hemma/rooms/${picked}.jpg")`;
           ]]]
       - --hero-img-pos: >
           [[[
@@ -180,8 +200,11 @@ hemma_room:
           [[[
             const w = window?.innerWidth || 1024;
             const h = window?.innerHeight || 800;
+            const isSmallTablet = (w >= 600 && w < 768 && h > 500);
             const isTablet = (w >= 768 && w <= 1366 && h > 500);
-            return isTablet ? 'calc(var(--hero-gutter) - 20px)' : 'var(--hemma-nav-margin-current, 4vw)';
+            if (isSmallTablet) return 'calc(env(safe-area-inset-right, 0px) + 8px)';
+            if (isTablet) return 'max(calc(var(--hero-gutter) - 20px), 4px)';
+            return 'var(--hemma-nav-margin-current, 4vw)';
           ]]]
       - --hemma-time-reserve: >
           [[[
@@ -298,9 +321,11 @@ hemma_room:
               const h = window?.innerHeight || 800;
 
               const isMobile = (w <= 767 || h <= 500);
+              const isSmallTablet = (w >= 600 && w < 768 && h > 500);
               const isTablet = (w >= 768 && w <= 1366 && h > 500);
 
               const nudge =
+                isSmallTablet ? 'var(--hemma-time-nudge-small-tablet, 43px)' :
                 isMobile ? 'var(--hemma-time-nudge-mobile, 8px)' :
                 isTablet ? 'var(--hemma-time-nudge-tablet, 36px)' :
                 '0px';
@@ -322,8 +347,11 @@ hemma_room:
               const isTouch = mm('(pointer: coarse)') || mm('(hover: none)');
               const w = window?.innerWidth || 1024;
               const h = window?.innerHeight || 800;
+              const isSmallTablet = (w >= 600 && w < 768 && h > 500);
               const isTablet = (w >= 768 && w <= 1366 && h > 500);
-              return (!navOpen && isTouch && isTablet) ? 'block' : 'none';
+              // Small tablets (600-767px): always show — desktop nav requires 769px so nothing else shows the time here
+              // Regular tablets (768-1366px): only show for touch — non-touch gets the time from the desktop nav bar
+              return (!navOpen && (isSmallTablet || (isTablet && isTouch))) ? 'block' : 'none';
             ]]]
 
       weather:
@@ -513,11 +541,7 @@ hemma_room:
             [[[
               if (!variables.show_media) return '0';
               if (states['input_boolean.hemma_mobile_navigation']?.state === 'on') return '0';
-              const _so = variables.show_discord_steam && variables.discord_steam_online && variables.discord_steam_game &&
-                (states[variables.discord_steam_online]?.state || '').toLowerCase() === 'online';
-              const _sg = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
-              const isSteamOnline = _so && !!_sg && _sg !== 'unknown' && _sg !== 'unavailable';
-              return (states['input_select.hemma_expanded_row']?.state === 'media' || isSteamOnline)
+              return states['input_select.hemma_expanded_row']?.state === 'media'
                 ? 'var(--hero-header-gap-current, 6px)' : '0';
             ]]]
         - margin-right: auto !important
@@ -544,11 +568,7 @@ hemma_room:
             [[[
               if (!variables.show_media) return '0';
               if (states['input_boolean.hemma_mobile_navigation']?.state === 'on') return '0';
-              const _so = variables.show_discord_steam && variables.discord_steam_online && variables.discord_steam_game &&
-                (states[variables.discord_steam_online]?.state || '').toLowerCase() === 'online';
-              const _sg = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
-              const isSteamOnline = _so && !!_sg && _sg !== 'unknown' && _sg !== 'unavailable';
-              return (states['input_select.hemma_expanded_row']?.state === 'media' || isSteamOnline) ? '500px' : '0';
+              return states['input_select.hemma_expanded_row']?.state === 'media' ? '500px' : '0';
             ]]]
         - overflow-x: auto
         - overflow-y: hidden
@@ -556,19 +576,11 @@ hemma_room:
             [[[
               if (!variables.show_media) return 0;
               if (states['input_boolean.hemma_mobile_navigation']?.state === 'on') return 0;
-              const _so = variables.show_discord_steam && variables.discord_steam_online && variables.discord_steam_game &&
-                (states[variables.discord_steam_online]?.state || '').toLowerCase() === 'online';
-              const _sg = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
-              const isSteamOnline = _so && !!_sg && _sg !== 'unknown' && _sg !== 'unavailable';
-              return (states['input_select.hemma_expanded_row']?.state === 'media' || isSteamOnline) ? 1 : 0;
+              return states['input_select.hemma_expanded_row']?.state === 'media' ? 1 : 0;
             ]]]
         - transition: >
             [[[
-              const _so = variables.show_discord_steam && variables.discord_steam_online && variables.discord_steam_game &&
-                (states[variables.discord_steam_online]?.state || '').toLowerCase() === 'online';
-              const _sg = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
-              const isSteamOnline = _so && !!_sg && _sg !== 'unknown' && _sg !== 'unavailable';
-              const isExpanded = states['input_select.hemma_expanded_row']?.state === 'media' || isSteamOnline;
+              const isExpanded = states['input_select.hemma_expanded_row']?.state === 'media';
 
               if (isExpanded) {
                 return 'max-height 0s, margin-top 0s, opacity 0s';
@@ -582,11 +594,7 @@ hemma_room:
             ]]]
         - pointer-events: >
             [[[
-              const _so = variables.show_discord_steam && variables.discord_steam_online && variables.discord_steam_game &&
-                (states[variables.discord_steam_online]?.state || '').toLowerCase() === 'online';
-              const _sg = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
-              const isSteamOnline = _so && !!_sg && _sg !== 'unknown' && _sg !== 'unavailable';
-              return (states['input_select.hemma_expanded_row']?.state === 'media' || isSteamOnline) ? 'auto' : 'none';
+              return states['input_select.hemma_expanded_row']?.state === 'media' ? 'auto' : 'none';
             ]]]
 
       badges_lights:
@@ -698,27 +706,25 @@ hemma_room:
     navigation:
       card: !include /config/dashboards/templates/includes/hemma_navigation.yaml
 
-    entities_overlay:
-      card:
-        type: custom:button-card
-        tap_action:
-          action: none
-        hold_action:
-          action: none
-        show_icon: false
-        show_name: false
-        show_state: false
-
     preload: |
-      [[[
+      [[[ 
         const base = variables.image || 'default';
         const night = variables.image_night || `${base}-night`;
         const dayUrl = `/local/hemma/rooms/${base}.jpg`;
         const nightUrl = `/local/hemma/rooms/${night}.jpg`;
+        const mobile = [
+          '/local/hemma/mobile/mobile-morning.jpg',
+          '/local/hemma/mobile/mobile-morning-dark.jpg',
+          '/local/hemma/mobile/mobile-day.jpg',
+          '/local/hemma/mobile/mobile-day-dark.jpg',
+          '/local/hemma/mobile/mobile-night.jpg',
+          '/local/hemma/mobile/mobile-night-dark.jpg'
+        ];
 
         return `
           <img src="${dayUrl}" alt="" />
           <img src="${nightUrl}" alt="" />
+          ${mobile.map(src => `<img src="${src}" alt="" />`).join('')}
         `;
       ]]]
 
@@ -812,6 +818,7 @@ hemma_room:
               entity_7: '[[[ return variables.show_lights ? variables.light_entity_7 : null ]]]'
               entity_8: '[[[ return variables.show_lights ? variables.light_entity_8 : null ]]]'
               entity_9: '[[[ return variables.show_lights ? variables.light_entity_9 : null ]]]'
+              entity_10: '[[[ return variables.show_lights ? variables.light_entity_10 : null ]]]'
 
           - type: custom:button-card
             template: hemma_badge_presence_group
@@ -846,6 +853,9 @@ hemma_room:
               entity_11: '[[[ return variables.show_media_player_8 ? variables.media_player_8 : null ]]]'
               entity_12: '[[[ return variables.show_media_player_9 ? variables.media_player_9 : null ]]]'
               entity_13: '[[[ return variables.show_media_player_10 ? variables.media_player_10 : null ]]]'
+              entity_14: '[[[ return variables.show_plex_2 ? variables.plex_binary_2 : null ]]]'
+              steam_online_entity: '[[[ return variables.show_discord_steam ? variables.discord_steam_online : null ]]]'
+              steam_game_entity: '[[[ return variables.show_discord_steam ? variables.discord_steam_game : null ]]]'
 
     badges_climate:
       card:
@@ -1711,7 +1721,6 @@ hemma_room:
       #badges_media,
       #badges_lights {
         overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
         width: calc(100% + 2 * var(--hero-gutter) - var(--hemma-header-badge-nudge, 0px)) !important;
         max-width: none !important;
         margin-left: calc(-1 * var(--hero-gutter) + var(--hemma-header-badge-nudge, 0px)) !important;
@@ -1735,5 +1744,4 @@ hemma_room:
         overflow-x: auto !important;
         box-sizing: border-box !important;
       }
-
     }

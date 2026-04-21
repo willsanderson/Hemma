@@ -20,6 +20,9 @@ hemma_badge_media_group:
     entity_11: null
     entity_12: null
     entity_13: null
+    entity_14: null
+    steam_online_entity: null
+    steam_game_entity: null
 
   show_state: false
   show_label: false
@@ -55,6 +58,9 @@ hemma_badge_media_group:
     - '[[[ return variables?.entity_11 ]]]'
     - '[[[ return variables?.entity_12 ]]]'
     - '[[[ return variables?.entity_13 ]]]'
+    - '[[[ return variables?.entity_14 ]]]'
+    - '[[[ return variables?.steam_online_entity ]]]'
+    - '[[[ return variables?.steam_game_entity ]]]'
 
   extra_styles: >
     [[[
@@ -62,11 +68,12 @@ hemma_badge_media_group:
       const MASK_PCT = 100;
       const INSET_PX = 2;
 
-      const v = variables?.enabled;
-      const enabled = (v === undefined || v === null) ? true :
-        (typeof v === 'boolean') ? v :
-        (typeof v === 'number') ? v !== 0 :
-        !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
+      const enabled = (v) => {
+        if (v === undefined || v === null) return true;
+        if (typeof v === 'boolean') return v;
+        if (typeof v === 'number') return v !== 0;
+        return !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
+      };
 
       const isActive = (eid) => {
         if (!eid) return false;
@@ -89,15 +96,29 @@ hemma_badge_media_group:
         return st === 'idle';
       };
 
+      const isSteamActive = () => {
+        const onlineEntity = variables?.steam_online_entity;
+        const gameEntity = variables?.steam_game_entity;
+        if (!onlineEntity || !gameEntity) return false;
+
+        const online = String(hass.states[onlineEntity]?.state || '').toLowerCase();
+        const game = String(hass.states[gameEntity]?.state || '').toLowerCase();
+
+        return online === 'online' && !!game && game !== 'unknown' && game !== 'unavailable';
+      };
+
       const eids = [
         variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4,
         variables?.entity_5, variables?.entity_6, variables?.entity_7, variables?.entity_8,
         variables?.entity_9, variables?.entity_10, variables?.entity_11, variables?.entity_12,
-        variables?.entity_13
+        variables?.entity_13, variables?.entity_14
       ].filter(Boolean);
 
-      const activeCount = enabled ? eids.filter(e => isActive(e)).length : 0;
-      const show = enabled && eids.length > 0 && activeCount > 0;
+      const activeCount = enabled(variables?.enabled)
+        ? eids.filter(e => isActive(e)).length + (isSteamActive() ? 1 : 0)
+        : 0;
+
+      const show = enabled(variables?.enabled) && activeCount > 0;
 
       return `
         :host{display:${show ? 'inline-block' : 'none'} !important;}
@@ -142,12 +163,14 @@ hemma_badge_media_group:
           ]]]
       - display: >
           [[[
-            const v = variables?.enabled;
-            const enabled = (v === undefined || v === null) ? true :
-              (typeof v === 'boolean') ? v :
-              (typeof v === 'number') ? v !== 0 :
-              !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
-            if (!enabled) return 'none';
+            const enabled = (v) => {
+              if (v === undefined || v === null) return true;
+              if (typeof v === 'boolean') return v;
+              if (typeof v === 'number') return v !== 0;
+              return !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
+            };
+
+            if (!enabled(variables?.enabled)) return 'none';
 
             const isActive = (eid) => {
               if (!eid) return false;
@@ -170,14 +193,25 @@ hemma_badge_media_group:
               return st === 'idle';
             };
 
+            const isSteamActive = () => {
+              const onlineEntity = variables?.steam_online_entity;
+              const gameEntity = variables?.steam_game_entity;
+              if (!onlineEntity || !gameEntity) return false;
+
+              const online = String(hass.states[onlineEntity]?.state || '').toLowerCase();
+              const game = String(hass.states[gameEntity]?.state || '').toLowerCase();
+
+              return online === 'online' && !!game && game !== 'unknown' && game !== 'unavailable';
+            };
+
             const eids = [
               variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4,
-              variables?.entity_5, variables?.entity_6, variables?.entity_7, variables?.entity_8
+              variables?.entity_5, variables?.entity_6, variables?.entity_7, variables?.entity_8,
+              variables?.entity_9, variables?.entity_10, variables?.entity_11, variables?.entity_12,
+              variables?.entity_13, variables?.entity_14
             ].filter(Boolean);
 
-            if (eids.length === 0) return 'none';
-
-            const activeCount = eids.filter(e => isActive(e)).length;
+            const activeCount = eids.filter(e => isActive(e)).length + (isSteamActive() ? 1 : 0);
             return activeCount > 0 ? 'inline-grid' : 'none';
           ]]]
       - --badge-title-color: >
@@ -191,6 +225,7 @@ hemma_badge_media_group:
       - --hemma-icon-color: >
           [[[
             if (entity?.state === 'media') return 'rgba(0,0,0,0.75)';
+
             const isActive = (eid) => {
               if (!eid) return false;
               const s = hass.states[eid];
@@ -211,11 +246,26 @@ hemma_badge_media_group:
               }
               return st === 'idle';
             };
+
+            const isSteamActive = () => {
+              const onlineEntity = variables?.steam_online_entity;
+              const gameEntity = variables?.steam_game_entity;
+              if (!onlineEntity || !gameEntity) return false;
+
+              const online = String(hass.states[onlineEntity]?.state || '').toLowerCase();
+              const game = String(hass.states[gameEntity]?.state || '').toLowerCase();
+
+              return online === 'online' && !!game && game !== 'unknown' && game !== 'unavailable';
+            };
+
             const eids = [
               variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4,
-              variables?.entity_5, variables?.entity_6, variables?.entity_7, variables?.entity_8
+              variables?.entity_5, variables?.entity_6, variables?.entity_7, variables?.entity_8,
+              variables?.entity_9, variables?.entity_10, variables?.entity_11, variables?.entity_12,
+              variables?.entity_13, variables?.entity_14
             ];
-            const anyActive = eids.some(e => isActive(e));
+
+            const anyActive = eids.some(e => isActive(e)) || isSteamActive();
             return anyActive ? 'var(--hemma-badge-media-color)' : 'var(--badge-title-inactive)';
           ]]]
       - --icon-primary-color: var(--hemma-icon-color)
@@ -246,14 +296,25 @@ hemma_badge_media_group:
         return st === 'idle';
       };
 
+      const isSteamActive = () => {
+        const onlineEntity = variables?.steam_online_entity;
+        const gameEntity = variables?.steam_game_entity;
+        if (!onlineEntity || !gameEntity) return false;
+
+        const online = String(hass.states[onlineEntity]?.state || '').toLowerCase();
+        const game = String(hass.states[gameEntity]?.state || '').toLowerCase();
+
+        return online === 'online' && !!game && game !== 'unknown' && game !== 'unavailable';
+      };
+
       const eids = [
         variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4,
         variables?.entity_5, variables?.entity_6, variables?.entity_7, variables?.entity_8,
         variables?.entity_9, variables?.entity_10, variables?.entity_11, variables?.entity_12,
-        variables?.entity_13
+        variables?.entity_13, variables?.entity_14
       ].filter(Boolean);
 
-      const activeCount = eids.filter(e => isActive(e)).length;
+      const activeCount = eids.filter(e => isActive(e)).length + (isSteamActive() ? 1 : 0);
       const sub = activeCount === 1 ? '1 Playing' : `${activeCount} Playing`;
 
       return `

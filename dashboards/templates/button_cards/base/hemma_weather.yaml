@@ -308,11 +308,19 @@ hemma_weather:
           background: transparent !important;
           background-color: transparent !important;
           box-shadow: none !important;
+          border: 0 !important;
           filter: none !important;
           transform: none !important;
-          border: 0 !important;
           opacity: 1 !important;
+          --ha-card-box-shadow: none !important;
         }
+
+        :host ha-card:hover,
+        :host(:hover) ha-card:hover {
+          box-shadow: none !important;
+          --ha-card-box-shadow: none !important;
+        }
+
         ha-ripple {
           display: none !important;
           opacity: 0 !important;

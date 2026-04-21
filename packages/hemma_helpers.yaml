@@ -16,6 +16,7 @@
 #   - input_select.hemma_expanded_row: Which sub-badge row is expanded (none/climate/presence/media)
 #   - input_number.hemma_thermostat_target_temperature: Thermostat target temp
 #   - input_select.hemma_thermostat_mode: Heat/Cool mode selector
+#   - sensor.hemma_mobile_dynamic_background: Shared dynamic mobile backgrounds (morning/afternoon/night)
 #
 # OPTIONAL: Adjust min/max values for input_number to match your climate needs.
 # ============================================================================
@@ -76,6 +77,56 @@ input_select:
       - cool
       - heat
     initial: cool
+
+
+template:
+  - trigger:
+      - platform: homeassistant
+        event: start
+      - platform: state
+        entity_id: sun.sun
+      - platform: time_pattern
+        minutes: "/5"
+    sensor:
+      - name: "Hemma Dynamic Mobile Backgrounds"
+        unique_id: hemma_mobile_dynamic_background
+        icon: mdi:image-filter-hdr
+        state: >
+          {% set elevation = state_attr('sun.sun', 'elevation') | float(-90) %}
+          {% set rising = state_attr('sun.sun', 'rising') %}
+          {% if elevation < -6 %}
+            sunset
+          {% elif elevation < 6 %}
+            {{ 'dawn' if rising else 'sunset' }}
+          {% elif elevation < 24 %}
+            {{ 'morning' if rising else 'goldenhour' }}
+          {% elif elevation < 50 %}
+            {{ 'morning' if rising else 'afternoon' }}
+          {% else %}
+            midday
+          {% endif %}
+        attributes:
+          elevation: "{{ state_attr('sun.sun', 'elevation') }}"
+          rising: "{{ state_attr('sun.sun', 'rising') }}"
+          next_rising: "{{ state_attr('sun.sun', 'next_rising') }}"
+          next_setting: "{{ state_attr('sun.sun', 'next_setting') }}"
+
+  - sensor:
+      - name: hemma_mobile_background_url
+        unique_id: hemma_mobile_background_url
+        state: >
+          {% set phase = states('sensor.hemma_mobile_dynamic_background') | lower %}
+          {% if phase in ['morning','dawn'] %}
+            {% set p = 'morning' %}
+          {% elif phase in ['night','evening','sunset'] %}
+            {% set p = 'night' %}
+          {% else %}
+            {% set p = 'day' %}
+          {% endif %}
+
+          {% set dark = '-dark' if is_state('sun.sun','below_horizon') else '' %}
+
+          /local/hemma/mobile/mobile-{{ p }}{{ dark }}.jpg
 
 script:
   hemma_light_smart_toggle:

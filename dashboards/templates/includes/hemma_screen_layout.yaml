@@ -11,5 +11,3 @@ mediaquery:
     height: 100%
     align-self: stretch
     place-self: start stretch
-    align-content: start
-    align-items: start
