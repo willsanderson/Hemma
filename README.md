@@ -24,7 +24,7 @@ Hemma is fully YAML-based and designed for:
   - Presence + sensor badges
   - Active media player badge
 - **Button-cards**
-  - Thermostat, media, fan, curtain, lock, and more
+  - Thermostat, media, lock, doorbell, network, motion, curtain, energy, vacuum, and more.
 ---
 
 ### Requirements
