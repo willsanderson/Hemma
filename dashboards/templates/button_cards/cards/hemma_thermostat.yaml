@@ -8,7 +8,18 @@ hemma_thermostat:
   variables:
     thermostat_toggle_helper: input_boolean.hemma_thermostat_overlay
     temp_sensor:
-    show_toggle: false
+    show_toggle: |
+      [[[
+        return states[variables.thermostat_toggle_helper]?.state !== 'on';
+      ]]]
+    toggle_service: climate.set_hvac_mode
+    toggle_service_data: |
+      [[[
+        if (['cool','heat'].includes(entity.state)) {
+          return { entity_id: entity.entity_id, hvac_mode: 'off' };
+        }
+        return { entity_id: entity.entity_id, hvac_mode: states['input_select.hemma_thermostat_mode']?.state || 'cool' };
+      ]]]
 
   state_display: |
     [[[
@@ -58,58 +69,67 @@ hemma_thermostat:
               }
               const n = Math.round(Number(raw));
               if (raw == null || Number.isNaN(n)) return '';
-              return `${n}`;
+
+              const s = String(entity?.state || '').toLowerCase();
+              const isActive = ['cool','heat'].includes(s);
+              const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
+
+              // Circle size
+              const size = isMobile ? 30 : 34;
+
+              // Text size
+              const fontSize = 48;
+
+              // Shadow opacity — only applied when thermostat is active (cool/heat)
+              const shadowOpacity = isActive ? 0.5 : 0;
+
+              const uid = 'pm-' + entity.entity_id.replace(/[^a-z0-9]/gi, '-');
+              const fid = uid + '-f';
+              const fillVar = isActive ? 'var(--hemma-puck-icon-color-active)' : 'var(--hemma-puck-icon-color)';
+              const textAttrs = `x="50" y="50" dominant-baseline="central" text-anchor="middle" font-weight="800" font-size="${fontSize}" font-family="system-ui,-apple-system,sans-serif"`;
+
+              return `
+                <svg width="${size}" height="${size}" viewBox="0 0 100 100" style="display:block">
+                  <defs>
+                    <mask id="${uid}">
+                      <circle cx="50" cy="50" r="49" fill="white"/>
+                      <text ${textAttrs} fill="black">${n}</text>
+                    </mask>
+                    <filter id="${fid}">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+                      <feComposite in="blur" in2="SourceGraphic" operator="in"/>
+                    </filter>
+                  </defs>
+                  <circle cx="50" cy="50" r="49" style="fill:${fillVar}" mask="url(#${uid})"/>
+                  <text ${textAttrs} fill="rgba(0,0,0,${shadowOpacity})" filter="url(#${fid})">${n}</text>
+                </svg>
+              `.trim();
             ]]]
         styles:
           card:
-            - background: |
-                [[[
-                  const s = String(entity?.state || '').toLowerCase();
-                  if (s === 'cool') return 'var(--hemma-puck-icon-color-active)';
-                  if (s === 'heat') return 'var(--hemma-puck-icon-color-active)';
-                  return 'var(--hemma-puck-icon-color)';
-                ]]]
-            - width: 100%
-            - height: 100%
-            - padding: var(--hemma-puck-padding, 8px)
+            - background: transparent
+            - width: auto
+            - height: auto
+            - padding: 0
             - border: none !important
             - opacity: 0.8
             - transition: opacity 0.2s ease, transform 0.15s ease, filter 0.2s ease
             - cursor: pointer
-            - box-sizing: border-box
-            - display: flex
-            - align-items: center
-            - justify-content: center
           name:
             - display: none
           custom_fields:
             temp_display:
-              - display: flex
-              - align-items: center
-              - justify-content: center
-              - width: 100%
-              - height: 100%
-              - position: relative
-              - top: 1px
-              - color: |
-                  [[[
-                    const s = String(entity?.state || '').toLowerCase();
-                    const isActive = ["cool","heat"].includes(s);
-                    const c = isActive
-                      ? 'var(--hemma-puck-font-color-active, var(--secondary-text-color))'
-                      : 'var(--hemma-puck-font-color, var(--secondary-text-color))';
-                    return `color-mix(in srgb, ${c} 100%, transparent)`;
-                  ]]]
-              - font-weight: 800
-              - line-height: 1
-              - font-size: |
-                  [[[
-                    const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-                    return isMobile ? '14px' : '16px';
-                  ]]]
+              - line-height: 0
         extra_styles: |
           ha-card {
             box-shadow: none !important;
+            border-radius: 50% !important;
+            width: 34px !important;
+            height: 34px !important;
+            min-height: 0 !important;
+          }
+          @media (max-width: 767px), (max-height: 600px) {
+            ha-card { width: 30px !important; height: 30px !important; }
           }
           @media (hover: hover) {
             :host ha-card:hover {
@@ -126,98 +146,6 @@ hemma_thermostat:
               transform: scale(1.05);
               box-shadow: none !important;
             }
-          }
-
-    cooling_modes:
-      card:
-        type: custom:button-card
-        entity: '[[[ return entity.entity_id ]]]'
-        show_name: false
-        show_state: false
-        show_icon: false
-        tap_action:
-          action: call-service
-          service: climate.set_hvac_mode
-          data:
-            entity_id: '[[[ return entity.entity_id ]]]'
-            hvac_mode: |
-              [[[
-                if (['cool','heat'].includes(entity.state)) return 'off';
-                return states['input_select.hemma_thermostat_mode']?.state || 'cool';
-              ]]]
-        custom_fields:
-          svg: |
-            [[[
-              const KF_ID = 'hemma-toggle-kf-v7';
-              if (!document.getElementById(KF_ID)) {
-                const s = document.createElement('style');
-                s.id = KF_ID;
-                s.textContent = [
-                  '@keyframes hemma-thumb-on-d{from{transform:translateX(0)}to{transform:translateX(16px)}}',
-                  '@keyframes hemma-thumb-off-d{from{transform:translateX(16px)}to{transform:translateX(0)}}',
-                  '@keyframes hemma-thumb-on-m{from{transform:translateX(0)}to{transform:translateX(12px)}}',
-                  '@keyframes hemma-thumb-off-m{from{transform:translateX(12px)}to{transform:translateX(0)}}'
-                ].join('');
-                document.head.appendChild(s);
-              }
-              const st = entity.state;
-              const isOn = ['cool','heat'].includes(st);
-              const mob = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-              const W = mob ? 34 : 40, H = mob ? 22 : 24, r = mob ? 7 : 7, cx0 = mob ? 12 : 13;
-              const SW = W + 2;
-              const travel = mob ? 12 : 16;
-              const stateKey = '_hemma_toggle_' + entity.entity_id;
-              const shouldAnimate = window[stateKey] !== undefined && window[stateKey] !== isOn;
-              window[stateKey] = isOn;
-              const anim = isOn ? (mob ? 'hemma-thumb-on-m' : 'hemma-thumb-on-d') : (mob ? 'hemma-thumb-off-m' : 'hemma-thumb-off-d');
-              const animStyle = shouldAnimate ? `animation:${anim} 0.2s ease forwards;` : '';
-              const circleCx = (!shouldAnimate && isOn) ? cx0 + travel : cx0;
-              const mid = 'htm-' + entity.entity_id.replace(/[^a-z0-9]/gi, '-');
-              if (isOn) {
-                return `<svg width="${SW}" height="${H}" viewBox="0 0 ${SW} ${H}" style="display:block;overflow:visible;"><defs><mask id="${mid}"><rect x="2" y="1" width="${W-2}" height="${H-2}" rx="${(H-2)/2}" fill="white"/><circle cx="${circleCx}" cy="${H/2}" r="${r}" fill="black" style="${animStyle}"/></mask></defs><rect x="2" y="1" width="${W-2}" height="${H-2}" rx="${(H-2)/2}" fill="rgba(255,255,255,0.7)" mask="url(#${mid})"/></svg>`;
-              } else {
-                return `<svg width="${SW}" height="${H}" viewBox="0 0 ${SW} ${H}" style="display:block;overflow:visible;"><rect x="2" y="1" width="${W-2}" height="${H-2}" rx="${(H-2)/2}" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"/><circle cx="${circleCx}" cy="${H/2}" r="${r}" fill="rgba(255,255,255,0.4)" style="${animStyle}"/></svg>`;
-              }
-            ]]]
-        styles:
-          card:
-            - background: transparent !important
-            - background-color: transparent !important
-            - --ha-card-background: transparent
-            - box-shadow: none !important
-            - border: none !important
-            - backdrop-filter: none !important
-            - "-webkit-backdrop-filter": none !important
-            - padding: 0 !important
-            - overflow: visible !important
-            - "--button-card-ripple-color": transparent !important
-            - "-webkit-tap-highlight-color": transparent !important
-            - border-radius: 0 !important
-          grid:
-            - padding: 0 !important
-            - overflow: visible !important
-          custom_fields:
-            svg:
-              - line-height: 0
-        extra_styles: |
-          :host {
-            display: block !important;
-            width: 42px !important;
-            height: 24px !important;
-            overflow: visible !important;
-            cursor: pointer;
-          }
-          @media (max-width: 767px), (max-height: 600px) {
-            :host { width: 36px !important; height: 22px !important; }
-          }
-          ha-card, #container {
-            overflow: visible !important;
-            background: transparent !important;
-            --ha-card-background: transparent !important;
-          }
-          @media (hover: hover) {
-            :host { transition: filter 0.2s ease; }
-            :host(:hover) { filter: brightness(1.5) !important; }
           }
 
     target_temperature:
@@ -494,18 +422,6 @@ hemma_thermostat:
         - pointer-events: auto
         - '--mdc-ripple-color': transparent
         - '--paper-item-icon-active-color': transparent
-
-      cooling_modes:
-        - position: absolute
-        - top: calc(var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px)) + (var(--hemma-entity-icon-size-current, var(--hemma-entity-icon-size-desktop, 34px)) - 20px) / 2)
-        - right: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 22px))
-        - z-index: 2
-        - line-height: 0
-        - display: |
-            [[[
-              const on = states[variables.thermostat_toggle_helper]?.state === "on";
-              return on ? "none" : "block";
-            ]]]
 
       target_temperature:
         - position: absolute
