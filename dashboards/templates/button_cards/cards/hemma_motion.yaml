@@ -168,7 +168,7 @@ hemma_motion:
               : entity?.state === 'on';
             return active
               ? 'var(--hemma-entity-name-active, var(--primary-text-color))'
-              : 'var(--hemma-entity-state-inactive, var(--secondary-text-color))';
+              : 'var(--hemma-entity-state, var(--secondary-text-color))';
           ]]]
       - opacity: |
           [[[

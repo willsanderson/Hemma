@@ -21,11 +21,12 @@ Hemma:
       # ============================================================================
 
       hemma-entity-background: rgba(50,50,50,0.15)
-      hemma-entity-background-active: rgba(255,255,255,0.3)
+      hemma-entity-background-active: rgba(255,255,255,0.25)
+      hemma-entity-name: rgba(255,255,255,0.85)
       hemma-entity-name-active: rgba(255,255,255,1)
-      hemma-entity-name-inactive: rgba(255,255,255,0.85)
+      hemma-entity-state: rgba(255,255,255,0.75)
       hemma-entity-state-active: rgba(255,255,255,0.9)
-      hemma-entity-state-inactive: rgba(255,255,255,0.75)
+      hemma-entity-state-active-color: rgba(255,214,0,1)
 
       # ============================================================================
       # MODE: LIGHT — NAV / POPUP / CONTROL TOKENS
@@ -61,8 +62,8 @@ Hemma:
 
       hemma-puck-font-color: rgba(255,255,255,.95)
       hemma-puck-font-color-active: rgba(0,0,0,.6)
-      hemma-puck-icon-color: rgba(255,255,255,0.5)
-      hemma-puck-icon-color-active: rgba(255,255,255,0.7)
+      hemma-puck-icon-color: var(--hemma-entity-state)
+      hemma-puck-icon-color-active: var(--hemma-entity-name-active)
 
       hemma-toggle-thumb-active: rgba(80,80,80,0.45)
       hemma-toggle-thumb-inactive: rgba(255,255,255,0.8)
@@ -121,10 +122,11 @@ Hemma:
 
       hemma-entity-background: rgba(0,0,0,.08)
       hemma-entity-background-active: rgba(255,255,255,0.25)
+      hemma-entity-name: rgba(255,255,255,0.85)
       hemma-entity-name-active: rgba(255,255,255,1)
-      hemma-entity-name-inactive: rgba(255,255,255,0.85)
+      hemma-entity-state: rgba(255,255,255,0.7)
       hemma-entity-state-active: rgba(255,255,255,0.8)
-      hemma-entity-state-inactive: rgba(255,255,255,0.7)
+      hemma-entity-state-active-color: rgba(255,214,0,1)
 
       # ============================================================================
       # MODE: DARK — NAV / POPUP / CONTROL TOKENS
@@ -160,7 +162,7 @@ Hemma:
 
       hemma-puck-font-color: rgba(0,0,0,.8)
       hemma-puck-font-color-active: rgba(0,0,0,.7)
-      hemma-puck-icon-color: var(--hemma-entity-state-inactive)
+      hemma-puck-icon-color: var(--hemma-entity-state)
       hemma-puck-icon-color-active: var(--hemma-entity-name-active)
 
       hemma-toggle-thumb-active: rgba(80,80,80,0.45)
@@ -550,7 +552,7 @@ Hemma:
 
   hemma-entity-picture-inactive-opacity: 0.9
   hemma-entity-picture-active-opacity: 1
-  hemma-entity-picture-inactive-filter: brightness(0.85) saturate(0.9)
+  hemma-entity-picture-inactive-filter: brightness(0.88) saturate(0.9)
   hemma-entity-picture-active-filter: none
   hemma-entity-text-shadow: 0 0 4px rgba(0,0,0,0.1)
   hemma-entity-header-buffer: 220px
@@ -623,26 +625,25 @@ Hemma:
   badge-media-max-width-mobile: 100%
 
   # ============================================================================
-  # HEMMA SEMANTIC COLORS
+  # HEMMA BADGE COLORS
   # ============================================================================
 
-  hemma-state-active-color: rgba(255,200,55,1)
-  hemma-badge-light-color: "#ffd700"
-  hemma-badge-climate-color: "#45dced"
-  hemma-badge-climate-very-cold-color: "#11c2f7"
-  hemma-badge-temp-very-cold-color: "#67d4f5"
-  hemma-badge-temp-cool-color: "#a3daff"
+  hemma-badge-light-color: "#ffd600"
+  hemma-badge-climate-color: "#00d2e0"
+  hemma-badge-climate-very-cold-color: "#3cd3fe"
+  hemma-badge-temp-very-cold-color: "#0091ff"
+  hemma-badge-temp-cool-color: "#3cd3fe"
   hemma-badge-temp-comfortable-color: "#67f5a0"
-  hemma-badge-temp-warm-color: "#f5c842"
-  hemma-badge-temp-hot-color: "#f5962a"
-  hemma-badge-temp-very-hot-color: "#e53552"
+  hemma-badge-temp-warm-color: "#ffd600"
+  hemma-badge-temp-hot-color: "#ff9230"
+  hemma-badge-temp-very-hot-color: "#ff4245"
   hemma-badge-air-quality-good-color: "#44e371"
-  hemma-badge-air-quality-moderate-color: "#f0c741"
+  hemma-badge-air-quality-moderate-color: "#ffd600"
   hemma-badge-humidity-dry-color: "#ffb254"
-  hemma-badge-humidity-high-color: "#4bd1fa"
-  hemma-badge-presence-home-color: "#83fcb4"
-  hemma-badge-presence-away-color: "#ffd900"
-  hemma-badge-media-color: "#fc6874"
+  hemma-badge-humidity-high-color: "#3cd3fe"
+  hemma-badge-presence-home-color: "#00dac3"
+  hemma-badge-presence-away-color: "#ffd600"
+  hemma-badge-media-color: "#ff4d70"
 
   # ============================================================================
   # ENTITY STATE COLORS

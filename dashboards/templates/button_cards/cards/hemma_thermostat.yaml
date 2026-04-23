@@ -75,7 +75,7 @@ hemma_thermostat:
               const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
 
               // Circle size
-              const size = isMobile ? 30 : 34;
+              const size = isMobile ? 28 : 34;
 
               // Text size
               const fontSize = 48;
@@ -121,6 +121,12 @@ hemma_thermostat:
             temp_display:
               - line-height: 0
         extra_styles: |
+          :host {
+            display: block !important;
+            width: 34px !important;
+            height: 34px !important;
+            overflow: hidden !important;
+          }
           ha-card {
             box-shadow: none !important;
             border-radius: 50% !important;
@@ -131,7 +137,8 @@ hemma_thermostat:
             box-sizing: border-box !important;
           }
           @media (max-width: 767px), (max-height: 600px) {
-            ha-card { width: 30px !important; height: 30px !important; padding: 0 !important; box-sizing: border-box !important; }
+            :host { width: 28px !important; height: 28px !important; }
+            ha-card { width: 28px !important; height: 28px !important; padding: 0 !important; box-sizing: border-box !important; }
           }
           @media (hover: hover) {
             :host ha-card:hover {
@@ -420,6 +427,19 @@ hemma_thermostat:
     custom_fields:
       temp_puck:
         - position: absolute
+        - top: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
+        - left: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
+        - width: |
+            [[[
+              const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
+              return isMobile ? '28px' : '34px';
+            ]]]
+        - height: |
+            [[[
+              const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
+              return isMobile ? '28px' : '34px';
+            ]]]
+        - overflow: hidden
         - z-index: 4
         - pointer-events: auto
         - '--mdc-ripple-color': transparent

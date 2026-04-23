@@ -232,7 +232,7 @@ hemma_entity:
             icon="mdi:battery-alert"
             style="
               --mdc-icon-size:${size}px;
-              color: var(--hemma-entity-state-inactive, var(--secondary-text-color));
+              color: var(--hemma-entity-state, var(--secondary-text-color));
               opacity: .7;
             "
           ></ha-icon>
@@ -455,7 +455,7 @@ hemma_entity:
         - filter: drop-shadow(0 2px 8px rgba(0,0,0,.3))
 
     name:
-      - color: var(--hemma-entity-name-inactive, rgba(255,255,255,0.9)) !important
+      - color: var(--hemma-entity-name, rgba(255,255,255,0.9)) !important
       - font-weight: 600
       - text-shadow: var(--hemma-entity-text-shadow, 0 1px 4px rgba(0,0,0,0.35))
       - justify-self: start
@@ -469,7 +469,7 @@ hemma_entity:
 
     state:
       - text-transform: capitalize
-      - color: var(--hemma-entity-state-inactive, var(--secondary-text-color)) !important
+      - color: var(--hemma-entity-state, var(--secondary-text-color)) !important
       - font-size: var(--hemma-entity-state-font-current, var(--hemma-entity-state-font-desktop, 15px))
       - text-shadow: var(--hemma-entity-text-shadow, 0 0 5px rgba(0,0,0,0.1))
       - justify-self: start
@@ -492,7 +492,7 @@ hemma_entity:
     img_cell:
       - justify-self: start
       - align-self: start
-      - color: var(--hemma-entity-state-inactive, var(--secondary-text-color)) !important
+      - color: var(--hemma-entity-state, var(--secondary-text-color)) !important
       - width: var(--hemma-entity-icon-size-current, var(--hemma-entity-icon-size-desktop, 34px))
       - height: var(--hemma-entity-icon-size-current, var(--hemma-entity-icon-size-desktop, 34px))
       - background: transparent
@@ -504,6 +504,6 @@ hemma_entity:
       - transition: opacity .18s ease, filter .18s ease
 
     icon:
-      - color: var(--hemma-entity-state-inactive, var(--secondary-text-color)) !important
+      - color: var(--hemma-entity-state, var(--secondary-text-color)) !important
       - width: 100%
       - height: 100%
