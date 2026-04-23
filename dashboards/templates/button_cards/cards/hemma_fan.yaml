@@ -61,6 +61,8 @@ hemma_fan:
     #img-cell {
       overflow: visible !important;
     }
+
+    /* Fan icon animation */
     @keyframes hemma-fan-spin {
       from { transform: rotate(0deg); }
       to   { transform: rotate(360deg); }
@@ -73,6 +75,7 @@ hemma_fan:
       transform-origin: center center !important;
       animation: var(--hemma-fan-animation, none) !important;
     }
+
     /* Hover effect for desktop */
     @media (hover: hover) {
       #img-cell:hover img {
@@ -84,6 +87,7 @@ hemma_fan:
         transition: transform 0.15s ease;
       }
     }
+
     /* Active effect for touch */
     @media (hover: none) {
       #img-cell:active img {

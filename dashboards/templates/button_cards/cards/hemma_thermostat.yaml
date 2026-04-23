@@ -127,9 +127,11 @@ hemma_thermostat:
             width: 34px !important;
             height: 34px !important;
             min-height: 0 !important;
+            padding: 0 !important;
+            box-sizing: border-box !important;
           }
           @media (max-width: 767px), (max-height: 600px) {
-            ha-card { width: 30px !important; height: 30px !important; }
+            ha-card { width: 30px !important; height: 30px !important; padding: 0 !important; box-sizing: border-box !important; }
           }
           @media (hover: hover) {
             :host ha-card:hover {

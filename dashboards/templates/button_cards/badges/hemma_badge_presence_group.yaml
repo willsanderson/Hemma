@@ -47,6 +47,10 @@ hemma_badge_presence_group:
 
   extra_styles: >
     [[[
+      const SVG_URL  = "/local/hemma/icons/person.svg";
+      const MASK_PCT = 85;
+      const INSET_PX = 2;
+
       const v = variables?.enabled;
       const enabled = (v === undefined || v === null) ? true :
         (typeof v === 'boolean') ? v :
@@ -56,12 +60,29 @@ hemma_badge_presence_group:
       const hasAny = !!(variables?.entity_1 || variables?.entity_2 || variables?.entity_3 || variables?.entity_4);
       return `
         :host{display:${(enabled && hasAny) ? 'inline-block' : 'none'} !important;}
-        #icon {
-          color: var(--hemma-badge-icon-color) !important;
+
+        #img-cell, .img-cell{ position: relative; }
+
+        #img-cell #icon, .img-cell #icon{
+          color: transparent !important;
+          opacity: 0 !important;
           --icon-primary-color: var(--hemma-badge-icon-color) !important;
           --paper-item-icon-color: var(--hemma-badge-icon-color) !important;
           --state-icon-color: var(--hemma-badge-icon-color) !important;
           --card-mod-icon-color: var(--hemma-badge-icon-color) !important;
+        }
+
+        #img-cell::before,
+        .img-cell::before{
+          content: '';
+          position: absolute;
+          inset: ${INSET_PX}px;
+          background-color: var(--hemma-badge-icon-color, var(--primary-text-color)) !important;
+
+          -webkit-mask: url('${SVG_URL}') no-repeat center / ${MASK_PCT}% ${MASK_PCT}%;
+          mask: url('${SVG_URL}') no-repeat center / ${MASK_PCT}% ${MASK_PCT}%;
+
+          transform: translateZ(0);
         }
       `;
     ]]]
@@ -113,7 +134,7 @@ hemma_badge_presence_group:
       - --card-mod-icon-color: var(--hemma-badge-icon-color)
 
     icon:
-      - color: var(--hemma-badge-icon-color)
+      - color: transparent
 
   name: >
     [[[

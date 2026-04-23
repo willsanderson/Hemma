@@ -40,7 +40,7 @@ hemma_energy:
           - background: var(--hemma-entity-background-active)
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
         name:
-          - color: var(--hemma-entity-active, var(--primary-text-color))
+          - color: var(--hemma-entity-name-active, var(--primary-text-color))
         state:
           - color: var(--hemma-state-active-color)
         img_cell:

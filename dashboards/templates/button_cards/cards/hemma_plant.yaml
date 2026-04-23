@@ -490,13 +490,13 @@ hemma_plant:
           - background: var(--hemma-entity-background-active)
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
         name:
-          - color: var(--hemma-entity-active, var(--primary-text-color))
+          - color: var(--hemma-entity-name-active, var(--primary-text-color))
         state:
           - color: >-
               [[[
                 return entity?.state === 'problem'
                   ? 'var(--hemma-state-active-color)'
-                  : 'var(--secondary-text-color)';
+                  : 'var(--hemma-entity-state-active, var(--secondary-text-color))';
               ]]]
         img_cell:
           - opacity: var(--hemma-entity-picture-active-opacity, 1) !important

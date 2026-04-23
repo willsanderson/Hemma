@@ -54,7 +54,7 @@ hemma_lock:
           - background-color: var(--hemma-entity-background-active)
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
         name:
-          - color: var(--hemma-entity-active, var(--primary-text-color))
+          - color: var(--hemma-entity-name-active, var(--primary-text-color))
         state:
           - color: var(--hemma-state-active-color)
         img_cell:
@@ -70,11 +70,11 @@ hemma_lock:
 
   styles:
     img_cell:
-      - color: var(--hemma-entity-active, var(--primary-text-color)) !important
+      - color: var(--hemma-entity-name-active, var(--primary-text-color)) !important
     entity_picture:
       - opacity: var(--hemma-entity-picture-active-opacity, 1) !important
     icon:
-      - color: var(--hemma-entity-active, var(--primary-text-color)) !important
+      - color: var(--hemma-entity-name-active, var(--primary-text-color)) !important
 
   extra_styles: |
     #img-cell { overflow: visible !important; }

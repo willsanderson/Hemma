@@ -142,12 +142,12 @@ hemma_motion:
           - background: var(--hemma-entity-background-active)
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
         name:
-          - color: var(--hemma-entity-active, var(--primary-text-color))
+          - color: var(--hemma-entity-name-active, var(--primary-text-color))
         state:
-          - color: var(--hemma-entity-active, var(--primary-text-color))
+          - color: var(--hemma-entity-name-active, var(--primary-text-color))
           - opacity: '1'
         icon:
-          - color: var(--hemma-entity-active, var(--primary-text-color))
+          - color: var(--hemma-entity-name-active, var(--primary-text-color))
         img_cell:
           - opacity: var(--hemma-entity-picture-active-opacity, 1) !important
           - filter: var(--hemma-entity-picture-active-filter, none) !important
@@ -167,8 +167,8 @@ hemma_motion:
               ? sensors.some(id => states[id]?.state === 'on')
               : entity?.state === 'on';
             return active
-              ? 'var(--hemma-entity-active, var(--primary-text-color))'
-              : 'var(--hemma-entity-inactive, var(--secondary-text-color))';
+              ? 'var(--hemma-entity-name-active, var(--primary-text-color))'
+              : 'var(--hemma-entity-state-inactive, var(--secondary-text-color))';
           ]]]
       - opacity: |
           [[[

@@ -281,8 +281,8 @@ hemma_shared:
 
     @media (max-width: 767px){
       :host{
-        --hero-weather-title-size: 13px;
-        --hero-weather-sub-size: 12px;
+        --hero-weather-title-size: 16px;
+        --hero-weather-sub-size: 13px;
         --hero-weather-icon-size: 26px;
       }
     }
