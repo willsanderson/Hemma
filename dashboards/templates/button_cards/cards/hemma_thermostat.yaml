@@ -15,7 +15,7 @@ hemma_thermostat:
     toggle_service: climate.set_hvac_mode
     toggle_service_data: |
       [[[
-        if (['cool','heat'].includes(entity.state)) {
+        if (['cool','heat'].includes(entity?.state)) {
           return { entity_id: entity.entity_id, hvac_mode: 'off' };
         }
         return { entity_id: entity.entity_id, hvac_mode: states['input_select.hemma_thermostat_mode']?.state || 'cool' };
@@ -23,7 +23,7 @@ hemma_thermostat:
 
   state_display: |
     [[[
-      const mode = entity.state;
+      const mode = entity?.state;
       const target = entity.attributes.temperature;
       if (mode === 'cool') {
         return "Cooling to " + target + "°";
@@ -62,8 +62,8 @@ hemma_thermostat:
             [[[
               let raw;
               const eid = variables.temp_sensor;
-              if (eid && states[eid] && !["unknown","unavailable"].includes(states[eid].state)) {
-                raw = states[eid].state;
+              if (eid && states[eid] && !["unknown","unavailable"].includes(states[eid]?.state)) {
+                raw = states[eid]?.state;
               } else {
                 raw = entity?.attributes?.current_temperature;
               }
@@ -407,7 +407,7 @@ hemma_thermostat:
           ]]]
       - --thermostat-control-opacity: |
           [[[
-            return ['cool','heat'].includes(entity.state) ? '1' : '0.8';
+            return ['cool','heat'].includes(entity?.state) ? '1' : '0.8';
           ]]]
     name:
       - opacity: |
