@@ -168,9 +168,9 @@ hemma_thermostat:
         state_display: |
           [[[
             const raw = states['input_number.hemma_thermostat_target_temperature']?.state;
-            const n = Math.round(Number(raw));
+            const n = Number(raw);
             if (raw == null || raw === 'unknown' || raw === 'unavailable' || Number.isNaN(n)) return '';
-            return `${n}°`;
+            return Number.isInteger(n) ? `${n}°` : `${n.toFixed(1)}°`;
           ]]]
         tap_action:
           action: call-service

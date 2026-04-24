@@ -54,6 +54,7 @@ input_text:
 input_number:
   hemma_thermostat_target_temperature:
     name: Thermostat Target Temperature
+    # Celsius users: min: 15, max: 30, step: 0.5, unit_of_measurement: "°C"
     min: 68
     max: 75
     step: 1

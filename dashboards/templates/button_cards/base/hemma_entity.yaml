@@ -324,13 +324,18 @@ hemma_entity:
       - background-color: var(--hemma-entity-background)
       - border-radius: var(--ha-card-border-radius, 28px)
       - box-shadow: var(--hemma-button-card-box-shadow-current, var(--button-card-box-shadow))
-      - height: var(--hemma-entity-height-current, var(--hemma-entity-height-desktop, 200px))
+      - height: |
+          [[[
+            return window.matchMedia('(max-width: 767px) and (orientation: portrait)').matches
+              ? '108px'
+              : 'var(--hemma-entity-height-current, var(--hemma-entity-height-desktop, 200px))';
+          ]]]
       - padding: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
       - scroll-snap-align: start
       - position: relative
       - display: |
           [[[
-            return (states['input_boolean.hemma_mobile_navigation'].state === 'on') ? 'none' : 'block';
+            return (states['input_boolean.hemma_mobile_navigation']?.state === 'on') ? 'none' : 'block';
           ]]]
       - --ha-card-border-width: 0
       - overflow: visible !important

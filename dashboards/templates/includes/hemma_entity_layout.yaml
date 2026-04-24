@@ -41,10 +41,10 @@ mediaquery:
       calc(env(safe-area-inset-bottom, 0px) + var(--hemma-nav-height, 0px) + 8px)
       var(--hemma-rail-left, var(--page-gutter-mobile, 11px))
     min-height: >-
-      calc((3 * var(--hemma-entity-height-current, 115px)) + (2 * var(--hemma-entity-gap, 8px)))
+      calc((3 * var(--hemma-entity-height-current, 108px)) + (2 * var(--hemma-entity-gap, 8px)))
     display: grid
     grid-template-columns: repeat(2, minmax(0, 1fr))
-    grid-auto-rows: var(--hemma-entity-height-current, 115px)
+    grid-auto-rows: var(--hemma-entity-height-current, 108px)
     grid-auto-flow: row
     gap: var(--hemma-entity-gap, 8px)
     justify-content: stretch

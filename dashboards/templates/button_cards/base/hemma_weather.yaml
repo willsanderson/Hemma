@@ -107,7 +107,7 @@ hemma_weather:
           [[[
             if (variables.hero_mode) return 'var(--hero-weather-hero-temp-size, 28px)';
             const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-            return isMobile ? 'var(--hero-weather-title-size-mobile, 16px)' : 'var(--hero-weather-title-size, 16px)';
+            return isMobile ? 'var(--hero-weather-title-size-mobile, 15px)' : 'var(--hero-weather-title-size, 15px)';
           ]]]
       - font-weight: 600
       - letter-spacing: -0.2px

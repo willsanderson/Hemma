@@ -495,7 +495,7 @@ hemma_plant:
           - color: >-
               [[[
                 return entity?.state === 'problem'
-                  ? 'var(--hemma-state-active-color)'
+                  ? 'var(--hemma-entity-state-active-color)'
                   : 'var(--hemma-entity-state-active, var(--secondary-text-color))';
               ]]]
         img_cell:

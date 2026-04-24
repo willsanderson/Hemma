@@ -56,7 +56,7 @@ hemma_lock:
         name:
           - color: var(--hemma-entity-name-active, var(--primary-text-color))
         state:
-          - color: var(--hemma-state-active-color)
+          - color: var(--hemma-entity-state-active-color)
         img_cell:
           - opacity: var(--hemma-entity-picture-active-opacity, 1) !important
           - filter: var(--hemma-entity-picture-active-filter, none) !important
@@ -66,7 +66,7 @@ hemma_lock:
     - value: unlocking
       styles:
         state:
-          - color: var(--hemma-state-active-color)
+          - color: var(--hemma-entity-state-active-color)
 
   styles:
     img_cell:

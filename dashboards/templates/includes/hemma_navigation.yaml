@@ -16,7 +16,7 @@ card:
   type: custom:layout-card
   layout_type: custom:grid-layout
   layout:
-    grid-template-columns: calc(8vw + 100px) 1fr calc(8vw + 100px)
+    grid-template-columns: 1fr
     align-items: center
     column-gap: 0px
     margin: 0
@@ -26,7 +26,7 @@ card:
     style: |
       :host{
         position: fixed !important;
-        top: 46px !important;
+        top: var(--hemma-nav-top-current, 60px) !important;
         left: 0 !important;
         right: 0 !important;
         z-index: 50 !important;
@@ -62,20 +62,6 @@ card:
 
   cards:
 
-    # Left spacer
-    - type: custom:button-card
-      show_name: false
-      show_icon: false
-      show_state: false
-      styles:
-        card:
-          - background: none
-          - box-shadow: none
-          - border: 0
-          - height: 1px
-          - opacity: 0
-          - pointer-events: none
-
     # Navbar (center)
     - type: custom:navbar-card
       desktop:
@@ -109,7 +95,7 @@ card:
             --ha-card-backdrop-filter: none;
           }
           ha-card{
-            margin: 0 !important;
+            margin: 0 auto !important;
             overflow: visible !important;
             background: transparent !important;
             border: none !important;
@@ -131,12 +117,12 @@ card:
           position: relative !important;
           inset: auto !important;
           width: 100% !important;
-          max-width: calc(100vw - (2 * var(--hemma-nav-margin-current, 8vw)) - var(--hemma-time-reserve, 160px)) !important;
+          max-width: calc(100vw - (2 * var(--hemma-nav-margin-current, 8vw))) !important;
           background: transparent !important;
           border: 0 !important;
           box-shadow: none !important;
           backdrop-filter: none !important;
-          margin: 0 !important;
+          margin: 0 auto !important;
           padding: 0 !important;
           border-radius: 0 !important;
           display: flex !important;
@@ -188,6 +174,12 @@ card:
           flex: 0 0 auto !important;
           background: transparent !important;
           --navbar-route-icon-size: 0px !important;
+        }
+
+        .navbar.desktop.top{
+          left: 50% !important;
+          right: auto !important;
+          transform: translateX(-50%) !important;
         }
 
         .navbar.desktop .route{
@@ -421,12 +413,6 @@ card:
           z-index: 999998 !important;
         }
 
-        .navbar.desktop.top{
-          left: 50% !important;
-          right: auto !important;
-          transform: translateX(-50%) !important;
-        }
-
         .navbar.desktop .route{
           position: relative !important;
           overflow: visible !important;
@@ -518,12 +504,3 @@ card:
               }));
             ]]]
 
-    # Time (right)
-    - type: custom:button-card
-      template: hemma_time
-      styles:
-        card:
-          - width: 100%
-          - text-align: right
-          - padding-right: 8vw
-          - padding-top: 5px

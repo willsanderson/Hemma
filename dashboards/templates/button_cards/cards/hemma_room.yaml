@@ -163,8 +163,6 @@ hemma_room:
               : `calc(130px + env(safe-area-inset-bottom))`;
           ]]]
       - box-shadow: none !important
-      - transform: translateZ(0)
-      - will-change: transform
       - --hero-img-scale: 1.08
       - --hero-img: >
           [[[ 
@@ -196,15 +194,10 @@ hemma_room:
           [[[
             return variables.image_position || 'center center';
           ]]]
-      - --hemma-time-right: >
+      - --hemma-time-nav-open: >
           [[[
-            const w = window?.innerWidth || 1024;
-            const h = window?.innerHeight || 800;
-            const isSmallTablet = (w >= 600 && w < 768 && h > 500);
-            const isTablet = (w >= 768 && w <= 1366 && h > 500);
-            if (isSmallTablet) return 'calc(env(safe-area-inset-right, 0px) + 8px)';
-            if (isTablet) return 'max(calc(var(--hero-gutter) - 20px), 4px)';
-            return 'var(--hemma-nav-margin-current, 4vw)';
+            const navOpen = states['input_boolean.hemma_mobile_navigation']?.state === 'on';
+            return navOpen ? 'none' : 'block';
           ]]]
       - --hemma-time-reserve: >
           [[[
@@ -315,44 +308,11 @@ hemma_room:
 
       time:
         - position: fixed
-        - top: >
-            [[[
-              const w = window?.innerWidth || 1024;
-              const h = window?.innerHeight || 800;
-
-              const isMobile = (w <= 767 || h <= 500);
-              const isSmallTablet = (w >= 600 && w < 768 && h > 500);
-              const isTablet = (w >= 768 && w <= 1366 && h > 500);
-
-              const nudge =
-                isSmallTablet ? 'var(--hemma-time-nudge-small-tablet, 43px)' :
-                isMobile ? 'var(--hemma-time-nudge-mobile, 8px)' :
-                isTablet ? 'var(--hemma-time-nudge-tablet, 36px)' :
-                '0px';
-
-              return `calc(env(safe-area-inset-top, 0px) + var(--hemma-nav-top-current, 46px) - ${nudge})`;
-            ]]]
-        - right: >
-            [[[
-              return `var(--hemma-time-right, var(--hemma-nav-margin-current, 4vw))`;
-            ]]]
         - z-index: 10
         - pointer-events: auto
         - "--mdc-ripple-press-opacity": 0
         - "-webkit-tap-highlight-color": transparent
-        - display: >
-            [[[
-              const navOpen = states['input_boolean.hemma_mobile_navigation']?.state === 'on';
-              const mm = (q) => (window.matchMedia ? window.matchMedia(q).matches : false);
-              const isTouch = mm('(pointer: coarse)') || mm('(hover: none)');
-              const w = window?.innerWidth || 1024;
-              const h = window?.innerHeight || 800;
-              const isSmallTablet = (w >= 600 && w < 768 && h > 500);
-              const isTablet = (w >= 768 && w <= 1366 && h > 500);
-              // Small tablets (600-767px): always show — desktop nav requires 769px so nothing else shows the time here
-              // Regular tablets (768-1366px): only show for touch — non-touch gets the time from the desktop nav bar
-              return (!navOpen && (isSmallTablet || (isTablet && isTouch))) ? 'block' : 'none';
-            ]]]
+        - "--ha-card-padding": "0px"
 
       weather:
         - grid-area: weather
@@ -1737,5 +1697,34 @@ hemma_room:
         max-width: calc(100vw - (2 * var(--hemma-entity-col-width-landscape, 200px)) - 8px - var(--hemma-tiles-right-pad-landscape, 0px) - var(--hero-gutter, 18px) - var(--hemma-landscape-badge-stop-pad, 60px)) !important;
         overflow-x: auto !important;
         box-sizing: border-box !important;
+      }
+    }
+
+    #time {
+      display: none;
+    }
+
+    @media (min-width: 769px) and (hover: hover) and (pointer: fine) {
+      #time {
+        display: var(--hemma-time-nav-open, block);
+        top: calc(env(safe-area-inset-top, 0px) + var(--hemma-nav-top-current, 60px) - 8px);
+        right: clamp(8px, 4vw, 48px);
+      }
+    }
+
+    @media (min-width: 600px) and (max-width: 767px) and (min-height: 501px) {
+      #time {
+        display: var(--hemma-time-nav-open, block);
+        top: calc(env(safe-area-inset-top, 0px) + var(--hemma-nav-top-current, 46px) - var(--hemma-time-nudge-small-tablet, 43px));
+        right: calc(env(safe-area-inset-right, 0px) + 8px);
+      }
+    }
+
+    @media (min-width: 768px) and (max-width: 1366px) and (min-height: 501px) and (pointer: coarse),
+           (min-width: 768px) and (max-width: 1366px) and (min-height: 501px) and (hover: none) {
+      #time {
+        display: var(--hemma-time-nav-open, block);
+        top: calc(env(safe-area-inset-top, 0px) + var(--hemma-nav-top-current, 46px) - var(--hemma-time-nudge-tablet, 36px));
+        right: max(calc(var(--hero-gutter) - 20px), 4px);
       }
     }

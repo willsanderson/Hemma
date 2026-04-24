@@ -9,6 +9,7 @@ Hemma:
       secondary-background-color: rgb(40,40,40)
       ha-card-background: rgba(20,20,20,0.1)
       ha-card-background-active: rgba(255,255,255,0.3)
+      badge-background: rgba(0,0,0,0.35)
       text-primary-color: rgba(255,255,255,0.95)
       secondary-text-color: rgba(240,240,240,0.9)
       disabled-text-color: rgba(245,245,245,0.65)
@@ -109,6 +110,7 @@ Hemma:
       secondary-background-color: rgb(20,20,20)
       ha-card-background: rgba(0,0,0,0.4)
       ha-card-background-active: rgba(240,240,240,0.07)
+      badge-background: rgba(0,0,0,0.5)
       text-primary-color: rgba(255,255,255,0.98)
       secondary-text-color: rgba(240,240,240,0.9)
       disabled-text-color: rgba(208,208,208,0.5)
@@ -120,7 +122,7 @@ Hemma:
       # MODE: DARK — ENTITY TOKENS
       # ============================================================================
 
-      hemma-entity-background: rgba(0,0,0,.08)
+      hemma-entity-background: rgba(0,0,0,.1)
       hemma-entity-background-active: rgba(255,255,255,0.25)
       hemma-entity-name: rgba(255,255,255,0.85)
       hemma-entity-name-active: rgba(255,255,255,1)
@@ -562,11 +564,10 @@ Hemma:
   # ============================================================================
 
   # Global
-  badge-background: rgba(0,0,0,0.35)
-  badge-title-inactive: rgba(255,255,255,0.75)
   badge-blur: 14px
   badge-br: 9999px
   badge-active-color: rgba(255,255,255,0.85)
+  badge-title-inactive: rgba(255,255,255,0.75)
 
   # Desktop
   badge-gap: 10px
@@ -641,7 +642,7 @@ Hemma:
   hemma-badge-air-quality-moderate-color: "#ffd600"
   hemma-badge-humidity-dry-color: "#ffb254"
   hemma-badge-humidity-high-color: "#3cd3fe"
-  hemma-badge-presence-home-color: "#00dac3"
+  hemma-badge-presence-home-color: "#49F08CD9"
   hemma-badge-presence-away-color: "#ffd600"
   hemma-badge-media-color: "#ff4d70"
 
@@ -755,6 +756,24 @@ Hemma:
         hui-view-container {
           touch-action: pan-y !important;
         }
+      }
+
+      html, body {
+        overflow-x: hidden !important;
+        overscroll-behavior-x: none !important;
+        max-width: 100vw !important;
+      }
+
+      home-assistant,
+      home-assistant-main,
+      ha-panel-lovelace,
+      hui-root,
+      ha-app-layout,
+      #view,
+      hui-view,
+      hui-view-container {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
       }
 
       :host, ha-app-layout {

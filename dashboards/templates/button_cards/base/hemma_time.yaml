@@ -83,6 +83,7 @@ hemma_time:
       - line-height: 1
       - text-transform: uppercase
       - font-weight: 700
+      - white-space: nowrap
       - justify-self: end
       - align-self: center
       - padding: 0
