@@ -130,10 +130,11 @@ In Settings → Dashboards → Resources (or YAML), add:
 - `/local/layout-card-modified/layout-card-modified.js` (from this repo)
 - `/local/navbar-popup-caret/navbar-popup-caret.js`(from this repo)
 - `/local/navbar-sidebar-offset/navbar-sidebar-offset.js`(from this repo)
+- `/local/hemma/fonts/hanken-grotesk.css`(from this repo)
 - `/hacsfiles/button-card/button-card.js` (should already be present if installed via HACS)
 - `/hacsfiles/lovelace-navbar-card/navbar-card.js` (should already be present if installed via HACS)
-
-(Exact resource paths can vary depending on how you installed the cards.)
+Settings → Dashboards → Resources → Add Resource
+/local/hemma/fonts/hanken-grotesk.css
 
 ### 4) Register the Hemma dashboard
 Add (or verify) in your `configuration.yaml`:
