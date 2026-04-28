@@ -125,7 +125,7 @@ Copy these folders/files from this repo into your HA `/config`:
 - `www/layout-card-modified/` → `/config/www/layout-card-modified/`
 
 ### 3) Add Lovelace resources
-In Settings → Dashboards → Resources (or YAML), add:
+In Settings → Dashboards → Resources, add:
 
 - `/local/layout-card-modified/layout-card-modified.js` (from this repo)
 - `/local/navbar-popup-caret/navbar-popup-caret.js`(from this repo)
