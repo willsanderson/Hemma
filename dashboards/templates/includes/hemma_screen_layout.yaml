@@ -7,7 +7,5 @@ min-height: 100svh
 
 mediaquery:
   "(max-width: 767px) and (orientation: portrait), (max-height: 500px) and (orientation: portrait)":
-    min-height: 0
-    height: 100%
-    align-self: stretch
-    place-self: start stretch
+    min-height: 100dvh
+    overflow: visible

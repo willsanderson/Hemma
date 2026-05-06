@@ -1,13 +1,21 @@
 # Indoor Temperature Badge
-# Shows indoor temperature sensor with comfort label and value
+# Shows indoor temperature sensor with comfort label and value.
+# Tap: opens hemma_climate_popup (shared climate popup).
 hemma_badge_temp:
-  template: [hemma_badge_base]
+  template: [hemma_badge_base, hemma_popup_base, hemma_climate_popup]
 
   variables:
     enabled: true
     temp_unit: 'F'  # 'C' or 'F'
+    room_name: null
+    entity_quality: null
+    entity_temp: null
+    entity_humidity: null
+    entity_pm25: null
+    entity_pm10: null
+    entity_voc: null
+    entity_co2: null
 
-  tap_action: { action: more-info }
   icon: mdi:thermometer
 
   extra_styles: >

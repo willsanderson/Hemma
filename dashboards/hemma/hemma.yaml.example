@@ -62,11 +62,22 @@ views:
 
           # Sensors (used by the climate sub-badges when show_climate is true)
           # temp_sensor_1: sensor.YOUR_HOME_TEMPERATURE
-          # temp_sensor_2: sensor.YOUR_TEMPERATURE_2      # optional additional temp sensor
-          # temp_sensor_3: sensor.YOUR_TEMPERATURE_3      # optional additional temp sensor
-          # temp_sensor_4: sensor.YOUR_TEMPERATURE_4      # optional additional temp sensor
+          # temp_sensor_2: sensor.YOUR_TEMPERATURE_2      # optional additional temp sensors
+          # temp_sensor_3: sensor.YOUR_TEMPERATURE_3
+          # temp_sensor_4: sensor.YOUR_TEMPERATURE_4
+          # temp_sensor_5: sensor.YOUR_TEMPERATURE_5
           # humidity_sensor: sensor.YOUR_HUMIDITY
           # quality_sensor: sensor.YOUR_AIR_QUALITY
+
+          # Air Quality Popup (optional - shown when tapping the air quality badge)
+          # Requires show_climate: true and quality_sensor above
+          # aqi_room_name: Home
+          # aqi_entity_pm25: sensor.YOUR_PM25
+          # aqi_entity_pm10: sensor.YOUR_PM10
+          # aqi_entity_voc: sensor.YOUR_VOC
+          # aqi_entity_co2: sensor.YOUR_CO2
+          # aqi_entity_temp: sensor.YOUR_AQI_TEMP
+          # aqi_entity_humidity: sensor.YOUR_AQI_HUMIDITY
 
           # Lights Badge (optional - shows a light group badge)
           show_lights: false
@@ -201,6 +212,15 @@ views:
           # humidity_sensor: sensor.YOUR_LIVING_ROOM_HUMIDITY
           # quality_sensor: sensor.YOUR_AIR_QUALITY
 
+          # Air Quality Popup (optional - shown when tapping the air quality badge)
+          # aqi_room_name: Living Room
+          # aqi_entity_pm25: sensor.YOUR_PM25
+          # aqi_entity_pm10: sensor.YOUR_PM10
+          # aqi_entity_voc: sensor.YOUR_VOC
+          # aqi_entity_co2: sensor.YOUR_CO2
+          # aqi_entity_temp: sensor.YOUR_AQI_TEMP
+          # aqi_entity_humidity: sensor.YOUR_AQI_HUMIDITY
+
           # Light Badge (optional)
           show_lights: false
           # light_entity_1: light.YOUR_LIVING_ROOM_LIGHTS
@@ -308,6 +328,15 @@ views:
           # humidity_sensor: sensor.YOUR_KITCHEN_HUMIDITY
           # quality_sensor: sensor.YOUR_AIR_QUALITY
 
+          # Air Quality Popup (optional - shown when tapping the air quality badge)
+          # aqi_room_name: Kitchen
+          # aqi_entity_pm25: sensor.YOUR_PM25
+          # aqi_entity_pm10: sensor.YOUR_PM10
+          # aqi_entity_voc: sensor.YOUR_VOC
+          # aqi_entity_co2: sensor.YOUR_CO2
+          # aqi_entity_temp: sensor.YOUR_AQI_TEMP
+          # aqi_entity_humidity: sensor.YOUR_AQI_HUMIDITY
+
           show_weather: false
           # weather_entity: weather.YOUR_WEATHER
           # weather_temp_sensor: sensor.YOUR_OUTDOOR_TEMP
@@ -368,7 +397,7 @@ views:
           image: bedroom
           image_position: center center
           # mobile_background: true # Enable this if you add mobile backgrounds to /local/hemma/mobile/
-          
+
           # Climate (optional - shows group badge + expandable sub-badges for temp/humidity/quality)
           show_climate: false
           # climate_entity_1: climate.YOUR_BEDROOM_CLIMATE
@@ -377,6 +406,15 @@ views:
           # temp_sensor_1: sensor.YOUR_BEDROOM_TEMP
           # humidity_sensor: sensor.YOUR_BEDROOM_HUMIDITY
           # quality_sensor: sensor.YOUR_BEDROOM_AIR_QUALITY
+
+          # Air Quality Popup (optional - shown when tapping the air quality badge)
+          # aqi_room_name: Bedroom
+          # aqi_entity_pm25: sensor.YOUR_PM25
+          # aqi_entity_pm10: sensor.YOUR_PM10
+          # aqi_entity_voc: sensor.YOUR_VOC
+          # aqi_entity_co2: sensor.YOUR_CO2
+          # aqi_entity_temp: sensor.YOUR_AQI_TEMP
+          # aqi_entity_humidity: sensor.YOUR_AQI_HUMIDITY
 
           show_weather: false
           # weather_entity: weather.YOUR_WEATHER

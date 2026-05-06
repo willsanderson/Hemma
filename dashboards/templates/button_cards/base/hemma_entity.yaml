@@ -276,7 +276,7 @@ hemma_entity:
       value: |
         [[[
           const s = (entity?.state || "").toLowerCase();
-          return ["on","open","opening","playing","cleaning","returning","cool","heat"].includes(s);
+          return ["on","open","opening","playing","cleaning","returning","cool","heat","washing","rinsing","spinning","drying","running","active"].includes(s);
         ]]]
       styles:
         card:
@@ -327,7 +327,7 @@ hemma_entity:
       - height: |
           [[[
             return window.matchMedia('(max-width: 767px) and (orientation: portrait)').matches
-              ? '108px'
+              ? 'var(--hemma-entity-height-current, 108px)'
               : 'var(--hemma-entity-height-current, var(--hemma-entity-height-desktop, 200px))';
           ]]]
       - padding: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))

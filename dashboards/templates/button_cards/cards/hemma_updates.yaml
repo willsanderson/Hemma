@@ -1,52 +1,10 @@
 hemma_updates:
   template:
     - hemma_entity
+    - hemma_updates_popup
 
   variables:
     icon: updates
-
-  tap_action:
-    haptic: light
-    action: fire-dom-event
-    browser_mod:
-      service: browser_mod.popup
-      data:
-        title: Available Updates
-        adaptive: true
-        adaptive_allow_mode_change: true
-        adaptive_force_bottom_sheet: false
-        size: >
-          [[[
-            return window.innerWidth >= 1250 ? 'auto' : 'fullscreen';
-          ]]]
-        content:
-          type: custom:auto-entities
-          show_empty: false
-          card:
-            type: entities
-            card_mod:
-              style: |
-                ha-card {
-                  background: transparent !important;
-                  box-shadow: none !important;
-                  border: none !important;
-                  padding-top: 0 !important;
-                  padding-bottom: 0 !important;
-                  backdrop-filter: none !important;
-                  --ha-card-box-shadow: none !important;
-                }
-
-                ha-card:hover,
-                ha-card:focus,
-                ha-card:active {
-                  box-shadow: none !important;
-                  --ha-card-box-shadow: none !important;
-                }
-                
-          filter:
-            include:
-              - domain: update
-                state: "on"
 
   icon_tap_action:
     action: more-info

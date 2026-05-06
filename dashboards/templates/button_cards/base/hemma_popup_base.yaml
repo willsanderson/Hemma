@@ -1,0 +1,30 @@
+hemma_popup_base:
+  tap_action:
+    haptic: light
+    action: |
+      [[[
+        const hasBrowserMod = typeof window.browser_mod !== 'undefined';
+        return hasBrowserMod ? 'fire-dom-event' : 'more-info';
+      ]]]
+    entity: "[[[ return entity?.entity_id; ]]]"
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        title: ""
+        adaptive: true
+        adaptive_allow_mode_change: true
+        adaptive_force_bottom_sheet: false
+        size: >
+          [[[
+            return window.innerWidth >= 1250 ? 'auto' : 'fullscreen';
+          ]]]
+        style: |
+          --popup-min-width: 640px;
+        dismissable: true
+        popup_styles:
+          - style: all
+            styles: |
+              ha-dialog .content .container,
+              ha-dialog .container {
+                padding: 24px 14px 20px 14px !important;
+              }

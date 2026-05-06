@@ -101,8 +101,32 @@ hemma_network:
       }
     }
 
-  # Glowing active style when max speed >= light_threshold
+  # Heavy: glowing + yellow name color
+  # Active/Light: glowing only (name stays default color)
   state:
+    - operator: template
+      value: |
+        [[[
+          const dl    = parseFloat(entity?.state);
+          const ul    = parseFloat(states[variables.upload_sensor]?.state);
+          const max   = Math.max(Number.isFinite(dl) ? dl : 0, Number.isFinite(ul) ? ul : 0);
+          const heavy = Number(variables.heavy_threshold ?? 50);
+          return max >= heavy;
+        ]]]
+      styles:
+        card:
+          - background: var(--hemma-entity-background-active)
+          - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
+        name:
+          - color: var(--hemma-entity-name-active, var(--primary-text-color))
+        state:
+          - color: var(--hemma-entity-state-active-color)
+        img_cell:
+          - opacity: var(--hemma-entity-picture-active-opacity, 1) !important
+          - filter: var(--hemma-entity-picture-active-filter, none) !important
+        entity_picture:
+          - opacity: var(--hemma-entity-picture-active-opacity, 1) !important
+          - filter: var(--hemma-entity-picture-active-filter, none) !important
     - operator: template
       value: |
         [[[
@@ -117,7 +141,7 @@ hemma_network:
           - background: var(--hemma-entity-background-active)
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
         name:
-          - color: var(--hemma-entity-name-active, var(--primary-text-color))
+          - color: var(--hemma-entity-name, rgba(255,255,255,0.9))
         state:
           - color: var(--hemma-entity-state-active-color)
         img_cell:

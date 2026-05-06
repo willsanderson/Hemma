@@ -156,7 +156,7 @@ cards:
         .route{
           flex: 1 1 0 !important;
           min-width: 0 !important;
-          height: 54px !important;
+          height: 55px !important;
           border-radius: 9999px !important;
           padding: 1px !important;
           box-sizing: border-box !important;
@@ -250,7 +250,7 @@ cards:
           backdrop-filter: var(--hemma-popup-blur, blur(20px) saturate(1.1)) !important;
           border-radius: var(--hemma-popup-br, 22px) !important;
           box-shadow: var(--hemma-popup-shadow, 0 3px 14px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.06)) !important;
-          padding: 7px !important;
+          padding: 8px !important;
           width: max-content !important;
           max-width: calc(100vw - (var(--hemma-popup-edge) * 2)) !important;
           max-height: calc(100vh - 140px) !important;
@@ -327,7 +327,7 @@ cards:
 
         .navbar-popup .popup-item{
           display: grid !important;
-          grid-template-columns: var(--hemma-popup-icon-size) max-content !important; /* FIX */
+          grid-template-columns: var(--hemma-popup-icon-size) max-content !important;
           align-items: center !important;
           justify-items: start !important;
           column-gap: 9px !important;

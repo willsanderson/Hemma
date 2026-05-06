@@ -1,19 +1,26 @@
 # Humidity Badge
-# Shows humidity sensor with color-coded status
+# Shows humidity sensor with color-coded status.
+# Tap: opens hemma_climate_popup (shared climate popup).
 hemma_badge_humidity:
-  template: [hemma_badge_base]
+  template: [hemma_badge_base, hemma_popup_base, hemma_climate_popup]
 
   variables:
     enabled: true
+    room_name: null
+    entity_quality: null
+    entity_temp: null
+    entity_humidity: null
+    entity_pm25: null
+    entity_pm10: null
+    entity_voc: null
+    entity_co2: null
 
-  tap_action: { action: more-info }
   icon: mdi:water-percent
 
   extra_styles: >
     [[[
       const SVG_URL = '/local/hemma/icons/humidity.svg';
 
-      // Robust enabled check (see hemma_badge_base.yaml for pattern docs)
       const ev = variables?.enabled;
       const enabled = (ev === undefined || ev === null) ? true :
         (typeof ev === 'boolean') ? ev :
@@ -46,7 +53,6 @@ hemma_badge_humidity:
     card:
       - display: >
           [[[
-            // Robust enabled check (see hemma_badge_base.yaml for pattern docs)
             const ev = variables?.enabled;
             const enabled = (ev === undefined || ev === null) ? true :
               (typeof ev === 'boolean') ? ev :
@@ -77,9 +83,9 @@ hemma_badge_humidity:
       const v = parseFloat(entity?.state);
       let label = 'Unknown';
       if (!isNaN(v)) {
-        if (v <= 29.99)      label = 'Very Dry';
-        else if (v >= 61)    label = 'High';
-        else                 label = 'Good';
+        if (v <= 29.99)   label = 'Very Dry';
+        else if (v >= 61) label = 'High';
+        else              label = 'Good';
       }
 
       const esc = (t) => String(t || '').replaceAll('"','&quot;');

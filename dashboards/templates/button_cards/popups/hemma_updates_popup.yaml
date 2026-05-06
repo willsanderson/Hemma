@@ -1,0 +1,50 @@
+# Updates Popup
+# Full browser_mod popup for hemma_updates tap_action.
+# Referenced by hemma_updates via template inheritance.
+hemma_updates_popup:
+  tap_action:
+    haptic: light
+    action: |
+      [[[
+        return typeof window.browser_mod !== 'undefined' ? 'fire-dom-event' : 'more-info';
+      ]]]
+    entity: "[[[ return entity?.entity_id; ]]]"
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        title: Available Updates
+        adaptive: true
+        adaptive_allow_mode_change: true
+        adaptive_force_bottom_sheet: false
+        size: >
+          [[[
+            return window.innerWidth >= 1250 ? 'auto' : 'fullscreen';
+          ]]]
+        content:
+          type: custom:auto-entities
+          show_empty: false
+          card:
+            type: entities
+            card_mod:
+              style: |
+                ha-card {
+                  background: transparent !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                  padding-top: 0 !important;
+                  padding-bottom: 0 !important;
+                  backdrop-filter: none !important;
+                  --ha-card-box-shadow: none !important;
+                }
+
+                ha-card:hover,
+                ha-card:focus,
+                ha-card:active {
+                  box-shadow: none !important;
+                  --ha-card-box-shadow: none !important;
+                }
+
+          filter:
+            include:
+              - domain: update
+                state: "on"

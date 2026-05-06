@@ -1,17 +1,40 @@
 # Air Quality Badge
-# Shows air quality sensor with color-coded status
+# Shows air quality sensor with color-coded status.
+# Tap: opens hemma_climate_popup (browser_mod popup via hemma_popup_base).
+#      Falls back to more-info if browser_mod is unavailable.
+#
+# Variables (passed from hemma_room.yaml):
+#   enabled         - show/hide badge (default: true)
+#   room_name       - display name shown in popup header
+#   entity_quality  - AQ sensor entity_id (used for state in popup header)
+#   entity_pm25     - PM2.5 sensor entity_id
+#   entity_pm10     - PM10 sensor entity_id
+#   entity_voc      - VOC index sensor entity_id
+#   entity_co2      - CO2 sensor entity_id
+#   entity_temp     - temperature sensor entity_id
+#   entity_humidity - humidity sensor entity_id
+#
+# TODO (CO2): once sensor arrives, restore original weights in the scoring section:
+#   pm25Penalty max → 40, vocPenalty max → 25, add co2Penalty max → 35
+# ============================================================================
 hemma_badge_air_quality:
-  template: [hemma_badge_base]
+  template: [hemma_badge_base, hemma_popup_base, hemma_climate_popup]
 
   variables:
     enabled: true
+    room_name: null
+    entity_quality: null
+    entity_temp: null
+    entity_humidity: null
+    entity_pm25: null
+    entity_pm10: null
+    entity_voc: null
+    entity_co2: null
 
-  tap_action: { action: more-info }
   icon: mdi:air-filter
 
   extra_styles: >
     [[[
-      // Robust enabled check (see hemma_badge_base.yaml for pattern docs)
       const ev = variables?.enabled;
       const enabled = (ev === undefined || ev === null) ? true :
         (typeof ev === 'boolean') ? ev :
@@ -47,7 +70,6 @@ hemma_badge_air_quality:
     card:
       - display: >
           [[[
-            // Robust enabled check (see hemma_badge_base.yaml for pattern docs)
             const ev = variables?.enabled;
             const enabled = (ev === undefined || ev === null) ? true :
               (typeof ev === 'boolean') ? ev :
@@ -78,9 +100,7 @@ hemma_badge_air_quality:
     [[[
       const raw = String(entity?.state ?? 'Unknown');
       const nice = raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : 'Unknown';
-
       const esc = (t) => String(t || '').replaceAll('"','&quot;');
-
       return `
         <div class="badge-wrap">
           <div class="badge-title">Air Quality</div>

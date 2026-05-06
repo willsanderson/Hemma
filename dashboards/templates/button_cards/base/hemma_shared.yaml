@@ -97,6 +97,8 @@ hemma_shared:
         saturate(var(--hero-img-saturate-from, 1.0))
         brightness(var(--hero-img-brightness-from, .97));
       --hemma-hover-filter: none !important;
+      --hemma-card-hover-filter: none !important;
+      --hemma-card-hover-shadow: none !important;
       -webkit-tap-highlight-color: transparent !important;
       --mdc-ripple-press-opacity: 0 !important;
     }
@@ -181,7 +183,7 @@ hemma_shared:
         --hero-img-brightness: var(--hero-img-brightness-mobile, .985);
         --hero-img-scale-current: 1 !important;
         --hero-tint: var(--hero-tint-mobile, rgba(56,56,56,0.50));
-        --hero-top: calc(var(--header-top-mobile, clamp(80px, 12vh, 120px)) - var(--header-top-mobile-nudge, 0px));
+        --hero-top: calc(var(--header-top-mobile, clamp(80px, 12svh, 120px)) - var(--header-top-mobile-nudge, 0px));
         --hero-temp-font-size: var(--hero-temp-font-size-mobile, 13px);
         --hero-temp-reserve: 0px;
         --hero-header-gap-current: var(--hero-header-gap-mobile, 5px);

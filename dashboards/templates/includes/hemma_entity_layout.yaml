@@ -11,7 +11,7 @@ grid-row-gap: 8px
 margin: 0
 inset: >
   auto var(--hemma-entity-right-inset-current, var(--hemma-entity-right-inset-desktop, var(--hemma-rail-left, var(--page-gutter, 8vw))))
-       var(--hemma-entity-bottom-current, var(--hemma-entity-bottom-desktop, 20px))
+       var(--hemma-entity-bottom-current, var(--hemma-entity-bottom-desktop, 0px))
        var(--hemma-entity-left-inset-current, var(--hemma-entity-left-inset-desktop, var(--hemma-rail-left, var(--page-gutter, 8vw))))
 padding: 20px var(--hemma-entity-shadow-pad-right-current, var(--hemma-entity-shadow-pad-right-desktop, 0px)) 40px 0
 align-content: end
@@ -27,41 +27,38 @@ scrollbar-width: none
 mediaquery:
   # -------- Mobile Portrait --------
   "(max-width: 767px) and (orientation: portrait), (max-height: 500px) and (orientation: portrait)":
-    position: relative
+    position: absolute
     z-index: 4
-    inset: auto
-    margin: >-
-      calc(var(--hero-top) + var(--hemma-header-stack-h-current, 240px) + var(--hemma-entity-mobile-top-gap, -40px))
-      0
-        calc(env(safe-area-inset-bottom, 0px) + var(--hemma-nav-height, 0px) + var(--hemma-entity-bottom-gap, 0px))
-      0
-    padding: >-
-      0
+    inset: >
+      var(--hemma-tiles-top-portrait, calc(env(safe-area-inset-top, 0px) + 350px))
       var(--hemma-rail-left, var(--page-gutter-mobile, 11px))
-      calc(env(safe-area-inset-bottom, 0px) + var(--hemma-nav-height, 0px) + 8px)
+      auto
       var(--hemma-rail-left, var(--page-gutter-mobile, 11px))
+    margin: 0
+    padding: 0 0 calc(env(safe-area-inset-bottom, 0px) + var(--hemma-nav-height, 130px) + 8px) 0
     min-height: >-
-      calc((3 * var(--hemma-entity-height-current, 108px)) + (2 * var(--hemma-entity-gap, 8px)))
+      calc(100dvh
+        - var(--hemma-tiles-top-portrait, calc(env(safe-area-inset-top, 0px) + 350px))
+        - env(safe-area-inset-bottom, 0px)
+        - var(--hemma-nav-height, 130px)
+        - 8px)
     display: grid
-    grid-template-columns: repeat(2, minmax(0, 1fr))
-    grid-auto-rows: var(--hemma-entity-height-current, 108px)
     grid-auto-flow: row
-    gap: var(--hemma-entity-gap, 8px)
-    justify-content: stretch
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    grid-template-rows: none
+    grid-auto-columns: auto
+    grid-auto-rows: min-content
     justify-items: stretch
-    align-items: stretch
     align-content: end
-    box-sizing: border-box
-    overflow-y: scroll
-    overflow-x: hidden
-    -webkit-overflow-scrolling: touch
-    overscroll-behavior-y: contain
+    align-items: start
+    overflow: visible
+    scroll-snap-type: none
     scrollbar-width: none
     -ms-overflow-style: none
 
   # -------- Mobile Landscape --------
   "(max-height: 600px) and (orientation: landscape)":
-    position: absolute
+    position: relative
     z-index: 4
     inset: >
       calc(var(--hemma-tiles-top-landscape, calc(env(safe-area-inset-top, 0px) + 105px)))
@@ -70,7 +67,7 @@ mediaquery:
       auto
     width: calc((2 * var(--hemma-entity-col-width-landscape, 160px)) + 8px)
     margin: 0
-    padding: 0
+    padding: 0 0 20px 0
     box-sizing: border-box
     display: grid
     grid-auto-flow: row

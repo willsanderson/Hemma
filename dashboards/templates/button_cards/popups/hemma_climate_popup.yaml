@@ -1,0 +1,403 @@
+hemma_climate_popup:
+  variables:
+    room_name: null
+    entity_quality: null
+    entity_temp: null
+    entity_humidity: null
+    entity_pm25: null
+    entity_pm10: null
+    entity_voc: null
+    entity_co2: null
+
+  tap_action:
+    browser_mod:
+      data:
+        content:
+          type: vertical-stack
+          cards:
+
+            # ── Header: AQ score + temp/humidity ──────────────────────────
+            - type: custom:button-card
+              entity: >
+                [[[
+                  return variables.entity_voc || variables.entity_pm25 || variables.entity_quality || entity?.entity_id || null;
+                ]]]
+              variables:
+                room_name: '[[[ return variables.room_name ]]]'
+                entity_quality: '[[[ return variables.entity_quality ]]]'
+                entity_pm25: '[[[ return variables.entity_pm25 ]]]'
+                entity_voc: '[[[ return variables.entity_voc ]]]'
+                entity_co2: '[[[ return variables.entity_co2 ]]]'
+                entity_temp: '[[[ return variables.entity_temp ]]]'
+                entity_humidity: '[[[ return variables.entity_humidity ]]]'
+              triggers_update:
+                - '[[[ return variables.entity_quality ]]]'
+                - '[[[ return variables.entity_pm25 ]]]'
+                - '[[[ return variables.entity_voc ]]]'
+                - '[[[ return variables.entity_co2 ]]]'
+                - '[[[ return variables.entity_temp ]]]'
+                - '[[[ return variables.entity_humidity ]]]'
+              tap_action:
+                action: none
+              show_icon: false
+              show_name: false
+              show_label: false
+              show_state: false
+              card_mod:
+                style: |
+                  ha-card {
+                    background: transparent !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                  }
+              styles:
+                card:
+                  - background: transparent
+                  - border: none
+                  - border-radius: 22px
+                  - padding: 35px 28px 0px 28px
+                  - box-shadow: none
+                grid:
+                  - grid-template-areas: '"body"'
+                  - grid-template-columns: 1fr
+                custom_fields:
+                  body:
+                    - justify-self: stretch
+                    - width: 100%
+              custom_fields:
+                body: |
+                  [[[
+                    const safeNum = (id) => {
+                      if (!id) return null;
+                      const s = states[id]?.state;
+                      if (!s || s === 'unavailable' || s === 'unknown') return null;
+                      const n = parseFloat(s);
+                      return isNaN(n) ? null : n;
+                    };
+
+                    const pm25  = safeNum(variables.entity_pm25);
+                    const voc   = safeNum(variables.entity_voc);
+                    const co2   = safeNum(variables.entity_co2);
+                    const temp  = safeNum(variables.entity_temp);
+                    const humid = safeNum(variables.entity_humidity);
+
+                    const aqEntity   = variables.entity_quality || entity?.entity_id;
+                    const aqStateRaw = aqEntity ? states[aqEntity]?.state : null;
+                    const aqState    = (aqStateRaw || '').toLowerCase();
+
+                    let scoreLabel = 'Unknown';
+                    let scoreColor = 'var(--primary-text-color)';
+                    let advice = 'Air quality unavailable';
+                    let score = 3;
+
+                    switch (aqState) {
+                      case 'excellent':
+                        scoreLabel = 'Excellent';
+                        scoreColor = 'var(--hemma-badge-air-quality-excellent-color, var(--hemma-badge-air-quality-good-color))';
+                        advice = 'Air quality is great';
+                        score = 5;
+                        break;
+                      case 'good':
+                        scoreLabel = 'Good';
+                        scoreColor = 'var(--hemma-badge-air-quality-good-color)';
+                        advice = 'Air quality is good';
+                        score = 4;
+                        break;
+                      case 'moderate':
+                        scoreLabel = 'Moderate';
+                        scoreColor = 'var(--hemma-badge-air-quality-moderate-color)';
+                        advice = 'Air quality is moderate';
+                        score = 3;
+                        break;
+                      case 'poor':
+                        scoreLabel = 'Poor';
+                        scoreColor = 'var(--hemma-badge-air-quality-poor-color)';
+                        advice = 'Consider ventilating';
+                        score = 2;
+                        break;
+                      case 'bad':
+                      case 'very bad':
+                        scoreLabel = 'Bad';
+                        scoreColor = 'var(--hemma-badge-air-quality-bad-color)';
+                        advice = 'Ventilate now';
+                        score = 1;
+                        break;
+                    }
+
+                    if (pm25 != null && pm25 > 12)   advice = 'Particles elevated';
+                    if (voc  != null && voc  > 200)  advice = 'VOCs detected — ventilate';
+                    if (co2  != null && co2  > 1000) advice = 'CO₂ elevated — ventilate';
+                    if (co2  != null && co2  > 1500) advice = 'CO₂ high — open windows';
+
+                    const radius    = 42;
+                    const circ      = 2 * Math.PI * radius;
+                    const dashOffset = circ - (score / 5) * circ;
+
+                    const tempUnit = states[variables.entity_temp]?.attributes?.unit_of_measurement || '°';
+                    const tempStr  = temp  != null ? (tempUnit === '°F' ? Math.round(temp).toString() : temp.toFixed(1)) : '—';
+                    const humidStr = humid != null ? humid.toFixed(0) : '—';
+
+                    const roomName = variables.room_name || 'Climate';
+
+                    return `
+                      <div style="display:flex;flex-direction:column;width:100%;font-family:var(--primary-font-family,system-ui);color:#ffffff;text-align:left;box-sizing:border-box;">
+
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+                          <div>
+                            <div style="font-size:16px;color:#ffffff;font-weight:500;letter-spacing:-0.01em;">${roomName}</div>
+                            <div style="font-size:14px;color:rgba(255,255,255,0.6);font-weight:400;">Climate · Air Quality</div>
+                          </div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 11px;border-radius:999px;font-size:15px;font-weight:500;color:${scoreColor};background:color-mix(in srgb,${scoreColor} 12%,transparent);border:1px solid color-mix(in srgb,${scoreColor} 35%,transparent);">
+                            <span style="width:6px;height:6px;background:${scoreColor};border-radius:50%;display:inline-block;flex-shrink:0;"></span>
+                            ${scoreLabel}
+                          </div>
+                        </div>
+
+                        <div style="display:flex;justify-content:space-between;align-items:end;">
+                          <div>
+                            <div style="font-size:22px;color:var(--primary-text-color,#e4e7eb);font-weight:400;letter-spacing:-.5px">${advice}</div>
+                            <div style="display:flex;gap:12px;margin-top:30px;padding-bottom:22px">
+                              <div>
+                                <div style="display:flex;align-items:baseline;gap:3px;padding-right:6px;">
+                                  <span style="font-size:26px;font-weight:400;color:#ffffff;">${tempStr}</span>
+                                  <span style="font-size:13px;color:rgba(255,255,255,0.7);">${tempUnit}</span>
+                                </div>
+                              </div>
+                              <div style="width:2px;background:rgba(255,255,255,0.09);"></div>
+                              <div>
+                                <div style="display:flex;align-items:baseline;gap:3px;padding-left:6px;">
+                                  <span style="font-size:24px;font-weight:400;color:#ffffff;">${humidStr}</span>
+                                  <span style="font-size:13px;color:rgba(255,255,255,0.7);">%</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style="position:relative;width:120px;height:120px;flex-shrink:0;margin-right:-5px;margin-top:10px">
+                            <svg viewBox="0 0 100 100" style="transform:rotate(-90deg);width:100%;height:100%;">
+                              <circle cx="50" cy="50" r="${radius}" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/>
+                              <circle cx="50" cy="50" r="${radius}" fill="none" stroke="${scoreColor}" stroke-width="7"
+                                stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${dashOffset.toFixed(2)}" stroke-linecap="round"/>
+                            </svg>
+                            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                              <div style="font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:.06em;font-weight:500;">AQI</div>
+                              <div style="font-size:24px;color:${scoreColor};font-weight:600;margin-top:-5px;padding-bottom:5px;">${score}/5</div>
+                            </div>
+                          </div>
+                        </div>
+
+                      </div>
+                    `;
+                  ]]]
+
+            # ── 8 h temp / humidity trend ──────────────────────────────────
+            - type: custom:mini-graph-card
+              entities:
+                - entity: >
+                    [[[
+                      return variables.entity_temp || null;
+                    ]]]
+                  name: Temp
+                  color: 'var(--hemma-badge-temp-comfortable-color, #F5D76E)'
+                - entity: >
+                    [[[
+                      return variables.entity_humidity || null;
+                    ]]]
+                  name: Humidity
+                  color: 'var(--hemma-badge-climate-color, #C7CED6)'
+                  y_axis: secondary
+              hours_to_show: 12
+              points_per_hour: 1
+              line_width: 3
+              animate: true
+              smoothing: true
+              hour24: false
+              height: 60
+              show:
+                name: false
+                icon: false
+                state: false
+                legend: true
+                labels: false
+                fill: fade
+                points: false
+              card_mod:
+                style: |
+                  ha-card {
+                    background: transparent !important;
+                    border: none !important;
+                    border-radius: 0 !important;
+                    box-shadow: none !important;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                    padding: 0px 0px 10px 0px !important;
+                    margin-top: -25px !important;
+                    --mgc-legend-alignment: flex-start;
+                  }
+
+                  .graph__legend {
+                    display: flex !important;
+                    justify-content: flex-start !important;
+                    align-items: center !important;
+                    margin-left: 6px !important;
+                  }
+
+                  .graph__legend__item:nth-child(1) { margin-right: 27px !important; }
+
+                  .graph__legend__item {
+                    position: relative !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    min-width: 0 !important;
+                    line-height: 1.1 !important;
+                    overflow: visible !important;
+                    padding-left: 8px !important;
+                    margin-bottom: 10px !important;
+                  }
+
+                  .graph__legend__item > svg { display: none !important; }
+
+                  .graph__legend__item::before {
+                    content: "";
+                    position: absolute;
+                    left: 0;
+                    top: 50%;
+                    width: 8px;
+                    height: 8px;
+                    transform: translateY(-50%);
+                    border-radius: 4px;
+                    flex: 0 0 auto;
+                  }
+
+                  .graph__legend__item:nth-child(1)::before { background: var(--hemma-badge-temp-comfortable-color, #F5D76E) !important; }
+                  .graph__legend__item:nth-child(2)::before { background: var(--hemma-badge-climate-color, #C7CED6) !important; }
+
+                  .graph { position: relative !important; overflow: hidden !important; }
+
+                  .graph__container svg {
+                    width: calc(100% + 54px) !important;
+                    margin-left: -26px !important;
+                    display: block !important;
+                    -webkit-mask-image:
+                      linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 7%, rgba(0,0,0,0.1) 13%, rgba(0,0,0,0.5) 22%, black 38%, black 65%, rgba(0,0,0,0.5) 80%, rgba(0,0,0,0.1) 89%, rgba(0,0,0,0) 93%, rgba(0,0,0,0) 100%),
+                      linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%);
+                    mask-image:
+                      linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 7%, rgba(0,0,0,0.1) 13%, rgba(0,0,0,0.5) 22%, black 38%, black 65%, rgba(0,0,0,0.5) 80%, rgba(0,0,0,0.1) 89%, rgba(0,0,0,0) 93%, rgba(0,0,0,0) 100%),
+                      linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%);
+                    -webkit-mask-composite: destination-in;
+                    mask-composite: intersect;
+                    -webkit-mask-repeat: no-repeat;
+                    mask-repeat: no-repeat;
+                    -webkit-mask-size: 100% 100%;
+                    mask-size: 100% 100%;
+                  }
+
+                  .graph__line { opacity: 0.95; filter: drop-shadow(0 0 3px rgba(255,255,255,0.06)); }
+                  .graph__fill { opacity: 0.45; }
+                  .graph.flex { margin-left: 0px !important; margin-right: 0px !important; padding-bottom: 0px !important; }
+
+            # ── Pollutant tiles: PM2.5 · PM10 · VOC · CO2 ────────────────
+            - type: custom:button-card
+              entity: >
+                [[[
+                  return variables.entity_pm25 || variables.entity_quality || entity?.entity_id || null;
+                ]]]
+              variables:
+                entity_pm25: '[[[ return variables.entity_pm25 ]]]'
+                entity_pm10: '[[[ return variables.entity_pm10 ]]]'
+                entity_voc: '[[[ return variables.entity_voc ]]]'
+                entity_co2: '[[[ return variables.entity_co2 ]]]'
+              triggers_update:
+                - '[[[ return variables.entity_pm25 ]]]'
+                - '[[[ return variables.entity_pm10 ]]]'
+                - '[[[ return variables.entity_voc ]]]'
+                - '[[[ return variables.entity_co2 ]]]'
+              tap_action:
+                action: none
+              show_icon: false
+              show_name: false
+              show_label: false
+              show_state: false
+              card_mod:
+                style: |
+                  ha-card {
+                    background: transparent !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                  }
+              styles:
+                card:
+                  - background: transparent
+                  - border: none
+                  - border-radius: 18px
+                  - padding: 10px 18px 20px 18px
+                  - box-shadow: none
+                grid:
+                  - grid-template-areas: '"tiles"'
+                  - grid-template-columns: 1fr
+                custom_fields:
+                  tiles:
+                    - justify-self: stretch
+                    - width: 100%
+              custom_fields:
+                tiles: |
+                  [[[
+                    const safeNum = (id) => {
+                      if (!id) return null;
+                      const s = states[id]?.state;
+                      if (!s || s === 'unavailable' || s === 'unknown') return null;
+                      const n = parseFloat(s);
+                      return isNaN(n) ? null : n;
+                    };
+
+                    const pm25 = safeNum(variables.entity_pm25);
+                    const pm10 = safeNum(variables.entity_pm10);
+                    const voc  = safeNum(variables.entity_voc);
+                    const co2  = safeNum(variables.entity_co2);
+
+                    const thresh = (val, good, moderate, high) => {
+                      if (val == null) return { label: '—', color: 'rgba(255,255,255,0.4)', pct: 0 };
+                      if (val <= good)     return { label: 'Good',     color: 'var(--hemma-badge-air-quality-good-color)',     pct: Math.min(100, (val / high) * 100) };
+                      if (val <= moderate) return { label: 'Moderate', color: 'var(--hemma-badge-air-quality-moderate-color)', pct: Math.min(100, (val / high) * 100) };
+                      if (val <= high)     return { label: 'Poor',     color: 'var(--hemma-badge-air-quality-poor-color)',     pct: Math.min(100, (val / high) * 100) };
+                      return { label: 'Bad', color: 'var(--hemma-badge-air-quality-bad-color)', pct: 100 };
+                    };
+
+                    const allTiles = [
+                      { name: 'PM2.5', val: pm25, unit: 'µg/m³', st: thresh(pm25, 12,  35,   75) },
+                      { name: 'PM10',  val: pm10, unit: 'µg/m³', st: thresh(pm10, 50,  150,  250) },
+                      { name: 'VOC',   val: voc,  unit: 'index',  st: thresh(voc,  100, 200,  300) },
+                      { name: 'CO2',   val: co2,  unit: 'ppm',    st: thresh(co2,  800, 1200, 1500) },
+                    ].filter(t => t.val != null);
+
+                    const cols = allTiles.length || 1;
+
+                    const tile = (name, val, unit, st) => `
+                      <div style="margin-top:1px;padding:0 6px;min-width:0;overflow:hidden;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:4px;">
+                          <span style="font-size:13px;color:rgba(255,255,255,0.85);font-weight:500;white-space:nowrap;letter-spacing:.01em;">${name}</span>
+                          <span style="font-size:13px;color:${st.color};white-space:nowrap;font-weight:600;letter-spacing:.01em;">${st.label}</span>
+                        </div>
+                        <div style="display:flex;align-items:baseline;gap:3px;">
+                          <span style="font-size:20px;font-weight:400;color:#ffffff;line-height:1;white-space:nowrap;">${val.toLocaleString()}</span>
+                          <span style="font-size:12px;color:rgba(255,255,255,0.55);white-space:nowrap;">${unit}</span>
+                        </div>
+                        <div style="height:5px;background:rgba(255,255,255,0.07);border-radius:20px;overflow:hidden;margin-top:8px;">
+                          <div style="height:100%;width:${st.pct.toFixed(1)}%;background:${st.color};border-radius:2px;"></div>
+                        </div>
+                      </div>
+                    `;
+
+                    return `
+                      <div style="position:relative;padding-top:18px;">
+                        <div style="position:absolute;top:2px;left:6px;right:6px;height:5px;background:rgba(255,255,255,0.07);border-radius:20px;"></div>
+                        <div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;width:100%;font-family:var(--primary-font-family,system-ui);">
+                          ${allTiles.map(t => tile(t.name, t.val, t.unit, t.st)).join('')}
+                        </div>
+                      </div>
+                    `;
+                  ]]]

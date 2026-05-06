@@ -129,6 +129,36 @@ template:
 
           /local/hemma/mobile/mobile-{{ p }}{{ dark }}.jpg
 
+      - name: Temp Color
+        unique_id: hemma_temp_color
+        state: >
+          {% set v = states('sensor.temperature') | float(0) %}
+          {% if v <= 65 %}
+            var(--hemma-badge-temp-very-cold-color)
+          {% elif v <= 70 %}
+            var(--hemma-badge-temp-cool-color)
+          {% elif v <= 76 %}
+            var(--hemma-badge-temp-comfortable-color)
+          {% elif v <= 81 %}
+            var(--hemma-badge-temp-warm-color)
+          {% elif v <= 85 %}
+            var(--hemma-badge-temp-hot-color)
+          {% else %}
+            var(--hemma-badge-temp-very-hot-color)
+          {% endif %}
+
+      - name: Humidity Color
+        unique_id: hemma_humidity_color
+        state: >
+          {% set v = states('sensor.humidity') | float(0) %}
+          {% if v <= 29.99 %}
+            var(--hemma-badge-humidity-dry-color)
+          {% elif v >= 61 %}
+            var(--hemma-badge-humidity-high-color)
+          {% else %}
+            var(--hemma-badge-climate-color)
+          {% endif %}
+
 script:
   hemma_light_smart_toggle:
     alias: "Hemma - Smart Light Toggle"

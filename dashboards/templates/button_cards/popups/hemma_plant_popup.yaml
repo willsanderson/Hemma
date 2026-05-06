@@ -1,0 +1,460 @@
+# Plant Popup
+# Full browser_mod popup for hemma_plant cards.
+# Defines both tap_action and icon_tap_action so both open the same popup.
+# Referenced by hemma_plant via template inheritance.
+hemma_plant_popup:
+  tap_action:
+    haptic: light
+    action: |
+      [[[
+        return typeof window.browser_mod !== 'undefined' ? 'fire-dom-event' : 'more-info';
+      ]]]
+    entity: "[[[ return entity?.entity_id; ]]]"
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        title: "[[[ return entity?.attributes?.friendly_name || 'Plant'; ]]]"
+        adaptive: true
+        size: "[[[ return window.innerWidth >= 1250 ? 'auto' : 'fullscreen'; ]]]"
+        content: |
+          [[[
+            const plant = entity?.entity_id;
+            const sensors = Array.isArray(variables.sensors)
+              ? variables.sensors.filter(Boolean)
+              : [];
+
+            if (variables.use_flower_card) {
+              return {
+                type: 'custom:flower-card',
+                entity: plant,
+                display_type: 'full',
+                bars_per_row: 2,
+                hide_species: false,
+                hide_image: true,
+                tap_action: { action: 'none' },
+                hold_action: { action: 'none' },
+                double_tap_action: { action: 'none' },
+                card_mod: {
+                  style: {
+                    '.': `
+                      :host {
+                        --ha-card-background: transparent !important;
+                        --primary-text-color: rgba(255,255,255,0.96) !important;
+                        --secondary-text-color: rgba(255,255,255,0.64) !important;
+                      }
+                      ha-card {
+                        background: transparent !important;
+                        --ha-card-background: transparent !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                        backdrop-filter: none !important;
+                        -webkit-backdrop-filter: none !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        filter: none !important;
+                      }
+                      ha-card:hover,
+                      ha-card:focus,
+                      ha-card:active {
+                        background: transparent !important;
+                        box-shadow: none !important;
+                        filter: none !important;
+                      }
+                    `,
+                    '$': `
+                      .title,
+                      .name,
+                      .plant-name,
+                      .header,
+                      .header * {
+                        color: rgba(255,255,255,0.96) !important;
+                        opacity: 1 !important;
+                        -webkit-text-fill-color: rgba(255,255,255,0.96) !important;
+                      }
+                      .secondary,
+                      .subtitle,
+                      .species,
+                      .plant-species,
+                      .header .secondary,
+                      .header .subtitle {
+                        color: rgba(255,255,255,0.64) !important;
+                        opacity: 1 !important;
+                        -webkit-text-fill-color: rgba(255,255,255,0.64) !important;
+                      }
+                      .header ha-icon,
+                      .header .icon,
+                      .title ha-icon,
+                      .plant-name ha-icon,
+                      .plant-status,
+                      .status-icon {
+                        width: 22px !important;
+                        height: 22px !important;
+                        min-width: 22px !important;
+                        min-height: 22px !important;
+                        transform: scale(0.82) !important;
+                        transform-origin: center !important;
+                      }
+                      .value,
+                      .state,
+                      .metric-value,
+                      .sensor-value,
+                      .bar-value,
+                      .value-text {
+                        line-height: 1.05 !important;
+                        color: rgba(255,255,255,0.96) !important;
+                        -webkit-text-fill-color: rgba(255,255,255,0.96) !important;
+                      }
+                      .unit,
+                      .unit-of-measurement,
+                      .sensor-unit,
+                      sup,
+                      sub {
+                        font-size: 0.82em !important;
+                        opacity: 0.88 !important;
+                        line-height: 1 !important;
+                      }
+                    `
+                  }
+                }
+              };
+            }
+
+            const plantName =
+              states[plant]?.attributes?.friendly_name ||
+              entity?.attributes?.friendly_name ||
+              'Plant';
+
+            const plantAttrs = states[plant]?.attributes || {};
+            const problemStems = Object.keys(plantAttrs)
+              .filter(k => {
+                const v = plantAttrs[k];
+                return k.endsWith('_status') && v && v !== 'ok' && v !== 'null';
+              })
+              .map(k => k.replace(/_status$/, ''));
+
+            const getSensorColor = (eid) => {
+              const id = eid.toLowerCase();
+              if (id.includes('moisture')) return 'blue';
+              if (id.includes('illumin') || id.includes('lux')) return 'amber';
+              if (id.includes('temperature') || id.includes('temp')) return 'deep-orange';
+              if (id.includes('conductivity')) return 'green';
+              if (id.includes('humidity')) return 'cyan';
+              if (id.includes('battery')) return 'yellow';
+              return 'grey';
+            };
+
+            const sensorRows = sensors.map((sensor) => {
+              const fallback = states[sensor]?.attributes?.friendly_name || sensor.split('.').pop() || '';
+              const plantName = (
+                states[plant]?.attributes?.friendly_name ||
+                entity?.attributes?.friendly_name ||
+                ''
+              ).trim();
+
+              let cleanName = fallback;
+
+              if (plantName) {
+                const escaped = plantName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                cleanName = cleanName.replace(new RegExp(`^${escaped}\\s*`, 'i'), '');
+              }
+
+              cleanName = cleanName
+                .replace(/_/g, ' ')
+                .trim()
+                .replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+
+              const problematic = problemStems.some(stem => sensor.toLowerCase().includes(stem));
+              return { entity: sensor, name: cleanName || fallback, problematic };
+            });
+
+            return {
+              type: 'custom:layout-card',
+              layout_type: 'custom:grid-layout',
+              layout: {
+                'grid-template-columns': '1fr 1fr',
+                gap: '8px',
+              },
+              card_mod: {
+                style: `
+                  ha-card,
+                  ha-card:hover,
+                  ha-card:focus,
+                  ha-card:active {
+                    background: transparent !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                  }
+                `
+              },
+              cards: sensorRows.map(r => ({
+                type: 'custom:mushroom-entity-card',
+                entity: r.entity,
+                name: r.name,
+                primary_info: 'name',
+                secondary_info: 'state',
+                icon_type: 'icon',
+                fill_container: false,
+                layout: 'horizontal',
+                icon_color: r.problematic ? 'amber' : getSensorColor(r.entity),
+                tap_action: { action: 'more-info' },
+                hold_action: { action: 'none' },
+                double_tap_action: { action: 'none' },
+                card_mod: {
+                  style: `
+                    ha-card {
+                      background: var(--hemma-popup-entity-background, rgba(0, 0, 0, 0.4)) !important;
+                      box-shadow: none !important;
+                      --ha-card-box-shadow: none;
+                      --hemma-button-card-box-shadow-hover-current: none;
+                      border-radius: 9999px !important;
+                      transition: background 0.18s ease, border-color 0.18s ease !important;
+                    }
+                    ha-card:hover,
+                    ha-card:focus-within,
+                    ha-card:active {
+                      background: var(--hemma-popup-entity-hover, rgba(0, 0, 0, 0.5)) !important;
+                      border-color: rgba(255, 255, 255, 0.08) !important;
+                      box-shadow: none !important;
+                    }
+                    ${r.problematic ? `
+                    :host {
+                      --primary-text-color: var(--hemma-entity-state-active-color, rgba(255,214,0,1)) !important;
+                      --secondary-text-color: var(--hemma-entity-state-active-color, rgba(255,214,0,1)) !important;
+                    }
+                    ha-card {
+                      --primary-text-color: var(--hemma-entity-state-active-color, rgba(255,214,0,1)) !important;
+                      --secondary-text-color: var(--hemma-entity-state-active-color, rgba(255,214,0,1)) !important;
+                    }` : ''}
+                  `
+                }
+              }))
+            };
+          ]]]
+
+  icon_tap_action:
+    haptic: light
+    action: |
+      [[[
+        return typeof window.browser_mod !== 'undefined' ? 'fire-dom-event' : 'more-info';
+      ]]]
+    entity: "[[[ return entity?.entity_id; ]]]"
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        title: "[[[ return entity?.attributes?.friendly_name || 'Plant'; ]]]"
+        adaptive: true
+        size: "[[[ return window.innerWidth >= 1250 ? 'auto' : 'fullscreen'; ]]]"
+        content: |
+          [[[
+            const plant = entity?.entity_id;
+            const sensors = Array.isArray(variables.sensors)
+              ? variables.sensors.filter(Boolean)
+              : [];
+
+            if (variables.use_flower_card) {
+              return {
+                type: 'custom:flower-card',
+                entity: plant,
+                display_type: 'full',
+                bars_per_row: 2,
+                hide_species: false,
+                hide_image: true,
+                tap_action: { action: 'none' },
+                hold_action: { action: 'none' },
+                double_tap_action: { action: 'none' },
+                card_mod: {
+                  style: {
+                    '.': `
+                      :host {
+                        --ha-card-background: transparent !important;
+                        --primary-text-color: rgba(255,255,255,0.96) !important;
+                        --secondary-text-color: rgba(255,255,255,0.64) !important;
+                      }
+                      ha-card {
+                        background: transparent !important;
+                        --ha-card-background: transparent !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                        backdrop-filter: none !important;
+                        -webkit-backdrop-filter: none !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        filter: none !important;
+                      }
+                      ha-card:hover,
+                      ha-card:focus,
+                      ha-card:active {
+                        background: transparent !important;
+                        box-shadow: none !important;
+                        filter: none !important;
+                      }
+                    `,
+                    '$': `
+                      .title,
+                      .name,
+                      .plant-name,
+                      .header,
+                      .header * {
+                        color: rgba(255,255,255,0.96) !important;
+                        opacity: 1 !important;
+                        -webkit-text-fill-color: rgba(255,255,255,0.96) !important;
+                      }
+                      .secondary,
+                      .subtitle,
+                      .species,
+                      .plant-species,
+                      .header .secondary,
+                      .header .subtitle {
+                        color: rgba(255,255,255,0.64) !important;
+                        opacity: 1 !important;
+                        -webkit-text-fill-color: rgba(255,255,255,0.64) !important;
+                      }
+                      .header ha-icon,
+                      .header .icon,
+                      .title ha-icon,
+                      .plant-name ha-icon,
+                      .plant-status,
+                      .status-icon {
+                        width: 22px !important;
+                        height: 22px !important;
+                        min-width: 22px !important;
+                        min-height: 22px !important;
+                        transform: scale(0.82) !important;
+                        transform-origin: center !important;
+                      }
+                      .value,
+                      .state,
+                      .metric-value,
+                      .sensor-value,
+                      .bar-value,
+                      .value-text {
+                        line-height: 1.05 !important;
+                        color: rgba(255,255,255,0.96) !important;
+                        -webkit-text-fill-color: rgba(255,255,255,0.96) !important;
+                      }
+                      .unit,
+                      .unit-of-measurement,
+                      .sensor-unit,
+                      sup,
+                      sub {
+                        font-size: 0.82em !important;
+                        opacity: 0.88 !important;
+                        line-height: 1 !important;
+                      }
+                    `
+                  }
+                }
+              };
+            }
+
+            const plantName =
+              states[plant]?.attributes?.friendly_name ||
+              entity?.attributes?.friendly_name ||
+              'Plant';
+
+            const plantAttrs = states[plant]?.attributes || {};
+            const problemStems = Object.keys(plantAttrs)
+              .filter(k => {
+                const v = plantAttrs[k];
+                return k.endsWith('_status') && v && v !== 'ok' && v !== 'null';
+              })
+              .map(k => k.replace(/_status$/, ''));
+
+            const getSensorColor = (eid) => {
+              const id = eid.toLowerCase();
+              if (id.includes('moisture')) return 'blue';
+              if (id.includes('illumin') || id.includes('lux')) return 'amber';
+              if (id.includes('temperature') || id.includes('temp')) return 'deep-orange';
+              if (id.includes('conductivity')) return 'green';
+              if (id.includes('humidity')) return 'cyan';
+              if (id.includes('battery')) return 'yellow';
+              return 'grey';
+            };
+
+            const sensorRows = sensors.map((sensor) => {
+              const fallback = states[sensor]?.attributes?.friendly_name || sensor.split('.').pop() || '';
+              const plantName = (
+                states[plant]?.attributes?.friendly_name ||
+                entity?.attributes?.friendly_name ||
+                ''
+              ).trim();
+
+              let cleanName = fallback;
+
+              if (plantName) {
+                const escaped = plantName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                cleanName = cleanName.replace(new RegExp(`^${escaped}\\s*`, 'i'), '');
+              }
+
+              cleanName = cleanName
+                .replace(/_/g, ' ')
+                .trim()
+                .replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+
+              const problematic = problemStems.some(stem => sensor.toLowerCase().includes(stem));
+              return { entity: sensor, name: cleanName || fallback, problematic };
+            });
+
+            return {
+              type: 'custom:layout-card',
+              layout_type: 'custom:grid-layout',
+              layout: {
+                'grid-template-columns': '1fr 1fr',
+                gap: '8px',
+              },
+              card_mod: {
+                style: `
+                  ha-card,
+                  ha-card:hover,
+                  ha-card:focus,
+                  ha-card:active {
+                    background: transparent !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                  }
+                `
+              },
+              cards: sensorRows.map(r => ({
+                type: 'custom:mushroom-entity-card',
+                entity: r.entity,
+                name: r.name,
+                primary_info: 'name',
+                secondary_info: 'state',
+                icon_type: 'icon',
+                fill_container: false,
+                layout: 'horizontal',
+                icon_color: r.problematic ? 'amber' : getSensorColor(r.entity),
+                tap_action: { action: 'more-info' },
+                hold_action: { action: 'none' },
+                double_tap_action: { action: 'none' },
+                card_mod: {
+                  style: `
+                    ha-card {
+                      background: var(--hemma-popup-entity-background, rgba(0, 0, 0, 0.4)) !important;
+                      box-shadow: none !important;
+                      --ha-card-box-shadow: none;
+                      --hemma-button-card-box-shadow-hover-current: none;
+                      border-radius: 9999px !important;
+                      transition: background 0.18s ease, border-color 0.18s ease !important;
+                    }
+                    ha-card:hover,
+                    ha-card:focus-within,
+                    ha-card:active {
+                      background: var(--hemma-popup-entity-hover, rgba(0, 0, 0, 0.5)) !important;
+                      border-color: rgba(255, 255, 255, 0.08) !important;
+                      box-shadow: none !important;
+                    }
+                    ${r.problematic ? `
+                    :host {
+                      --primary-text-color: var(--hemma-entity-state-active-color, rgba(255,214,0,1)) !important;
+                      --secondary-text-color: var(--hemma-entity-state-active-color, rgba(255,214,0,1)) !important;
+                    }
+                    ha-card {
+                      --primary-text-color: var(--hemma-entity-state-active-color, rgba(255,214,0,1)) !important;
+                      --secondary-text-color: var(--hemma-entity-state-active-color, rgba(255,214,0,1)) !important;
+                    }` : ''}
+                  `
+                }
+              }))
+            };
+          ]]]
