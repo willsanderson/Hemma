@@ -191,6 +191,9 @@ Each view typically contains:
 
 ---
 
+### Climate - Air Quality Pop Up
+<img width="702" height="503" alt="Screenshot 2026-05-06 at 3 26 08 PM" src="https://github.com/user-attachments/assets/34973bbb-c210-401d-ae5c-a4c9ba235433" />
+
 ### :thermometer: Climate badge
 
 The climate group badge aggregates temperature, HVAC activity, humidity, and air quality into a single tappable badge on the hero card. Tap to expand sub-badges for temperature range, humidity, and air quality.
