@@ -28,14 +28,6 @@ Hemma is fully YAML-based and designed for:
   - Thermostat, media, lock, doorbell, network, motion, curtain, energy, vacuum, and more.
 ---
 
-### Popup Cards
-<img width="615" height="610" alt="Screenshot 2026-05-14 at 2 24 29 PM" src="https://github.com/user-attachments/assets/f6e818de-b5e7-4f23-834d-d7c13b526145" />
-<img width="615" height="618" alt="Screenshot 2026-05-14 at 2 24 40 PM" src="https://github.com/user-attachments/assets/f7f82bb8-1794-4ff7-b783-df06c4d2c56e" />
-<img width="615" height="510" alt="Screenshot 2026-05-14 at 2 25 01 PM" src="https://github.com/user-attachments/assets/03679456-4ebc-4952-b358-6a9822fa47a7" />
-<img width="615" height="621" alt="Screenshot 2026-05-14 at 2 26 07 PM" src="https://github.com/user-attachments/assets/75f5a105-b99d-4a90-9e29-7e3cf841dbcf" />
-<img width="615" height="286" alt="Screenshot 2026-05-14 at 2 25 04 PM" src="https://github.com/user-attachments/assets/ca0d647a-6e5b-4fc7-881b-c05537c001f5" />
-<img width="615" height="566" alt="Screenshot 2026-05-14 at 4 17 56 PM" src="https://github.com/user-attachments/assets/b9d2f0dc-9da0-4cec-af6f-ee0c8932894e" />
-
 ### Requirements
 
 #### Home Assistant
@@ -55,6 +47,16 @@ Install via HACS (recommended) unless noted:
 - **navbar-sidebar-offset** - custom js required for adjusting navigation menu when sidebar is present (included in this repo)
 #### Optional
 - **[kiosk-mode](https://github.com/NemesisRE/kiosk-mode)** (NemesisRE) - Optional but recommended (Hemma looks best with no header/sidebar)
+
+---
+
+### Popup Cards
+<img width="615" height="610" alt="Screenshot 2026-05-14 at 2 24 29 PM" src="https://github.com/user-attachments/assets/f6e818de-b5e7-4f23-834d-d7c13b526145" />
+<img width="615" height="618" alt="Screenshot 2026-05-14 at 2 24 40 PM" src="https://github.com/user-attachments/assets/f7f82bb8-1794-4ff7-b783-df06c4d2c56e" />
+<img width="615" height="510" alt="Screenshot 2026-05-14 at 2 25 01 PM" src="https://github.com/user-attachments/assets/03679456-4ebc-4952-b358-6a9822fa47a7" />
+<img width="615" height="621" alt="Screenshot 2026-05-14 at 2 26 07 PM" src="https://github.com/user-attachments/assets/75f5a105-b99d-4a90-9e29-7e3cf841dbcf" />
+<img width="615" height="286" alt="Screenshot 2026-05-14 at 2 25 04 PM" src="https://github.com/user-attachments/assets/ca0d647a-6e5b-4fc7-881b-c05537c001f5" />
+<img width="615" height="566" alt="Screenshot 2026-05-14 at 4 17 56 PM" src="https://github.com/user-attachments/assets/b9d2f0dc-9da0-4cec-af6f-ee0c8932894e" />
 
 ---
 
