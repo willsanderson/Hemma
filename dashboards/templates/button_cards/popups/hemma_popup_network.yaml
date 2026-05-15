@@ -747,35 +747,27 @@ hemma_popup_network:
                 return { label: '—', color: 'rgba(255,255,255,0.4)', pct: 0 };
               }
 
+              let pct;
               if (val < 1) {
-                return {
-                  label: 'Idle',
-                  color: 'var(--hemma-badge-network-idle-color, #8e8e93)',
-                  pct: Math.min(100, (val / maxScale) * 100),
-                };
+                pct = val * 15;
+              } else if (val < 10) {
+                pct = 15 + ((val - 1) / 9) * 25;
+              } else if (val < 50) {
+                pct = 40 + ((val - 10) / 40) * 30;
+              } else {
+                pct = Math.min(100, 70 + ((val - 50) / Math.max(1, maxScale - 50)) * 30);
               }
 
+              if (val < 1) {
+                return { label: 'Idle', color: 'var(--hemma-badge-network-idle-color, #8e8e93)', pct };
+              }
               if (val < 10) {
-                return {
-                  label: 'Light',
-                  color: 'var(--hemma-badge-network-low-color, #44e371)',
-                  pct: Math.min(100, (val / maxScale) * 100),
-                };
+                return { label: 'Light', color: 'var(--hemma-badge-network-low-color, #44e371)', pct };
               }
-
               if (val < 50) {
-                return {
-                  label: 'Active',
-                  color: 'var(--hemma-badge-network-active-color, #ffd600)',
-                  pct: Math.min(100, (val / maxScale) * 100),
-                };
+                return { label: 'Active', color: 'var(--hemma-badge-network-active-color, #ffd600)', pct };
               }
-
-              return {
-                label: 'High',
-                color: 'var(--hemma-badge-network-high-color, #ff9230)',
-                pct: Math.min(100, (val / maxScale) * 100),
-              };
+              return { label: 'High', color: 'var(--hemma-badge-network-high-color, #ff9230)', pct };
             };
 
             const makeTileCard = (entityId, maxScale) => {
