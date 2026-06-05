@@ -218,6 +218,8 @@ Each view typically contains:
 
 The climate group badge aggregates temperature, HVAC activity, humidity, and air quality into a single tappable badge on the hero card. Tap to expand sub-badges for temperature range, humidity, and air quality.
 
+⚠️ **Important:** You need to create a helper entity of input select type named `input_select.hemma_expanded_row` with an option named `climate` to make it work.
+
 Set `show_climate: true` on the `hemma.yaml` dashboard file and provide at least one sensor:
 
 | Variable | Description |
