@@ -192,6 +192,8 @@ hemma_shared:
                       var(--hemma-rail-left,
                       var(--page-gutter-mobile, 10px)));
         --hemma-header-shield-h: calc(var(--hero-top) + var(--hemma-header-stack-h-current, 240px));
+        touch-action: none !important;
+        overscroll-behavior: none !important;
       }
 
       :host ha-card::after{
@@ -222,6 +224,8 @@ hemma_shared:
         position: fixed !important;
         inset: 0 !important;
         overflow: hidden !important;
+        touch-action: none !important;
+        overscroll-behavior: none !important;
         padding:
           var(--hero-top)
           var(--hero-gutter)
@@ -304,6 +308,10 @@ hemma_shared:
 
     @media (min-width: 768px) and (min-height: 601px) and (pointer: coarse),
            (min-width: 768px) and (min-height: 601px) and (hover: none) {
+      :host {
+        touch-action: none !important;
+        overscroll-behavior: none !important;
+      }
       :host ha-card {
         position: fixed !important;
         inset: 0 !important;
