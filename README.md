@@ -7,7 +7,7 @@ A modern, minimal, mobile-friendly dashboard for Home Assistant.  Inspired by th
 Hemma is fully YAML-based and designed for:
 - Desktop, tablet, and mobile (portrait + landscape)
 - Light/Dark mode styling
-- Frosted-glass entity cards
+- Flat card design with an optional Liquid Glass theme
 - Badges for climate, sensors, presence, and active media
 - Clean navigation with a mobile navbar + desktop/tablet top navigation
 
@@ -15,9 +15,11 @@ Hemma is fully YAML-based and designed for:
 ### Highlights and Features
 - **Light/dark** mode with dynamic background images
 - **Layouts + spacing logic** for scaling across different devices
+- **Two themes** — flat card (`hemma.yaml`) and Liquid Glass (`hemma_glass.yaml`)
+- **Demo room images** included — eight pre-made day/night backgrounds to get started without your own photos
 - **Custom Popups** for button cards
 - **Custom navigation** and Scene support
-  - Mobile navbar for tablet and phone
+  - Mobile navbar for tablet and phone — collapses to a circular button on scroll
   - Motion detection built into navigation menu
 - **Badges** (shown in the hero section of each room card)
   - Climate group badge — temperature range, HVAC state, humidity, air quality
@@ -25,7 +27,7 @@ Hemma is fully YAML-based and designed for:
   - Presence + sensor badges
   - Active media player badge
 - **Button-cards**
-  - Thermostat, media, lock, doorbell, network, motion, curtain, energy, vacuum, and more.
+  - Thermostat, media, lock, doorbell, network, motion, curtain, energy, vacuum, Plex Recently Added, and more.
 ---
 
 ### Requirements
@@ -39,7 +41,7 @@ Install via HACS (recommended) unless noted:
 - **[button-card](https://github.com/custom-cards/button-card)** (RomRider)
 - **[layout-card](https://github.com/thomasloven/lovelace-layout-card)** (Thomas Lovén) — Hemma uses a **modified** version included in this repo (don't install via HACS).
 - **[lovelace-navbar-card](https://github.com/joseluis9595/lovelace-navbar-card)** (Jose Luis Álvarez) - required for navigation + media badge
-- **[browser_mod](https://github.com/joseluis9595/lovelace-navbar-card)** (Thomas Lovén) - required for custom popups
+- **[browser_mod](https://github.com/thomasloven/hass-browser_mod)** (Thomas Lovén) - required for custom popups
 - **[more-info-card](https://github.com/thomasloven/lovelace-more-info-card)** (Thomas Lovén) - required for custom popups
 - **[lovelace-mushroom](https://github.com/piitaya/lovelace-mushroom)** (Paul Bottein) - required for custom popups
 - **[uix](https://github.com/Lint-Free-Technology/uix)** (Lint Free Technology) - required for custom popup windows
@@ -47,6 +49,8 @@ Install via HACS (recommended) unless noted:
 - **navbar-sidebar-offset** (included in this repo) - custom js required for adjusting navigation menu when sidebar is present
 #### Optional
 - **[kiosk-mode](https://github.com/NemesisRE/kiosk-mode)** (NemesisRE) - Optional but recommended (Hemma looks best with no header/sidebar)
+- **[lovelace-swipe-card](https://github.com/bramkragten/swipe-card)** (Bram Kragten) - Required for the Plex Recently Added popup carousel
+- **[plex_recently_added](https://github.com/NemesisRE/sensor.plex_recently_added)** (NemesisRE) - Required for the Plex Recently Added card and `sensor.plex_recently_added_count`
 
 ---
 
@@ -99,6 +103,7 @@ Example layout:
 
 ```text
 /config
+├── configuration.yaml                  # Register the Hemma dashboard here
 ├── dashboards/
 │   ├── hemma/
 │   │   ├── hemma.yaml                  # Main Hemma dashboard (created from example)
@@ -107,7 +112,8 @@ Example layout:
 │       ├── button_cards/               # Button-card templates
 │       │   ├── badges/
 │       │   ├── base/
-│       │   └── cards/
+│       │   ├── cards/
+│       │   └── popups/
 │       └── includes/                   # Layout + navigation includes
 │           ├── hemma_screen_layout.yaml
 │           ├── hemma_entity_layout.yaml
@@ -115,21 +121,23 @@ Example layout:
 │           └── hemma_navigation.yaml
 ├── themes/
 │   └── hemma/
-│       └── hemma.yaml                  # Hemma theme
+│       ├── hemma.yaml                  # Hemma theme (flat card style)
+│       └── hemma_glass.yaml            # Hemma Glass theme (Liquid Glass style)
 ├── packages/
 │   └── hemma_helpers.yaml              # Helpers required by the dashboard
 └── www/
-    ├── hemma/
-    │   ├── fonts/                      # UI fonts
-    │   ├── icons/                      # UI icons
-    │   ├── rooms/                      # Room/background images
-    │   └── weather/                    # Weather icons
-    ├── layout-card-modified/
-    │   └── layout-card-modified.js     # Modified Layout Card build
-    ├── navbar-sidebar-offset/
-    │   └── navbar-sidebar-offset.js    # Navbar adjusts with sidebar visibility
-    └── navbar-popup-caret/
-        └── navbar-popup-caret.js       # Add dropdown icon to navbar
+    └── hemma/
+        ├── fonts/                      # UI fonts
+        ├── icons/                      # UI icons
+        ├── mobile/                     # Mobile dynamic background images
+        ├── rooms/                      # Room/background images (*-demo.jpg variants included)
+        ├── weather/                    # Weather icons
+        └── scripts/                    # JavaScript resources
+            ├── layout-card-modified.js # Modified Layout Card build
+            ├── navbar-popup-caret.js   # Add dropdown icon to navbar
+            ├── navbar-scroll.js        # Collapsible phone navbar behavior
+            ├── navbar-sidebar-offset.js# Navbar adjusts with sidebar visibility
+            └── swipe-card-patch.js     # Plex Recently Added carousel bullet color sync
 ```
 
 ## :rocket: Installation
@@ -145,19 +153,18 @@ Copy these folders/files from this repo into your HA `/config`:
 - `themes/hemma/` → `/config/themes/hemma/`
 - `packages/hemma_helpers.yaml` → `/config/packages/`
 - `www/hemma/` → `/config/www/hemma/`
-- `www/layout-card-modified/` → `/config/www/layout-card-modified/`
 
 ### 3) Add Lovelace resources
 In Settings → Dashboards → Resources, add:
 
-- `/local/layout-card-modified/layout-card-modified.js` (from this repo)
-- `/local/navbar-popup-caret/navbar-popup-caret.js`(from this repo)
-- `/local/navbar-sidebar-offset/navbar-sidebar-offset.js`(from this repo)
-- `/local/hemma/fonts/hanken-grotesk.css`(from this repo)
+- `/local/hemma/scripts/layout-card-modified.js` (from this repo)
+- `/local/hemma/scripts/navbar-popup-caret.js` (from this repo)
+- `/local/hemma/scripts/navbar-sidebar-offset.js` (from this repo)
+- `/local/hemma/scripts/navbar-scroll.js` (from this repo)
+- `/local/hemma/scripts/swipe-card-patch.js` (from this repo, required for Plex Recently Added popup)
+- `/local/hemma/fonts/hanken-grotesk.css` (from this repo)
 - `/hacsfiles/button-card/button-card.js` (should already be present if installed via HACS)
 - `/hacsfiles/lovelace-navbar-card/navbar-card.js` (should already be present if installed via HACS)
-Settings → Dashboards → Resources → Add Resource
-/local/hemma/fonts/hanken-grotesk.css
 
 ### 4) Register the Hemma dashboard
 Add (or verify) in your `configuration.yaml`:
@@ -194,6 +201,7 @@ This is the main file you edit to map Hemma to your devices/entities.
 
 - Room images live in: `/config/www/hemma/rooms/`
   - Example: `home.jpg` (light) and `home-night.jpg` (dark)
+  - Eight **demo room images** are included (`*-demo.jpg` / `*-demo-night.jpg`) so you can get started without your own photos
 - Icons live in: `/config/www/hemma/icons/`
 
 ---
@@ -217,6 +225,8 @@ Each view typically contains:
 ### :thermometer: Climate badge
 
 The climate group badge aggregates temperature, HVAC activity, humidity, and air quality into a single tappable badge on the hero card. Tap to expand sub-badges for temperature range, humidity, and air quality.
+
+> **Dependency:** The expand/collapse behaviour for all badge groups (climate, lights, presence, media) is driven by `input_select.hemma_expanded_row`. This entity is defined in `packages/hemma_helpers.yaml` — make sure you have copied that file and reloaded HA (or restarted) so the entity exists before using any badge. Without it, tapping a badge group will throw a service-call error and the sub-badge row will not expand.
 
 Set `show_climate: true` on the `hemma.yaml` dashboard file and provide at least one sensor:
 
@@ -332,12 +342,26 @@ Note: Media badges only appear when a player is active (playing, buffering, or r
 
 ---
 
+### :film_strip: Plex Recently Added card
+
+`hemma_plex_recently_added` is a standard entity card that shows how many items Plex added in the last 7 days. It goes active (gold icon) when the count is above zero. Tapping opens the `hemma_popup_recently_added` swipe-card carousel with poster art, title, year, and release date for each recently added movie or episode.
+
+**Requires:**
+- [`plex_recently_added`](https://github.com/NemesisRE/sensor.plex_recently_added) HACS integration — provides `sensor.recently_added_movies` and `sensor.recently_added_tv`
+- [`lovelace-swipe-card`](https://github.com/bramkragten/swipe-card) HACS card — powers the popup carousel
+- `swipe-card-patch.js` registered as a resource (included in this repo) — syncs pagination bullet color to content type
+
+The `sensor.plex_recently_added_count` template sensor is defined in `packages/hemma_helpers.yaml`.
+
+---
+
 ### :pencil2: Additional Customization
 
 This repo is intended as a starting point:
 
 - Swap out room/background images in `www/hemma/rooms/`.
 - Tweak theme colors, shadows, and typography in `themes/hemma/hemma.yaml`.
+- Prefer the original Liquid Glass look? Switch to **Hemma Glass** (`themes/hemma/hemma_glass.yaml`) — it preserves inset specular card shadows, higher backdrop blur, and the semi-transparent active card style from earlier versions.
 - Adjust layouts (`hemma_entity_layout.yaml`, etc.) to match your devices and preferences.
 
 ### HA Companion App iOS Settings
