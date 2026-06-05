@@ -53,13 +53,11 @@ hemma_popup_recently_added:
 
             const rawM = Array.isArray(moviesData) ? moviesData.slice(1).filter(i => i && i.title) : [];
             const rawT = Array.isArray(tvData)     ? tvData.slice(1).filter(i => i && i.title)     : [];
-            /* interleave: movie, TV, movie, TV, ... */
-            const items = [];
-            const maxLen = Math.max(rawM.length, rawT.length);
-            for (let i = 0; i < maxLen; i++) {
-              if (i < rawM.length) items.push(Object.assign({}, rawM[i], {_isTV: false}));
-              if (i < rawT.length) items.push(Object.assign({}, rawT[i], {_isTV: true}));
-            }
+            /* merge and sort by most recently added (airdate desc) */
+            const items = [
+              ...rawM.map(i => Object.assign({}, i, {_isTV: false})),
+              ...rawT.map(i => Object.assign({}, i, {_isTV: true})),
+            ].sort((a, b) => new Date(b.airdate || 0) - new Date(a.airdate || 0));
             const N = items.length;
 
             /* ── helpers ─────────────────────────────────── */
@@ -147,7 +145,7 @@ hemma_popup_recently_added:
                 + '</div>';
 
               const episodeLine = isTV && (item.number || item.episode)
-                ? '<div style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.75);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc([item.number, item.episode].filter(Boolean).join(' \xb7 ')) + '</div>'
+                ? '<div style="font-size:15px;line-height:1.5;font-weight:500;color:rgba(255,255,255,0.75);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">' + esc([item.number, item.episode].filter(Boolean).join(' \xb7 ')) + '</div>'
                 : '';
 
               const yearGenreParts = [];

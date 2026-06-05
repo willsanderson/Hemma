@@ -145,10 +145,16 @@ hemma_shared:
       background-size: 100% 100%, cover;
       background-repeat: no-repeat;
       filter: var(--hero-img-filter);
-      transform: scale(var(--hero-img-scale-current, 1.08)) !important;
+      transform: scale(var(--hero-img-scale-current, 1.08));
       transform-origin: center;
-      transition: filter .45s ease, transform .45s ease;
+      transition: filter .45s ease, transform .5s ease;
+      animation: hemmaRoomParallax 0.5s 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
       will-change: filter, transform;
+    }
+
+    @keyframes hemmaRoomParallax {
+      from { transform: scale(var(--hero-img-scale-current, 1.08)) translateX(1.2%); }
+      to   { transform: scale(var(--hero-img-scale-current, 1.08)) translateX(0%); }
     }
 
     @keyframes hemmaRoomReveal{

@@ -247,7 +247,7 @@ hemma_entity:
                 ].join('');
                 document.head.appendChild(s);
               }
-              const activeStates = ["on","open","opening","playing","unlocked","cleaning","returning","cool","heat"];
+              const activeStates = ["on","open","opening","playing","unlocked","unlocking","cleaning","returning","cool","heat"];
               const isOn = activeStates.includes((entity?.state || "").toLowerCase());
               const mob = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
               const W = mob ? 38 : 44, H = mob ? 26 : 26, r = mob ? 8 : 9, cx0 = mob ? 14 : 14;
@@ -404,7 +404,7 @@ hemma_entity:
                   vacuum:       'var(--hemma-color-teal, #00d2e0)',
                   cover:        'var(--hemma-color-teal, #00c3d0)',
                   media_player: 'var(--hemma-color-teal, #00c3d0)',
-                  lock:         'var(--hemma-color-teal, #00c3d0)',
+                  lock:         entity.state === 'unlocking' ? 'var(--hemma-color-yellow, #ffd600)' : 'var(--hemma-color-teal, #00c3d0)',
                   plant:        'var(--hemma-color-green-plant, #34C759)',
                 };
                 return byIcon[icon] || byDomain[domain] || 'var(--hemma-icon-fallback-color, rgba(255,255,255,0.95))';
