@@ -1,0 +1,429 @@
+# /config/dashboards/templates/button_cards/hemma_entity_actions.yaml
+# - type: custom:button-card
+#   template: hemma_entity_actions
+#   entity: sensor.fridge_status
+#   name: Fridge
+#   variables:
+#     icon: fridge
+#
+#     action_1_entity: switch.fridge_mode
+#     action_1_icon: mdi:fridge-outline
+#     action_1_action: toggle
+#
+#     action_2_entity: switch.fridge_super_cool
+#     action_2_icon: mdi:snowflake
+#     action_2_action: toggle
+
+hemma_entity_actions:
+  template:
+    - hemma_entity
+
+  variables:
+    icon: default
+    svg_path: /local/hemma/icons
+
+    side_width: 62px
+
+    action_1_enabled: true
+    action_1_entity:
+    action_1_icon: mdi:help-circle
+    action_1_action: more-info
+    action_1_navigation_path:
+    action_1_service:
+    action_1_service_data: {}
+
+    action_2_enabled: true
+    action_2_entity:
+    action_2_icon: mdi:help-circle
+    action_2_action: more-info
+    action_2_navigation_path:
+    action_2_service:
+    action_2_service_data: {}
+
+  triggers_update:
+    - '[[[ return variables.battery_entity || "" ]]]'
+    - '[[[ return variables.progress_entity || "" ]]]'
+    - '[[[ return variables.action_1_entity || "" ]]]'
+    - '[[[ return variables.action_2_entity || "" ]]]'
+
+  tap_action:
+    action: more-info
+
+  hold_action:
+    action: none
+
+  double_tap_action:
+    action: none
+
+  styles:
+    card:
+      - padding: >
+          [[[
+            const pad = 'var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))';
+            const side = variables.side_width || '62px';
+            return `${pad} calc(${side} + ${pad}) ${pad} ${pad}`;
+          ]]]
+      - position: relative
+      - overflow: hidden !important
+
+    custom_fields:
+      side_actions:
+        - position: absolute
+        - top: 0
+        - right: 0
+        - width: "[[[ return variables.side_width || '62px'; ]]]"
+        - height: 100%
+        - min-width: "[[[ return variables.side_width || '62px'; ]]]"
+        - min-height: 0
+        - z-index: 8
+        - display: grid
+        - grid-template-rows: 1fr 1fr
+        - grid-template-columns: 1fr
+        - padding: 0
+        - margin: 0
+        - overflow: hidden
+        - pointer-events: auto
+        - border-left: 1px solid rgba(255, 255, 255, 0.06)
+        - background: transparent
+
+  custom_fields:
+    side_actions: |
+      [[[
+        const esc = (v) =>
+          String(v ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        const getEntityStateClass = (eid) => {
+          const st = String(states[eid]?.state || '').toLowerCase().replace(/_/g, ' ');
+
+          const active = [
+            'on',
+            'open',
+            'opening',
+            'unlocked',
+            'unlocking',
+            'playing',
+            'buffering',
+            'home',
+            'connected',
+            'online',
+            'cooling',
+            'heating',
+            'cleaning',
+            'running',
+            'active'
+          ];
+
+          const bad = [
+            'unknown',
+            'unavailable',
+            'none'
+          ];
+
+          if (bad.includes(st)) return 'unavailable';
+          if (active.includes(st)) return 'active';
+          return 'normal';
+        };
+
+        const renderIcon = (iconRaw, eid) => {
+          const raw = String(iconRaw || states[eid]?.attributes?.icon || 'mdi:help-circle').trim();
+          const cls = getEntityStateClass(eid);
+
+          if (raw.includes(':')) {
+            return `
+              <ha-icon
+                class="hemma-side-action-icon hemma-side-action-ha-icon ${cls}"
+                icon="${esc(raw)}">
+              </ha-icon>
+            `;
+          }
+
+          if (
+            raw.startsWith('/') ||
+            raw.startsWith('http://') ||
+            raw.startsWith('https://') ||
+            raw.endsWith('.svg') ||
+            raw.endsWith('.png') ||
+            raw.endsWith('.webp')
+          ) {
+            return `
+              <img
+                class="hemma-side-action-icon hemma-side-action-svg ${cls}"
+                src="${esc(raw)}"
+                alt="">
+            `;
+          }
+
+          const base = String(variables.svg_path || '/local/hemma/icons').replace(/\/$/, '');
+          const src = `${base}/${raw}.svg`;
+
+          return `
+            <img
+              class="hemma-side-action-icon hemma-side-action-svg ${cls}"
+              src="${esc(src)}"
+              alt="">
+          `;
+        };
+
+        const isEnabled = (idx) => {
+          const enabled = variables[`action_${idx}_enabled`];
+          const eid = variables[`action_${idx}_entity`];
+
+          const ok = (enabled === undefined || enabled === null) ? true :
+            (typeof enabled === 'boolean') ? enabled :
+            (typeof enabled === 'number') ? enabled !== 0 :
+            !['false','0','no','off','disabled'].includes(String(enabled).trim().toLowerCase());
+
+          return ok && !!eid;
+        };
+
+        const runAction = (idx) => {
+          const eid = variables[`action_${idx}_entity`];
+          if (!eid) return;
+
+          const action = variables[`action_${idx}_action`] || 'more-info';
+
+          if (action === 'more-info') {
+            this.dispatchEvent(new CustomEvent('hass-more-info', {
+              bubbles: true,
+              composed: true,
+              detail: {
+                entityId: eid
+              }
+            }));
+            return;
+          }
+
+          if (action === 'toggle') {
+            const domain = String(eid).split('.')[0];
+            if (!domain) return;
+            hass.callService(domain, 'toggle', { entity_id: eid });
+            return;
+          }
+
+          if (action === 'call-service') {
+            const full = variables[`action_${idx}_service`];
+            if (!full || !String(full).includes('.')) return;
+
+            const [domain, service] = String(full).split('.');
+            const data = Object.assign({}, variables[`action_${idx}_service_data`] || {});
+
+            if (!data.entity_id) {
+              data.entity_id = eid;
+            }
+
+            hass.callService(domain, service, data);
+            return;
+          }
+
+          if (action === 'navigate') {
+            const path = variables[`action_${idx}_navigation_path`];
+            if (!path) return;
+
+            history.pushState(null, '', path);
+            window.dispatchEvent(new Event('location-changed'));
+            return;
+          }
+        };
+
+        // Bind dos clicks nos botões laterais.
+        // Não usamos button-card aninhado aqui para evitar fundo/círculo herdado.
+        setTimeout(() => {
+          try {
+            const root = this.shadowRoot;
+            if (!root) return;
+
+            root.querySelectorAll('.hemma-side-action-button[data-action-index]').forEach((el) => {
+              if (el._hemmaSideBound) return;
+              el._hemmaSideBound = true;
+
+              el.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+
+                const idx = el.getAttribute('data-action-index');
+                runAction(idx);
+              });
+
+              el.addEventListener('pointerdown', (ev) => {
+                ev.stopPropagation();
+              });
+            });
+          } catch(e) {}
+        }, 0);
+
+        const btn = (idx) => {
+          const eid = variables[`action_${idx}_entity`];
+          const icon = variables[`action_${idx}_icon`];
+          const enabled = isEnabled(idx);
+
+          return `
+            <div
+              class="hemma-side-action-button hemma-side-action-${idx} ${enabled ? '' : 'disabled'}"
+              data-action-index="${idx}"
+              title="${esc(eid || '')}">
+              ${enabled ? renderIcon(icon, eid) : ''}
+            </div>
+          `;
+        };
+
+        return `
+          ${btn(1)}
+          ${btn(2)}
+        `;
+      ]]]
+
+  extra_styles: |
+    /* -------------------------------------------------------------------------
+       Side column layout
+       ------------------------------------------------------------------------- */
+
+    #side_actions {
+      overflow: hidden !important;
+      pointer-events: auto !important;
+    }
+
+    .hemma-side-action-button {
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      padding: 0;
+      margin: 0;
+
+      cursor: pointer;
+      pointer-events: auto;
+
+      -webkit-tap-highlight-color: transparent;
+
+      /*
+        Fundo apenas da área lateral, não do ícone.
+        Igual ao conceito da imagem: a coluna tem área visual,
+        o ícone em si não tem bolinha/fundo.
+      */
+      background: transparent;
+      border-radius: 0;
+      box-shadow: none;
+
+      overflow: hidden;
+    }
+
+    .hemma-side-action-1 {
+      background: rgba(255, 255, 255, 0.10);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .hemma-side-action-2 {
+      background: rgba(0, 0, 0, 0.14);
+    }
+
+    .hemma-side-action-button.disabled {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* -------------------------------------------------------------------------
+       Side icons - SEM fundo/círculo
+       ------------------------------------------------------------------------- */
+
+    .hemma-side-action-icon {
+      display: block;
+      object-fit: contain;
+
+      background: transparent !important;
+      background-color: transparent !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      filter: none;
+
+      color: var(--primary-text-color);
+      opacity: 0.86;
+    }
+
+    .hemma-side-action-ha-icon {
+      --mdc-icon-size: 23px;
+
+      width: 23px;
+      height: 23px;
+      min-width: 23px;
+      max-width: 23px;
+    }
+
+    .hemma-side-action-svg {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      max-width: 20px;
+      object-fit: contain;
+    }
+
+    .hemma-side-action-icon.active {
+      color: var(--state-active-color, var(--accent-color));
+      opacity: 1;
+    }
+
+    .hemma-side-action-icon.normal {
+      opacity: 0.82;
+    }
+
+    .hemma-side-action-icon.unavailable {
+      opacity: 0.35;
+      color: var(--disabled-text-color);
+      filter: grayscale(1);
+    }
+
+    /*
+      Garante que ha-icon/img internos não recebam círculo/fundo herdado
+      de estilos globais do dashboard.
+    */
+    .hemma-side-action-button ha-icon,
+    .hemma-side-action-button img,
+    .hemma-side-action-button *,
+    #side_actions ha-icon,
+    #side_actions img {
+      background: transparent !important;
+      background-color: transparent !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .hemma-side-action-button:hover .hemma-side-action-icon {
+        opacity: 1;
+        filter: brightness(1.2);
+      }
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      .hemma-side-action-button:active .hemma-side-action-icon {
+        opacity: 1;
+        filter: brightness(1.2);
+      }
+    }
+
+    @media (max-width: 767px), (max-height: 600px) {
+      .hemma-side-action-ha-icon {
+        --mdc-icon-size: 22px;
+
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        max-width: 22px;
+      }
+
+      .hemma-side-action-svg {
+        width: 19px;
+        height: 19px;
+        min-width: 19px;
+        max-width: 19px;
+      }
+    }
