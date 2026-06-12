@@ -56,7 +56,7 @@ Install via HACS (recommended) unless noted:
 ### Popup Cards
 
 #### Air Quality
-<img width="615" height="618" alt="Screenshot 2026-05-14 at 2 24 40 PM" src="https://github.com/user-attachments/assets/f7f82bb8-1794-4ff7-b783-df06c4d2c56e" />
+<img width="615" height="630" alt="popup-aqi" src="https://github.com/user-attachments/assets/2f3e3b1d-5f37-47b3-a474-2b5b24da3a58" />
 
 #### Network
 <img width="615" height="708" alt="popup-network" src="https://github.com/user-attachments/assets/65d088fc-7834-4734-8fca-5ef20f843260" />
@@ -71,7 +71,7 @@ Install via HACS (recommended) unless noted:
 <img width="615" height="629" alt="popup-plant" src="https://github.com/user-attachments/assets/528e90a4-c25f-49c5-9a7d-43d52ed5efeb" />
 
 #### System Updates
-<img width="615" height="286" alt="Screenshot 2026-05-14 at 2 25 04 PM" src="https://github.com/user-attachments/assets/ca0d647a-6e5b-4fc7-881b-c05537c001f5" />
+<img width="615" height="305" alt="popup-updates" src="https://github.com/user-attachments/assets/f8178e5c-c239-477e-b8c9-8cfc865f969a" />
 
 #### Plex Recently Added
 <img width="615" height="452" alt="popup-recently-added" src="https://github.com/user-attachments/assets/f06bd93f-6e8e-46b0-a79c-21a9537dea1c" />
