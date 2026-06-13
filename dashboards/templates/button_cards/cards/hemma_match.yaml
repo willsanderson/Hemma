@@ -1,0 +1,1014 @@
+# /config/dashboards/templates/button_cards/hemma_match.yaml
+#
+# A Hemma sports match card with custom configuration or native support to Team Tracker integration.
+# HACS - Team Tracker Integration: https://github.com/vasqued2/ha-teamtracker
+#
+# Usage - Manual Configuration:
+#
+# - type: custom:button-card
+#   template: hemma_match
+#   entity: sensor.match_status
+#   variables:
+#     team_tracker: false # not using team tracker.
+#
+#     show_toggle: true # enable changing card info between last/next match.
+#     next_match: input_boolean.match_next_mode # you need to create a input_boolean entity to control change last/next match.
+#
+#     ########### LAST MATCH ##########
+#
+#     home_logo_entity: sensor.match_home_logo  # logos are URL path for image
+#     away_logo_entity: sensor.match_away_logo
+#
+#     home_score_entity: sensor.match_home_score
+#     away_score_entity: sensor.match_away_score
+#
+#     home_name_entity: sensor.match_home_team
+#     away_name_entity: sensor.match_away_team
+#
+#     info_1_entity: sensor.match_date
+#     info_2_entity: sensor.match_competition
+#     info_entity_mobile: sensor.match_mobile_info # on mobile smaller space for info
+#
+#     ########### NEXT MATCH ##########
+#
+#     home_logo_entity_next: sensor.match_home_logo_next
+#     away_logo_entity_next: sensor.match_away_logo_next
+#
+#     home_name_entity_next: sensor.match_home_team_next
+#     away_name_entity_next: sensor.match_away_team_next
+#
+#     info_1_entity_next: sensor.match_date_next
+#     info_2_entity_next: sensor.match_competition_next
+#     info_entity_mobile_next: sensor.match_mobile_info_next
+#
+# Usage - Team Tracker (you will need the integration: https://github.com/vasqued2/ha-teamtracker):
+#
+# - type: custom:button-card
+#   template: hemma_match
+#   entity: sensor.wc_brasil # main sensor provided by your Team Tracker Integration
+#   variables:
+#     team_tracker: true # default true
+#     show_toggle: false # not enabled on this mode
+
+hemma_match:
+  template:
+    - hemma_entity
+
+  variables:
+    team_tracker: false
+
+    next_match:
+
+    show_toggle: false
+
+    home_logo_entity:
+    away_logo_entity:
+    home_score_entity:
+    away_score_entity:
+    home_name_entity:
+    away_name_entity:
+    info_1_entity:
+    info_2_entity:
+    info_entity_mobile:
+
+    home_logo_entity_next:
+    away_logo_entity_next:
+    home_name_entity_next:
+    away_name_entity_next:
+    info_1_entity_next:
+    info_2_entity_next:
+    info_entity_mobile_next:
+
+    # Desktop / tablet sizing.
+    logo_size: 42px
+    score_font_size: 22px
+    team_font_size: 18px
+    info_font_size: 13px
+
+    # Mobile sizing.
+    mobile_logo_size: 23px
+    mobile_score_font_size: 14px
+    mobile_team_font_size: 14px
+    mobile_info_font_size: 14px
+
+  triggers_update:
+    - "[[[ return entity?.entity_id || '' ]]]"
+    - "[[[ return variables.next_match || '' ]]]"
+
+    - "[[[ return variables.home_logo_entity || '' ]]]"
+    - "[[[ return variables.away_logo_entity || '' ]]]"
+    - "[[[ return variables.home_score_entity || '' ]]]"
+    - "[[[ return variables.away_score_entity || '' ]]]"
+    - "[[[ return variables.home_name_entity || '' ]]]"
+    - "[[[ return variables.away_name_entity || '' ]]]"
+    - "[[[ return variables.info_1_entity || '' ]]]"
+    - "[[[ return variables.info_2_entity || '' ]]]"
+    - "[[[ return variables.info_entity_mobile || '' ]]]"
+
+    - "[[[ return variables.home_logo_entity_next || '' ]]]"
+    - "[[[ return variables.away_logo_entity_next || '' ]]]"
+    - "[[[ return variables.home_name_entity_next || '' ]]]"
+    - "[[[ return variables.away_name_entity_next || '' ]]]"
+    - "[[[ return variables.info_1_entity_next || '' ]]]"
+    - "[[[ return variables.info_2_entity_next || '' ]]]"
+    - "[[[ return variables.info_entity_mobile_next || '' ]]]"
+
+  show_icon: false
+  show_entity_picture: false
+  show_name: false
+  show_state: false
+  show_label: false
+
+  tap_action:
+    action: more-info
+
+  hold_action:
+    action: none
+
+  double_tap_action:
+    action: none
+
+  styles:
+    card:
+      - overflow: hidden !important
+      - --match-logo-size: "[[[ return variables.logo_size || '42px'; ]]]"
+      - --match-score-font-size: "[[[ return variables.score_font_size || '22px'; ]]]"
+      - --match-team-font-size: "[[[ return variables.team_font_size || '18px'; ]]]"
+      - --match-info-font-size: "[[[ return variables.info_font_size || '13px'; ]]]"
+      - --match-mobile-logo-size: "[[[ return variables.mobile_logo_size || '23px'; ]]]"
+      - --match-mobile-score-font-size: "[[[ return variables.mobile_score_font_size || '14px'; ]]]"
+      - --match-mobile-team-font-size: "[[[ return variables.mobile_team_font_size || '14px'; ]]]"
+      - --match-mobile-info-font-size: "[[[ return variables.mobile_info_font_size || '14px'; ]]]"
+      - --match-toggle-reserve: >
+          [[[
+            const show = variables.show_toggle === true || variables.show_toggle === 'true';
+            return show && variables.next_match ? '54px' : '0px';
+          ]]]
+
+    grid:
+      - grid-template-areas: |
+          "match"
+      - grid-template-columns: 1fr
+      - grid-template-rows: 1fr
+      - align-items: stretch
+      - justify-items: stretch
+      - width: 100%
+      - height: 100%
+      - padding: 0
+      - margin: 0
+
+    custom_fields:
+      league_bg:
+        - grid-area: match
+        - position: absolute
+        - inset: 0
+        - z-index: 0
+        - pointer-events: none
+        - overflow: hidden
+        - display: >
+            [[[
+              const isTeamTracker =
+                variables.team_tracker === true ||
+                variables.team_tracker === 'true' ||
+                variables.team_tracker === 1 ||
+                variables.team_tracker === '1' ||
+                String(variables.team_tracker).toLowerCase() === 'on';
+
+              const logo = entity?.attributes?.league_logo;
+              return isTeamTracker && logo ? 'block' : 'none';
+            ]]]
+
+      match:
+        - grid-area: match
+        - width: 100%
+        - height: 100%
+        - min-width: 0
+        - min-height: 0
+        - overflow: hidden
+        - position: relative
+        - z-index: 2
+
+      toggle:
+        - position: absolute
+        - top: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
+        - right: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
+        - z-index: 10
+        - line-height: 0
+        - display: >
+            [[[
+              const show = variables.show_toggle === true || variables.show_toggle === 'true';
+              return show && variables.next_match ? 'block' : 'none';
+            ]]]
+
+  custom_fields:
+    league_bg: |
+      [[[
+        const isTeamTracker =
+          variables.team_tracker === true ||
+          variables.team_tracker === 'true' ||
+          variables.team_tracker === 1 ||
+          variables.team_tracker === '1' ||
+          String(variables.team_tracker).toLowerCase() === 'on';
+
+        if (!isTeamTracker) return '';
+
+        const esc = (v) =>
+          String(v ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        const logo = String(entity?.attributes?.league_logo || '').trim();
+
+        if (
+          !logo ||
+          ['unknown', 'unavailable', 'none', 'null', 'undefined'].includes(logo.toLowerCase())
+        ) {
+          return '';
+        }
+
+        return `
+          <div class="match-league-bg-wrap">
+            <img class="match-league-bg-img" src="${esc(logo)}" alt="">
+          </div>
+        `;
+      ]]]
+
+    match: |
+      [[[
+        const esc = (v) =>
+          String(v ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        const clean = (v, fallback = '') => {
+          const raw = String(v ?? '').trim();
+
+          if (
+            !raw ||
+            ['unknown', 'unavailable', 'none', 'null', 'undefined'].includes(raw.toLowerCase())
+          ) {
+            return fallback;
+          }
+
+          return raw;
+        };
+
+        const getState = (eid, fallback = '') => {
+          if (!eid) return fallback;
+          const st = states[eid];
+          if (!st) return fallback;
+          return clean(st.state, fallback);
+        };
+
+        const getUrl = (eid) => {
+          if (!eid) return '';
+          const st = states[eid];
+          if (!st) return '';
+
+          const raw =
+            st.attributes?.entity_picture ||
+            st.attributes?.url ||
+            st.attributes?.logo ||
+            st.attributes?.image ||
+            st.state;
+
+          return clean(raw);
+        };
+
+        const getAttrUrl = (value) => clean(value);
+
+        const isTruthy = (value) => {
+          if (value === true || value === 1) return true;
+          if (value === false || value === 0) return false;
+
+          const s = String(value ?? '').trim().toLowerCase();
+          return ['on', 'true', 'yes', '1', 'active'].includes(s);
+        };
+
+        const isTeamTracker = () => {
+          const v = variables.team_tracker;
+          return v === true || v === 'true' || v === 1 || v === '1' || String(v).toLowerCase() === 'on';
+        };
+
+        const isNextMatch = () => {
+          const flag = variables.next_match;
+
+          // If next_match is provided as entity id, use it.
+          if (typeof flag === 'string' && flag.includes('.')) {
+            return isTruthy(states[flag]?.state);
+          }
+
+          // If next_match is provided as boolean/string literal, use it.
+          if (flag !== undefined && flag !== null && flag !== '') {
+            return isTruthy(flag);
+          }
+
+          // Team Tracker fallback:
+          // PRE means upcoming match.
+          if (isTeamTracker()) {
+            return String(entity?.state || '').toUpperCase() === 'PRE';
+          }
+
+          return false;
+        };
+
+        const isMobile = () => {
+          const w = window?.innerWidth || 1024;
+          const h = window?.innerHeight || 800;
+
+          return (
+            w <= 767 ||
+            (w <= 900 && h > w && window.matchMedia?.('(pointer: coarse)').matches)
+          );
+        };
+
+        const formatDate = (value) => {
+          const raw = clean(value);
+          if (!raw) return '';
+
+          const d = new Date(raw);
+          if (Number.isNaN(d.getTime())) return raw;
+
+          try {
+            return d.toLocaleString('pt-BR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }).replace(',', '');
+          } catch(e) {
+            return raw;
+          }
+        };
+
+        const next = isNextMatch();
+        const mobile = isMobile();
+        const teamTracker = isTeamTracker();
+
+        let homeLogo = '';
+        let awayLogo = '';
+        let homeName = '';
+        let awayName = '';
+        let homeScore = '';
+        let awayScore = '';
+        let info1 = '';
+        let info2 = '';
+        let mobileInfo = '';
+
+        if (teamTracker) {
+          const a = entity?.attributes || {};
+          const teamIsHome = String(a.team_homeaway || '').toLowerCase() === 'home';
+
+          homeLogo = getAttrUrl(teamIsHome ? a.team_logo : a.opponent_logo);
+          awayLogo = getAttrUrl(teamIsHome ? a.opponent_logo : a.team_logo);
+
+          homeName = clean(teamIsHome ? a.team_name : a.opponent_name, 'Home');
+          awayName = clean(teamIsHome ? a.opponent_name : a.team_name, 'Away');
+
+          homeScore = clean(teamIsHome ? a.team_score : a.opponent_score, '-');
+          awayScore = clean(teamIsHome ? a.opponent_score : a.team_score, '-');
+
+          const league = clean(a.league_name);
+          const kickoff = clean(a.kickoff_in);
+          const clock = clean(a.clock);
+          const venue = clean(a.venue);
+          const location = clean(a.location);
+          const dateFormatted = formatDate(a.date);
+
+          info1 = dateFormatted || kickoff || clock || '';
+          info2 = league || venue || location || '';
+
+          mobileInfo = next
+            ? clean(kickoff || dateFormatted || league)
+            : clean((clock && clock !== 'Scheduled') ? clock : (league || dateFormatted));
+        } else {
+          const homeLogoEntity = next
+            ? (variables.home_logo_entity_next || variables.home_logo_entity)
+            : variables.home_logo_entity;
+
+          const awayLogoEntity = next
+            ? (variables.away_logo_entity_next || variables.away_logo_entity)
+            : variables.away_logo_entity;
+
+          const homeNameEntity = next
+            ? (variables.home_name_entity_next || variables.home_name_entity)
+            : variables.home_name_entity;
+
+          const awayNameEntity = next
+            ? (variables.away_name_entity_next || variables.away_name_entity)
+            : variables.away_name_entity;
+
+          const info1Entity = next
+            ? (variables.info_1_entity_next || variables.info_1_entity)
+            : variables.info_1_entity;
+
+          const info2Entity = next
+            ? (variables.info_2_entity_next || variables.info_2_entity)
+            : variables.info_2_entity;
+
+          const mobileInfoEntity = next
+            ? (variables.info_entity_mobile_next || variables.info_entity_mobile)
+            : variables.info_entity_mobile;
+
+          homeLogo = getUrl(homeLogoEntity);
+          awayLogo = getUrl(awayLogoEntity);
+
+          homeName = getState(homeNameEntity, 'Home');
+          awayName = getState(awayNameEntity, 'Away');
+
+          homeScore = getState(variables.home_score_entity, '-');
+          awayScore = getState(variables.away_score_entity, '-');
+
+          info1 = getState(info1Entity, '');
+          info2 = getState(info2Entity, '');
+
+          mobileInfo = getState(mobileInfoEntity, info1 || info2 || '');
+        }
+
+        const logo = (url, side) => {
+          if (!url) {
+            return `
+              <div class="match-logo match-logo-empty ${side}">
+                <ha-icon icon="mdi:shield-outline"></ha-icon>
+              </div>
+            `;
+          }
+
+          return `
+            <div class="match-logo ${side}">
+              <img src="${esc(url)}" alt="">
+            </div>
+          `;
+        };
+
+        const scoreHtml = next
+          ? `
+            <div class="match-score match-score-next">
+              <span class="match-score-separator">x</span>
+            </div>
+          `
+          : `
+            <div class="match-score">
+              <span class="match-score-number">${esc(homeScore)}</span>
+              <span class="match-score-separator">x</span>
+              <span class="match-score-number">${esc(awayScore)}</span>
+            </div>
+          `;
+
+        if (mobile) {
+          const mobileScore = (score) =>
+            next ? '' : `<span class="match-mobile-score">${esc(score)}</span>`;
+
+          return `
+            <div class="match-card-wrap match-card-mobile ${next ? 'is-next-match' : 'is-current-match'}">
+
+              <div class="match-mobile-info">
+                ${esc(mobileInfo)}
+              </div>
+
+              <div class="match-mobile-spacer"></div>
+
+              <div class="match-mobile-rows">
+                <div class="match-mobile-row match-mobile-home">
+                  ${logo(homeLogo, 'home')}
+                  ${mobileScore(homeScore)}
+                  <span class="match-mobile-team">${esc(homeName)}</span>
+                </div>
+
+                <div class="match-mobile-row match-mobile-away">
+                  ${logo(awayLogo, 'away')}
+                  ${mobileScore(awayScore)}
+                  <span class="match-mobile-team">${esc(awayName)}</span>
+                </div>
+              </div>
+
+            </div>
+          `;
+        }
+
+        return `
+          <div class="match-card-wrap match-card-desktop ${next ? 'is-next-match' : 'is-current-match'}">
+
+            <div class="match-top">
+              ${logo(homeLogo, 'home')}
+              ${scoreHtml}
+              ${logo(awayLogo, 'away')}
+            </div>
+
+            <div class="match-teams">
+              <div class="match-team match-home-name">${esc(homeName)}</div>
+              <div class="match-team match-away-name">${esc(awayName)}</div>
+            </div>
+
+            <div class="match-spacer"></div>
+
+            <div class="match-info">
+              ${info1 ? `<div class="match-info-line match-info-1">${esc(info1)}</div>` : ''}
+              ${info2 ? `<div class="match-info-line match-info-2">${esc(info2)}</div>` : ''}
+            </div>
+
+          </div>
+        `;
+      ]]]
+
+    toggle:
+      card:
+        type: custom:button-card
+        entity: "[[[ return variables.next_match; ]]]"
+        show_name: false
+        show_state: false
+        show_icon: false
+        tap_action:
+          action: call-service
+          service: homeassistant.toggle
+          service_data:
+            entity_id: "[[[ return variables.next_match; ]]]"
+        hold_action:
+          action: more-info
+        double_tap_action:
+          action: none
+        custom_fields:
+          svg: |
+            [[[
+              const target = variables.next_match;
+              const st = target ? states[target] : null;
+
+              const isOn = ['on', 'true', 'yes', '1', 'active'].includes(
+                String(st?.state || '').toLowerCase()
+              );
+
+              const mob = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
+              const W = mob ? 38 : 44;
+              const H = 26;
+              const r = mob ? 8 : 9;
+              const cx0 = 14;
+              const travel = mob ? 12 : 18;
+              const SW = W + 2;
+
+              const stateKey = '_hemma_match_toggle_' + String(target || 'none').replace(/[^a-z0-9]/gi, '-');
+              const shouldAnimate = window[stateKey] !== undefined && window[stateKey] !== isOn;
+              window[stateKey] = isOn;
+
+              const anim = isOn
+                ? (mob ? 'hemma-match-thumb-on-m' : 'hemma-match-thumb-on-d')
+                : (mob ? 'hemma-match-thumb-off-m' : 'hemma-match-thumb-off-d');
+
+              const animStyle = shouldAnimate ? `animation:${anim} 0.2s ease forwards;` : '';
+              const circleCx = (!shouldAnimate && isOn) ? cx0 + travel : cx0;
+
+              const mid = 'hmt-' + String(target || 'none').replace(/[^a-z0-9]/gi, '-');
+
+              const trackFill = (mob && isOn)
+                ? 'rgba(0,0,0,0.75)'
+                : 'rgba(255,255,255,0.85)';
+
+              const offColor = 'rgba(255,255,255,0.8)';
+
+              if (isOn) {
+                return `
+                  <svg width="${SW}" height="${H}" viewBox="0 0 ${SW} ${H}" style="display:block;overflow:visible;">
+                    <defs>
+                      <mask id="${mid}">
+                        <rect x="2" y="1" width="${W-2}" height="${H-2}" rx="${(H-2)/2}" fill="white"/>
+                        <circle cx="${circleCx}" cy="${H/2}" r="${r}" fill="black" style="${animStyle}"/>
+                      </mask>
+                    </defs>
+                    <rect x="2" y="1" width="${W-2}" height="${H-2}" rx="${(H-2)/2}" fill="${trackFill}" mask="url(#${mid})"/>
+                  </svg>
+                `;
+              }
+
+              return `
+                <svg width="${SW}" height="${H}" viewBox="0 0 ${SW} ${H}" style="display:block;overflow:visible;">
+                  <rect x="2" y="1" width="${W-2}" height="${H-2}" rx="${(H-2)/2}" fill="none" stroke="${offColor}" stroke-width="2"/>
+                  <circle cx="${circleCx}" cy="${H/2}" r="${r}" fill="${offColor}" style="${animStyle}"/>
+                </svg>
+              `;
+            ]]]
+        styles:
+          card:
+            - display: >
+                [[[
+                  const show = variables.show_toggle === true || variables.show_toggle === 'true';
+                  return show && variables.next_match ? 'block' : 'none';
+                ]]]
+            - background: transparent !important
+            - background-color: transparent !important
+            - --ha-card-background: transparent
+            - box-shadow: none !important
+            - border: none !important
+            - backdrop-filter: none !important
+            - "-webkit-backdrop-filter": none !important
+            - padding: 0 !important
+            - overflow: visible !important
+            - "--button-card-ripple-color": transparent !important
+            - "-webkit-tap-highlight-color": transparent !important
+            - border-radius: 0 !important
+          grid:
+            - padding: 0 !important
+            - overflow: visible !important
+          custom_fields:
+            svg:
+              - line-height: 0
+        extra_styles: |
+          @keyframes hemma-match-thumb-on-d {
+            from { transform: translateX(0); }
+            to   { transform: translateX(18px); }
+          }
+
+          @keyframes hemma-match-thumb-off-d {
+            from { transform: translateX(18px); }
+            to   { transform: translateX(0); }
+          }
+
+          @keyframes hemma-match-thumb-on-m {
+            from { transform: translateX(0); }
+            to   { transform: translateX(12px); }
+          }
+
+          @keyframes hemma-match-thumb-off-m {
+            from { transform: translateX(12px); }
+            to   { transform: translateX(0); }
+          }
+
+          :host {
+            display: block !important;
+            width: 46px !important;
+            height: 26px !important;
+            overflow: visible !important;
+            cursor: pointer;
+          }
+
+          @media (max-width: 767px), (max-height: 600px) {
+            :host {
+              width: 40px !important;
+              height: 26px !important;
+            }
+          }
+
+          ha-card,
+          #container {
+            overflow: visible !important;
+            background: transparent !important;
+            --ha-card-background: transparent !important;
+          }
+
+  extra_styles: |
+    /* Shared */
+
+    .match-card-wrap {
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+
+      padding-right: var(--match-toggle-reserve, 0px);
+
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .match-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      overflow: visible;
+      border-radius: 0;
+
+      background: transparent !important;
+      background-color: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .match-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+
+      background: transparent !important;
+      background-color: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0;
+    }
+
+    .match-logo-empty ha-icon {
+      color: rgba(255,255,255,.65);
+    }
+
+    /* Team Tracker league logo background */
+
+    #league_bg {
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 0 !important;
+      pointer-events: none !important;
+      overflow: hidden !important;
+    }
+
+    .match-league-bg-wrap {
+      position: absolute;
+      top: 50%;
+      right: -18px;
+
+      width: 58%;
+      height: 92%;
+
+      transform: translateY(-50%);
+
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+
+      pointer-events: none;
+      overflow: hidden;
+
+      opacity: var(--match-league-bg-opacity, 0.16);
+      filter: grayscale(0.15) saturate(0.9) contrast(0.95);
+      mix-blend-mode: screen;
+    }
+
+    .match-league-bg-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: right center;
+
+      display: block;
+
+      pointer-events: none;
+
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+    }
+
+    /* Desktop / tablet */
+
+    .match-card-desktop {
+      display: grid;
+      grid-template-areas:
+        "top"
+        "teams"
+        "spacer"
+        "info";
+      grid-template-columns: 1fr;
+      grid-template-rows: min-content min-content 1fr min-content;
+    }
+
+    .match-top {
+      grid-area: top;
+
+      display: grid;
+      grid-template-columns: var(--match-logo-size, 42px) max-content var(--match-logo-size, 42px);
+      grid-template-rows: var(--match-logo-size, 42px);
+      align-items: center;
+      justify-content: start;
+      column-gap: 7px;
+
+      min-width: 0;
+      overflow: visible;
+    }
+
+    .match-top .match-logo {
+      width: var(--match-logo-size, 42px);
+      height: var(--match-logo-size, 42px);
+      min-width: var(--match-logo-size, 42px);
+      min-height: var(--match-logo-size, 42px);
+    }
+
+    .match-top .match-logo-empty ha-icon {
+      --mdc-icon-size: calc(var(--match-logo-size, 42px) * .62);
+    }
+
+    .match-score {
+      height: calc(var(--match-logo-size, 42px) * .72);
+
+      display: inline-grid;
+      grid-template-columns: max-content max-content max-content;
+      align-items: center;
+      justify-content: center;
+
+      color: var(--primary-text-color);
+      font-weight: 800;
+      font-size: var(--match-score-font-size, 22px);
+      line-height: 1;
+
+      text-shadow: var(--hemma-entity-text-shadow, 0 1px 4px rgba(0,0,0,0.35));
+      white-space: nowrap;
+    }
+
+    .match-score-next {
+      grid-template-columns: max-content;
+      min-width: 20px;
+    }
+
+    .match-score-number {
+      min-width: 18px;
+      text-align: center;
+    }
+
+    .match-score-separator {
+      padding: 0 4px;
+      opacity: .9;
+      font-weight: 800;
+      text-transform: lowercase;
+    }
+
+    .match-teams {
+      grid-area: teams;
+
+      margin-top: 8px;
+
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .match-team {
+      color: var(--hemma-entity-name, rgba(255,255,255,0.9));
+      font-weight: 700;
+      font-size: var(--match-team-font-size, 18px);
+      line-height: 1.08;
+      text-align: left;
+
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      text-shadow: var(--hemma-entity-text-shadow, 0 1px 4px rgba(0,0,0,0.35));
+    }
+
+    .match-away-name {
+      margin-top: 1px;
+      font-size: var(--match-team-font-size, 18px);
+      font-weight: 700;
+      color: var(--hemma-entity-name, rgba(255,255,255,0.9));
+      opacity: .95;
+    }
+
+    .match-spacer {
+      grid-area: spacer;
+      min-height: 0;
+    }
+
+    .match-info {
+      grid-area: info;
+
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-end;
+
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .match-info-line {
+      max-width: 100%;
+
+      color: rgba(235, 235, 235, 0.68);
+      font-weight: 400;
+      font-size: var(--match-info-font-size, 13px);
+      line-height: 1.15;
+      text-align: left;
+
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      text-shadow: var(--hemma-entity-text-shadow, 0 1px 3px rgba(0,0,0,0.28));
+    }
+
+    .match-info-2 {
+      margin-top: 1px;
+    }
+
+    /* Mobile */
+
+    .match-card-mobile {
+      display: grid;
+      grid-template-areas:
+        "mobile-info"
+        "mobile-spacer"
+        "mobile-rows";
+      grid-template-columns: 1fr;
+      grid-template-rows: min-content 1fr min-content;
+
+      padding-right: 0;
+    }
+
+    .match-mobile-info {
+      grid-area: mobile-info;
+
+      max-width: calc(100% - var(--match-toggle-reserve, 0px));
+
+      color: rgba(255,255,255,0.92);
+      font-size: var(--match-mobile-info-font-size, 14px);
+      font-weight: 500;
+      line-height: 1.15;
+      text-align: left;
+
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      text-shadow: var(--hemma-entity-text-shadow, 0 1px 4px rgba(0,0,0,0.35));
+    }
+
+    .match-mobile-spacer {
+      grid-area: mobile-spacer;
+      min-height: 0;
+    }
+
+    .match-mobile-rows {
+      grid-area: mobile-rows;
+
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-end;
+
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .match-mobile-row {
+      display: grid;
+      grid-template-columns: var(--match-mobile-logo-size, 23px) max-content minmax(0, max-content);
+      align-items: center;
+      justify-content: start;
+      column-gap: 8px;
+
+      min-width: 0;
+      max-width: 100%;
+      height: 24px;
+
+      overflow: hidden;
+    }
+
+    .match-mobile-row + .match-mobile-row {
+      margin-top: 2px;
+    }
+
+    .match-mobile-row .match-logo {
+      width: var(--match-mobile-logo-size, 23px);
+      height: var(--match-mobile-logo-size, 23px);
+      min-width: var(--match-mobile-logo-size, 23px);
+      min-height: var(--match-mobile-logo-size, 23px);
+    }
+
+    .match-mobile-row .match-logo-empty ha-icon {
+      --mdc-icon-size: calc(var(--match-mobile-logo-size, 23px) * .7);
+    }
+
+    .match-mobile-score {
+      color: var(--primary-text-color);
+      font-size: var(--match-mobile-score-font-size, 14px);
+      font-weight: 800;
+      line-height: 1;
+      text-align: center;
+      min-width: 10px;
+
+      text-shadow: var(--hemma-entity-text-shadow, 0 1px 4px rgba(0,0,0,0.35));
+    }
+
+    .match-mobile-team {
+      color: var(--hemma-entity-name, rgba(255,255,255,0.9));
+      font-size: var(--match-mobile-team-font-size, 14px);
+      font-weight: 700;
+      line-height: 1.1;
+      text-align: left;
+
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      text-shadow: var(--hemma-entity-text-shadow, 0 1px 4px rgba(0,0,0,0.35));
+    }
+
+    .match-card-mobile.is-next-match .match-mobile-row {
+      grid-template-columns: var(--match-mobile-logo-size, 23px) minmax(0, max-content);
+    }
+
+    @media (max-width: 767px), (max-height: 600px) {
+      .match-league-bg-wrap {
+        right: -10px;
+        width: 48%;
+        height: 82%;
+        opacity: var(--match-league-bg-opacity-mobile, 0.12);
+      }
+    }

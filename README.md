@@ -50,7 +50,7 @@ Install via HACS (recommended) unless noted:
 - **[kiosk-mode](https://github.com/NemesisRE/kiosk-mode)** (NemesisRE) - Optional but recommended (Hemma looks best with no header/sidebar)
 - **[lovelace-swipe-card](https://github.com/bramkragten/swipe-card)** (Bram Kragten) - Required for the Plex Recently Added popup carousel
 - **[plex_recently_added](https://github.com/NemesisRE/sensor.plex_recently_added)** (NemesisRE) - Required for the Plex Recently Added card and `sensor.plex_recently_added_count`
-
+- **[ha-teamtracker](https://github.com/vasqued2/ha-teamtracker)** (vasqued2) - Optional have it if you want to use `hemma_match` template card (for sports matches) full features.
 ---
 
 ### Popup Cards
@@ -437,6 +437,108 @@ The `sensor.plex_recently_added_count` template sensor is defined in `packages/h
 
 ---
 
+### 🏅 Sports Match Card (`hemma_match`)
+
+`hemma_match` is a sports-focused card designed to display matches information with support for both manual configuration and using sensor data of Team Tracker integration. It can show last and next match data, including team logos, scores (live score if using team tracker) and other informations.
+
+When using Team Tracker, most fields are automatically provided by the integration including live information such as score changes. When using manual mode, all data must be supplied via individual entities.
+
+⚠️ Important
+
+If you are using manual configuration, you must create an `input_boolean` helper to control switching between last and next matches.
+
+This entity is required for the toggle functionality (`show_toggle: true`) to work properly if set to `true`.
+
+#### Usage - Manual Configuration
+
+```yaml
+- type: custom:button-card
+  template: hemma_match
+  entity: sensor.match_status
+  variables:
+    team_tracker: false # not using team tracker
+
+    show_toggle: true # enable switching between last/next match
+    next_match: input_boolean.match_next_mode # controls last/next match view
+
+    ########### LAST MATCH ##########
+
+    home_logo_entity: sensor.match_home_logo  # image URL or entity returning URL
+    away_logo_entity: sensor.match_away_logo
+
+    home_score_entity: sensor.match_home_score
+    away_score_entity: sensor.match_away_score
+
+    home_name_entity: sensor.match_home_team
+    away_name_entity: sensor.match_away_team
+
+    info_1_entity: sensor.match_date
+    info_2_entity: sensor.match_competition
+    info_entity_mobile: sensor.match_mobile_info # compact info for mobile view
+
+    ########### NEXT MATCH ##########
+
+    home_logo_entity_next: sensor.match_home_logo_next
+    away_logo_entity_next: sensor.match_away_logo_next
+
+    home_name_entity_next: sensor.match_home_team_next
+    away_name_entity_next: sensor.match_away_team_next
+
+    info_1_entity_next: sensor.match_date_next
+    info_2_entity_next: sensor.match_competition_next
+    info_entity_mobile_next: sensor.match_mobile_info_next
+```
+
+#### Usage - Team Tracker Integration
+
+Requires the Team Tracker integration:
+[https://github.com/vasqued2/ha-teamtracker](https://github.com/vasqued2/ha-teamtracker)
+
+```yaml
+- type: custom:button-card
+  template: hemma_match
+  entity: sensor.wc_brasil # the integration main entity
+  variables:
+    team_tracker: true # default is true
+    show_toggle: false # disabled in integration mode
+```
+
+#### Variables
+
+| Variable       | Default | Description                               |
+| -------------- | ------- | ----------------------------------------- |
+| `team_tracker` | `true`  | Enables Team Tracker integration mode     |
+| `show_toggle`  | `false` | Enables switching between last/next match |
+| `next_match`   | —       | Boolean helper controlling last/next view |
+
+#### Last Match Variables
+
+| Variable             | Default | Description                        |
+| -------------------- | ------- | ---------------------------------- |
+| `home_logo_entity`   | —       | Home team logo (URL or entity)     |
+| `away_logo_entity`   | —       | Away team logo (URL or entity)     |
+| `home_score_entity`  | —       | Home team score                    |
+| `away_score_entity`  | —       | Away team score                    |
+| `home_name_entity`   | —       | Home team name                     |
+| `away_name_entity`   | —       | Away team name                     |
+| `info_1_entity`      | —       | Primary match info                 |
+| `info_2_entity`      | —       | Secondary match info               |
+| `info_entity_mobile` | —       | Shortened information for mobile   |
+
+#### Next Match Variables
+
+| Variable                  | Default | Description                    |
+| ------------------------- | ------- | ------------------------------ |
+| `home_logo_entity_next`   | —       | Next match home team logo      |
+| `away_logo_entity_next`   | —       | Next match away team logo      |
+| `home_name_entity_next`   | —       | Next match home team name      |
+| `away_name_entity_next`   | —       | Next match away team name      |
+| `info_1_entity_next`      | —       | Next match date/time           |
+| `info_2_entity_next`      | —       | Next match competition         |
+| `info_entity_mobile_next` | —       | Shortened info for mobile      |
+
+---
+
 ### :pencil2: Additional Customization
 
 This repo is intended as a starting point:
@@ -476,7 +578,6 @@ hemma_time:
     # Optional label after the time, e.g. "UHR", "HRS"
     time_suffix: "UHR"
 ```
----
 
 ### :trophy: Credits
 
