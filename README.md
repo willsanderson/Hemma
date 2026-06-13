@@ -446,9 +446,8 @@ When using Team Tracker, most fields are automatically provided by the integrati
 ⚠️ Important
 
 If you are using manual configuration, you must create an `input_boolean` helper to control switching between last and next matches.
-This entity is required for the toggle functionality (`show_toggle: true`) to work properly if set to `true`.
 
----
+This entity is required for the toggle functionality (`show_toggle: true`) to work properly if set to `true`.
 
 #### Usage - Manual Configuration
 
@@ -490,8 +489,6 @@ This entity is required for the toggle functionality (`show_toggle: true`) to wo
     info_entity_mobile_next: sensor.match_mobile_info_next
 ```
 
----
-
 #### Usage - Team Tracker Integration
 
 Requires the Team Tracker integration:
@@ -506,8 +503,6 @@ Requires the Team Tracker integration:
     show_toggle: false # disabled in integration mode
 ```
 
----
-
 #### Variables
 
 | Variable       | Default | Description                               |
@@ -515,8 +510,6 @@ Requires the Team Tracker integration:
 | `team_tracker` | `true`  | Enables Team Tracker integration mode     |
 | `show_toggle`  | `false` | Enables switching between last/next match |
 | `next_match`   | —       | Boolean helper controlling last/next view |
-
----
 
 #### Last Match Variables
 
@@ -531,8 +524,6 @@ Requires the Team Tracker integration:
 | `info_1_entity`      | —       | Primary match info                 |
 | `info_2_entity`      | —       | Secondary match info               |
 | `info_entity_mobile` | —       | Shortened information for mobile   |
-
----
 
 #### Next Match Variables
 
