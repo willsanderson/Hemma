@@ -45,6 +45,7 @@ Install via HACS (recommended) unless noted:
 - **[more-info-card](https://github.com/thomasloven/lovelace-more-info-card)** (Thomas Lovén) - required for custom popups
 - **[lovelace-mushroom](https://github.com/piitaya/lovelace-mushroom)** (Paul Bottein) - required for custom popups
 - **[uix](https://github.com/Lint-Free-Technology/uix)** (Lint Free Technology) - required for custom popup windows
+- **[mini-graph-card](https://github.com/kalkih/mini-graph-card)** (Karl Kihlström) - required for custom graphs
 
 #### Optional
 - **[kiosk-mode](https://github.com/NemesisRE/kiosk-mode)** (NemesisRE) - Optional but recommended (Hemma looks best with no header/sidebar)
