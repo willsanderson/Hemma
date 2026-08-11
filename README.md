@@ -84,6 +84,9 @@ Install via HACS (recommended) unless noted:
 
 ### Popup Cards
 
+##### Light Control
+<img width="615" height="361" alt="lights" src="https://github.com/user-attachments/assets/eda0853b-8e49-459a-a4d2-010ef335ec4d" />
+
 ##### Air Quality
 <img width="615" height="668" alt="aqi" src="https://github.com/user-attachments/assets/2356570c-18be-4234-88f6-85d8d18dfb9e" />
 
@@ -104,8 +107,6 @@ Install via HACS (recommended) unless noted:
 
 ##### Recently Added
 <img width="615" height="475" alt="recently-added" src="https://github.com/user-attachments/assets/19b689f4-19e5-4538-b2e1-3bfd342fa3a2" />
-
-Also included (screenshots coming soon): **Light control** (multi-room filtering + scenes), **Lock/security group**, **Cover/shades group**, and **Plex now-playing stream**.
 
 ---
 
