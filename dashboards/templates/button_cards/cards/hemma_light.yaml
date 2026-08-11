@@ -1,37 +1,106 @@
 hemma_light:
   template:
     - hemma_entity
+    - hemma_popup_light
 
   show_icon: false
   show_last_changed: false
 
+
+  hold_action:
+    haptic: medium
+    action: >
+      [[[
+        return typeof window.browser_mod !== 'undefined' ? 'fire-dom-event' : 'more-info';
+      ]]]
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        tag: '[[[ return (entity?.entity_id || "hemma_light").replace(/\./g, "_") + "_popup"; ]]]'
+        title: ""
+        dismissable: true
+        adaptive: true
+        size: auto
+        style: "--popup-width: 880px; --popup-max-width: 880px;"
+        popup_styles:
+          - style: all
+            styles: |
+              :host {
+                --dialog-surface-margin-top: 100px;
+                --ha-ripple-hover-opacity: 0;
+                --ha-ripple-pressed-opacity: 0.04;
+                opacity: 0;
+                animation: hemma-popup-reveal 0s 0.8s ease forwards;
+              }
+              @keyframes hemma-popup-reveal { to { opacity: 1; } }
+              .content .container > * {
+                width: 100% !important;
+                max-width: none !important;
+                box-sizing: border-box !important;
+              }
+              .content .container {
+                scrollbar-width: none;
+                overscroll-behavior: contain;
+                touch-action: pan-y;
+                padding-bottom: 24px !important;
+              }
+              .content .container::-webkit-scrollbar { display: none; }
+              wa-dialog { --width: min(880px, 92vw); }
+              @media (max-width: 768px) {
+                :host { --dialog-surface-margin-top: 0px; }
+                wa-drawer {
+                  --size: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                  height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                }
+                .content .container {
+                  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                }
+              }
+        content: |
+          [[[
+            if (typeof window._hemmaLPC === 'function') {
+              return window._hemmaLPC(entity, states, typeof hass !== 'undefined' ? hass : null, variables);
+            }
+            return null;
+          ]]]
+
+  icon_tap_action:
+    action: call-service
+    service: script.turn_on
+    service_data:
+      entity_id: script.hemma_light_smart_toggle
+      variables:
+        light_entity: '[[[ return entity.entity_id ]]]'
+
   state_display: >
     [[[
-      const expand = (eid, seen = new Set()) => {
+      const memsOf = (eid) => {
+        const m = states[eid]?.attributes?.entity_id;
+        return Array.isArray(m) ? m.filter(x => typeof x === "string" && x.startsWith("light.")) : [];
+      };
+      const units = (eid, seen) => {
         if (!eid || seen.has(eid)) return [];
+        const mems = memsOf(eid);
+        // No members, or no member is itself a group -> one physical light.
+        if (!mems.length || !mems.some(m => memsOf(m).length)) return [eid];
         seen.add(eid);
-
-        const st = states[eid];
-        if (!st) return [];
-
-        const members = st.attributes?.entity_id;
-        if (Array.isArray(members)) {
-          return members.flatMap(m => expand(m, seen));
-        }
-
-        return [eid];
+        return mems.flatMap(m => units(m, seen));
       };
 
-      const root = entity?.entity_id;
-      const all = [...new Set(expand(root))].filter(eid => eid.startsWith("light."));
+      const seen = new Set();
+      const all = [...new Set(units(entity?.entity_id, seen))];
       const onCount = all.filter(eid => states[eid]?.state === "on").length;
 
-      return onCount > 0 ? `${onCount} On` : "Off";
+      return onCount === 0 ? "All Off"
+           : onCount === all.length ? "All On"
+           : `${onCount} On`;
     ]]]
 
   variables:
+    mobile_filter_category: lights
     icon: light
-    show_toggle: true
+    show_toggle: false
     toggle_service: script.turn_on
     toggle_service_data: |
       [[[
@@ -42,181 +111,6 @@ hemma_light:
           }
         };
       ]]]
-
-  hold_action: &light_popup
-    action: |
-      [[[
-        const isMobile = window.matchMedia('(max-width: 767px)').matches;
-        const hasBrowserMod = typeof window.browser_mod !== 'undefined';
-        return (isMobile || !hasBrowserMod) ? 'more-info' : 'fire-dom-event';
-      ]]]
-    entity: '[[[ return entity.entity_id ]]]'
-    browser_mod:
-      service: browser_mod.popup
-      data:
-        title: ""
-        style: |
-          backdrop-filter: none !important;
-          box-shadow: none !important;
-          -webkit-backdrop-filter: none !important;
-          --popup-min-width: 800px;
-          --ha-card-background: transparent;
-          --ha-card-box-shadow: none !important;
-          --button-card-box-shadow-hover: none !important;
-          --ha-card-backdrop-filter: none;
-          --ha-card-backdrop-filter-hover: none;
-          --dialog-box-shadow: var(--hemma-dialog-shadow) !important;
-        popup_styles:
-          - style: all
-            styles: |
-              ha-dialog .content .container,
-              ha-dialog .container {
-                padding: 28px 10px 16px 10px !important;
-              }
-        content:
-          type: custom:layout-card
-          layout_type: custom:grid-layout
-          layout:
-            grid-template-columns: minmax(320px, 0.95fr) minmax(420px, 1.05fr)
-            grid-template-rows: auto
-            grid-template-areas: |
-              "main list"
-            column-gap: 18px
-            row-gap: 18px
-          cards:
-            - type: custom:more-info-card
-              view_layout:
-                grid-area: main
-              entity: '[[[ return entity.entity_id ]]]'
-              card_mod:
-                style:
-                  .: |
-                    :host {
-                      --ha-card-background: transparent !important;
-                      --ha-card-box-shadow: none !important;
-                      --ha-card-backdrop-filter: none !important;
-                      --button-card-box-shadow-hover: none !important;
-                    }
-                    ha-card,
-                    ha-card:hover,
-                    ha-card:focus-within,
-                    ha-card:active {
-                      background: transparent !important;
-                      border: none !important;
-                      box-shadow: none !important;
-                      backdrop-filter: none !important;
-                      -webkit-backdrop-filter: none !important;
-                      filter: none !important;
-                      --ha-card-background: transparent !important;
-                      --ha-card-box-shadow: none !important;
-                      --ha-card-backdrop-filter: none !important;
-                      --button-card-box-shadow-hover: none !important;
-                    }
-                    state-card-content,
-                    div.action {
-                      display: none !important;
-                    }
-                  $: |
-                    h1.card-header {
-                      text-align: center !important;
-                    }
-                  more-info-content $: |
-                    hui-section,
-                    hui-grid-section {
-                      display: none !important;
-                    }
-
-            - type: vertical-stack
-              view_layout:
-                grid-area: list
-              card_mod:
-                style: |
-                  ha-card,
-                  ha-card:hover,
-                  ha-card:focus-within,
-                  ha-card:active {
-                    background: transparent !important;
-                    border: none !important;
-                    box-shadow: none !important;
-                    backdrop-filter: none !important;
-                    -webkit-backdrop-filter: none !important;
-                    overflow-y: auto !important;
-                    filter: none !important;
-                  }
-              cards: |
-                [[[
-                  const expand = (eid, seen = new Set()) => {
-                    if (!eid || seen.has(eid)) return [];
-                    seen.add(eid);
-
-                    const s = states[eid];
-                    if (!s) return [];
-
-                    const members = s.attributes?.entity_id;
-                    return Array.isArray(members)
-                      ? members.flatMap(m => expand(m, seen))
-                      : [eid];
-                  };
-
-                  if (!entity) return [];
-
-                  const lights = [...new Set(expand(entity.entity_id))]
-                    .filter((eid) => eid.startsWith('light.') && eid !== entity.entity_id);
-
-                  return lights.map((eid) => ({
-                    type: 'custom:mushroom-light-card',
-                    entity: eid,
-                    fill_container: false,
-                    primary_info: 'name',
-                    secondary_info: 'state',
-                    icon_type: 'icon',
-                    use_light_color: true,
-                    show_brightness_control: true,
-                    show_color_temp_control: true,
-                    show_color_control: true,
-                    collapsible_controls: false,
-                    layout: 'horizontal',
-                    tap_action: { action: 'toggle' },
-                    hold_action: { action: 'more-info' },
-                    double_tap_action: { action: 'none' },
-                    card_mod: {
-                      style: `
-                        ha-card {
-                          --ha-card-box-shadow: none !important;
-                          --button-card-box-shadow: none !important;
-                          --button-card-box-shadow-hover: none !important;
-                          background: var(--hemma-popup-entity-background, rgba(0, 0, 0, 0.4)) !important;
-                          border: none !important;
-                          box-shadow: none !important;
-                          border-radius: 9999px !important;
-                          margin-bottom: 8px !important;
-                          transition:
-                            background 0.18s ease,
-                            border-color 0.18s ease !important;
-                        }
-
-                        ha-card:hover,
-                        ha-card:focus-within,
-                        ha-card:active {
-                          --ha-card-box-shadow: none !important;
-                          --button-card-box-shadow: none !important;
-                          --button-card-box-shadow-hover: none !important;
-                          background: var(--hemma-popup-entity-hover, rgba(0, 0, 0, 0.5)) !important;
-                          border-color: var(--hemma-popup-entity-border-hover, rgba(255,255,255,0.08)) !important;
-                          box-shadow: none !important;
-                          filter: none !important;
-                          transform: none !important;
-                        }
-                      `
-                    }
-                  }));
-                ]]]
-
-  tap_action: *light_popup
-
-  icon_tap_action: *light_popup
-
-  icon_hold_action: *light_popup
 
   styles:
     entity_picture:
@@ -232,42 +126,3 @@ hemma_light:
       - box-shadow: none !important
       - transition: filter 0.2s ease
       - cursor: pointer
-
-  extra_styles: |
-    #img-cell {
-      position: relative;
-      border-radius: 50% !important;
-      background: var(--hemma-icon-circle-bg, rgba(255,255,255,0.10)) !important;
-      width: 44px !important;
-      height: 44px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      overflow: hidden !important;
-    }
-    #img-cell::before { opacity: 0 !important; }
-    #img-cell img {
-      width: 68% !important;
-      height: 68% !important;
-      max-width: 68% !important;
-      max-height: 68% !important;
-      object-fit: contain !important;
-      flex: none !important;
-    }
-    #img-cell ha-icon {
-      --mdc-icon-size: 26px !important;
-      flex: none !important;
-      color: rgba(255,255,255,1.0) !important;
-    }
-    #icon { color: rgba(255,255,255,1.0) !important; }
-    @media (max-width: 767px) and (orientation: portrait) {
-      #img-cell { width: 38px !important; height: 38px !important; }
-      #img-cell ha-icon { --mdc-icon-size: 23px !important; }
-      #toggle { filter: invert(var(--hemma-toggle-invert, 0)); }
-    }
-    @media (hover: hover) {
-      #img-cell:hover { filter: brightness(1.15); transform: scale(1.03); transition: filter 0.15s ease, transform 0.15s ease; }
-    }
-    @media (hover: none) {
-      #img-cell:active { filter: brightness(1.15); transform: scale(1.03); }
-    }

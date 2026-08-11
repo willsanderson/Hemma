@@ -1,0 +1,363 @@
+# /config/dashboards/hemma/hemma_mobile.yaml.example
+# Hemma Mobile Dashboard - Example Configuration
+# ============================================================================
+# Copy or rename this file to hemma_mobile.yaml and customize the entity IDs
+# to match your Home Assistant setup. Search for "YOUR_" to find all
+# placeholders.
+#
+# This file is intentionally ENTITIES-ONLY: every behavior (filters, popups,
+# the collapsing header, room chips) lives in the shared template files —
+# this is the only file you need to edit to get the mobile dashboard running.
+#
+# STRUCTURE (top to bottom):
+#   BACKGROUND     room photo + sampled gradient (no configuration needed)
+#   HEADER         large title + weather widget
+#   BADGE ROW      the filter pills (Climate / Lights / People / Media / ...)
+#   FILTERS        one hemma-filter-overlay per category (no config needed —
+#                  they auto-collect matching cards from your room sections)
+#   ROOM POPUPS    one overlay per room; `room:` must exactly match that
+#                  room's section header `name:` below
+#   SUB BADGE ROW  home climate chips + per-room sensor chips (room_chips)
+#   NOW PLAYING    active media tiles
+#   FAVORITES      hand-picked cards, always first on the dashboard
+#   ROOM SECTIONS  a header + card row per room — add/remove rooms freely
+#
+# ADDING A ROOM — three steps, all driven by the room's name:
+#   1. Copy a section header + smart-row pair and give the header a unique
+#      `name:` (e.g. "Guest Room").
+#   2. Add a matching `- type: custom:hemma-filter-overlay` with `room:` set to
+#      that exact name. Nothing else — the filter key is derived from it.
+#   3. Make sure the room's SLUG is an option on input_select.hemma_mobile_filter
+#      in packages/hemma_helpers.yaml. The slug is the name lowercased with all
+#      non-alphanumerics stripped, prefixed with "room_":
+#         "Guest Room" -> room_guestroom      "Kid's Room" -> room_kidsroom
+#      room_livingroom / room_kitchen / room_bedroom / room_office ship
+#      pre-seeded, so those four need no edit. Any other room does — without it
+#      the header renders but tapping it does nothing.
+# Optionally add a room_chips entry for its sensor chips.
+#
+# Step 3 is the only place you type the slug, and the only unavoidable one —
+# Home Assistant helpers can't be created from a dashboard file, and the filter
+# needs a real input_select state to hold the active room. The header and the
+# overlay both derive the key themselves. (`room_key:` on the header remains as
+# an override for names that don't slug cleanly; you shouldn't need it.)
+# ============================================================================
+
+button_card_templates: !include_dir_merge_named /config/dashboards/templates/button_cards
+
+# Recommended — requires the kiosk-mode HACS integration.
+kiosk_mode:
+  mobile_settings:
+    hide_header: true
+    hide_sidebar: false
+
+views:
+  - type: custom:grid-layout
+    title: Home
+    path: home
+    layout: !include /config/dashboards/templates/includes/hemma_mobile_layout.yaml
+    cards:
+
+      # BACKGROUND — no configuration needed. Uses the same room photo the
+      # desktop dashboard loads from /config/www/hemma/rooms/ (light + -night
+      # variants), anchored to the top, with the gradient below it coloured by
+      # sampling the photo itself.
+      - type: custom:button-card
+        template: hemma_mobile_bg
+
+      # SMART ROW — everything below is a child of this row.
+      - type: custom:hemma-smart-row
+        sort: false
+        scroll_mode: true
+        cards:
+
+          # ── HEADER ── "Home" title + weather
+          - type: custom:button-card
+            template: hemma_mobile_weather
+            variables:
+              weather_entity: weather.YOUR_WEATHER          # e.g. weather.home
+              weather_temp_sensor: sensor.YOUR_OUTDOOR_TEMP # e.g. sensor.outdoor_temperature
+
+          # ── BADGE ROW ── the filter badges. A badges only appears when its
+          # entities are configured; delete any block you don't use.
+          - type: custom:button-card
+            template: hemma_mobile_filter_badges
+            variables:
+
+              # CLIMATE (temp_sensor required; _2.._5 optional extra sensors —
+              # with more than one, the pill shows a min–max range)
+              temp_sensor: sensor.YOUR_HOME_TEMPERATURE
+              # temp_sensor_2: sensor.YOUR_TEMPERATURE_2
+              # temp_sensor_3: sensor.YOUR_TEMPERATURE_3
+              # temp_sensor_4: sensor.YOUR_TEMPERATURE_4
+              # temp_sensor_5: sensor.YOUR_TEMPERATURE_5
+              humidity_sensor: sensor.YOUR_HUMIDITY
+              quality_sensor: sensor.YOUR_AIR_QUALITY
+              climate_entity: climate.YOUR_THERMOSTAT
+              # climate_entity_2: climate.YOUR_THERMOSTAT_2
+
+              # LIGHTS (a group of all lights + per-room groups)
+              light_group_entity: light.YOUR_ALL_LIGHTS_GROUP
+              light_entity_1: light.YOUR_ROOM_LIGHT_GROUP_1
+              # light_entity_2: light.YOUR_ROOM_LIGHT_GROUP_2
+              # light_entity_3: light.YOUR_ROOM_LIGHT_GROUP_3
+
+              # PEOPLE (status sensors, e.g. from the person integration)
+              presence_entity_1: sensor.YOUR_PERSON_1_STATUS
+              # presence_entity_2: sensor.YOUR_PERSON_2_STATUS
+
+              # MEDIA (any mix of media players; all optional, up to 5)
+              media_entity_1: media_player.YOUR_MEDIA_PLAYER_1
+              # media_entity_2: media_player.YOUR_MEDIA_PLAYER_2
+              # media_entity_3: media_player.YOUR_MEDIA_PLAYER_3
+              # media_entity_4: media_player.YOUR_MEDIA_PLAYER_4
+              # media_entity_5: media_player.YOUR_MEDIA_PLAYER_5
+              # Optional Plex / PSN / Steam activity:
+              # plex_stream_1: sensor.YOUR_PLEX_STREAM_1_INFO
+              # plex_stream_2: sensor.YOUR_PLEX_STREAM_2_INFO
+              # psn_entity_1: sensor.YOUR_PSN_SESSION
+              # psn_entity_2: sensor.YOUR_PSN_SESSION_2
+              # steam_online_entity: sensor.YOUR_DISCORD_STATUS
+              # steam_game_entity: sensor.YOUR_DISCORD_GAME
+
+              # SECURITY (locks — the pill shows a combined locked/unlocked state)
+              lock_entity: lock.YOUR_LOCK
+              # lock_entity_2: lock.YOUR_LOCK_2
+
+              # ENERGY (whole-home current consumption)
+              power_entity: sensor.YOUR_HOME_POWER
+
+          # ── CATEGORY FILTER POPUPS ── no configuration needed: each popup
+          # auto-collects the matching cards from your room sections below.
+          - type: custom:hemma-filter-overlay
+            filter_category: climate
+          - type: custom:hemma-filter-overlay
+            filter_category: lights
+          - type: custom:hemma-filter-overlay
+            filter_category: media
+          - type: custom:hemma-filter-overlay
+            filter_category: security
+          - type: custom:hemma-filter-overlay
+            filter_category: energy
+
+          # ── PRESENCE FILTER ── the only popup with manual cards (its cards
+          # exist nowhere else on the dashboard).
+          - type: custom:hemma-filter-overlay
+            filter_category: presence
+            sections:
+              - cards:
+                  - type: custom:button-card
+                    template: hemma_presence
+                    entity: sensor.YOUR_PERSON_1_STATUS
+                    variables:
+                      person_name: YOUR_NAME
+                      person_entity: person.YOUR_PERSON_1
+                  # - type: custom:button-card
+                  #   template: hemma_presence
+                  #   entity: sensor.YOUR_PERSON_2_STATUS
+                  #   variables:
+                  #     person_name: YOUR_NAME_2
+                  #     person_entity: person.YOUR_PERSON_2
+
+          # ── ROOM POPUPS ── opened by tapping a room's header. `room:` must
+          # EXACTLY match the section header `name:` below; the room's sensor
+          # chips are configured under `room_chips:` on the SUB BADGE ROW.
+          - type: custom:hemma-filter-overlay
+            room: Living Room
+
+          - type: custom:hemma-filter-overlay
+            room: Bedroom
+
+          # ── SUB BADGE ROW ── home-wide climate chips (shown in the Climate
+          # popup) + per-room chips (shown in each room popup).
+          - type: custom:button-card
+            template: hemma_mobile_sensor_chips
+            variables:
+              # CLIMATE (whole-home chips)
+              temp_entity: sensor.YOUR_HOME_TEMPERATURE
+              humidity_entity: sensor.YOUR_HUMIDITY
+              entity_quality: sensor.YOUR_AIR_QUALITY
+              aqi_room_name: Home
+              # aqi_sensors:                      # optional AQI popup detail
+              #   - sensor.YOUR_PM25
+              #   - sensor.YOUR_PM10
+              #   - sensor.YOUR_VOC
+              #   - sensor.YOUR_CO2
+
+              # ROOM CHIPS — keys must match the room popup filter_category
+              # values above. Any chip whose entity is omitted simply hides.
+              room_chips:
+                room_livingroom:
+                  temp_entity: sensor.YOUR_LIVING_ROOM_TEMPERATURE
+                  # humidity_entity: sensor.YOUR_LIVING_ROOM_HUMIDITY
+                  # entity_quality: sensor.YOUR_LIVING_ROOM_AIR_QUALITY
+                  # aqi_room_name: Living Room
+                  lights_entity: light.YOUR_LIVING_ROOM_LIGHT_GROUP
+                  # motion_entity: binary_sensor.YOUR_LIVING_ROOM_MOTION
+                room_bedroom:
+                  temp_entity: sensor.YOUR_BEDROOM_TEMPERATURE
+                  lights_entity: light.YOUR_BEDROOM_LIGHT_GROUP
+
+          # ── NOW PLAYING ── the row of media tiles on the dashboard, and the
+          # column inside the Media popup. Every active source gets a tile.
+          # Note: these use `psn_1` / `psn_2`, NOT the `psn_entity_N` names the
+          # badge row above uses.
+          - type: custom:button-card
+            template: hemma_mobile_now_playing
+            variables:
+              media_player_1: media_player.YOUR_MEDIA_PLAYER_1
+              # media_player_2: media_player.YOUR_MEDIA_PLAYER_2
+              # media_player_3: media_player.YOUR_MEDIA_PLAYER_3
+              # media_player_4: media_player.YOUR_MEDIA_PLAYER_4
+              # media_player_5: media_player.YOUR_MEDIA_PLAYER_5
+              # Plex sessions — these tiles open the Plex popup, not more-info
+              # plex_stream_1: sensor.YOUR_PLEX_STREAM_1_INFO
+              # plex_stream_2: sensor.YOUR_PLEX_STREAM_2_INFO
+              # Game activity (e.g. PlayStation)
+              # psn_1: sensor.YOUR_PSN_SESSION
+              # psn_2: sensor.YOUR_PSN_SESSION_2
+
+          # ── FAVORITES ── hand-picked cards, always the first section.
+          - type: custom:button-card
+            template: hemma_mobile_header
+            name: Favorites
+
+          - type: custom:hemma-smart-row
+            scroll_mode: true
+            cards:
+
+              - type: custom:button-card
+                template: hemma_thermostat
+                entity: climate.YOUR_THERMOSTAT
+                name: Thermostat
+                variables:
+                  temp_sensor: sensor.YOUR_HOME_TEMPERATURE
+
+              - type: custom:button-card
+                template: hemma_light
+                entity: light.YOUR_ALL_LIGHTS_GROUP
+                name: All Lights
+                variables:
+                  icon: light
+                  show_toggle: true
+                  group_entity: light.YOUR_ALL_LIGHTS_GROUP
+                  # Optional: scenes shown in the light popup. Reused by every
+                  # room's light card via the *scene_order anchor.
+                  scene_order: &scene_order
+                    - scene.YOUR_SCENE_1
+                    - scene.YOUR_SCENE_2
+
+              - type: custom:button-card
+                template:
+                  - hemma_lock
+                  - hemma_popup_lock
+                entity: lock.YOUR_LOCK
+                name: Doors
+                variables:
+                  room_name: Home
+                  locks:
+                    - lock.YOUR_LOCK_1
+                    - lock.YOUR_LOCK_2
+                  # battery_entities:
+                  #   lock.YOUR_LOCK_1: sensor.YOUR_LOCK_1_BATTERY
+                  #   lock.YOUR_LOCK_2: sensor.YOUR_LOCK_2_BATTERY
+                  # door_sensors:
+                  #   lock.YOUR_LOCK: binary_sensor.YOUR_DOOR_1_SENSOR
+                  #   lock.YOUR_LOCK: binary_sensor.YOUR_DOOR_2_SENSOR
+
+          # ══════════════════════════════════════════════════════════════════
+          # ROOM SECTIONS — one header + card row per room.
+          #   name:       shown as the section title; MUST match the room
+          #               popup's `room:` above for the popup to work. The
+          #               input_select key that opens the popup is derived from
+          #               it automatically ("Living Room" -> room_livingroom).
+          #   mobile_filter_categories: which filter pills this room's cards
+          #               can appear under.
+          # Card templates available: hemma_thermostat, hemma_light,
+          # hemma_media, hemma_energy, hemma_cover, hemma_fan, hemma_lock,
+          # hemma_doorbell, hemma_vacuum, hemma_plant, hemma_air_purifier,
+          # hemma_humidifier, hemma_battery, hemma_network, hemma_updates,
+          # hemma_motion, hemma_presence, hemma_entity_actions,
+          # hemma_plex_recently_added.
+          # ══════════════════════════════════════════════════════════════════
+
+          # ── LIVING ROOM ──
+          - type: custom:button-card
+            template: hemma_mobile_header
+            name: Living Room
+            variables:
+              mobile_filter_categories: [climate, lights, media, energy, security]
+
+          - type: custom:hemma-smart-row
+            scroll_mode: true
+            cards:
+
+              - type: custom:button-card
+                template: hemma_thermostat
+                entity: climate.YOUR_THERMOSTAT
+                name: Thermostat
+                variables:
+                  temp_sensor: sensor.YOUR_LIVING_ROOM_TEMPERATURE
+
+              - type: custom:button-card
+                template: hemma_light
+                entity: light.YOUR_LIVING_ROOM_LIGHT_GROUP
+                name: Lights
+                variables:
+                  icon: light
+                  show_toggle: true
+                  group_entity: light.YOUR_ALL_LIGHTS_GROUP
+                  scene_order: *scene_order
+
+              - type: custom:button-card
+                template: hemma_media
+                entity: media_player.YOUR_MEDIA_PLAYER_1
+                name: Apple TV
+                variables:
+                  icon: apple_tv         # icons: apple_tv, tv, speaker, homepod, ps5, ...
+                  show_progress: true
+
+              # - type: custom:button-card
+              #   template: hemma_cover
+              #   entity: cover.YOUR_CURTAIN
+              #   name: Curtain
+              #   variables:
+              #     icon: curtain
+              #     show_toggle: true
+
+              # - type: custom:button-card
+              #   template: hemma_fan
+              #   entity: fan.YOUR_FAN
+              #   name: Fan
+              #   variables:
+              #     icon: fan
+              #     show_toggle: true
+
+          # ── BEDROOM ──
+          - type: custom:button-card
+            template: hemma_mobile_header
+            name: Bedroom
+            variables:
+              mobile_filter_categories: [climate, lights, media]
+
+          - type: custom:hemma-smart-row
+            scroll_mode: true
+            cards:
+
+              - type: custom:button-card
+                template: hemma_light
+                entity: light.YOUR_BEDROOM_LIGHT_GROUP
+                name: Lights
+                variables:
+                  icon: light
+                  show_toggle: true
+                  group_entity: light.YOUR_ALL_LIGHTS_GROUP
+                  scene_order: *scene_order
+
+              - type: custom:button-card
+                template: hemma_media
+                entity: media_player.YOUR_MEDIA_PLAYER_2
+                name: TV
+                variables:
+                  icon: tv
+                  show_toggle: true

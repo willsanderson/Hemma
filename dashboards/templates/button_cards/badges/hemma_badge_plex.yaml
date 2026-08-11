@@ -1,0 +1,189 @@
+# Plex Badge
+hemma_badge_plex:
+  template: [hemma_badge_base, hemma_badge_media, hemma_popup_plex]
+  show_state: false
+  show_label: false
+  show_entity_picture: true
+
+  card_mod:
+    style: >
+      [[[
+        const v = variables?.enabled;
+        const isEnabled = () => {
+          if (v === undefined || v === null) return true;
+          if (typeof v === 'boolean') return v;
+          if (typeof v === 'number') return v !== 0;
+          const s = String(v).trim().toLowerCase();
+          return !['false','0','no','off','disabled'].includes(s);
+        };
+        if (!isEnabled()) return ':host { display: none !important; }';
+        return ':host { display: block; }';
+      ]]]
+
+  hold_action:
+    action: more-info
+    entity: >
+      [[[
+        return variables?.session_entity || entity?.entity_id;
+      ]]]
+
+  styles:
+    card:
+      - padding: "var(--hemma-media-badge-pad-v, 0px) calc(var(--hemma-badge-opacity, 1) * 14px) var(--hemma-media-badge-pad-v, 0px) calc(var(--hemma-badge-opacity, 1) * 12px) !important"
+      - max-width: "calc(var(--hemma-badge-opacity, 1) * var(--badge-media-max-width-current, 600px)) !important"
+      - min-height: "calc(var(--hemma-badge-opacity, 1) * (var(--badge-min-height-current, var(--badge-min-height, 50px)) + 3px)) !important"
+
+      - --hemma-badge-opacity: >
+          [[[
+            const P = (v) => { try { this.style.setProperty('--hemma-badge-opacity', v); } catch (e) {} return v; };
+            return P((() => {
+            const cacheKey = '_hemmaBadgePlexOpacity';
+            if (entity === undefined || entity === null) return this[cacheKey] || '0';
+            const st = String(entity?.state || 'off').toLowerCase();
+            const r = (st === 'playing') ? '1' : '0';
+            this[cacheKey] = r;
+            return r;
+            })());
+          ]]]
+
+      - --hemma-badge-ptr: >
+          [[[
+            const st = String(entity?.state || 'off').toLowerCase();
+            return (st === 'playing') ? 'auto' : 'none';
+          ]]]
+
+      - --bg-url: >
+          [[[
+            const cacheKey = '_hemmaPlexBgUrl';
+            const sid = variables?.session_entity;
+            const a = (sid && hass.states[sid]?.attributes) || {};
+            const raw =
+              a.image_url ||
+              a.entity_picture_local ||
+              a.entity_picture ||
+              a.media_image_url;
+
+            if (raw) {
+              const url = String(raw).startsWith('/') ? `${location.origin}${raw}` : raw;
+              let clean = url;
+              try {
+                const parsed = new URL(url, location.origin);
+                parsed.searchParams.delete('refresh');
+                clean = parsed.toString();
+              } catch (e) {}
+              if (this._hemmaBgRawUrl !== clean) {
+                this._hemmaBgRawUrl = clean;
+                const img = new Image();
+                img.onload = () => {
+                  if (this._hemmaBgRawUrl !== clean) return;
+                  const wrapped = `url("${clean}")`;
+                  this[cacheKey] = wrapped;
+                  const card = this.shadowRoot?.querySelector('ha-card');
+                  if (card) { card.style.setProperty('--bg-url', wrapped);
+                               card.style.setProperty('--hemma-badge-has-art', '1'); }
+                  this.requestUpdate?.();
+                };
+                img.src = clean;
+              }
+            }
+            return this[cacheKey] || 'none';
+          ]]]
+
+    grid:
+      - grid-template-areas: '"i l"'
+      - grid-template-columns: min-content auto
+      - column-gap: 6px
+      - align-items: center
+
+    name:
+      - grid-area: l
+      - padding: 0 0 0 6px !important
+      - min-width: 0
+      - max-width: 100%
+      - z-index: 3
+      - align-self: center !important
+      - display: flex !important
+      - align-items: center !important
+      - overflow: hidden !important
+      - padding-block: 2px !important
+      - line-height: normal !important
+
+  entity_picture: >
+    [[[
+      const sid = variables?.session_entity;
+      const a = (sid && hass.states[sid]?.attributes) || {};
+      const raw =
+        a.image_url ||
+        a.entity_picture_local ||
+        a.entity_picture ||
+        a.media_image_url;
+
+      if (!raw) return null;
+      const url = String(raw).startsWith('/') ? `${location.origin}${raw}` : raw;
+      try {
+        const parsed = new URL(url, location.origin);
+        parsed.searchParams.delete('refresh');
+        return parsed.toString();
+      } catch (e) {
+        return url;
+      }
+    ]]]
+
+  name: >
+    [[[
+      const sid = variables?.session_entity;
+      const a = (sid && hass.states[sid]?.attributes) || {};
+      const plexUser = a.user || 'Unknown';
+      const full = a.full_title || a.title || '';
+
+      const esc = (s) => String(s ?? '')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+
+      return `
+        <div class="badge-wrap">
+          <div class="badge-title">Plex · ${esc(plexUser)}</div>
+          <div class="badge-sub">${esc(full)}</div>
+        </div>
+      `;
+    ]]]
+
+  extra_styles: |
+    :host{
+      --hemma-badge-title: var(--badge-font-size-current, var(--badge-font-size, 15px));
+      --hemma-badge-sub: calc(var(--hemma-badge-title) - 2px);
+    }
+
+    ha-card {
+      opacity: calc((1 - var(--hemma-badge-enter-p)) * var(--hemma-row-fade, 1));
+      pointer-events: var(--hemma-badge-ptr, none);
+    }
+
+    /* Mobile Portrait */
+    @media (max-width: 767px) and (orientation: portrait) {
+      :host {
+        --hemma-badge-title: 13px;
+        --hemma-badge-sub: 12px;
+        --badge-media-max-width-current: calc(100vw - 2 * var(--hero-gutter, 16px));
+      }
+      ha-card {
+        min-height: 43px !important;
+        padding: 2px 18px 2px 6px !important;
+      }
+    }
+
+    /* Mobile Landscape */
+    @media (max-height: 600px) and (orientation: landscape) {
+      :host {
+        --hemma-badge-title: 12px;
+        --hemma-badge-sub: 11px;
+        --badge-media-max-width-current: calc(100vw - 2 * var(--hero-gutter, 16px));
+      }
+      ha-card {
+        min-height: 36px !important;
+        padding: 1px 16px 1px 6px !important;
+      }
+    }

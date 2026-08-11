@@ -1,12 +1,25 @@
+# Plant Card
+# Shows plant health from either the entity's own state/moisture attribute,
+# or (when `sensors` is provided) a scored breakdown across multiple sensor
+# thresholds (moisture, illuminance, temperature, conductivity, humidity).
+#
+# Variables:
+#   icon           - icon name (default: 'plant')
+#   low_threshold  - moisture % at/below which the card goes active (default: 30)
+#   sensors        - array of plant sensor entity_ids used for the scored
+#                    breakdown and the popup detail view
+#   use_flower_card - render the popup with flower-card instead of the
+#                     default tile layout
 hemma_plant:
   template:
     - hemma_entity
     - hemma_popup_plant
 
   variables:
+    mobile_filter_category: unfiltered
     icon: plant
     low_threshold: 30
-    sensors: []   # list of extra sensor entity IDs to show in popup
+    sensors: []
     use_flower_card: false
 
   hold_action:
@@ -16,9 +29,11 @@ hemma_plant:
     [[[
       if (!entity?.state || entity.state === 'unavailable') return '— %';
 
+      if (entity.state === 'ok') return 'Healthy';
+
       const sensors = Array.isArray(variables.sensors) ? variables.sensors.filter(Boolean) : [];
 
-      if (sensors.length > 0) {
+      if (sensors.length > 0 && entity.state === 'problem') {
         const safeNum = (id) => {
           const s = states[id]?.state;
           if (!s || s === 'unavailable' || s === 'unknown') return null;
@@ -51,7 +66,6 @@ hemma_plant:
         }
       }
 
-      if (entity.state === 'ok') return 'Healthy';
       if (entity.state === 'problem') return 'Needs Attention';
 
       const val = parseFloat(entity.state);
@@ -67,6 +81,7 @@ hemma_plant:
       value: |
         [[[
           if (entity?.state === 'problem') return true;
+          if (entity?.state === 'ok') return false;
 
           const sensors = Array.isArray(variables.sensors) ? variables.sensors.filter(Boolean) : [];
           if (sensors.length > 0) {
@@ -105,14 +120,16 @@ hemma_plant:
       styles:
         card:
           - "--hemma-active-overlay-opacity": "1"
+          - --hemma-entity-overlay-tint: var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))
           - "--hemma-active-overlay-dur": "0s"
           - --hemma-entity-top-gradient: none
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
-          - --hemma-icon-color-current: '#34C759'
-          - --hemma-icon-svg-url: "url('/local/hemma/icons/plant.svg')"
+          # Active = unhealthy here, so it uses warning yellow like an "on"
+          # light — green is reserved for the healthy/inactive tint.
+          - --hemma-icon-color-current: "var(--hemma-color-yellow, #ffd600)"
+          - --hemma-icon-svg-url: "[[[ return `url('${window.hemmaIconUrl('plant')}')`; ]]]"
           - --hemma-icon-use-mask: "1"
-          - --hemma-entity-icon-animation: none
-          - --hemma-icon-circle-bg: '#34C759'
+          - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
         name:
           - color: var(--hemma-entity-name-active, var(--primary-text-color))
         state:
@@ -120,46 +137,7 @@ hemma_plant:
         img_cell:
           - opacity: "1 !important"
           - filter: none !important
-          - background: "#34C759 !important"
+          - background: "var(--hemma-color-yellow, #ffd600) !important"
         entity_picture:
           - opacity: "1 !important"
           - filter: none !important
-
-  extra_styles: |
-    #img-cell {
-      position: relative;
-      border-radius: 50% !important;
-      background: var(--hemma-icon-circle-bg, rgba(255,255,255,0.10)) !important;
-      width: 44px !important;
-      height: 44px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      overflow: hidden !important;
-    }
-    #img-cell::before { opacity: 0 !important; }
-    #img-cell img {
-      width: 64% !important;
-      height: 64% !important;
-      max-width: 64% !important;
-      max-height: 64% !important;
-      object-fit: contain !important;
-      flex: none !important;
-    }
-    #img-cell ha-icon {
-      --mdc-icon-size: 26px !important;
-      flex: none !important;
-      color: rgba(255,255,255,1.0) !important;
-    }
-    #icon { color: rgba(255,255,255,1.0) !important; }
-    @media (max-width: 767px) and (orientation: portrait) {
-      #img-cell { width: 38px !important; height: 38px !important; }
-      #img-cell ha-icon { --mdc-icon-size: 23px !important; }
-      #toggle { filter: invert(var(--hemma-toggle-invert, 0)); }
-    }
-    @media (hover: hover) {
-      #img-cell:hover { filter: brightness(1.15); transform: scale(1.03); transition: filter 0.15s ease, transform 0.15s ease; }
-    }
-    @media (hover: none) {
-      #img-cell:active { filter: brightness(1.15); transform: scale(1.03); }
-    }

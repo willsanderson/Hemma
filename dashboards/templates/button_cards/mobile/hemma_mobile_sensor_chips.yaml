@@ -1,0 +1,286 @@
+# Mobile Badge Rows (climate + per-room sensor chips)
+hemma_mobile_sensor_chips:
+  show_icon: false
+  show_name: false
+  show_state: false
+  show_label: false
+  show_entity_picture: false
+  entity: input_select.hemma_mobile_filter
+
+  tap_action: {action: none}
+  hold_action: {action: none}
+  double_tap_action: {action: none}
+
+  variables:
+    temp_entity: null
+    temp_unit: F
+    humidity_entity: null
+    aqi_room_name: null
+    entity_quality: null
+    entity_temp: null
+    entity_humidity: null
+    aqi_sensors: null
+    room_chips: null
+
+  # Static (no template) — avoids per-render JS eval and first-paint flash.
+  extra_styles: |
+    :host(.hemma-navbar-card.hemma-navbar-card):active{filter:none!important;-webkit-filter:none!important}
+    :host{position:sticky!important;top:-9999px!important;filter:none!important;-webkit-filter:none!important}
+    #aspect-ratio{display:block!important;min-width:0!important;min-height:0!important}
+    ha-card.button-card-main{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important;border:none!important;overflow:visible!important;padding:0!important;contain:none!important;isolation:auto!important;will-change:auto!important;transition:none!important}
+    .button-card-main,.button-card-content,#customfields{overflow:visible!important;contain:none!important;isolation:auto!important}
+    #climate_row > *,#rooms_row > *{width:max-content!important;min-width:100%!important;display:block!important}
+    #climate_row::-webkit-scrollbar,#rooms_row::-webkit-scrollbar{display:none!important}
+
+  styles:
+    card:
+      - background: transparent !important
+      - backdrop-filter: none !important
+      - -webkit-backdrop-filter: none !important
+      - box-shadow: none !important
+      - border: none
+      - border-radius: 0
+      - padding: 0
+      - margin: 0
+      - height: auto
+      - min-height: 0
+      - overflow: visible
+    grid:
+      - display: block
+    custom_fields:
+      climate_row:
+        - display: >
+            [[[
+              // hemma_expanded_row is desktop/tablet-only; ignoring it here stops
+              // desktop badge taps from toggling rows on mobile.
+              const filter = states['input_select.hemma_mobile_filter']?.state ?? 'all';
+              return filter === 'climate' ? 'block' : 'none';
+            ]]]
+        - --hemma-badge-icon-scale: 54%
+        - --hemma-badge-icon-override: var(--hemma-gauge-size, 34px)
+        - --hemma-badge-icon-fg: "#ffffff"
+        - --hemma-badge-title-color: "#ffffff"
+        - --hemma-badge-sub-color: "#ffffff"
+        - --hemma-badge-sub-opacity: 0.9
+        - overflow-x: auto
+        - overflow-y: hidden
+        - overscroll-behavior-x: contain
+        - scrollbar-width: none
+        - "-ms-overflow-style": none
+        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) !important"
+        - padding-right: "var(--hemma-rail-left, 11px) !important"
+        - margin: "0 !important"
+        - width: "100%"
+        - box-sizing: border-box
+        - height: auto
+      rooms_row:
+        - display: >
+            [[[
+              const f = states['input_select.hemma_mobile_filter']?.state ?? 'all';
+              return (variables.room_chips && variables.room_chips[f]) ? 'block' : 'none';
+            ]]]
+        - --hemma-badge-icon-scale: 54%
+        - --hemma-badge-icon-override: var(--hemma-gauge-size, 34px)
+        - --hemma-badge-icon-fg: "#ffffff"
+        - --hemma-badge-title-color: "#ffffff"
+        - --hemma-badge-sub-color: "#ffffff"
+        - --hemma-badge-sub-opacity: 0.9
+        - overflow-x: auto
+        - overflow-y: hidden
+        - overscroll-behavior-x: contain
+        - scrollbar-width: none
+        - "-ms-overflow-style": none
+        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) !important"
+        - padding-right: "var(--hemma-rail-left, 11px) !important"
+        - margin: "0 0 24px 0 !important"
+        - width: "100%"
+        - box-sizing: border-box
+        - height: auto
+
+  custom_fields:
+
+    climate_row:
+      card:
+        type: custom:layout-card
+        layout_type: custom:grid-layout
+        layout:
+          grid-auto-flow: column
+          grid-auto-columns: max-content
+          grid-template-columns: none
+          justify-content: start
+          align-items: center
+          grid-column-gap: 16px
+          margin: 0
+          padding: 0
+        card_mod:
+          style: |
+            ha-card { background: transparent !important; box-shadow: none !important; overflow: visible !important; padding: 0 !important; contain: none !important; isolation: auto !important; will-change: auto !important; width: max-content !important; min-width: 100% !important; }
+        cards:
+          - type: custom:button-card
+            template: hemma_badge_temp
+            entity: '[[[ return variables.temp_entity ]]]'
+            variables:
+              enabled: '[[[ return !!variables.temp_entity ]]]'
+              gauge: true
+              temp_unit: '[[[ return variables.temp_unit || "F" ]]]'
+              room_name: '[[[ return variables.aqi_room_name ]]]'
+              entity_quality: '[[[ return variables.entity_quality ]]]'
+              entity_temp: '[[[ return variables.entity_temp || variables.temp_entity ]]]'
+              entity_humidity: '[[[ return variables.entity_humidity || variables.humidity_entity ]]]'
+              sensors: '[[[ return variables.aqi_sensors ]]]'
+          - type: custom:button-card
+            template: hemma_badge_humidity
+            entity: '[[[ return variables.humidity_entity ]]]'
+            variables:
+              enabled: '[[[ return !!variables.humidity_entity ]]]'
+              gauge: true
+              room_name: '[[[ return variables.aqi_room_name ]]]'
+              entity_quality: '[[[ return variables.entity_quality ]]]'
+              entity_temp: '[[[ return variables.entity_temp || variables.temp_entity ]]]'
+              entity_humidity: '[[[ return variables.entity_humidity || variables.humidity_entity ]]]'
+              sensors: '[[[ return variables.aqi_sensors ]]]'
+          - type: custom:button-card
+            template: hemma_badge_air_quality
+            entity: '[[[ return variables.entity_quality ]]]'
+            variables:
+              enabled: '[[[ return !!variables.entity_quality ]]]'
+              gauge: true
+              room_name: '[[[ return variables.aqi_room_name ]]]'
+              entity_quality: '[[[ return variables.entity_quality ]]]'
+              entity_temp: '[[[ return variables.entity_temp || variables.temp_entity ]]]'
+              entity_humidity: '[[[ return variables.entity_humidity || variables.humidity_entity ]]]'
+              sensors: '[[[ return variables.aqi_sensors ]]]'
+
+    # Rooms row
+    rooms_row:
+      card:
+        type: custom:layout-card
+        layout_type: custom:grid-layout
+        layout:
+          grid-auto-flow: column
+          grid-auto-columns: max-content
+          grid-template-columns: none
+          justify-content: start
+          align-items: center
+          grid-column-gap: 16px
+          margin: 0
+          padding: 0
+        card_mod:
+          style: |
+            ha-card { background: transparent !important; box-shadow: none !important; overflow: visible !important; padding: 0 !important; contain: none !important; isolation: auto !important; will-change: auto !important; width: max-content !important; min-width: 100% !important; }
+        cards:
+          - type: custom:button-card
+            template: hemma_badge_temp
+            entity: >
+              [[[
+                const f = states['input_select.hemma_mobile_filter']?.state;
+                return variables.room_chips?.[f]?.temp_entity || null;
+              ]]]
+            variables:
+              enabled: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return !!variables.room_chips?.[f]?.temp_entity ]]]'
+              gauge: true
+              temp_unit: '[[[ return variables.temp_unit || "F" ]]]'
+              room_name: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.aqi_room_name ]]]'
+              entity_quality: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.entity_quality ]]]'
+              entity_temp: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.temp_entity ]]]'
+              entity_humidity: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.humidity_entity ]]]'
+              sensors: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.aqi_sensors ]]]'
+          - type: custom:button-card
+            template: hemma_badge_humidity
+            entity: >
+              [[[
+                const f = states['input_select.hemma_mobile_filter']?.state;
+                return variables.room_chips?.[f]?.humidity_entity || null;
+              ]]]
+            variables:
+              enabled: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return !!variables.room_chips?.[f]?.humidity_entity ]]]'
+              gauge: true
+              room_name: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.aqi_room_name ]]]'
+              entity_quality: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.entity_quality ]]]'
+              entity_temp: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.temp_entity ]]]'
+              entity_humidity: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.humidity_entity ]]]'
+              sensors: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.aqi_sensors ]]]'
+          - type: custom:button-card
+            template: hemma_badge_air_quality
+            entity: >
+              [[[
+                const f = states['input_select.hemma_mobile_filter']?.state;
+                return variables.room_chips?.[f]?.entity_quality || null;
+              ]]]
+            variables:
+              enabled: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return !!variables.room_chips?.[f]?.entity_quality ]]]'
+              gauge: true
+              room_name: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.aqi_room_name ]]]'
+              entity_quality: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.entity_quality ]]]'
+              entity_temp: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.temp_entity ]]]'
+              entity_humidity: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.humidity_entity ]]]'
+              sensors: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.aqi_sensors ]]]'
+          - type: custom:button-card
+            template: hemma_badge_light
+            entity: >
+              [[[
+                const f = states['input_select.hemma_mobile_filter']?.state;
+                return variables.room_chips?.[f]?.lights_entity || null;
+              ]]]
+            styles:
+              card:
+                - display: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.lights_entity ? "flex" : "none" ]]]'
+            name: >
+              [[[
+                const f = states['input_select.hemma_mobile_filter']?.state;
+                const eid  = variables.room_chips?.[f]?.lights_entity;
+                const mems = eid ? states[eid]?.attributes?.entity_id : null;
+                const eids = (Array.isArray(mems) && mems.length) ? mems : (eid ? [eid] : []);
+                const onCount = eids.filter(e => states[e]?.state === 'on').length;
+                const sub = eids.length === 0 ? 'Off'
+                          : onCount === 0 ? 'All Off'
+                          : onCount === eids.length ? 'All On'
+                          : `${onCount} On`;
+                return `<div class="badge-wrap"><div class="badge-title">Lights</div><div class="badge-sub">${sub}</div></div>`;
+              ]]]
+          - type: custom:button-card
+            template: hemma_badge_base
+            entity: >
+              [[[
+                const f = states['input_select.hemma_mobile_filter']?.state;
+                return variables.room_chips?.[f]?.motion_entity || null;
+              ]]]
+            show_icon: true
+            show_name: true
+            icon: mdi:motion-sensor
+            extra_styles: |
+              #img-cell, .img-cell{ position: relative; }
+
+              #img-cell #icon, .img-cell #icon{
+                color: transparent !important;
+                opacity: 0 !important;
+              }
+
+              #img-cell::before,
+              .img-cell::before{
+                content: '';
+                position: absolute;
+                inset: 0;
+                background-color: var(--hemma-badge-icon-fg, var(--primary-text-color)) !important;
+
+                -webkit-mask: url('data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%20%20%20%20%20%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20viewBox%3D%220%200%2028.9805%2027.2461%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2227.2461%22%20opacity%3D%220%22%20width%3D%2228.9805%22%20x%3D%220%22%20y%3D%220%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M4.92188%204.76953L11.6836%204.76953C12.0938%204.76953%2012.4219%204.42969%2012.4219%204.00781C12.4219%203.58594%2012.0938%203.23438%2011.6836%203.23438L4.92188%203.23438C4.5%203.23438%204.18359%203.58594%204.18359%204.00781C4.18359%204.42969%204.5%204.76953%204.92188%204.76953ZM0.726562%2010.6406L8.75391%2010.6406C9.17578%2010.6406%209.49219%2010.3008%209.49219%209.87891C9.49219%209.45703%209.17578%209.10547%208.75391%209.10547L0.726562%209.10547C0.316406%209.10547%200%209.46875%200%209.87891C0%2010.2891%200.316406%2010.6406%200.726562%2010.6406ZM4.23047%2016.5117L8.69531%2016.5117C9.10547%2016.5117%209.42188%2016.1719%209.42188%2015.75C9.42188%2015.3281%209.10547%2014.9766%208.69531%2014.9766L4.23047%2014.9766C3.80859%2014.9766%203.49219%2015.3281%203.49219%2015.75C3.49219%2016.1719%203.80859%2016.5117%204.23047%2016.5117ZM1.14844%2022.3125L7.26562%2022.3125C7.67578%2022.3125%207.99219%2021.9727%207.99219%2021.5508C7.99219%2021.1289%207.67578%2020.7773%207.26562%2020.7773L1.14844%2020.7773C0.738281%2020.7773%200.421875%2021.1289%200.421875%2021.5508C0.421875%2021.9727%200.738281%2022.3125%201.14844%2022.3125Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M14.1211%2026.332L17.8125%2021.9375C18.1758%2021.5156%2018.2227%2021.3984%2018.3633%2020.9531L18.668%2020.0508L16.6875%2017.5664L16.0664%2020.4141L12.4102%2024.7383C11.2383%2026.1211%2013.1484%2027.4805%2014.1211%2026.332ZM23.1211%2025.9688C23.8711%2027.5156%2026.1445%2026.5664%2025.3242%2024.9023L22.8164%2019.8164C22.6289%2019.4297%2022.3477%2019.0195%2022.125%2018.6914L20.5195%2016.418L20.6367%2016.0898C21.082%2014.8242%2021.2227%2014.0508%2021.3164%2012.7852L21.5625%209.23438C21.6797%207.54688%2020.6836%206.25781%2018.9609%206.25781C17.6602%206.25781%2016.7812%206.91406%2015.5859%208.08594L13.7109%209.9375C13.0898%2010.5469%2012.8906%2011.0391%2012.832%2011.8359L12.6094%2014.7422C12.5508%2015.4688%2012.9609%2015.9961%2013.6406%2016.0195C14.3203%2016.0664%2014.7305%2015.668%2014.8008%2014.8828L15.082%2011.6953L15.9844%2010.875C16.3125%2010.582%2016.7461%2010.7812%2016.7109%2011.1094L16.5117%2013.8164C16.4062%2015.1758%2016.7227%2015.8203%2017.6719%2016.9922L20.1562%2020.1211C20.4023%2020.4375%2020.4375%2020.5664%2020.543%2020.7539ZM27.3984%2011.0742L24.5508%2011.0742L22.6992%209.01172L22.5117%2012L23.2617%2012.75C23.6719%2013.1602%2024.0234%2013.2773%2024.75%2013.2773L27.3984%2013.2773C28.1367%2013.2773%2028.6289%2012.8555%2028.6289%2012.1641C28.6289%2011.5078%2028.125%2011.0742%2027.3984%2011.0742ZM20.332%205.15625C21.7617%205.15625%2022.9102%204.00781%2022.9102%202.57812C22.9102%201.14844%2021.7617%200%2020.332%200C18.9023%200%2017.7539%201.14844%2017.7539%202.57812C17.7539%204.00781%2018.9023%205.15625%2020.332%205.15625Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22%2F%3E%0A%20%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A') no-repeat center / auto 70%;
+                mask: url('data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%20%20%20%20%20%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20viewBox%3D%220%200%2028.9805%2027.2461%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2227.2461%22%20opacity%3D%220%22%20width%3D%2228.9805%22%20x%3D%220%22%20y%3D%220%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M4.92188%204.76953L11.6836%204.76953C12.0938%204.76953%2012.4219%204.42969%2012.4219%204.00781C12.4219%203.58594%2012.0938%203.23438%2011.6836%203.23438L4.92188%203.23438C4.5%203.23438%204.18359%203.58594%204.18359%204.00781C4.18359%204.42969%204.5%204.76953%204.92188%204.76953ZM0.726562%2010.6406L8.75391%2010.6406C9.17578%2010.6406%209.49219%2010.3008%209.49219%209.87891C9.49219%209.45703%209.17578%209.10547%208.75391%209.10547L0.726562%209.10547C0.316406%209.10547%200%209.46875%200%209.87891C0%2010.2891%200.316406%2010.6406%200.726562%2010.6406ZM4.23047%2016.5117L8.69531%2016.5117C9.10547%2016.5117%209.42188%2016.1719%209.42188%2015.75C9.42188%2015.3281%209.10547%2014.9766%208.69531%2014.9766L4.23047%2014.9766C3.80859%2014.9766%203.49219%2015.3281%203.49219%2015.75C3.49219%2016.1719%203.80859%2016.5117%204.23047%2016.5117ZM1.14844%2022.3125L7.26562%2022.3125C7.67578%2022.3125%207.99219%2021.9727%207.99219%2021.5508C7.99219%2021.1289%207.67578%2020.7773%207.26562%2020.7773L1.14844%2020.7773C0.738281%2020.7773%200.421875%2021.1289%200.421875%2021.5508C0.421875%2021.9727%200.738281%2022.3125%201.14844%2022.3125Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M14.1211%2026.332L17.8125%2021.9375C18.1758%2021.5156%2018.2227%2021.3984%2018.3633%2020.9531L18.668%2020.0508L16.6875%2017.5664L16.0664%2020.4141L12.4102%2024.7383C11.2383%2026.1211%2013.1484%2027.4805%2014.1211%2026.332ZM23.1211%2025.9688C23.8711%2027.5156%2026.1445%2026.5664%2025.3242%2024.9023L22.8164%2019.8164C22.6289%2019.4297%2022.3477%2019.0195%2022.125%2018.6914L20.5195%2016.418L20.6367%2016.0898C21.082%2014.8242%2021.2227%2014.0508%2021.3164%2012.7852L21.5625%209.23438C21.6797%207.54688%2020.6836%206.25781%2018.9609%206.25781C17.6602%206.25781%2016.7812%206.91406%2015.5859%208.08594L13.7109%209.9375C13.0898%2010.5469%2012.8906%2011.0391%2012.832%2011.8359L12.6094%2014.7422C12.5508%2015.4688%2012.9609%2015.9961%2013.6406%2016.0195C14.3203%2016.0664%2014.7305%2015.668%2014.8008%2014.8828L15.082%2011.6953L15.9844%2010.875C16.3125%2010.582%2016.7461%2010.7812%2016.7109%2011.1094L16.5117%2013.8164C16.4062%2015.1758%2016.7227%2015.8203%2017.6719%2016.9922L20.1562%2020.1211C20.4023%2020.4375%2020.4375%2020.5664%2020.543%2020.7539ZM27.3984%2011.0742L24.5508%2011.0742L22.6992%209.01172L22.5117%2012L23.2617%2012.75C23.6719%2013.1602%2024.0234%2013.2773%2024.75%2013.2773L27.3984%2013.2773C28.1367%2013.2773%2028.6289%2012.8555%2028.6289%2012.1641C28.6289%2011.5078%2028.125%2011.0742%2027.3984%2011.0742ZM20.332%205.15625C21.7617%205.15625%2022.9102%204.00781%2022.9102%202.57812C22.9102%201.14844%2021.7617%200%2020.332%200C18.9023%200%2017.7539%201.14844%2017.7539%202.57812C17.7539%204.00781%2018.9023%205.15625%2020.332%205.15625Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22%2F%3E%0A%20%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A') no-repeat center / auto 70%;
+
+                transform: translateZ(0);
+              }
+            tap_action:
+              haptic: light
+              action: more-info
+              entity: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.motion_entity ]]]'
+            styles:
+              card:
+                - display: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.motion_entity ? "flex" : "none" ]]]'
+            name: >
+              [[[
+                const f = states['input_select.hemma_mobile_filter']?.state;
+                const eid = variables.room_chips?.[f]?.motion_entity;
+                const st  = eid ? (states[eid]?.state || 'unavailable') : 'unavailable';
+                const sub = st === 'on' ? 'Detected' : st === 'off' ? 'Not Detected' : 'Unavailable';
+                return `<div class="badge-wrap"><div class="badge-title">Motion</div><div class="badge-sub">${sub}</div></div>`;
+              ]]]
+

@@ -1,17 +1,3 @@
-# hemma_battery
-# Displays an overall battery health status card and a tap-to-open popup
-# listing all battery sensors with individual charge bars.
-#
-# Required:
-#   entity — any battery sensor (e.g. sensor.my_device_battery).
-#             It is not displayed; button-card needs it as a reactivity
-#             anchor so the card re-renders when states change.
-#             Pick any battery sensor that updates regularly.
-#
-# Optional variables:
-#   entity_filter — list of entity_ids to restrict which batteries are shown.
-#                   Omit to show ALL battery-class sensors in your system.
-#   room_name     — label shown in the popup header (default: "Devices").
 hemma_battery:
   template:
     - hemma_entity
@@ -19,20 +5,21 @@ hemma_battery:
 
   variables:
     icon: battery
-    entity_filter: null
+    batteries: null
 
   hold_action:
     action: more-info
 
   state_display: |
     [[[
-      const filterList = variables.entity_filter;
-      const batteries = Object.values(states).filter(e => {
+      const list = variables.batteries || variables.entity_filter;
+      const batteries = (list
+        ? list.map(id => states[id]).filter(Boolean)
+        : Object.values(states)
+      ).filter(e => {
         if (e.state === 'unavailable' || e.state === 'unknown') return false;
-        const pct = parseFloat(e.state);
-        if (isNaN(pct)) return false;
-        const inFilter = !filterList || filterList.includes(e.entity_id);
-        return e.attributes.device_class === 'battery' && inFilter;
+        if (isNaN(parseFloat(e.state))) return false;
+        return e.attributes.device_class === 'battery';
       });
       if (batteries.length === 0) return 'No Sensors';
       const anyLow = batteries.some(e => parseFloat(e.state) <= 20);
@@ -43,21 +30,27 @@ hemma_battery:
     - operator: template
       value: |
         [[[
-          const filterList = variables.entity_filter;
-          return Object.values(states).some(e => {
+          const list = variables.batteries || variables.entity_filter;
+          return (list
+            ? list.map(id => states[id]).filter(Boolean)
+            : Object.values(states)
+          ).some(e => {
             if (e.state === 'unavailable' || e.state === 'unknown') return false;
             const pct = parseFloat(e.state);
             if (isNaN(pct)) return false;
-            const inFilter = !filterList || filterList.includes(e.entity_id);
-            return e.attributes.device_class === 'battery' && inFilter && pct <= 20;
+            return e.attributes.device_class === 'battery' && pct <= 20;
           });
         ]]]
       styles:
         card:
           - "--hemma-active-overlay-opacity": "1"
+          - --hemma-entity-overlay-tint: var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))
           - "--hemma-active-overlay-dur": "0s"
           - --hemma-entity-top-gradient: none
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
+          - --hemma-icon-color-current: "var(--hemma-battery-yellow, #FFD60A)"
+          - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
+          - --hemma-icon-mask-active: "0"
         name:
           - color: var(--hemma-entity-name-active, var(--primary-text-color))
         state:
@@ -65,46 +58,11 @@ hemma_battery:
         img_cell:
           - opacity: "1 !important"
           - filter: none !important
-          - background: "var(--hemma-popup-yellow-color, #ffd600) !important"
+          - background: "var(--hemma-icon-color-current) !important"
         entity_picture:
           - opacity: "1 !important"
           - filter: none !important
 
-  extra_styles: |
-    #img-cell {
-      position: relative;
-      border-radius: 50% !important;
-      background: var(--hemma-icon-circle-bg, rgba(255,255,255,0.10)) !important;
-      width: 44px !important;
-      height: 44px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      overflow: hidden !important;
-    }
-    #img-cell::before { opacity: 0 !important; }
-    #img-cell img {
-      width: 68% !important;
-      height: 68% !important;
-      max-width: 68% !important;
-      max-height: 68% !important;
-      object-fit: contain !important;
-      flex: none !important;
-    }
-    #img-cell ha-icon {
-      --mdc-icon-size: 26px !important;
-      flex: none !important;
-      color: rgba(255,255,255,1.0) !important;
-    }
-    #icon { color: rgba(255,255,255,1.0) !important; }
-    @media (max-width: 767px) and (orientation: portrait) {
-      #img-cell { width: 38px !important; height: 38px !important; }
-      #img-cell ha-icon { --mdc-icon-size: 23px !important; }
-      #toggle { filter: invert(var(--hemma-toggle-invert, 0)); }
-    }
-    @media (hover: hover) {
-      #img-cell:hover { filter: brightness(1.15); transform: scale(1.03); transition: filter 0.15s ease, transform 0.15s ease; }
-    }
-    @media (hover: none) {
-      #img-cell:active { filter: brightness(1.15); transform: scale(1.03); }
-    }
+  styles:
+    card:
+      - --hemma-icon-inactive-color: "var(--hemma-color-green-soft, #67f5a0)"

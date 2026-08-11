@@ -1,4 +1,17 @@
 hemma_default:
+  variables:
+    hemma_icon_url_guard:
+      force_eval: true
+      value: |
+        [[[
+          if (typeof window.hemmaIconUrl !== 'function') {
+            window.hemmaIconUrl = (name) =>
+              (window.HEMMA_ICONS && window.HEMMA_ICONS[name]) ||
+              `/local/hemma/icons/${name}.svg`;
+          }
+          return true;
+        ]]]
+
   styles:
     card:
       - "--button-card-ripple-color": transparent

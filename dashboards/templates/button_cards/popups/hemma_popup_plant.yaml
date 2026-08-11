@@ -9,6 +9,7 @@ hemma_popup_plant:
         content: |
           [[[
             const plant      = entity?.entity_id;
+            const _plantName = plant ? plant.replace(/^[^.]+\./, '') : '';
             const plantAttrs = states[plant]?.attributes || {};
             const sensors    = Array.isArray(variables.sensors) ? variables.sensors.filter(Boolean) : [];
 
@@ -36,64 +37,66 @@ hemma_popup_plant:
               return null;
             };
 
-            const scoredSensors = sensors.filter(s => {
+            const getThreshold = (type, dir) => {
+              if (!type || type === 'battery' || !_plantName) return null;
+              // Plant Monitor entities use "soil_moisture"/"air_humidity" on newer
+              // installs, bare type name on older ones - try both.
+              const slug = type === 'moisture' ? 'soil_moisture'
+                : type === 'humidity' ? 'air_humidity'
+                : type;
+              const v = safeNum(`number.${_plantName}_${dir}_${slug}`);
+              return v !== null ? v : safeNum(`number.${_plantName}_${dir}_${type}`);
+            };
+
+            const plantState = states[plant]?.state;
+            const plantIsOk  = plantState === 'ok';
+            const plantIsBad = plantState === 'problem';
+
+            const gradable = sensors.filter(s => {
               const t = getSensorType(s);
-              return t && t !== 'battery'
-                && Object.prototype.hasOwnProperty.call(plantAttrs, t + '_status')
-                && safeNum(s) != null;
+              return t && t !== 'battery';
             });
-            const totalScorable = sensors.filter(s => {
-              const t = getSensorType(s);
-              return t && t !== 'battery' && Object.prototype.hasOwnProperty.call(plantAttrs, t + '_status');
-            }).length;
-            const allUnknown = scoredSensors.length === 0;
-            const maxScore = scoredSensors.length || totalScorable || 1;
-            const badCount = scoredSensors.filter(s => {
-              const v = plantAttrs[getSensorType(s) + '_status'];
-              return v && v !== 'ok' && v !== 'null';
-            }).length;
-            const score = allUnknown ? 0 : maxScore - badCount;
+            const readable = gradable.filter(s => safeNum(s) != null);
 
-            const C_HEALTHY    = 'var(--hemma-badge-plant-healthy-color, #44e371)';
-            const C_CARE       = 'var(--hemma-badge-plant-care-color, #ffd600)';
-            const C_STRUGGLING = 'var(--hemma-badge-plant-struggling-color, #ff9230)';
-            const C_CRITICAL   = 'var(--hemma-badge-plant-critical-color, #ff4245)';
-
-            let scoreLabel, scoreColor, advice;
-            if (allUnknown) {
-              scoreLabel = 'Unknown';
-              scoreColor = 'rgba(255,255,255,0.3)';
-              advice = 'Sensor data unavailable';
-            } else {
-              const ratio = score / maxScore;
-              if (ratio >= 1)        { scoreLabel = 'Healthy';    scoreColor = C_HEALTHY;    advice = 'Plant is healthy'; }
-              else if (ratio >= 0.8) { scoreLabel = 'Needs care'; scoreColor = C_CARE;       advice = 'Needs some attention'; }
-              else if (ratio >= 0.6) { scoreLabel = 'Struggling'; scoreColor = C_STRUGGLING; advice = 'Plant is struggling'; }
-              else if (ratio >= 0.4) { scoreLabel = 'Poor';       scoreColor = C_STRUGGLING; advice = 'Needs immediate care'; }
-              else                   { scoreLabel = 'Critical';   scoreColor = C_CRITICAL;   advice = 'Needs urgent attention'; }
-
-              if (plantAttrs.temperature_status  && plantAttrs.temperature_status  !== 'ok') advice = 'Temperature out of range';
-              if (plantAttrs.conductivity_status && plantAttrs.conductivity_status !== 'ok') advice = 'Needs fertilizing';
-              if (plantAttrs.illuminance_status  && plantAttrs.illuminance_status  !== 'ok') advice = 'Needs more light';
-              if (plantAttrs.moisture_status     && plantAttrs.moisture_status     !== 'ok') {
-                const me  = sensors.find(s => s.toLowerCase().includes('moisture'));
-                const mv  = safeNum(me);
-                const minM = plantAttrs.min_moisture;
-                advice = (mv != null && minM != null && mv < minM) ? 'Needs watering' : 'Check soil moisture';
-              }
+            /* `problems` and *_status are both absent until the integration is
+             * fully set up, so the plant's own state is the authoritative gate. */
+            const badTypes = {};
+            if (plantIsBad) {
+              (Array.isArray(plantAttrs.problems) ? plantAttrs.problems : []).forEach(p => {
+                if (p && p.sensor_type) badTypes[p.sensor_type] = String(p.status || '').toLowerCase();
+              });
+              gradable.forEach(s => {
+                const t = getSensorType(s);
+                const v = plantAttrs[t + '_status'];
+                if (!badTypes[t] && v && v !== 'ok' && v !== 'null') badTypes[t] = String(v).toLowerCase();
+              });
             }
 
-            const radius     = 42;
-            const circ       = 2 * Math.PI * radius;
-            const dashOffset = allUnknown ? circ : circ - (score / maxScore) * circ;
+            const C_HEALTHY    = 'var(--hemma-badge-plant-healthy-color, #44e371)';
+            const C_STRUGGLING = 'var(--hemma-badge-plant-struggling-color, #ff9230)';
 
-            // Health ring gradient stops
-            let gaugeGrad1, gaugeGrad2;
-            if (allUnknown)                                        { gaugeGrad1 = gaugeGrad2 = 'rgba(255,255,255,0.3)'; }
-            else if (scoreLabel === 'Healthy')                     { gaugeGrad1 = '#B8FF47'; gaugeGrad2 = '#44E371'; }
-            else if (scoreLabel === 'Needs care')                  { gaugeGrad1 = '#FFE066'; gaugeGrad2 = '#FFB347'; }
-            else if (scoreLabel === 'Struggling' || scoreLabel === 'Poor') { gaugeGrad1 = '#FFD166'; gaugeGrad2 = '#FF9230'; }
-            else                                                   { gaugeGrad1 = '#FF9230'; gaugeGrad2 = '#FF453A'; }
+            let advice;
+            if (plantIsOk) {
+              advice = 'Plant is healthy';
+            } else if (plantIsBad) {
+              const maxScore = readable.length || gradable.length || 1;
+              const badCount = Math.min(Object.keys(badTypes).length || 1, maxScore);
+              const ratio    = (maxScore - badCount) / maxScore;
+
+              if (ratio >= 0.8)      advice = 'Needs some attention';
+              else if (ratio >= 0.6) advice = 'Plant is struggling';
+              else if (ratio >= 0.4) advice = 'Needs immediate care';
+              else                   advice = 'Needs urgent attention';
+
+              const dir = (t) => badTypes[t];
+              if (dir('temperature'))  advice = dir('temperature')  === 'low' ? 'Too cold' : 'Too warm';
+              if (dir('humidity'))     advice = dir('humidity')     === 'low' ? 'Air is too dry' : 'Air is too humid';
+              if (dir('conductivity')) advice = dir('conductivity') === 'low' ? 'Needs fertilizing' : 'Too much fertilizer';
+              if (dir('illuminance'))  advice = dir('illuminance')  === 'low' ? 'Needs more light' : 'Getting too much light';
+              if (dir('moisture'))     advice = dir('moisture')     === 'low' ? 'Needs watering' : 'Soil is too wet';
+            } else {
+              advice = readable.length ? 'Waiting for plant data' : 'Sensor data unavailable';
+            }
 
             const cleanName = (eid) => {
               const fallback = states[eid]?.attributes?.friendly_name || eid.split('.').pop() || '';
@@ -106,15 +109,7 @@ hemma_popup_plant:
               return name.replace(/_/g, ' ').trim().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
             };
 
-            /* -------------------------------------------------------
-             * Sensor ID Declarations
-             * ------------------------------------------------------- */
-            const moistureId    = sensors.find(s => s.toLowerCase().includes('moisture')) || null;
-            const illuminanceId = sensors.find(s => s.toLowerCase().includes('illumin') || s.toLowerCase().includes('lux')) || null;
-
-            /* -------------------------------------------------------
-             * Styles
-             * ------------------------------------------------------- */
+            /* Styles */
             const wrapperStyle = `
               :host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }
               ha-card { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: default !important; }
@@ -133,265 +128,30 @@ hemma_popup_plant:
             `;
 
             const tileTapStyle = `
-              :host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }
-              ha-card { background: var(--hemma-popup-tile-background, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease !important; }
+              :host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: inset 0 1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-tight,0.20) * 1.5)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-tight,0.15) * 1.5)), inset 0 3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-soft,0.08) * 1.5)), inset 0 -3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-soft,0.05) * 1.5)) !important; }
+              ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }
               ha-card:hover { background: var(--hemma-popup-tile-hover, rgba(255,255,255,0.09)) !important; transform: scale(var(--hemma-popup-tile-hover-scale, 1.01)) !important; }
               ha-ripple { display: none !important; }
             `;
 
-            const plantGraphStyle = `
-              :host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }
-              ha-card {
-                background: transparent !important;
-                border: none !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-                backdrop-filter: none !important;
-                -webkit-backdrop-filter: none !important;
-                padding: 0px 0px 10px 0px !important;
-                margin-top: -25px !important;
-                --primary-color: transparent !important;
-              }
-              ha-card:hover { box-shadow: none !important; border-color: transparent !important; }
-              .graph { position: relative !important; overflow: visible !important; }
-              .graph__container { overflow: visible !important; }
-              .graph__container svg {
-                width: calc(100% + 60px) !important;
-                margin-left: -30px !important;
-                display: block !important;
-                overflow: visible !important;
-                -webkit-mask-image:
-                  linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 7%, rgba(0,0,0,0.1) 13%, rgba(0,0,0,0.5) 23%, black 35%, black 65%, rgba(0,0,0,0.5) 77%, rgba(0,0,0,0.1) 87%, rgba(0,0,0,0) 93%, rgba(0,0,0,0) 100%),
-                  linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%);
-                mask-image:
-                  linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 7%, rgba(0,0,0,0.1) 13%, rgba(0,0,0,0.5) 23%, black 35%, black 65%, rgba(0,0,0,0.5) 77%, rgba(0,0,0,0.1) 87%, rgba(0,0,0,0) 93%, rgba(0,0,0,0) 100%),
-                  linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%);
-                -webkit-mask-composite: destination-in;
-                mask-composite: intersect;
-                -webkit-mask-repeat: no-repeat;
-                mask-repeat: no-repeat;
-                -webkit-mask-size: 100% 100%;
-                mask-size: 100% 100%;
-              }
-              .graph__line { opacity: 0.95; filter: drop-shadow(0 0 3px rgba(255,255,255,0.06)); }
-              .graph__fill { opacity: 0.36; }
-              .graph.flex { margin-left: 0px !important; margin-right: 0px !important; padding-bottom: 0px !important; }
-              .graph__hover { overflow: visible !important; }
-              .graph__labels,
-              .graph__labels--secondary { overflow: visible !important; opacity: 0 !important; transition: opacity 0.15s ease !important; }
-              ha-card:hover .graph__labels,
-              ha-card:hover .graph__labels--secondary { opacity: 1 !important; }
-              .graph__label { font-size: 11px !important; font-weight: 500 !important; }
-              .graph__labels--secondary .graph__label { left: auto !important; right: 0 !important; }
-            `;
-
-            /* -------------------------------------------------------
-             * Stat Dot Color
-             * ------------------------------------------------------- */
-            const statDotColor = (eid) => {
-              if (!eid || safeNum(eid) == null) return 'rgba(255,255,255,0.3)';
-              const type = getSensorType(eid);
-              if (type === 'moisture')    return '#4FC3F7';
-              if (type === 'illuminance') return 'var(--hemma-badge-plant-care-color, #ffd600)';
-              const skKey = type && type !== 'battery' ? type + '_status' : null;
-              const skVal = skKey ? plantAttrs[skKey] : null;
-              return (!skVal || skVal === 'ok' || skVal === 'null') ? C_HEALTHY : C_STRUGGLING;
-            };
-
-            /* -------------------------------------------------------
-             * Stat Cards
-             * ------------------------------------------------------- */
-            const makeStatCard = (eid, label) => {
-              if (!eid) return null;
-              const val    = safeNum(eid);
-              const unit   = val != null ? (states[eid]?.attributes?.unit_of_measurement || '') : '';
-              const valStr = val == null ? '—' : (val % 1 === 0 ? val.toFixed(0) : val.toFixed(1));
-              const dot    = statDotColor(eid);
-              return {
-                type: 'custom:button-card',
-                entity: eid,
-                tap_action: { action: 'more-info' },
-                show_icon: false, show_name: false, show_label: false, show_state: false,
-                card_mod: { style: tapStyle },
-                styles: {
-                  card: [{ background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' }, { padding: '0' }],
-                  grid: [{ 'grid-template-areas': '"c"' }, { 'grid-template-columns': '1fr' }],
-                  custom_fields: { c: [{ 'justify-self': 'start' }] },
-                },
-                custom_fields: {
-                  c: '<div>'
-                    + '<div style="display:flex;align-items:baseline;gap:3px;padding-right:6px;">'
-                      + '<span style="font-size:26px;font-weight:400;color:var(--hemma-popup-tile-text-primary);line-height:1;">' + valStr + '</span>'
-                      + '<span style="font-size:13px;color:var(--hemma-popup-tile-text-secondary);line-height:1;">' + unit + '</span>'
-                    + '</div>'
-                    + '<div style="display:flex;align-items:center;gap:6px;margin-top:7px;">'
-                      + '<span style="width:8px;height:8px;background:' + dot + ';border-radius:50%;display:inline-block;flex-shrink:0;"></span>'
-                      + '<span style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);">' + label + '</span>'
-                    + '</div>'
-                  + '</div>',
-                },
-              };
-            };
-
-            /* -------------------------------------------------------
-             * Stats Row
-             * ------------------------------------------------------- */
-            const moistStatCard = makeStatCard(moistureId, 'Moisture');
-            const illumStatCard = makeStatCard(illuminanceId, 'Light');
-
-            const statsFields = {};
-            const statsStyles = {};
-            if (moistStatCard) {
-              statsFields.moist = { card: moistStatCard };
-              statsStyles.moist = [{ flex: '0 0 auto' }, { order: '1' }];
-            }
-            if (moistStatCard && illumStatCard) {
-              statsFields.div = '<div style="width:2px;height:100%;background:rgba(255,255,255,0.09);margin:0 12px;"></div>';
-              statsStyles.div = [{ flex: '0 0 auto' }, { 'align-self': 'stretch' }, { order: '2' }];
-            }
-            if (illumStatCard) {
-              statsFields.illum = { card: illumStatCard };
-              statsStyles.illum = [{ flex: '0 0 auto' }, { order: moistStatCard ? '3' : '1' }];
-            }
-
-            const statsRowCard = (moistStatCard || illumStatCard) ? {
-              type: 'custom:button-card',
-              entity: plant,
-              tap_action: { action: 'none' },
-              show_icon: false, show_name: false, show_label: false, show_state: false,
-              card_mod: { style: wrapperStyle },
-              styles: {
-                card: [{ background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' }, { padding: '0' }],
-                grid: [
-                  { display: 'flex' }, { 'flex-direction': 'row' },
-                  { 'align-items': 'flex-start' }, { 'justify-content': 'flex-start' }, { gap: '0' },
-                ],
-                custom_fields: statsStyles,
-              },
-              custom_fields: statsFields,
-            } : null;
-
-            /* -------------------------------------------------------
-             * Badge Pill
-             * ------------------------------------------------------- */
-            const badgePillCard = {
-              type: 'custom:button-card',
-              entity: plant,
-              tap_action: { action: 'none' },
-              show_icon: false, show_name: false, show_label: false, show_state: false,
-              card_mod: {
-                style: [
-                  ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
-                  'ha-card { background: color-mix(in srgb,' + scoreColor + ' 12%,transparent) !important; border: 1px solid color-mix(in srgb,' + scoreColor + ' 35%,transparent) !important; border-radius: 999px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; transition: background 0.2s ease, filter 0.2s ease !important; }',
-                  'ha-card:hover { box-shadow: none !important; background: color-mix(in srgb,' + scoreColor + ' 22%,transparent) !important; filter: brightness(1.2) saturate(1.1); }',
-                  'ha-ripple { display: none !important; }',
-                ].join('\n'),
-              },
-              styles: {
-                card: [
-                  { background: 'color-mix(in srgb,' + scoreColor + ' 12%,transparent)' },
-                  { border: '1px solid color-mix(in srgb,' + scoreColor + ' 35%,transparent)' },
-                  { 'border-radius': '999px' }, { 'box-shadow': 'none' }, { padding: '8px 15px' },
-                ],
-                grid: [{ 'grid-template-areas': '"c"' }, { 'grid-template-columns': '1fr' }],
-                custom_fields: { c: [{ 'justify-self': 'center' }] },
-              },
-              custom_fields: {
-                c: '<div style="display:flex;align-items:center;gap:5px;">'
-                  + '<span style="width:6px;height:6px;background:' + scoreColor + ';border-radius:50%;display:inline-block;flex-shrink:0;"></span>'
-                  + '<span style="font-size:15px;font-weight:500;color:' + scoreColor + ';font-family:var(--primary-font-family,system-ui);white-space:nowrap;">' + scoreLabel + '</span>'
-                + '</div>',
-              },
-            };
-
-            /* -------------------------------------------------------
-             * Health Ring
-             * ------------------------------------------------------- */
-            const gaugeCard = {
-              type: 'custom:button-card',
-              entity: plant,
-              tap_action: { action: 'none' },
-              show_icon: false, show_name: false, show_label: false, show_state: false,
-              card_mod: { style: wrapperStyle },
-              styles: {
-                card: [{ background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' }, { padding: '0' }],
-                grid: [{ 'grid-template-areas': '"c"' }, { 'grid-template-columns': '1fr' }],
-                custom_fields: { c: [{ 'justify-self': 'end' }] },
-              },
-              custom_fields: {
-                c: '<div style="position:relative;width:120px;height:120px;">'
-                  + '<svg viewBox="0 0 100 100" style="transform:rotate(-90deg);width:100%;height:100%;">'
-                    + '<defs>'
-                      + '<linearGradient id="plantGaugeGrad" x1="8" y1="50" x2="92" y2="50" gradientUnits="userSpaceOnUse">'
-                        + '<stop offset="0%" stop-color="' + gaugeGrad1 + '"/>'
-                        + '<stop offset="100%" stop-color="' + gaugeGrad2 + '"/>'
-                      + '</linearGradient>'
-                    + '</defs>'
-                    + '<circle cx="50" cy="50" r="' + radius + '" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/>'
-                    + '<circle cx="50" cy="50" r="' + radius + '" fill="none" stroke="' + (allUnknown ? 'rgba(255,255,255,0.3)' : 'url(#plantGaugeGrad)') + '" stroke-width="7" stroke-dasharray="' + circ.toFixed(2) + '" stroke-dashoffset="' + dashOffset.toFixed(2) + '" stroke-linecap="round"/>'
-                  + '</svg>'
-                  + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">'
-                    + '<div style="position:relative;display:flex;align-items:center;justify-content:center;margin-top:5px;">'
-                      + '<div style="position:absolute;bottom:100%;left:0;right:0;text-align:center;font-size:11px;color:var(--hemma-popup-tile-text-muted);letter-spacing:.06em;font-weight:500;padding-bottom:2px;">Health</div>'
-                      + '<div style="font-size:24px;color:' + gaugeGrad2 + ';font-weight:600;line-height:1;">' + (allUnknown ? '—' : score + '/' + maxScore) + '</div>'
-                    + '</div>'
-                  + '</div>'
-                + '</div>',
-              },
-            };
-
-            /* -------------------------------------------------------
-             * Right Column
-             * ------------------------------------------------------- */
-            const rightColCard = {
-              type: 'custom:button-card',
-              entity: plant,
-              tap_action: { action: 'none' },
-              show_icon: false, show_name: false, show_label: false, show_state: false,
-              card_mod: { style: wrapperStyle },
-              styles: {
-                card: [{ background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' }, { padding: '0' }],
-                grid: [
-                  { display: 'flex' }, { 'flex-direction': 'column' },
-                  { 'align-items': 'flex-end' }, { gap: '28px' },
-                ],
-                custom_fields: {
-                  pill: [{ flex: '0 0 auto' }],
-                  ring: [{ flex: '0 0 auto' }],
-                },
-              },
-              custom_fields: {
-                pill: { card: badgePillCard },
-                ring: { card: gaugeCard },
-              },
-            };
-
             const cards = [];
 
-            /* -------------------------------------------------------
-             * Header Card
-             * ------------------------------------------------------- */
-            const titleHtml = '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tile-text-primary);text-align:left;">'
+            /* Header Card */
+            const nameHtml = '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tiles-text-primary);text-align:left;">'
               + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;">' + (entity?.attributes?.friendly_name || 'Plant') + '</div>'
-              + '<div style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);margin-top:2px;">Plant · Health</div>'
-              + '<div style="font-size:22px;font-weight:400;letter-spacing:-.5px;margin-top:20px;">' + advice + '</div>'
+              + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary);margin-top:2px;">Plant · Health</div>'
             + '</div>';
 
+            const adviceHtml = '<div style="font-family:var(--primary-font-family,system-ui);font-size:22px;font-weight:400;letter-spacing:-.5px;color:var(--hemma-popup-tiles-text-primary);">' + advice + '</div>';
+
             const headerCustomFields = {
-              title: titleHtml,
-              right: { card: rightColCard },
+              name:   nameHtml,
+              advice: adviceHtml,
             };
             const headerFieldStyles = {
-              title: [{ 'justify-self': 'start' }, { 'text-align': 'left' }],
-              right: [{ 'justify-self': 'end' }, { 'align-self': 'flex-start' }],
+              name:   [{ 'justify-self': 'start' }, { 'align-self': 'center' }],
+              advice: [{ 'justify-self': 'start' }],
             };
-
-            let headerAreas = '"title right"';
-            if (statsRowCard) {
-              headerCustomFields.stats = { card: statsRowCard };
-              headerFieldStyles.stats  = [{ 'justify-self': 'start' }, { 'text-align': 'left' }];
-              headerAreas = '"title right" "stats right"';
-            }
 
             cards.push({
               type: 'custom:button-card',
@@ -402,76 +162,39 @@ hemma_popup_plant:
               styles: {
                 card: [
                   { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
-                  { padding: '28px 28px 44px 28px' },
+                  { padding: '28px 28px 20px 28px' },
                 ],
                 grid: [
-                  { 'grid-template-areas': headerAreas },
+                  { 'grid-template-areas': '"name" "advice"' },
                   { 'grid-template-columns': '1fr auto' },
                   { 'align-items': 'flex-start' },
-                  { gap: '16px 28px' },
+                  { gap: '16px' },
                 ],
                 custom_fields: headerFieldStyles,
               },
               custom_fields: headerCustomFields,
             });
 
-            /* -------------------------------------------------------
-             * Graph Card
-             * ------------------------------------------------------- */
-            if (moistureId) {
-              const graphEntities = [
-                { entity: moistureId, name: 'Moisture', color: '#4FC3F7' },
-              ];
-              if (illuminanceId) {
-                graphEntities.push({ entity: illuminanceId, name: 'Light', color: 'var(--hemma-badge-plant-care-color, #ffd600)', y_axis: 'secondary' });
-              }
-              cards.push({
-                type: 'custom:mini-graph-card',
-                entities: graphEntities,
-                hours_to_show: 12,
-                points_per_hour: 1,
-                line_width: 3,
-                animate: true,
-                smoothing: true,
-                decimals: 0,
-                height: 70,
-                show: {
-                  name: false, icon: false, state: false,
-                  legend: false, labels: true, labels_secondary: true,
-                  fill: 'fade', points: false,
-                },
-                card_mod: { style: plantGraphStyle },
-              });
-            }
-
-            /* -------------------------------------------------------
-             * Sensor Tiles Grid
-             * ------------------------------------------------------- */
+            /* Sensor Tiles Grid */
             const buildTileCard = (eid) => {
               if (!eid) return null;
               const val   = safeNum(eid);
               const type  = getSensorType(eid);
               const unit  = val != null ? (states[eid]?.attributes?.unit_of_measurement || '') : '';
               const name  = cleanName(eid);
-              const skKey = type && type !== 'battery' ? type + '_status' : null;
-              const skVal = skKey ? plantAttrs[skKey] : null;
-              const isOk  = !skVal || skVal === 'ok' || skVal === 'null';
+              const isOk  = !type || !badTypes[type];
 
-              const stLabel = val == null ? 'Unknown' : (isOk ? 'OK' : 'Problem');
-              const stColor = val == null ? 'rgba(255,255,255,0.3)' : (isOk ? C_HEALTHY : C_STRUGGLING);
-              const labelColor = val == null
-                ? 'rgba(255,255,255,0.3)'
-                : !isOk
-                  ? '#FF9230'
-                  : (type === 'moisture' || type === 'humidity')
-                    ? '#4FC3F7'
-                    : C_HEALTHY;
+              /* One semantic ladder for every metric — moisture and humidity
+               * used to read blue, which looked like a different kind of
+               * measurement rather than the same ok/problem signal. */
+              const labelColor = val == null ? 'rgba(255,255,255,0.3)'
+                : !isOk ? C_STRUGGLING
+                : C_HEALTHY;
 
-              let pct = 0;
-              let rangeMinPct = null, rangeMaxPct = null;
-              const minOpt = type ? (plantAttrs['min_' + type] ?? null) : null;
-              const maxOpt = type ? (plantAttrs['max_' + type] ?? null) : null;
+              const minOpt = type ? getThreshold(type, 'min') : null;
+              const maxOpt = type ? getThreshold(type, 'max') : null;
 
+              let pct = 0, rangeMinPct = null, rangeMaxPct = null;
               if (val != null) {
                 if (type === 'moisture' || type === 'humidity' || type === 'battery') {
                   pct = Math.min(100, Math.max(0, val));
@@ -479,40 +202,39 @@ hemma_popup_plant:
                   if (maxOpt != null) rangeMaxPct = maxOpt;
                 } else if (type === 'temperature') {
                   const isFahr = unit === '°F';
-                  const sMin   = isFahr ? 32  : 0;
-                  const sMax   = isFahr ? 104 : 40;
+                  const sMin = isFahr ? 32 : 0, sMax = isFahr ? 104 : 40;
                   pct = Math.min(100, Math.max(0, ((val - sMin) / (sMax - sMin)) * 100));
                   if (minOpt != null) rangeMinPct = Math.max(0,   ((minOpt - sMin) / (sMax - sMin)) * 100);
                   if (maxOpt != null) rangeMaxPct = Math.min(100, ((maxOpt - sMin) / (sMax - sMin)) * 100);
                 } else if (maxOpt != null) {
-                  const scaleMax = maxOpt * 1.5;
-                  pct = Math.min(100, (val / scaleMax) * 100);
-                  if (minOpt != null) rangeMinPct = (minOpt / scaleMax) * 100;
-                  rangeMaxPct = Math.min(100, (maxOpt / scaleMax) * 100);
+                  pct = Math.min(100, (val / maxOpt) * 100);
                 }
               }
 
-              const rangeBar = (rangeMinPct != null && rangeMaxPct != null)
-                ? '<div style="position:absolute;left:' + rangeMinPct.toFixed(1) + '%;width:' + (rangeMaxPct - rangeMinPct).toFixed(1) + '%;height:100%;background:rgba(255,255,255,0.13);border-radius:2px;"></div>'
+              const fmtT = (v) => {
+                if (v == null) return '';
+                if (type === 'moisture' || type === 'humidity' || type === 'battery') return Math.round(v) + '%';
+                if (type === 'temperature') return Math.round(v) + (unit || '°');
+                if (v >= 10000) return (v / 1000).toFixed(0) + 'k';
+                if (v >= 1000) return (v / 1000).toFixed(1) + 'k';
+                return Math.round(v).toString();
+              };
+
+              const valStr = val == null ? '—'
+                : type === 'temperature' ? (unit === '°F' ? Math.round(val).toString() : val.toFixed(1))
+                : val % 1 === 0 ? val.toFixed(0) : val.toFixed(1);
+
+              const barGradient = val == null
+                ? 'var(--hemma-popup-progress-track, rgba(255,255,255,0.09))'
+                : labelColor;
+
+              const _showMinMax = typeof window !== 'undefined' && window.innerWidth >= 900;
+              const rangeLabels = _showMinMax
+                ? '<div style="height:16px;margin-top:5px;display:flex;justify-content:space-between;align-items:center;">'
+                  + (minOpt != null ? '<span style="font-size:12px;color:rgba(255,255,255,0.35);">' + fmtT(minOpt) + '</span>' : '')
+                  + (maxOpt != null ? '<span style="font-size:12px;color:rgba(255,255,255,0.35);">' + fmtT(maxOpt) + '</span>' : '')
+                  + '</div>'
                 : '';
-
-              const valStr = val == null ? '—' : (
-                type === 'temperature'
-                  ? (unit === '°F' ? Math.round(val).toString() : val.toFixed(1))
-                  : (val % 1 === 0 ? val.toFixed(0) : val.toFixed(1))
-              );
-
-              const barGradient =
-                stColor === C_HEALTHY
-                  ? (type === 'moisture' || type === 'humidity'
-                      ? 'linear-gradient(90deg,#47D7FA 0%,#38BDF8 30%,#60A5FA 65%,#4C8FFF 100%)'
-                      : 'linear-gradient(90deg,#57FFFC 0%,#54F2A0 30%,#65F785 65%,#4CFA57 100%)'
-                    )
-                  : stColor === C_CARE
-                    ? 'linear-gradient(90deg,#FFD166 0%,#FFB347 100%)'
-                    : pct <= 10
-                      ? 'linear-gradient(90deg,#C8621A 0%,#E8782A 35%,#FF9230 65%,#FFAA50 100%)'
-                      : 'linear-gradient(90deg,#FFB347 0%,#FF9230 55%,#FF7A59 100%)';
 
               return {
                 type: 'custom:button-card',
@@ -521,35 +243,24 @@ hemma_popup_plant:
                 show_icon: false, show_name: false, show_label: false, show_state: false,
                 card_mod: { style: tileTapStyle },
                 styles: {
-                  card: [{ background: 'var(--hemma-popup-tile-background, rgba(255,255,255,0.07))' }, { border: 'none' }, { 'border-radius': '24px' }, { 'box-shadow': 'none' }, { padding: '18px 18px 16px 18px' }],
+                  card: [{ background: 'var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07))' }, { border: 'none' }, { 'border-radius': '24px' }, { 'box-shadow': 'none' }, { padding: '18px 18px 14px 18px' }],
                   grid: [{ 'grid-template-areas': '"c"' }, { 'grid-template-columns': '1fr' }],
                   custom_fields: { c: [{ 'justify-self': 'stretch' }] },
                 },
                 custom_fields: {
-                  c: '<div style="margin-top:1px;padding:0 6px;min-width:0;overflow:hidden;">'
-                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:4px;">'
-                      + '<span style="font-size:13px;color:var(--hemma-popup-tile-text-primary);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</span>'
-                      + '<span style="font-size:13px;color:' + labelColor + ';white-space:nowrap;font-weight:600;letter-spacing:.01em;flex-shrink:0;">' + stLabel + '</span>'
+                  c: '<div style="padding:0 4px;">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+                      + '<span style="font-size:13px;color:var(--hemma-popup-tiles-text-primary);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</span>'
+                      + '<span style="font-size:13px;color:' + labelColor + ';white-space:nowrap;font-weight:600;flex-shrink:0;">' + (isOk ? 'OK' : 'Problem') + '</span>'
                     + '</div>'
-                    + '<div style="display:flex;align-items:baseline;gap:3px;">'
-                      + '<span style="font-size:20px;font-weight:400;color:' + (val == null ? 'rgba(255,255,255,0.3)' : '#ffffff') + ';line-height:1;white-space:nowrap;">' + valStr + '</span>'
-                      + '<span style="font-size:12px;color:var(--hemma-popup-tile-text-muted);white-space:nowrap;">' + unit + '</span>'
+                    + '<div style="display:flex;align-items:baseline;gap:3px;margin-bottom:10px;">'
+                      + '<span style="font-size:22px;font-weight:400;color:#fff;line-height:1;">' + valStr + '</span>'
+                      + '<span style="font-size:12px;color:var(--hemma-popup-tiles-text-muted);">' + unit + '</span>'
                     + '</div>'
-                    + '<div style="position:relative;margin-top:10px;">'
-
-                      + '<div style="height:8px;background:var(--hemma-popup-progress-track, rgba(255,255,255,0.09));border-radius:999px;overflow:hidden;position:relative;">'
-
-                        + rangeBar
-
-                        + (
-                          pct > 0
-                            ? '<div style="height:100%;width:' + pct.toFixed(1) + '%;background:' + barGradient + ';border-radius:999px;position:relative;z-index:1;"></div>'
-                            : ''
-                        )
-
-                      + '</div>'
-
+                    + '<div style="height:6px;background:rgba(255,255,255,0.09);border-radius:999px;overflow:hidden;position:relative;">'
+                      + (pct > 0 ? '<div style="height:100%;width:' + pct.toFixed(1) + '%;background:' + barGradient + ';border-radius:999px;"></div>' : '')
                     + '</div>'
+                    + rangeLabels
                   + '</div>',
                 },
               };
@@ -557,9 +268,9 @@ hemma_popup_plant:
 
             const availableTiles = sensors.filter(Boolean);
             if (availableTiles.length > 0) {
-              const cnt    = availableTiles.length;
+              const cnt  = availableTiles.length;
               const isDesk = typeof window !== 'undefined' && window.innerWidth >= 900;
-              const cols   = (isDesk && cnt >= 3) ? 3 : 2;
+              const cols = (isDesk && cnt >= 3) ? 3 : 2;
 
               const sKeys = availableTiles.map((_, i) => 's' + i);
               const gcd   = (a, b) => b === 0 ? a : gcd(b, a % b);
@@ -574,8 +285,8 @@ hemma_popup_plant:
                 const lcm      = cols * rem / gcd(cols, rem);
                 const fullSpan = lcm / cols;
                 const lastSpan = lcm / rem;
-                tileCols       = 'repeat(' + lcm + ', 1fr)';
-                const rows     = [];
+                tileCols = 'repeat(' + lcm + ', 1fr)';
+                const rows = [];
                 const fullRows = Math.floor(cnt / cols);
                 for (let r = 0; r < fullRows; r++) {
                   const row = sKeys.slice(r * cols, (r + 1) * cols).map(k => Array(fullSpan).fill(k).join(' ')).join(' ');
@@ -586,8 +297,7 @@ hemma_popup_plant:
                 tileAreas = rows.join(' ');
               }
 
-              const tileCustomFields = {};
-              const tileFieldStyles  = {};
+              const tileCustomFields = {}, tileFieldStyles = {};
               availableTiles.forEach((eid, i) => {
                 tileCustomFields['s' + i] = { card: buildTileCard(eid) };
                 tileFieldStyles['s' + i]  = [{ 'justify-self': 'stretch' }];
@@ -602,7 +312,7 @@ hemma_popup_plant:
                 styles: {
                   card: [
                     { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
-                    { padding: '4px 28px 20px 28px' },
+                    { padding: '4px 28px 8px 28px' },
                   ],
                   grid: [
                     { 'grid-template-areas': tileAreas },
@@ -614,6 +324,84 @@ hemma_popup_plant:
                 },
                 custom_fields: tileCustomFields,
               });
+            }
+
+            /* Care Tips Slider */
+            const careKeys = [
+              { key: 'care_watering',      label: 'Watering',    color: '#4FC3F7' },
+              { key: 'care_sunlight',      label: 'Sunlight',    color: '#FFD60A' },
+              { key: 'care_soil',          label: 'Soil',        color: '#c8a27d' },
+              { key: 'care_pruning',       label: 'Pruning',     color: '#30D158' },
+              { key: 'care_fertilization', label: 'Fertilizing', color: '#FF9F0A' },
+            ];
+
+            const availableCare = careKeys.filter(c => {
+              const v = plantAttrs[c.key];
+              return v && v !== 'unknown' && v !== 'unavailable';
+            });
+
+            for (let _i = availableCare.length - 1; _i > 0; _i--) {
+              const _j = Math.floor(Math.random() * (_i + 1));
+              const _t = availableCare[_i]; availableCare[_i] = availableCare[_j]; availableCare[_j] = _t;
+            }
+
+            if (!plantIsOk && availableCare.length > 0) {
+              const tipSlideTransparent = 'ha-card{background:transparent!important;border:none!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;padding:0!important;border-radius:0!important;overflow:hidden!important;cursor:default!important;}#container{padding:0!important;height:auto!important;}ha-ripple{display:none!important;}';
+
+              const _tipTextW = Math.max(160, Math.min((typeof window !== 'undefined' ? window.innerWidth : 400) - 32, 520) - 96);
+
+              const tipSlides = availableCare.map(c => {
+                const text = String(plantAttrs[c.key] || '');
+                const fs = text.length > 0 ? Math.max(13, Math.min(15, Math.floor(_tipTextW / (text.length * 0.57)))) : 15;
+                const slideHtml = '<div style="padding:18px 20px 30px 20px;text-align:left;font-family:var(--primary-font-family,system-ui);">'
+                  + '<div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:8px;">' + c.label + '</div>'
+                  + '<div style="font-size:13px;color:rgba(255,255,255,0.82);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">' + text + '</div>'
+                  + '</div>';
+
+                return {
+                  type: 'custom:button-card',
+                  tap_action: { action: 'none' },
+                  show_icon: false, show_name: false, show_label: false, show_state: false,
+                  extra_styles: tipSlideTransparent,
+                  styles: {
+                    card: [{ background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' }, { padding: '0' }, { 'border-radius': '0' }],
+                    grid: [{ 'grid-template-areas': '"c"' }, { 'grid-template-columns': '1fr' }],
+                    custom_fields: { c: [{ 'justify-self': 'stretch' }, { 'white-space': 'normal' }] },
+                  },
+                  custom_fields: { c: slideHtml },
+                };
+              });
+
+              const tipSwipeCard = {
+                type: 'custom:swipe-card',
+                card_mod: {
+                  style: 'ha-card,:host{background:transparent!important;box-shadow:none!important;border:none!important;width:100%!important;display:block!important;}'
+                    + ':host{margin-bottom:20px!important;}'
+                    + '.swiper,.swiper-container{background:rgba(255,255,255,0.07)!important;border-radius:24px!important;overflow:hidden!important;margin:0 28px!important;}'
+                    + '@media(max-width:600px){.swiper,.swiper-container{margin:0 14px!important;}}'
+                    + '.swiper-slide{width:100%!important;max-width:none!important;flex-shrink:0!important;}'
+                    + '.swiper-wrapper{padding-bottom:6px!important;}'
+                    + '.swiper-pagination-bullets{display:flex!important;flex-direction:row!important;gap:5px!important;align-items:center!important;justify-content:center!important;padding-bottom:8px!important;}'
+                    + '.swiper-pagination-bullet{width:12px!important;height:4px!important;border-radius:999px!important;background:rgba(255,255,255,0.15)!important;opacity:1!important;margin:0!important;flex-shrink:0!important;transition:width 0.3s ease,background 0.3s ease!important;}'
+                    + '.swiper-pagination-bullet-active{width:18px!important;background:rgba(255,255,255,0.7)!important;}',
+                },
+                cards: tipSlides,
+                parameters: {
+                  autoHeight: false,
+                  autoplay: { delay: 10000, disableOnInteraction: false, pauseOnMouseEnter: true },
+                  pagination: { clickable: true },
+                  loop: false,
+                  rewind: true,
+                  speed: 600,
+                  slidesPerView: 1,
+                  spaceBetween: 0,
+                  observer: true,
+                  observeParents: true,
+                  resizeObserver: true,
+                },
+              };
+
+              cards.push(tipSwipeCard);
             }
 
             const _r = { type: 'vertical-stack', cards };

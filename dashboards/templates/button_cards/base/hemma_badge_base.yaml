@@ -1,11 +1,25 @@
 # Base Badge Template
 hemma_badge_base:
+  # window.hemmaIconUrl load-race guard — see hemma_default.yaml for why.
+  variables:
+    hemma_icon_url_guard:
+      force_eval: true
+      value: |
+        [[[
+          if (typeof window.hemmaIconUrl !== 'function') {
+            window.hemmaIconUrl = (name) =>
+              (window.HEMMA_ICONS && window.HEMMA_ICONS[name]) ||
+              `/local/hemma/icons/${name}.svg`;
+          }
+          return true;
+        ]]]
+
   classes:
     card:
       - hemma-badge
   styles:
     card:
-      - background: var(--badge-background, rgba(0,0,0,0.18))
+      - background: var(--badge-background, rgba(150,150,150,0.18))
       - backdrop-filter: blur(var(--badge-blur, 14px))
       - -webkit-backdrop-filter: blur(var(--badge-blur, 14px))
       - box-shadow: none
@@ -29,6 +43,28 @@ hemma_badge_base:
           ]]]
       - align-items: center
       - gap: var(--badge-col-gap-current, var(--badge-col-gap, 10px))
+      - --hemma-badge-enter-delay: >
+          [[[
+            // Stagger index over visible siblings only, so a hidden badge
+            // doesn't leave a gap in the cascade. Only meaningful for
+            // layout-card rows — badges_media wraps each badge on its own,
+            // always lands on 0, and falls through to 'inherit'.
+            const step = Number(variables?.enter_step ?? 22);
+            let i = 0;
+            try {
+              const sibs = this.parentElement?.children;
+              if (sibs && sibs.length > 1) {
+                for (const el of sibs) {
+                  if (el === this) break;
+                  if (el.localName !== this.localName) continue;
+                  const c = el.shadowRoot && el.shadowRoot.querySelector('ha-card');
+                  if (c && c.style.display === 'none') continue;
+                  i++;
+                }
+              }
+            } catch (e) {}
+            return i > 0 ? (i * step) + 'ms' : 'inherit';
+          ]]]
       - width: fit-content
       - margin-inline-start: 0
       - margin-inline-end: 0
@@ -36,15 +72,12 @@ hemma_badge_base:
       - margin-block-end: 0
       - position: relative
       - isolation: isolate
-      - --badge-title-color: var(--primary-text-color)
-      - --badge-sub-color: var(--secondary-text-color)
-      - background-clip: padding-box
+      - --badge-title-color: var(--hemma-badge-title-color, var(--primary-text-color))
+      - --badge-sub-color: var(--hemma-badge-sub-color, var(--secondary-text-color))
       - overflow: hidden
-      - transition: background-color .22s ease,
-                    box-shadow .24s ease,
-                    transform .24s ease,
-                    filter .18s ease,
-                    opacity .35s ease
+      - clip-path: inset(0 round var(--badge-br, 9999px))
+      # The entrance transform/transition/opacity live in extra_styles, not
+      # here. Values set here land inline and lose to the !important rule.
 
     grid:
       - grid-template-areas: '"i l"'
@@ -72,11 +105,13 @@ hemma_badge_base:
       - z-index: 4
 
     img_cell:
-      - width: var(--badge-icon-size-current, var(--badge-icon-size, 30px)) !important
-      - height: var(--badge-icon-size-current, var(--badge-icon-size, 30px)) !important
+      - width: var(--hemma-badge-icon-override, var(--badge-icon-size-current, var(--badge-icon-size, 30px))) !important
+      - height: var(--hemma-badge-icon-override, var(--badge-icon-size-current, var(--badge-icon-size, 30px))) !important
       - border-radius: 9999px !important
       - overflow: hidden !important
-      - display: block !important
+      - display: flex !important
+      - align-items: center !important
+      - justify-content: center !important
 
     entity_picture:
       - grid-area: i
@@ -94,10 +129,40 @@ hemma_badge_base:
 
   extra_styles: |
     :host{
-      --badge-sub-opacity: .82;
+      --badge-sub-opacity: var(--hemma-badge-sub-opacity, .80);
       --badge-after-z:  2;
       --badge-before-z: 3;
       --hemma-badge-hover-shadow: none;
+
+      /* Sub-badge entrance */
+      --hemma-badge-enter-t: var(--hemma-row-fade, 1);
+      --hemma-badge-enter-p: calc(1 - var(--hemma-badge-enter-t));
+      --hemma-badge-enter-lift: -22px;
+      --hemma-badge-enter-depth: 0.24;
+      --hemma-badge-enter-origin: 50% -45%;
+      --hemma-badge-enter-dur: calc(0.30s + var(--hemma-badge-enter-t) * 0.12s);
+      --hemma-badge-enter-fade: calc(0.18s + var(--hemma-badge-enter-t) * 0.04s);
+      --hemma-badge-enter-squash: 0.08;
+      --hemma-badge-enter-transform:
+        translateX(calc(var(--hemma-badge-enter-p) * var(--hemma-badge-converge-x, 0px)))
+        translateY(calc(var(--hemma-badge-enter-p) * var(--hemma-badge-enter-lift)))
+        scaleX(calc(1 - var(--hemma-badge-enter-p) *
+          (var(--hemma-badge-enter-depth) - var(--hemma-badge-enter-squash))))
+        scaleY(calc(1 - var(--hemma-badge-enter-p) *
+          (var(--hemma-badge-enter-depth) + var(--hemma-badge-enter-squash))));
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      :host {
+        --hemma-badge-enter-lift: 0px !important;
+        --hemma-badge-enter-depth: 0 !important;
+        --hemma-badge-enter-squash: 0 !important;
+        --hemma-badge-converge-x: 0px !important;
+      }
+      :host ha-card {
+        --hemma-badge-enter-delay: 0ms !important;
+      }
     }
 
     @media (max-width: 767px) and (orientation: portrait) {
@@ -128,16 +193,47 @@ hemma_badge_base:
       .badge-sub { font-size: calc(var(--badge-font-size-current, 12px) - 1px) !important; }
     }
 
-    ha-card {
-      opacity: var(--hemma-row-fade, 1);
-      transform: translateY(calc((1 - var(--hemma-row-fade, 1)) * -10px))
-                 translateX(calc((1 - var(--hemma-row-fade, 1)) * -2px));
+    /* Tablet (touch, 768-1400px) */
+    @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (pointer: coarse),
+           (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (hover: none) {
+      :host {
+        --badge-icon-size-current: 26px !important;
+        --badge-min-height-current: 40px !important;
+        --badge-padding-current: 7px 11px 8px 7px !important;
+        --badge-font-size-current: 13px !important;
+      }
+      #img-cell, .img-cell {
+        width: var(--badge-icon-size-current, 26px) !important;
+        height: var(--badge-icon-size-current, 26px) !important;
+      }
+      #name { font-size: var(--badge-font-size-current, 13px) !important; }
+      .badge-title { font-size: var(--badge-font-size-current, 13px) !important; }
+      .badge-sub { font-size: calc(var(--badge-font-size-current, 13px) - 1px) !important; }
+    }
+
+    :host ha-card {
+      /* Stagger In */
+      --hemma-badge-enter-delay-current:
+        calc(var(--hemma-badge-enter-delay, 0ms) * var(--hemma-badge-enter-t));
+
+      opacity: var(--hemma-badge-enter-t);
+      transform-origin: var(--hemma-badge-enter-origin);
+      transform: var(--hemma-badge-enter-transform);
+      translate: var(--hemma-badge-flip-x, 0px);
       box-shadow: none !important;
       transition: background-color .22s ease,
                   box-shadow .24s ease,
-                  transform .24s ease,
+                  translate var(--hemma-badge-flip-dur, 0.42s)
+                            var(--hemma-badge-flip-ease, cubic-bezier(0.32, 0.72, 0, 1)),
+                  /* Geometry holds its value for --hemma-badge-hold, non-zero
+                     only while hiding, so the badge keeps its size until its
+                     field finishes closing over it. Zero (instant) otherwise. */
+                  max-width 0s var(--hemma-badge-hold, 0s),
+                  padding 0s var(--hemma-badge-hold, 0s),
+                  min-height 0s var(--hemma-badge-hold, 0s),
+                  transform var(--hemma-badge-enter-dur) var(--hemma-badge-enter-ease, cubic-bezier(0.34, 1.26, 0.44, 1)) var(--hemma-badge-enter-delay-current),
                   filter .18s ease,
-                  opacity .35s ease !important;
+                  opacity var(--hemma-badge-enter-fade) ease var(--hemma-badge-enter-delay-current) !important;
     }
 
     ha-card:not(#hemma-badge-shadow-suppress):hover {
@@ -153,7 +249,10 @@ hemma_badge_base:
       height: var(--badge-icon-size-current, var(--badge-icon-size, 30px)) !important;
       border-radius: 9999px !important;
       overflow: hidden !important;
-      display: block !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: var(--hemma-badge-icon-bg, transparent) !important;
     }
 
     #img-cell img,
@@ -217,3 +316,4 @@ hemma_badge_base:
       overflow:hidden;
       text-overflow:ellipsis;
     }
+

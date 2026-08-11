@@ -21,6 +21,7 @@ hemma_air_purifier:
     entity: '[[[ return entity.entity_id ]]]'
 
   variables:
+    mobile_filter_category: climate
     icon: purifier
 
   styles:
@@ -37,42 +38,3 @@ hemma_air_purifier:
       - box-shadow: none !important
       - transition: filter 0.2s ease
       - cursor: pointer
-
-  extra_styles: |
-    #img-cell {
-      position: relative;
-      border-radius: 50% !important;
-      background: var(--hemma-icon-circle-bg, rgba(255,255,255,0.10)) !important;
-      width: 44px !important;
-      height: 44px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      overflow: hidden !important;
-    }
-    #img-cell::before { opacity: 0 !important; }
-    #img-cell img {
-      width: 68% !important;
-      height: 68% !important;
-      max-width: 68% !important;
-      max-height: 68% !important;
-      object-fit: contain !important;
-      flex: none !important;
-    }
-    #img-cell ha-icon {
-      --mdc-icon-size: 26px !important;
-      flex: none !important;
-      color: rgba(255,255,255,1.0) !important;
-    }
-    #icon { color: rgba(255,255,255,1.0) !important; }
-    @media (max-width: 767px) and (orientation: portrait) {
-      #img-cell { width: 38px !important; height: 38px !important; }
-      #img-cell ha-icon { --mdc-icon-size: 23px !important; }
-      #toggle { filter: invert(var(--hemma-toggle-invert, 0)); }
-    }
-    @media (hover: hover) {
-      #img-cell:hover { filter: brightness(1.15); transform: scale(1.03); transition: filter 0.15s ease, transform 0.15s ease; }
-    }
-    @media (hover: none) {
-      #img-cell:active { filter: brightness(1.15); transform: scale(1.03); }
-    }

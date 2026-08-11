@@ -34,18 +34,6 @@ hemma_badge_climate_group:
     climate_entity_2: null
     climate_entity_3: null
 
-  triggers_update:
-    - '[[[ return variables.temp_sensor ]]]'
-    - '[[[ return variables.temp_sensor_2 ]]]'
-    - '[[[ return variables.temp_sensor_3 ]]]'
-    - '[[[ return variables.temp_sensor_4 ]]]'
-    - '[[[ return variables.temp_sensor_5 ]]]'
-    - '[[[ return variables.humidity_sensor ]]]'
-    - '[[[ return variables.quality_sensor ]]]'
-    - '[[[ return variables.climate_entity ]]]'
-    - '[[[ return variables.climate_entity_2 ]]]'
-    - '[[[ return variables.climate_entity_3 ]]]'
-
   tap_action:
     action: call-service
     service: input_select.select_option

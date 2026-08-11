@@ -1,13 +1,5 @@
-// Syncs the active swiper pagination bullet color to match the slide's
-// TV SHOW (purple) or MOVIE (amber) badge color.
-//
-// Bullet size/shape is handled by card_mod CSS injected into swipe-card's
-// shadow root. This script only overrides the active bullet's background color.
-//
-// Strategy: watch document.body for popup elements being appended (browser-mod
-// adds a top-level element when a popup opens). Once found, deep-walk its shadow
-// DOM tree to locate swipe-card, then attach a MutationObserver on its shadow
-// root to react to slide changes.
+// Colours the active swipe-card pagination bullet to match the slide's
+// TV SHOW (purple) or MOVIE (amber) badge. Size and shape come from card_mod.
 (function () {
   const TV_COLOR    = '#9333ea';
   const MOVIE_COLOR = '#e5a00d';
@@ -17,7 +9,6 @@
     if (!slide) return null;
     const card = slide.firstElementChild;
     if (!card || !card.shadowRoot) return null;
-    // Badge div has inline style containing "border-radius:16px"
     const badge = card.shadowRoot.querySelector('div[style*="border-radius:16px"]');
     if (!badge) return null;
     const span = badge.querySelector('span');
@@ -44,8 +35,6 @@
     });
   }
 
-  // Recursively walk light DOM and shadow roots to find swipe-card elements.
-  // Returns true if at least one swipe-card was found.
   function deepFind(node) {
     if (!node || node.nodeType !== 1) return false;
     let found = false;
@@ -69,7 +58,7 @@
     setTimeout(() => scanWithRetry(node, retries - 1), 350);
   }
 
-  // Watch for new top-level elements added to body (popup opens)
+  // browser-mod appends a top-level element when a popup opens.
   new MutationObserver(muts => {
     muts.forEach(m => m.addedNodes.forEach(node => {
       if (node.nodeType === 1) {

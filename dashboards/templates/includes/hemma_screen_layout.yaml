@@ -1,9 +1,10 @@
-grid-template-columns: 1fr
+# Hemma Desktop/Tablet — view layout (grid-layout options for each room view).
+grid-template-columns: minmax(0, 1fr)
 grid-column-gap: 0px
 margin: 0
 padding: 0
 position: relative
-min-height: 100svh
+min-height: calc(100svh - var(--hemma-header-offset, 0px))
 
 mediaquery:
   "(max-width: 767px) and (orientation: portrait), (max-height: 500px) and (orientation: portrait)":

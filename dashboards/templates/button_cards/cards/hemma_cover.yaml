@@ -1,0 +1,71 @@
+hemma_cover:
+  template: [hemma_entity]
+
+  variables:
+    mobile_filter_category: climate
+
+  show_entity_picture: true
+  show_icon: false
+  show_name: true
+  show_state: true
+  name: Cover
+
+  tap_action:
+    action: more-info
+
+  hold_action:
+    action: toggle
+
+  icon_tap_action:
+    action: call-service
+    service: |
+      [[[
+        const s = (entity?.state || '').toLowerCase();
+        return ['open', 'opening'].includes(s) ? 'cover.close_cover' : 'cover.open_cover';
+      ]]]
+    service_data:
+      entity_id: '[[[ return entity.entity_id ]]]'
+
+  entity_picture: |
+    [[[
+      const s = (entity?.state || '').toLowerCase();
+      return ['open', 'opening'].includes(s)
+        ? window.hemmaIconUrl('curtain-open')
+        : window.hemmaIconUrl('curtain-closed');
+    ]]]
+
+  state:
+    - operator: template
+      value: |
+        [[[
+          const s = (entity?.state || '').toLowerCase();
+          return ['open', 'opening'].includes(s);
+        ]]]
+      styles:
+        card:
+          - --hemma-icon-svg-url: |
+              [[[
+                const s = (entity?.state || '').toLowerCase();
+                return ['open', 'opening'].includes(s)
+                  ? `url('${window.hemmaIconUrl('curtain-open')}')`
+                  : `url('${window.hemmaIconUrl('curtain-closed')}')`;
+              ]]]
+          - --hemma-icon-use-mask: "1"
+          - --hemma-icon-color-current: "var(--hemma-popup-primary-color, #00c3d0)"
+          - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
+        img_cell:
+          - opacity: "1 !important"
+          - filter: none !important
+        entity_picture:
+          - opacity: "1 !important"
+          - filter: none !important
+
+  styles:
+    card:
+      - --hemma-icon-mask-image: |
+          [[[
+            const s = (entity?.state || '').toLowerCase();
+            return ['open', 'opening'].includes(s)
+              ? `url('${window.hemmaIconUrl('curtain-open')}')`
+              : `url('${window.hemmaIconUrl('curtain-closed')}')`;
+          ]]]

@@ -1,0 +1,125 @@
+# Energy Group Badge
+# Row-level badge: tap toggles the Energy sub-row (hemma_badge_energy fills it).
+# Shows "Energy" plus a usage tier derived from power_entity.
+#
+# Variables:
+#   enabled           - show/hide this badge (default: true)
+#   power_entity      - power sensor driving the usage tier
+#   normal_threshold  - W above which the tier reads "Normal"  (default: 200)
+#   heavy_threshold   - W above which the tier reads "Heavy Usage"   (default: 1000)
+#   extreme_threshold - W above which the tier reads "Extreme Usage" (default: 3000)
+hemma_badge_energy_group:
+  # hemma_popup_energy is anchored so its popup lands on hold_action; tap is
+  # overridden below to toggle the sub-badge row.
+  template: [hemma_badge_base, hemma_popup_energy]
+
+  show_state: false
+  show_label: false
+  show_icon: true
+  icon: mdi:lightning-bolt
+
+  variables:
+    enabled: true
+    power_entity: null
+
+  entity: input_select.hemma_expanded_row
+
+  tap_action:
+    action: call-service
+    service: input_select.select_option
+    service_data:
+      entity_id: input_select.hemma_expanded_row
+      option: >
+        [[[
+          return states['input_select.hemma_expanded_row']?.state === 'energy'
+            ? 'none' : 'energy';
+        ]]]
+
+  # hold_action comes from hemma_popup_energy (this room's energy popup).
+  double_tap_action:
+    action: none
+
+  styles:
+    card:
+      - background: >
+          [[[
+            return entity?.state === 'energy'
+              ? 'var(--badge-active-color, rgba(255,255,255,0.85))'
+              : 'var(--badge-background, rgba(0,0,0,0.18))';
+          ]]]
+      - display: >
+          [[[
+            const ev = variables?.enabled;
+            const enabled = (ev === undefined || ev === null) ? true :
+              (typeof ev === 'boolean') ? ev :
+              (typeof ev === 'number') ? ev !== 0 :
+              !['false','0','no','off','disabled'].includes(String(ev).trim().toLowerCase());
+            return enabled ? 'inline-grid' : 'none';
+          ]]]
+      - --badge-title-color: >
+          [[[
+            return entity?.state === 'energy' ? 'rgba(0,0,0,0.85)' : 'var(--primary-text-color)';
+          ]]]
+      - --badge-sub-color: >
+          [[[
+            return entity?.state === 'energy' ? 'rgba(0,0,0,0.6)' : 'var(--secondary-text-color)';
+          ]]]
+      - --hemma-badge-icon-color: >
+          [[[
+            if (entity?.state === 'energy') return 'rgba(0,0,0,0.75)';
+            return 'var(--hemma-badge-energy-color, #ffd600)';
+          ]]]
+      - --icon-primary-color: var(--hemma-badge-icon-color)
+      - --paper-item-icon-color: var(--hemma-badge-icon-color)
+      - --state-icon-color: var(--hemma-badge-icon-color)
+
+    icon:
+      - color: var(--hemma-badge-icon-color)
+
+  name: >
+    [[[
+      const eid = variables.power_entity;
+      const power = eid ? parseFloat(states[eid]?.state) : NaN;
+      let sub = '';
+      if (!isNaN(power)) {
+        sub = power >= Number(variables.extreme_threshold ?? 3000) ? 'Extreme Usage'
+            : power >= Number(variables.heavy_threshold   ?? 1000) ? 'Heavy Usage'
+            : power >= Number(variables.normal_threshold  ?? 200)  ? 'Normal'
+            : 'Idle';
+      }
+      return `
+        <div class="badge-wrap">
+          <div class="badge-title">Energy</div>
+          ${sub ? `<div class="badge-sub">${sub}</div>` : ''}
+        </div>
+      `;
+    ]]]
+
+  extra_styles: >
+    [[[
+      const ev = variables?.enabled;
+      const enabled = (ev === undefined || ev === null) ? true :
+        (typeof ev === 'boolean') ? ev :
+        (typeof ev === 'number') ? ev !== 0 :
+        !['false','0','no','off','disabled'].includes(String(ev).trim().toLowerCase());
+      const URL = window.hemmaIconUrl('energy');
+
+      return `:host{display:${enabled ? 'inline-block' : 'none'} !important;}
+        #img-cell, .img-cell{ position: relative; }
+
+        #img-cell #icon, .img-cell #icon{
+          color: transparent !important;
+          opacity: 0 !important;
+        }
+
+        #img-cell::before,
+        .img-cell::before{
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-color: var(--hemma-badge-icon-color, var(--hemma-badge-energy-color, #ffd600)) !important;
+          -webkit-mask: url('${URL}') no-repeat center / auto 82%;
+          mask: url('${URL}') no-repeat center / auto 82%;
+          transform: translateZ(0);
+        }`;
+    ]]]

@@ -1,10 +1,5 @@
-# Desktop Navbar
 # ============================================================================
-# MOTION SENSOR BADGES
 # ----------------------------------------------------------------------------
-# Badge sensors are configured in packages/hemma_helpers.yaml (input_text
-# section) — this file does not need to be edited for sensor changes.
-# To disable all badges at runtime: toggle input_boolean.hemma_motion_badges.
 # ============================================================================
 
 type: conditional
@@ -211,8 +206,9 @@ card:
           justify-content: center !important;
           padding: 8px 0 14px !important;
           margin-bottom: -5px !important;
-          font-size: 18px !important;
-          font-weight: 600 !important;
+          font-size: var(--hemma-chrome-font-size, 18px) !important;
+          font-weight: var(--hemma-chrome-font-weight, 700) !important;
+          letter-spacing: var(--hemma-chrome-letter-spacing, 0.2px) !important;
           line-height: 1 !important;
           color: var(--navbar-primary-color) !important;
           opacity: .88 !important;
@@ -485,8 +481,9 @@ card:
                 return !!(e && (e.hidden || e.hidden_by || e.disabled || e.disabled_by));
               };
 
-              const scenes = Object.values(hass.states || {})
-                .filter(e => e?.entity_id?.startsWith('scene.'))
+              const scenes = Object.keys(hass.states || {})
+                .filter(id => id.startsWith('scene.'))
+                .map(id => hass.states[id])
                 .filter(s => !s.entity_id.startsWith('scene.hemma_restore_'))
                 .filter(s => !isHidden(s.entity_id))
                 .slice()
@@ -499,7 +496,7 @@ card:
                 tap_action: {
                   action: 'call-service',
                   service: 'scene.turn_on',
-                  service_data: { entity_id: s.entity_id }
+                  service_data: { entity_id: s.entity_id, transition: 3 }
                 }
               }));
             ]]]

@@ -16,7 +16,14 @@
 #   - input_select.hemma_expanded_row: Which sub-badge row is expanded (none/climate/presence/media)
 #   - input_number.hemma_thermostat_target_temperature: Thermostat target temp
 #   - input_select.hemma_thermostat_mode: Heat/Cool mode selector
-#   - sensor.hemma_mobile_dynamic_background: Shared dynamic mobile backgrounds (morning/afternoon/night)
+#   - input_text.hemma_thermostat_active_entity: entity_id of the thermostat card
+#     whose controls overlay is currently open (so only that card shows it)
+#   - input_boolean.hemma_dashboard_redirect: Phone -> mobile dashboard routing (on by default; turn off to disable)
+#   - input_boolean.hemma_now_playing_minimized / input_text.hemma_now_playing_pinned: Now Playing panel state
+#
+# SCRIPTS:
+#   - script.hemma_light_smart_toggle: Snapshot/restore light state on toggle
+#   - script.hemma_thermostat_overlay_toggle: Opens the thermostat controls overlay on one card only
 #
 # NETWORK RESTART CONFIRMATION (used by hemma_popup_network action tiles):
 #   - input_boolean.hemma_restart_confirm_1: Confirm state for action button 1
@@ -35,6 +42,14 @@
 # ============================================================================
 
 input_boolean:
+  hemma_dashboard_redirect:
+    name: Hemma Dashboard Redirect
+    initial: on
+
+  hemma_now_playing_minimized:
+    name: Hemma Now Playing Minimized
+    initial: off
+
   hemma_thermostat_overlay:
     name: Thermostat Overlay
     initial: off
@@ -68,17 +83,27 @@ input_boolean:
     initial: off
 
 input_text:
+  # Which Now Playing source is pinned to the primary slot
+  hemma_now_playing_pinned:
+    name: "Hemma Now Playing - Pinned"
+    initial: ""
+    max: 32
+
   # Motion sensor entity IDs for navbar badges (desktop + mobile).
   # Leave initial as "" to disable the badge for that room.
   hemma_motion_living_room:
     name: "Hemma Motion - Living Room"
-    initial: "binary_sensor.living_room_hub_motion"
+    initial: ""
   hemma_motion_bedroom:
     name: "Hemma Motion - Bedroom"
-    initial: "binary_sensor.hue_motion_sensor_motion"
+    initial: ""
   hemma_motion_kitchen:
     name: "Hemma Motion - Kitchen"
-    initial: ""   # set to your kitchen motion sensor entity ID to enable
+    initial: ""
+
+  hemma_thermostat_active_entity:
+    name: "Hemma Thermostat - Active Entity"
+    initial: ""
 
 input_number:
   hemma_thermostat_target_temperature:
@@ -90,7 +115,25 @@ input_number:
     unit_of_measurement: "°F"
     mode: slider
 
+# Mobile badge filters
 input_select:
+  hemma_mobile_filter:
+    name: Mobile Dashboard Filter
+    options:
+      - all
+      - climate
+      - lights
+      - presence
+      - media
+      - security
+      - energy
+      - room_livingroom
+      - room_kitchen
+      - room_bedroom
+      - room_office
+    initial: all
+
+  # Badges row
   hemma_expanded_row:
     name: Expanded Badge Row
     options:
@@ -99,8 +142,11 @@ input_select:
       - presence
       - media
       - lights
+      - security
+      - energy
     initial: none
 
+  # Thermostat mode
   hemma_thermostat_mode:
     name: Thermostat Mode
     options:
@@ -109,54 +155,8 @@ input_select:
     initial: cool
 
 template:
-  - trigger:
-      - platform: homeassistant
-        event: start
-      - platform: state
-        entity_id: sun.sun
-      - platform: time_pattern
-        minutes: "/5"
-    sensor:
-      - name: "Hemma Dynamic Mobile Backgrounds"
-        unique_id: hemma_mobile_dynamic_background
-        icon: mdi:image-filter-hdr
-        state: >
-          {% set elevation = state_attr('sun.sun', 'elevation') | float(-90) %}
-          {% set rising = state_attr('sun.sun', 'rising') %}
-          {% if elevation < -6 %}
-            sunset
-          {% elif elevation < 6 %}
-            {{ 'dawn' if rising else 'sunset' }}
-          {% elif elevation < 24 %}
-            {{ 'morning' if rising else 'goldenhour' }}
-          {% elif elevation < 50 %}
-            {{ 'morning' if rising else 'afternoon' }}
-          {% else %}
-            midday
-          {% endif %}
-        attributes:
-          elevation: "{{ state_attr('sun.sun', 'elevation') }}"
-          rising: "{{ state_attr('sun.sun', 'rising') }}"
-          next_rising: "{{ state_attr('sun.sun', 'next_rising') }}"
-          next_setting: "{{ state_attr('sun.sun', 'next_setting') }}"
-
+  # Badge icon colors
   - sensor:
-      - name: hemma_mobile_background_url
-        unique_id: hemma_mobile_background_url
-        state: >
-          {% set phase = states('sensor.hemma_mobile_dynamic_background') | lower %}
-          {% if phase in ['morning','dawn'] %}
-            {% set p = 'morning' %}
-          {% elif phase in ['night','evening','sunset'] %}
-            {% set p = 'night' %}
-          {% else %}
-            {% set p = 'day' %}
-          {% endif %}
-
-          {% set dark = '-dark' if is_state('sun.sun','below_horizon') else '' %}
-
-          /local/hemma/mobile/mobile-{{ p }}{{ dark }}.jpg
-
       - name: Temp Color
         unique_id: hemma_temp_color
         state: >
@@ -208,6 +208,7 @@ template:
           {% endfor %}
           {{ ns.count }}
 
+# Updates restart button
 script:
   hemma_restart_toggle:
     alias: "Hemma - Restart Toggle"
@@ -250,6 +251,7 @@ script:
             target:
               entity_id: "{{ helper_entity }}"
 
+  # Lights - smart toggle
   hemma_light_smart_toggle:
     alias: "Hemma - Smart Light Toggle"
     description: >
@@ -257,6 +259,13 @@ script:
       For light groups, snapshots each individual member so only
       the lights that were on get restored (not the whole group).
       Falls back to a plain turn_on if no saved state exists yet.
+    fields:
+      light_entity:
+        description: "Entity ID of the light or light group to toggle"
+        required: true
+        selector:
+          entity:
+            domain: light
     mode: queued
     max: 5
     sequence:
@@ -276,8 +285,7 @@ script:
                     {% set m = state_attr(light_entity, 'entity_id') %}
                     {% if m %}{{ m }}{% else %}{{ [light_entity] }}{% endif %}
               - service: light.turn_off
-                data:
-                  transition: 2
+                continue_on_error: true
                 target:
                   entity_id: "{{ light_entity }}"
         # Light is OFF → restore snapshot if it exists, otherwise turn on normally
@@ -291,29 +299,50 @@ script:
                   - service: scene.turn_on
                     data:
                       entity_id: "{{ scene_entity }}"
-                      transition: 2
             default:
               - service: light.turn_on
-                data:
-                  transition: 2
                 target:
                   entity_id: "{{ light_entity }}"
 
+  # Thermostat toggle
   hemma_thermostat_overlay_toggle:
     alias: "Hemma - Thermostat Overlay Toggle"
     description: >
-      Debounced toggle for the thermostat temperature controls overlay.
-      mode: single means any taps that arrive while this script is running
-      (including the 400ms cooldown) are silently dropped, preventing the
-      rapid-fire queue buildup that causes the animation to stutter.
+      Debounced open/close/switch for the thermostat temperature controls
+      overlay. Tapping a card opens its controls; tapping the same card again
+      closes them; tapping a different card switches the overlay to that
+      card instead of stacking a second open card. mode: single means any
+      taps that arrive while this script is running (including the 400ms
+      cooldown) are silently dropped, preventing the rapid-fire queue buildup
+      that causes the animation to stutter.
     mode: single
+    fields:
+      thermostat_entity_id:
+        description: entity_id of the thermostat card that was tapped
+        required: true
     sequence:
-      - service: input_boolean.toggle
-        data:
-          entity_id: input_boolean.hemma_thermostat_overlay
+      - if:
+          - condition: state
+            entity_id: input_boolean.hemma_thermostat_overlay
+            state: "on"
+          - condition: template
+            value_template: "{{ states('input_text.hemma_thermostat_active_entity') == thermostat_entity_id }}"
+        then:
+          - service: input_boolean.turn_off
+            data:
+              entity_id: input_boolean.hemma_thermostat_overlay
+        else:
+          - service: input_text.set_value
+            data:
+              entity_id: input_text.hemma_thermostat_active_entity
+              value: "{{ thermostat_entity_id }}"
+          - service: input_boolean.turn_on
+            data:
+              entity_id: input_boolean.hemma_thermostat_overlay
       - delay:
           milliseconds: 400
 
+# Network popup buttons
 automation:
   - alias: "Hemma - Auto clear restart done state 1"
     id: hemma_auto_clear_restart_done_1
@@ -339,10 +368,6 @@ automation:
         target:
           entity_id: input_boolean.hemma_restart_done_2
 
-  # Auto-expand the media row when media is actively playing.
-  # Triggers on HA startup (handles page-load defaults) and whenever
-  # any media player begins playing. Only acts if the row is currently
-  # collapsed so manual selections by the user are never overridden.
   - alias: "Hemma - Auto-expand media row when playing"
     id: hemma_auto_expand_media_row
     trigger:

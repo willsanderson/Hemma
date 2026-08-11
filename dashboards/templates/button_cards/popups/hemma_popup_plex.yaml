@@ -1,0 +1,28 @@
+# Plex Stream Popup
+hemma_popup_plex:
+  template:
+    - hemma_popup_base
+
+  tap_action:
+    browser_mod:
+      data:
+        content: |
+          [[[
+            const sid = variables?.session_entity || entity?.entity_id || '';
+            return window._hemmaPlexPopupCard(sid, states);
+          ]]]
+        popup_styles:
+          - style: all
+            styles: |
+              ha-adaptive-dialog, ha-dialog {
+                --dialog-content-padding: 0px;
+              }
+              @media (max-width: 767px) {
+                ha-adaptive-dialog, ha-dialog {
+                  --dialog-surface-margin-top: 0px;
+                }
+              }
+
+  icon_tap_action:
+    haptic: light
+    action: more-info

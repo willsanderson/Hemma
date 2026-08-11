@@ -1,0 +1,1472 @@
+# Light Popup
+hemma_popup_light:
+  template:
+    - hemma_popup_base
+
+  variables:
+    room_name: "Home"
+    lights: []
+    group_rooms: true
+    initial_filter: -1
+
+  custom_fields:
+    lpc_init: |
+      [[[
+        if (typeof window._hemmaLPC !== 'function' || window._hemmaLPCv !== 28) {
+              window._hemmaLPCv = 28;
+              window._hemmaLPC = function(__entity, __states, __hass, __vars) {
+              const entity = __entity, states = __states, hass = __hass, variables = __vars;
+              const groupId  = variables.group_entity || entity?.entity_id || null;
+              const roomName = variables.room_name || states[groupId]?.attributes?.friendly_name || 'Lighting';
+  
+              if (!window._hemmaLightMoreInfoSetup) {
+                window._hemmaLightMoreInfoSetup = true;
+                window._hemmaLastScrollTs = 0;
+                let _mig_tsy = 0;
+                document.addEventListener('touchstart', (e) => {
+                  _mig_tsy = e.touches[0].clientY;
+                }, { capture: true, passive: true });
+                document.addEventListener('touchmove', (e) => {
+                  if (Math.abs(e.touches[0].clientY - _mig_tsy) > 8) {
+                    window._hemmaLastScrollTs = Date.now();
+                  }
+                }, { capture: true, passive: true });
+                document.addEventListener('ll-custom', (e) => {
+                  const d = (e.detail && e.detail.event_data) ? e.detail.event_data : (e.detail || {});
+                  if (!d.hemma_light_more_info) return;
+                  if (Date.now() - window._hemmaLastScrollTs < 400) return;
+                  const ha = document.querySelector('home-assistant');
+                  if (ha) {
+                    ha.dispatchEvent(new CustomEvent('hass-more-info', {
+                      bubbles: true, composed: true,
+                      detail: { entityId: d.hemma_light_more_info },
+                    }));
+                  }
+                });
+              }
+  
+              const _expand = (eid, seen = new Set()) => {
+                if (!eid || seen.has(eid)) return [];
+                seen.add(eid);
+                const st = states[eid];
+                if (!st) return [];
+                const mems = st.attributes?.entity_id;
+                if (Array.isArray(mems)) return mems.flatMap(m => _expand(m, seen));
+                return eid.startsWith('light.') ? [eid] : [];
+              };
+  
+              const topLevelIds = states[groupId]?.attributes?.entity_id || [];
+              const hasRooms = variables.group_rooms === true
+                            && topLevelIds.length > 1
+                            && Array.isArray(states[topLevelIds[0]]?.attributes?.entity_id);
+  
+              const toTitle = s => s.replace(/_/g, ' ').replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+
+              const _hassObj = typeof hass !== 'undefined' ? hass : null;
+              const _entReg = _hassObj?.entities || {};
+              const _getReg = id => _entReg[id] || (_entReg.get && _entReg.get(id)) || null;
+
+              // Group entities are often renamed to a bare "Lights" per area, so the area wins over friendly_name.
+              const _areaName = (eid) => {
+                const re = _getReg(eid);
+                if (!re) return null;
+                const aid = re.area_id || (re.device_id ? _hassObj?.devices?.[re.device_id]?.area_id : null);
+                return aid ? (_hassObj?.areas?.[aid]?.name || null) : null;
+              };
+
+              const rooms = hasRooms
+                ? topLevelIds.map(rid => ({
+                    name:   _areaName(rid) || states[rid]?.attributes?.friendly_name || toTitle(rid.split('.').pop()),
+                    lights: states[rid]?.attributes?.entity_id || [],
+                  }))
+                : null;
+  
+              const lightIds = (Array.isArray(variables.lights) && variables.lights.length > 0)
+                ? variables.lights
+                : rooms ? rooms.flatMap(r => r.lights) : (groupId ? _expand(groupId) : []);
+  
+              const gidKey     = JSON.stringify(groupId);
+              const _lightIds  = JSON.stringify(lightIds);
+              const _countSnip = `
+                const _all = ${_lightIds};
+                const oc  = _all.filter(id => states[id]?.state === 'on').length;
+                const tot = _all.length;
+              `;
+              const n = rooms ? rooms.length : 0;
+              const isDesktop = window.innerWidth >= 600;
+  
+              // Scene detection
+              // Keys-then-lookup: ownKeys doesn't register entities, get does.
+              const sceneIds = rooms ? Object.keys(states || {})
+                .filter(id => id.startsWith('scene.'))
+                .map(id => states[id])
+                .filter(s => !s.entity_id.startsWith('scene.hemma'))
+                .filter(s => {
+                  const re = _getReg(s.entity_id);
+                  return re && !(re.hidden || re.hidden_by || re.disabled || re.disabled_by);
+                })
+                .sort((a, b) => (a.attributes?.friendly_name || a.entity_id)
+                  .localeCompare(b.attributes?.friendly_name || b.entity_id))
+                .map(s => s.entity_id) : [];
+              if (variables.scene_order && Array.isArray(variables.scene_order)) {
+                const _so = variables.scene_order;
+                sceneIds.sort((a, b) => {
+                  const ai = _so.indexOf(a), bi = _so.indexOf(b);
+                  if (ai !== -1 && bi !== -1) return ai - bi;
+                  if (ai !== -1) return -1;
+                  if (bi !== -1) return 1;
+                  return 0;
+                });
+              }
+              const hasScenes = sceneIds.length > 0;
+              const _scnIdsJson = JSON.stringify(sceneIds);
+  
+              // Initial filter
+              const _popupSessionId = Math.random();
+              let initialFilter = typeof variables.initial_filter === 'number' ? variables.initial_filter : -1;
+              if (initialFilter === -1 && variables.initial_filter_entity && rooms) {
+                const _ifIdx = topLevelIds.indexOf(variables.initial_filter_entity);
+                if (_ifIdx >= 0) initialFilter = _ifIdx;
+              }
+              // Auto-select
+              if (initialFilter === -1 && rooms) {
+                const _origId = entity?.entity_id;
+                if (_origId) {
+                  const _autoIdx = topLevelIds.indexOf(_origId);
+                  if (_autoIdx >= 0) initialFilter = _autoIdx;
+                }
+              }
+  
+              const ghostStyle = [
+                ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; --ha-card-border-radius: 0px !important; --ha-card-background: transparent !important; --ha-card-border-width: 0px !important; width: 100% !important; max-width: none !important; }',
+                'ha-card { background: transparent !important; border: none !important; border-radius: 0px !important; box-shadow: none !important; overflow: visible !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }',
+                'ha-card:hover { box-shadow: none !important; }',
+                'ha-ripple { display: none !important; }',
+              ].join('\n');
+  
+              /* Badge pill */
+              const _tidsJson = JSON.stringify(topLevelIds);
+              const _roomLIds = JSON.stringify(rooms ? rooms.map(r => r.lights) : []);
+              const _gkBadge = JSON.stringify(groupId);
+              const _badgeOc = `
+                const _gid2=${_gkBadge};
+                const _sel2=(window._hemmaLF&&window._hemmaLF[_gid2]!==undefined)?window._hemmaLF[_gid2]:-1;
+                const _rLIds=${_roomLIds};
+                const _aLIds=${_lightIds};
+                const _aIds=(_sel2===-1||_sel2===${n})?_aLIds:(_rLIds[_sel2]||_aLIds);
+                const oc=_aIds.filter(id=>states[id]?.state==="on").length;
+              `;
+              const badgePillCard = {
+                type: 'custom:button-card',
+                entity: groupId,
+                tap_action: rooms
+                  ? { action: 'fire-dom-event', event_data: { hemma_lf_badge_tap: groupId } }
+                  : { action: 'call-service', service: 'script.hemma_light_smart_toggle', service_data: { light_entity: groupId } },
+                haptic: 'medium',
+                show_icon: false, show_name: false, show_label: false, show_state: false,
+                card_mod: {
+                  style: [
+                    ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: inset 0 1px 0.5px -0.5px color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint-tight,65%), white) calc(var(--hemma-glass-pill-glow-top-tight,0.30) * 150%), transparent), inset 0 -1px 0.5px -0.5px color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint-tight,65%), white) calc(var(--hemma-glass-pill-glow-bottom-tight,0.20) * 150%), transparent), inset 0 3px 6px -3px color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint,40%), white) calc(var(--hemma-glass-pill-glow-top-soft,0.10) * 150%), transparent), inset 0 -3px 6px -3px color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint,40%), white) calc(var(--hemma-glass-pill-glow-bottom-soft,0.06) * 150%), transparent) !important; }',
+                    'ha-card { background: var(--pill-fill) !important; border: none !important; border-radius: 50% !important; width: 36px !important; height: 36px !important; aspect-ratio: 1 !important; flex-shrink: 0 !important; backdrop-filter: var(--hemma-glass-pill-backdrop, none) !important; -webkit-backdrop-filter: var(--hemma-glass-pill-backdrop, none) !important; box-shadow: inset 0 1px 0.5px -0.5px var(--pill-glow-top-tight), inset 0 -1px 0.5px -0.5px var(--pill-glow-bottom-tight), inset 0 3px 6px -3px var(--pill-glow-top-soft), inset 0 -3px 6px -3px var(--pill-glow-bottom-soft) !important; cursor: pointer !important; position: relative !important; overflow: visible !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease !important; --pill-glow-top-tight: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint-tight,65%), white) calc(var(--hemma-glass-pill-glow-top-tight,0.30) * 100%), transparent) !important; --pill-glow-top-soft: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint,40%), white) calc(var(--hemma-glass-pill-glow-top-soft,0.10) * 100%), transparent) !important; --pill-glow-bottom-tight: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint-tight,65%), white) calc(var(--hemma-glass-pill-glow-bottom-tight,0.20) * 100%), transparent) !important; --pill-glow-bottom-soft: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint,40%), white) calc(var(--hemma-glass-pill-glow-bottom-soft,0.06) * 100%), transparent) !important; }',
+                    'ha-card::after { content: ""; position: absolute; inset: -1px; border-radius: 50%; padding: 1px; background: conic-gradient(from 0deg, transparent 0deg 50deg, rgba(0,0,0,0.32) 80deg 100deg, transparent 130deg 230deg, rgba(0,0,0,0.32) 260deg 280deg, transparent 310deg 360deg); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; pointer-events: none; }',
+                    '@media (hover: hover) { :host(:hover) ha-card { background: color-mix(in srgb, var(--pill-fill, var(--hemma-glass-pill-fill, rgba(255,255,255,0.07))) 88%, white 12%) !important; } }',
+                    'ha-card:active { transform: scale(0.94) !important; }',
+                    'ha-ripple { display: none !important; }',
+                  ].join('\n'),
+                },
+                styles: {
+                  card: [
+                    { '--pill-fill': `[[[${_badgeOc}return oc>0?'#ffffff':'var(--hemma-glass-pill-fill, rgba(255,255,255,0.07))'; ]]]` },
+                    { '--pill-accent': '#ffffff' },
+                    { border: 'none' }, { padding: '0' },
+                  ],
+                  grid: [{ 'grid-template-areas': '"c"' }, { 'grid-template-columns': '1fr' }],
+                  custom_fields: { c: [{ 'justify-self': 'center' }] },
+                },
+                custom_fields: {
+                  c: `[[[${_badgeOc}return oc>0
+                    ? '<img src="${window.hemmaIconUrl('power_on')}" style="width:16px;height:16px;filter:brightness(0);opacity:0.85;display:block;pointer-events:none;" />'
+                    : '<img src="${window.hemmaIconUrl('power_on')}" style="width:16px;height:16px;filter:brightness(0) invert(1);opacity:0.92;display:block;pointer-events:none;" />'; ]]]`,
+                },
+              };
+  
+              /* Header */
+              const headerCard = {
+                type: 'custom:button-card',
+                entity: groupId,
+                tap_action: { action: 'none' },
+                show_icon: false, show_name: false, show_label: false, show_state: false,
+                card_mod: { style: ghostStyle },
+                styles: {
+                  card: [
+                    { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                    { padding: isDesktop ? '24px 24px 0 24px' : '20px 14px 0 14px' },
+                  ],
+                  grid: [
+                    { 'grid-template-areas': '"f_init f_init" "hdr_t hdr_b"' },
+                    { 'grid-template-columns': '1fr auto' },
+                    { 'align-items': 'flex-start' },
+                  ],
+                  custom_fields: {
+                    f_init: [{ height: '0' }, { overflow: 'hidden' }, { padding: '0' }, { margin: '0' }],
+                    hdr_t: [{ 'justify-self': 'start' }, { 'text-align': 'left' }],
+                    hdr_b: [{ 'justify-self': 'end' }, { 'align-self': 'flex-start' }],
+                  },
+                },
+                custom_fields: {
+                  f_init: '',
+                  hdr_t: '<div style="font-family:var(--primary-font-family,system-ui);color:#fff;">'
+                    + '<div style="font-size:16px;font-weight:400;letter-spacing:-0.01em;">' + roomName + '</div>'
+                    + '<div style="font-size:13px;color:rgba(255,255,255,0.45);font-weight:400;margin-top:2px;">Light Control</div>'
+                    + '</div>',
+                  hdr_b: { card: badgePillCard },
+                },
+              };
+  
+              /* Light Mode colors */
+              const _lc = {
+                onBg:    'rgba(255,255,255,0.94)',
+                onName:  'rgba(0,0,0,0.85)',
+                onLabel: 'rgba(0,0,0,0.50)',
+                offBg:   'rgba(255,255,255,0.11)',
+                offName: 'rgba(255,255,255,0.90)',
+                offLabel:'rgba(255,255,255,0.50)',
+              };
+              const _hp = {
+                activeBg:  'rgba(255,255,255,0.88)',
+                activeClr: 'rgba(0,0,0,0.80)',
+                inactBg:   'rgba(255,255,255,0.10)',
+                inactClr:  'rgba(255,255,255,0.85)',
+              };
+  
+              /* Light entity card */
+              const makeLightCard = (lightId) => ({
+                type: 'custom:button-card',
+                entity: lightId,
+                show_icon: false,
+                show_entity_picture: true,
+                entity_picture: window.hemmaIconUrl('light'),
+                tap_action: {
+                  action: 'fire-dom-event',
+                  event_data: { hemma_light_more_info: lightId },
+                },
+                hold_action: { action: 'more-info' },
+                double_tap_action: { action: 'none' },
+                icon_tap_action: { action: 'toggle' },
+                show_name: true,
+                show_state: false,
+                show_label: true,
+                label: `[[[ const e=states["${lightId}"]; const b=e?.attributes?.brightness; return b?Math.round(b/2.55)+"%":e?.state==="on"?"On":"Off"; ]]]`,
+                extra_styles: ':host{--hemma-card-hover-filter:brightness(1.10);width:100%!important;max-width:none!important;display:block!important;box-sizing:border-box!important;--button-card-ripple-color:transparent!important;--button-card-ripple-hover-color:transparent!important;--ha-ripple-color:transparent!important;--ha-ripple-hover-color:transparent!important;}ha-card{transition:background 0.45s ease,transform var(--hemma-popup-tile-hover-duration,0.2s) ease,filter var(--hemma-popup-tile-hover-duration,0.2s) ease!important;transform:scale(1)!important;}ha-card:hover{transform:scale(var(--hemma-popup-tile-hover-scale,1.01))!important;}ha-card:active{transform:scale(1)!important;}@media (hover:hover){ha-card:hover{filter:var(--hemma-card-hover-filter,brightness(1.06))!important;}ha-card:hover::after{background:var(--lc-hover-tint,rgba(255,255,255,0.06))!important;}}ha-card::before{display:none!important;}ha-card::after{content:""!important;position:absolute!important;inset:0!important;border-radius:inherit!important;background:transparent!important;transition:background var(--hemma-popup-tile-hover-duration,0.2s) ease!important;pointer-events:none!important;}ha-ripple{display:none!important;}div#img-cell{position:relative!important;overflow:hidden!important;transition:transform var(--hemma-popup-tile-hover-duration,0.2s) ease!important;}div#img-cell::before{display:none!important;}div#img-cell::after{content:""!important;display:block!important;position:absolute!important;inset:0!important;background-color:var(--lc-clr,#ffffff)!important;-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16.0312 27.9961%27%3E%3Crect height=%2727.9961%27 opacity=%270%27 width=%2716.0312%27 x=%270%27 y=%270%27/%3E%3Cpath d=%27M4.13672 23.8711L11.5547 23.8711C11.9414 23.8711 12.2344 23.5664 12.2344 23.1797C12.2344 22.8047 11.9414 22.5 11.5547 22.5L4.13672 22.5C3.75 22.5 3.44531 22.8047 3.44531 23.1797C3.44531 23.5664 3.75 23.8711 4.13672 23.8711ZM7.83984 27.2695C9.65625 27.2695 11.168 26.3789 11.2852 25.0312L4.40625 25.0312C4.48828 26.3789 6.01172 27.2695 7.83984 27.2695Z%27 fill=%27white%27/%3E%3Cpath d=%27M0 7.21875C0 11.7188 2.96484 12.832 3.44531 20.6484C3.46875 21.0703 3.72656 21.3398 4.17188 21.3398L11.5078 21.3398C11.9648 21.3398 12.2109 21.0703 12.2461 20.6484C12.7266 12.832 15.6797 11.7188 15.6797 7.21875C15.6797 3.17578 12.2227 0 7.83984 0C3.45703 0 0 3.17578 0 7.21875Z%27 fill=%27white%27/%3E%3C/svg%3E")!important;-webkit-mask-repeat:no-repeat!important;-webkit-mask-position:center!important;-webkit-mask-size:auto 58%!important;mask-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16.0312 27.9961%27%3E%3Crect height=%2727.9961%27 opacity=%270%27 width=%2716.0312%27 x=%270%27 y=%270%27/%3E%3Cpath d=%27M4.13672 23.8711L11.5547 23.8711C11.9414 23.8711 12.2344 23.5664 12.2344 23.1797C12.2344 22.8047 11.9414 22.5 11.5547 22.5L4.13672 22.5C3.75 22.5 3.44531 22.8047 3.44531 23.1797C3.44531 23.5664 3.75 23.8711 4.13672 23.8711ZM7.83984 27.2695C9.65625 27.2695 11.168 26.3789 11.2852 25.0312L4.40625 25.0312C4.48828 26.3789 6.01172 27.2695 7.83984 27.2695Z%27 fill=%27white%27/%3E%3Cpath d=%27M0 7.21875C0 11.7188 2.96484 12.832 3.44531 20.6484C3.46875 21.0703 3.72656 21.3398 4.17188 21.3398L11.5078 21.3398C11.9648 21.3398 12.2109 21.0703 12.2461 20.6484C12.7266 12.832 15.6797 11.7188 15.6797 7.21875C15.6797 3.17578 12.2227 0 7.83984 0C3.45703 0 0 3.17578 0 7.21875Z%27 fill=%27white%27/%3E%3C/svg%3E")!important;mask-repeat:no-repeat!important;mask-position:center!important;mask-size:auto 58%!important;opacity:var(--lc-io,0.9)!important;pointer-events:none!important;transform:translateZ(0)!important;will-change:transform!important;}div#img-cell:hover,div#img-cell:active{transform:scale(1.03)!important;}#img-cell img{opacity:0!important;}',
+                styles: {
+                  card: [
+                    { background: `[[[ return states["${lightId}"]?.state==="on"?"${_lc.onBg}":"${_lc.offBg}";]]]` },
+                    { '--lc-nc': `[[[ return states["${lightId}"]?.state==="on"?"${_lc.onName}":"${_lc.offName}"; ]]]` },
+                    { '--lc-lc': `[[[ return states["${lightId}"]?.state==="on"?"${_lc.onLabel}":"${_lc.offLabel}"; ]]]` },
+                    { '--lc-io': `[[[ return "1";]]]` },
+                    { '--lc-clr': `[[[ return states["${lightId}"]?.state==="on"?"#ffffff":"var(--hemma-color-yellow, #ffd600)";]]]` },
+                    /* On-state cards are already near-white, so the hover lift just washes out
+                       the dark text and yellow icon. Override via styles.card (inline, beats
+                       the :host default in extra_styles) to kill both while the light is on. */
+                    { '--hemma-card-hover-filter': `[[[ return states["${lightId}"]?.state==="on"?"none":"brightness(1.10)";]]]` },
+                    { '--lc-hover-tint': `[[[ return states["${lightId}"]?.state==="on"?"transparent":"rgba(255,255,255,0.06)";]]]` },
+                    { border: 'none' },
+                    { 'box-shadow': 'none' },
+                    { 'border-radius': '26px' },
+                    { cursor: 'pointer' },
+                    { padding: '12px 12px' },
+                    { width: '100%' },
+                  ],
+                  grid: [
+                    { 'grid-template-areas': '"i n" "i l"' },
+                    { 'grid-template-columns': 'auto 1fr' },
+                    { 'grid-template-rows': 'auto auto' },
+                    { 'column-gap': '10px' },
+                    { 'row-gap': '1px' },
+                    { 'align-items': 'start' },
+                  ],
+                  img_cell: [
+                    { background: `[[[ return states["${lightId}"]?.state==="on"?"var(--hemma-color-yellow, #ffd600)":"rgba(255,255,255,0.10)";]]]` },
+                    { 'border-radius': '50%' },
+                    { width: '38px' },
+                    { height: '38px' },
+                    { 'min-width': '38px' },
+                    { display: 'flex' },
+                    { 'align-items': 'center' },
+                    { 'justify-content': 'center' },
+                    { 'align-self': 'center' },
+                  ],
+                  entity_picture: [
+                    { width: '100%' },
+                    { height: '100%' },
+                    { 'object-fit': 'contain' },
+                  ],
+                  name: [
+                    { 'font-size': '14px' },
+                    { 'font-weight': '500' },
+                    { color: 'var(--lc-nc)' },
+                    { 'text-align': 'left' },
+                    { 'justify-self': 'start' },
+                    { 'align-self': 'end' },
+                    { 'line-height': '1.2' },
+                    { overflow: 'hidden' },
+                    { 'text-overflow': 'ellipsis' },
+                    { 'white-space': 'nowrap' },
+                  ],
+                  label: [
+                    { 'font-size': '12px' },
+                    { color: 'var(--lc-lc)' },
+                    { 'text-align': 'left' },
+                    { 'justify-self': 'start' },
+                    { 'align-self': 'start' },
+                    { 'line-height': '1.2' },
+                  ],
+                },
+              });
+  
+              /* Scene card */
+              const sceneIconMap = variables.scene_icons || {};
+              const _siMapJson = JSON.stringify(sceneIconMap);
+  
+              const makeSceneCard = (sceneId) => {
+                const _scGk = JSON.stringify(groupId);
+                const _scId = JSON.stringify(sceneId);
+                /* Only a mapped icon URL is known at build time, so the light tile's
+                   mask tint is wired up only then; scenes falling back to their mdi
+                   icon get the same tint through ha-icon's color instead. */
+                const _scIcon = sceneIconMap[sceneId] || null;
+                const _scMaskCss = _scIcon
+                  ? '#img-cell img{opacity:0!important;}div#img-cell::after{content:""!important;display:block!important;position:absolute!important;inset:0!important;background-color:var(--sc-clr,#ffffff)!important;-webkit-mask-image:url(' + JSON.stringify(_scIcon) + ')!important;-webkit-mask-repeat:no-repeat!important;-webkit-mask-position:center!important;-webkit-mask-size:auto 58%!important;mask-image:url(' + JSON.stringify(_scIcon) + ')!important;mask-repeat:no-repeat!important;mask-position:center!important;mask-size:auto 58%!important;opacity:var(--sc-io,1)!important;pointer-events:none!important;transform:translateZ(0)!important;}'
+                  : '';
+                const _scActiveSnip = `
+                  const _sca = (() => {
+                    if (window._hemmaActiveScene?.[${_scGk}] !== ${_scId}) return false;
+                    const _snp = window._hemmaSceneSnap?.[${_scGk}];
+                    if (!_snp) return true;
+                    return ${_lightIds}.every(id => {
+                      const s = states[id]; if (!s) return true;
+                      const c = s.state+'|'+(s.attributes?.brightness??'')+'|'+(s.attributes?.color_temp??'')+'|'+JSON.stringify(s.attributes?.rgb_color??null);
+                      return c === _snp[id];
+                    });
+                  })();
+                `;
+                return {
+                  type: 'custom:button-card',
+                  entity: sceneId,
+                  tap_action: {
+                    action: 'fire-dom-event',
+                    event_data: { hemma_lf_scene_tap: sceneId, hemma_lf_gid: groupId },
+                  },
+                  haptic: 'medium',
+                  show_icon: true,
+                  show_entity_picture: true,
+                  entity_picture: `[[[ const _sim=${_siMapJson}; const _ep=_sim[entity.entity_id]||entity.attributes.entity_picture; return _ep||undefined; ]]]`,
+                  show_name: true,
+                  show_state: false,
+                  show_label: false,
+                  extra_styles: ':host{--hemma-card-hover-filter:brightness(1.10);width:100%!important;max-width:none!important;display:block!important;box-sizing:border-box!important;--button-card-ripple-color:transparent!important;--button-card-ripple-hover-color:transparent!important;--ha-ripple-color:transparent!important;--ha-ripple-hover-color:transparent!important;}ha-card{transition:background 0.45s ease,transform var(--hemma-popup-tile-hover-duration,0.2s) ease,filter var(--hemma-popup-tile-hover-duration,0.2s) ease!important;transform:scale(1)!important;}ha-card:hover{transform:scale(var(--hemma-popup-tile-hover-scale,1.01))!important;}ha-card:active{transform:scale(1)!important;}@media (hover:hover){ha-card:hover{filter:var(--hemma-card-hover-filter,brightness(1.06))!important;}ha-card:hover::after{background:var(--sc-hover-tint,rgba(255,255,255,0.06))!important;}}ha-card::before{display:none!important;}ha-card::after{content:""!important;position:absolute!important;inset:0!important;border-radius:inherit!important;background:transparent!important;transition:background var(--hemma-popup-tile-hover-duration,0.2s) ease!important;pointer-events:none!important;}ha-ripple{display:none!important;}div#img-cell{position:relative!important;overflow:hidden!important;transition:transform var(--hemma-popup-tile-hover-duration,0.2s) ease!important;}div#img-cell::before{display:none!important;}div#img-cell:hover,div#img-cell:active{transform:scale(1.03)!important;}ha-icon{--mdc-icon-size:22px!important;color:var(--sc-clr,#ffffff)!important;opacity:var(--sc-io,1)!important;}#img-cell img{width:60%!important;height:60%!important;object-fit:contain!important;opacity:var(--sc-io,1)!important;}' + _scMaskCss,
+                  styles: {
+                    card: [
+                      { background: `[[[ ${_scActiveSnip} return _sca?"${_lc.onBg}":"${_lc.offBg}"; ]]]` },
+                      { '--sc-nc': `[[[ ${_scActiveSnip} return _sca?"${_lc.onName}":"${_lc.offName}"; ]]]` },
+                      { '--sc-io': `[[[ return "1"; ]]]` },
+                      { '--sc-clr': `[[[ ${_scActiveSnip} return _sca?"#ffffff":"var(--hemma-color-yellow, #ffd600)"; ]]]` },
+                      { '--hemma-card-hover-filter': `[[[ ${_scActiveSnip} return _sca?"none":"brightness(1.10)"; ]]]` },
+                      { '--sc-hover-tint': `[[[ ${_scActiveSnip} return _sca?"transparent":"rgba(255,255,255,0.06)"; ]]]` },
+                      { border: 'none' },
+                      { 'box-shadow': 'none' },
+                      { 'border-radius': '26px' },
+                      { cursor: 'pointer' },
+                      { padding: '12px 12px' },
+                      { width: '100%' },
+                    ],
+                    grid: [
+                      { 'grid-template-areas': '"i n"' },
+                      { 'grid-template-columns': 'auto 1fr' },
+                      { 'column-gap': '10px' },
+                      { 'align-items': 'center' },
+                    ],
+                    img_cell: [
+                      { background: `[[[ ${_scActiveSnip} return _sca?"var(--hemma-color-yellow,#ffd600)":"rgba(255,255,255,0.10)"; ]]]` },
+                      { 'border-radius': '50%' },
+                      { width: '38px' },
+                      { height: '38px' },
+                      { 'min-width': '38px' },
+                      { display: 'flex' },
+                      { 'align-items': 'center' },
+                      { 'justify-content': 'center' },
+                      { 'align-self': 'center' },
+                    ],
+                    entity_picture: [
+                      { width: '60%' },
+                      { height: '60%' },
+                      { 'object-fit': 'contain' },
+                    ],
+                    name: [
+                      { 'font-size': '14px' },
+                      { 'font-weight': '500' },
+                      { color: 'var(--sc-nc)' },
+                      { 'text-align': 'left' },
+                      { 'justify-self': 'start' },
+                      { 'align-self': 'center' },
+                      { 'line-height': '1.2' },
+                      { overflow: 'hidden' },
+                      { 'text-overflow': 'ellipsis' },
+                      { 'white-space': 'nowrap' },
+                    ],
+                  },
+                };
+              };
+  
+              /* Room section: label + light cards */
+              const makeRoomSection = (room, roomIdx) => {
+                const ids = room.lights;
+                if (!ids || !ids.length) return null;
+                const C = isDesktop ? 4 : 2;
+                const fields = {};
+                const fstyle = {};
+  
+                const rsInitSnip = `
+                  window._hemmaLPRooms = window._hemmaLPRooms || {};
+                  window._hemmaLPRooms[${gidKey}] = window._hemmaLPRooms[${gidKey}] || [];
+                  window._hemmaLPRooms[${gidKey}][${roomIdx}] = this;
+                  const _rsf = window._hemmaLF?.[${gidKey}];
+                  const _rssel = (_rsf !== undefined) ? _rsf : -1;
+                  if (_rssel !== -1 && _rssel !== ${roomIdx}) {
+                    this.style.transition='none'; this.style.maxHeight='0px'; this.style.overflow='hidden';
+                    this.style.opacity='0'; this.style.transform='translateY(-6px)'; this.style.pointerEvents='none';
+                  } else {
+                    this.style.transition='none'; this.style.maxHeight=''; this.style.overflow='';
+                    this.style.opacity='1'; this.style.transform='none'; this.style.pointerEvents='';
+                  }
+                  return '';
+                `;
+                fields.rs_init = `[[[ ${rsInitSnip} ]]]`;
+                fstyle.rs_init = [{ height: '0' }, { overflow: 'hidden' }, { padding: '0' }, { margin: '0' }];
+  
+                fields.rs_lbl = '<span style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.82);'
+                  + 'font-family:var(--primary-font-family,system-ui);letter-spacing:0.01em;display:block;padding-bottom:4px;">'
+                  + room.name + '</span>';
+                fstyle.rs_lbl = [{ 'justify-self': 'start' }];
+  
+                ids.forEach((id, j) => {
+                  const t = 'rs_t' + j;
+                  fields[t] = { card: makeLightCard(id) };
+                  fstyle[t] = [{ 'justify-self': 'stretch' }, { 'text-align': 'left' }];
+                });
+  
+                let areas = '"' + Array(C).fill('rs_init').join(' ') + '" "' + Array(C).fill('rs_lbl').join(' ') + '"';
+                let rsPhIdx = 0;
+                const rowCount = Math.ceil(ids.length / C);
+                for (let r = 0; r < rowCount; r++) {
+                  let row = '';
+                  for (let c = 0; c < C; c++) {
+                    const idx = r * C + c;
+                    if (c > 0) row += ' ';
+                    if (idx < ids.length) {
+                      row += 'rs_t' + idx;
+                    } else {
+                      const ph = 'rs_ph' + rsPhIdx++;
+                      row += ph;
+                      fields[ph] = '<div></div>';
+                      fstyle[ph] = [{ 'justify-self': 'stretch' }];
+                    }
+                  }
+                  areas += ' "' + row + '"';
+                }
+  
+                return {
+                  type: 'custom:button-card',
+                  entity: groupId,
+                  tap_action: { action: 'none' },
+                  show_icon: false, show_name: false, show_label: false, show_state: false,
+                  card_mod: { style: ghostStyle },
+                  styles: {
+                    card: [
+                      { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                      { padding: isDesktop ? '8px 24px 8px 24px' : '8px 14px 12px 14px' },
+                    ],
+                    grid: [
+                      { 'grid-template-areas': areas },
+                      { 'grid-template-columns': 'repeat(' + C + ', minmax(0,1fr))' },
+                      { gap: '10px' },
+                      { 'align-items': 'start' },
+                    ],
+                    custom_fields: fstyle,
+                  },
+                  custom_fields: fields,
+                };
+              };
+  
+              /* Scenes section */
+              const makeScenesSection = (sceneList) => {
+                if (!sceneList || !sceneList.length) return null;
+                const gk = JSON.stringify(groupId);
+                const _scN = rooms.length;
+  
+                const scSecInitSnip = `
+                  window._hemmaLPRooms = window._hemmaLPRooms || {};
+                  window._hemmaLPRooms[${gk}] = window._hemmaLPRooms[${gk}] || [];
+                  window._hemmaLPRooms[${gk}][${_scN}] = this;
+                  const _scSelf = (window._hemmaLF?.[${gk}] !== undefined) ? window._hemmaLF[${gk}] : -1;
+                  if (_scSelf !== -1) {
+                    this.style.transition='none'; this.style.maxHeight='0px'; this.style.overflow='hidden';
+                    this.style.opacity='0'; this.style.transform='none'; this.style.pointerEvents='none';
+                  } else {
+                    this.style.transition='none'; this.style.maxHeight=''; this.style.overflow='';
+                    this.style.opacity='1'; this.style.transform='none'; this.style.pointerEvents='';
+                  }
+                  return '';
+                `;
+  
+                const scLblHtml = '<span style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.82);'
+                  + 'font-family:var(--primary-font-family,system-ui);letter-spacing:0.01em;display:block;padding-bottom:4px;">Scenes</span>';
+  
+                const scLblInitSnip = `
+                  window._hemmaLPRooms = window._hemmaLPRooms || {};
+                  window._hemmaLPRooms[${gk}] = window._hemmaLPRooms[${gk}] || [];
+                  window._hemmaLPRooms[${gk}][${_scN}] = this;
+                  window._hemmaScLbl = window._hemmaScLbl || {};
+                  window._hemmaScLbl[${gk}] = this;
+                  const _scSelf = (window._hemmaLF?.[${gk}] !== undefined) ? window._hemmaLF[${gk}] : -1;
+                  if (_scSelf !== -1) {
+                    this.style.transition='none'; this.style.maxHeight='0px'; this.style.overflow='hidden';
+                    this.style.opacity='0'; this.style.transform='none'; this.style.pointerEvents='none';
+                  } else {
+                    this.style.transition='none'; this.style.maxHeight=''; this.style.overflow='';
+                    this.style.opacity='1'; this.style.transform='none'; this.style.pointerEvents='';
+                  }
+                  this.style.setProperty('--sc-lbl-pb', '12px');
+                  return '';
+                `;
+  
+                const svgChevron = '<svg id="sc_arrow" viewBox="0 0 8 13" width="9" height="13" fill="none"'
+                  + ' stroke="rgba(255,255,255,0.6)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"'
+                  + ' style="flex-shrink:0;overflow:visible;transform:rotate(var(--sc-rot,0deg));transition:transform 0.2s ease;">'
+                  + '<path d="M1.5 1.5 L6.5 6.5 L1.5 11.5"/>'
+                  + '</svg>';
+  
+                if (!isDesktop) {
+                  // Mobile
+                  const ALWAYS_N = Math.min(2, sceneList.length);
+                  const moreScenes = sceneList.slice(ALWAYS_N);
+                  const hasMobileMore = moreScenes.length > 0;
+  
+                  const scLblHtmlRow = '<div style="display:flex;align-items:center;gap:6px;padding-bottom:4px;">'
+                    + '<span style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.82);font-family:var(--primary-font-family,system-ui);letter-spacing:0.01em;line-height:1.2;">Scenes</span>'
+                    + (hasMobileMore ? svgChevron : '')
+                    + '</div>';
+  
+                  const scLblFields = {};
+                  const scLblFStyle = {};
+  
+                  scLblFields.sc_init = `[[[ ${scLblInitSnip} ]]]`;
+                  scLblFStyle.sc_init = [{ height: '0' }, { overflow: 'hidden' }, { padding: '0' }, { margin: '0' }];
+  
+                  scLblFields.sc_lbl = scLblHtmlRow;
+                  scLblFStyle.sc_lbl = [{ 'justify-self': 'start' }, { 'grid-column': 'span 2' }];
+  
+                  for (let j = 0; j < ALWAYS_N; j++) {
+                    scLblFields['sc_at' + j] = { card: makeSceneCard(sceneList[j]) };
+                    scLblFStyle['sc_at' + j] = [{ 'justify-self': 'stretch' }];
+                  }
+  
+                  if (ALWAYS_N === 1) {
+                    scLblFields.sc_alph = '<div></div>';
+                    scLblFStyle.sc_alph = [{ 'justify-self': 'stretch' }];
+                  }
+  
+                  const scLblTileRow = ALWAYS_N === 1 ? '"sc_at0 sc_alph"' : '"sc_at0 sc_at1"';
+                  const scLblAreas = '"sc_init sc_init" "sc_lbl sc_lbl" ' + scLblTileRow;
+  
+                  const scLabelCard = {
+                    type: 'custom:button-card',
+                    entity: groupId,
+                    tap_action: hasMobileMore
+                      ? { action: 'fire-dom-event', event_data: { hemma_sc_toggle: groupId } }
+                      : { action: 'none' },
+                    show_icon: false, show_name: false, show_label: false, show_state: false,
+                    card_mod: { style: ghostStyle + '\n#grid { overflow: visible !important; }\n#sc_lbl { overflow: visible !important; }' },
+                    styles: {
+                      card: [
+                        { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                        { padding: hasMobileMore ? '8px 14px var(--sc-lbl-pb, 12px) 14px' : '8px 14px 12px 14px' },
+                        ...(hasMobileMore ? [{ cursor: 'pointer' }] : []),
+                      ],
+                      grid: [
+                        { 'grid-template-areas': scLblAreas },
+                        { 'grid-template-columns': 'repeat(2, minmax(0,1fr))' },
+                        { gap: '10px' },
+                        { 'align-items': 'start' },
+                      ],
+                      custom_fields: scLblFStyle,
+                    },
+                    custom_fields: scLblFields,
+                  };
+  
+                  if (!hasMobileMore) {
+                    return scLabelCard;
+                  }
+  
+                  const scGridFields = {};
+                  const scGridFStyle = {};
+  
+                  const scGridInitSnip = `
+                    window._hemmaScGrid = window._hemmaScGrid || {};
+                    window._hemmaScGrid[${gk}] = this;
+                    this.style.maxHeight = '0px'; this.style.overflow = 'hidden'; this.style.opacity = '0';
+                    return '';
+                  `;
+                  scGridFields.sc_ginit = `[[[ ${scGridInitSnip} ]]]`;
+                  scGridFStyle.sc_ginit = [{ height: '0' }, { overflow: 'hidden' }, { padding: '0' }, { margin: '0' }];
+  
+                  moreScenes.forEach((id, j) => {
+                    scGridFields['sc_mt' + j] = { card: makeSceneCard(id) };
+                    scGridFStyle['sc_mt' + j] = [{ 'justify-self': 'stretch' }];
+                  });
+  
+                  let scGridAreas = '"sc_ginit sc_ginit"';
+                  let scGridPhIdx = 0;
+                  const scMoreRowCount = Math.ceil(moreScenes.length / 2);
+                  for (let r = 0; r < scMoreRowCount; r++) {
+                    let row = '';
+                    for (let c = 0; c < 2; c++) {
+                      const idx = r * 2 + c;
+                      if (c > 0) row += ' ';
+                      if (idx < moreScenes.length) {
+                        row += 'sc_mt' + idx;
+                      } else {
+                        const ph = 'sc_mph' + scGridPhIdx++;
+                        row += ph;
+                        scGridFields[ph] = '<div></div>';
+                        scGridFStyle[ph] = [{ 'justify-self': 'stretch' }];
+                      }
+                    }
+                    scGridAreas += ' "' + row + '"';
+                  }
+  
+                  const scGridCard = {
+                    type: 'custom:button-card',
+                    entity: groupId,
+                    tap_action: { action: 'none' },
+                    show_icon: false, show_name: false, show_label: false, show_state: false,
+                    card_mod: { style: ghostStyle },
+                    styles: {
+                      card: [
+                        { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                        { padding: '0 14px 12px 14px' },
+                      ],
+                      grid: [
+                        { 'grid-template-areas': scGridAreas },
+                        { 'grid-template-columns': 'repeat(2, minmax(0,1fr))' },
+                        { gap: '10px' },
+                        { 'align-items': 'start' },
+                      ],
+                      custom_fields: scGridFStyle,
+                    },
+                    custom_fields: scGridFields,
+                  };
+  
+                  return { type: 'vertical-stack', cards: [scLabelCard, scGridCard] };
+                }
+  
+                // Desktop
+                const C = 4;
+                const ALWAYS_N_D = C; // 4 = 1 row of 4
+                const moreDesktop = sceneList.slice(ALWAYS_N_D);
+                const hasDesktopMore = moreDesktop.length > 0;
+  
+                if (!hasDesktopMore) {
+                  const fields = {};
+                  const fstyle = {};
+                  fields.sc_init = `[[[ ${scSecInitSnip} ]]]`;
+                  fstyle.sc_init = [{ height: '0' }, { overflow: 'hidden' }, { padding: '0' }, { margin: '0' }];
+                  fields.sc_lbl = scLblHtml;
+                  fstyle.sc_lbl = [{ 'justify-self': 'start' }];
+                  sceneList.forEach((id, j) => {
+                    fields['sc_t' + j] = { card: makeSceneCard(id) };
+                    fstyle['sc_t' + j] = [{ 'justify-self': 'stretch' }, { 'text-align': 'left' }];
+                  });
+                  let areas = '"' + Array(C).fill('sc_init').join(' ') + '" "' + Array(C).fill('sc_lbl').join(' ') + '"';
+                  let scPhIdx = 0;
+                  const rowCount = Math.ceil(sceneList.length / C);
+                  for (let r = 0; r < rowCount; r++) {
+                    let row = '';
+                    for (let c = 0; c < C; c++) {
+                      const idx = r * C + c;
+                      if (c > 0) row += ' ';
+                      if (idx < sceneList.length) {
+                        row += 'sc_t' + idx;
+                      } else {
+                        const ph = 'sc_ph' + scPhIdx++;
+                        row += ph;
+                        fields[ph] = '<div></div>';
+                        fstyle[ph] = [{ 'justify-self': 'stretch' }];
+                      }
+                    }
+                    areas += ' "' + row + '"';
+                  }
+                  return {
+                    type: 'custom:button-card',
+                    entity: groupId,
+                    tap_action: { action: 'none' },
+                    show_icon: false, show_name: false, show_label: false, show_state: false,
+                    card_mod: { style: ghostStyle },
+                    styles: {
+                      card: [
+                        { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                        { padding: '8px 24px 8px 24px' },
+                      ],
+                      grid: [
+                        { 'grid-template-areas': areas },
+                        { 'grid-template-columns': 'repeat(' + C + ', minmax(0,1fr))' },
+                        { gap: '10px' },
+                        { 'align-items': 'start' },
+                      ],
+                      custom_fields: fstyle,
+                    },
+                    custom_fields: fields,
+                  };
+                }
+  
+                const scLblHtmlDeskCollapsible = '<div style="display:flex;align-items:center;gap:6px;">'
+                  + '<span style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.82);font-family:var(--primary-font-family,system-ui);letter-spacing:0.01em;line-height:1.2;">Scenes</span>'
+                  + svgChevron
+                  + '</div>';
+  
+                const deskHFields = {};
+                const deskHFStyle = {};
+                deskHFields.sc_init = `[[[ ${scLblInitSnip} ]]]`;
+                deskHFStyle.sc_init = [{ height: '0' }, { overflow: 'hidden' }, { padding: '0' }, { margin: '0' }];
+                deskHFields.sc_lbl = scLblHtmlDeskCollapsible;
+                deskHFStyle.sc_lbl = [{ 'justify-self': 'start' }, { 'grid-column': 'span ' + C }];
+  
+                const alwaysDesk = sceneList.slice(0, ALWAYS_N_D);
+                alwaysDesk.forEach((id, j) => {
+                  deskHFields['sc_at' + j] = { card: makeSceneCard(id) };
+                  deskHFStyle['sc_at' + j] = [{ 'justify-self': 'stretch' }];
+                });
+  
+                let deskHAreas = '"' + Array(C).fill('sc_init').join(' ') + '" "' + Array(C).fill('sc_lbl').join(' ') + '"';
+                for (let r = 0; r < 1; r++) {
+                  let row = '';
+                  for (let c = 0; c < C; c++) { if (c > 0) row += ' '; row += 'sc_at' + (r * C + c); }
+                  deskHAreas += ' "' + row + '"';
+                }
+  
+                const desktopHeaderCard = {
+                  type: 'custom:button-card',
+                  entity: groupId,
+                  tap_action: { action: 'fire-dom-event', event_data: { hemma_sc_toggle: groupId } },
+                  show_icon: false, show_name: false, show_label: false, show_state: false,
+                  card_mod: { style: ghostStyle + '\n#grid { overflow: visible !important; }\n#sc_lbl { overflow: visible !important; }' },
+                  styles: {
+                    card: [
+                      { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                      { padding: '8px 24px 10px 24px' }, { cursor: 'pointer' },
+                    ],
+                    grid: [
+                      { 'grid-template-areas': deskHAreas },
+                      { 'grid-template-columns': 'repeat(' + C + ', minmax(0,1fr))' },
+                      { gap: '10px' },
+                      { 'align-items': 'start' },
+                    ],
+                    custom_fields: deskHFStyle,
+                  },
+                  custom_fields: deskHFields,
+                };
+  
+                // Desktop grid card
+                const deskGFields = {};
+                const deskGFStyle = {};
+                const deskGridInitSnip = `
+                  window._hemmaScGrid = window._hemmaScGrid || {};
+                  window._hemmaScGrid[${gk}] = this;
+                  this.style.maxHeight = '0px'; this.style.overflow = 'hidden'; this.style.opacity = '0';
+                  return '';
+                `;
+                deskGFields.sc_ginit = `[[[ ${deskGridInitSnip} ]]]`;
+                deskGFStyle.sc_ginit = [{ position: 'absolute' }, { top: '0' }, { left: '0' }, { height: '0' }, { width: '0' }, { overflow: 'hidden' }, { 'pointer-events': 'none' }];
+  
+                moreDesktop.forEach((id, j) => {
+                  deskGFields['sc_mt' + j] = { card: makeSceneCard(id) };
+                  deskGFStyle['sc_mt' + j] = [{ 'justify-self': 'stretch' }];
+                });
+  
+                let deskGAreas = '';
+                let deskGPhIdx = 0;
+                const deskMoreRowCount = Math.ceil(moreDesktop.length / C);
+                for (let r = 0; r < deskMoreRowCount; r++) {
+                  let row = '';
+                  for (let c = 0; c < C; c++) {
+                    const idx = r * C + c;
+                    if (c > 0) row += ' ';
+                    if (idx < moreDesktop.length) {
+                      row += 'sc_mt' + idx;
+                    } else {
+                      const ph = 'sc_dgph' + deskGPhIdx++;
+                      row += ph;
+                      deskGFields[ph] = '<div></div>';
+                      deskGFStyle[ph] = [{ 'justify-self': 'stretch' }];
+                    }
+                  }
+                  deskGAreas += ' "' + row + '"';
+                }
+  
+                const desktopGridCard = {
+                  type: 'custom:button-card',
+                  entity: groupId,
+                  tap_action: { action: 'none' },
+                  show_icon: false, show_name: false, show_label: false, show_state: false,
+                  card_mod: { style: ghostStyle },
+                  styles: {
+                    card: [
+                      { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                      { padding: '0 24px 8px 24px' },
+                    ],
+                    grid: [
+                      { 'grid-template-areas': deskGAreas },
+                      { 'grid-template-columns': 'repeat(' + C + ', minmax(0,1fr))' },
+                      { gap: '10px' },
+                      { 'align-items': 'start' },
+                    ],
+                    custom_fields: deskGFStyle,
+                  },
+                  custom_fields: deskGFields,
+                };
+  
+                return { type: 'vertical-stack', cards: [desktopHeaderCard, desktopGridCard] };
+              };
+  
+              const makeFlatGrid = (ids) => {
+                if (!ids || !ids.length) return null;
+                const C = isDesktop ? 4 : 2;
+                const fields = {};
+                const fstyle = {};
+  
+                ids.forEach((id, i) => {
+                  const t = 'fg_t' + i;
+                  fields[t] = { card: makeLightCard(id) };
+                  fstyle[t] = [{ 'justify-self': 'stretch' }, { 'text-align': 'left' }];
+                });
+  
+                let areas = '';
+                let fgPhIdx = 0;
+                const rowCount = Math.ceil(ids.length / C);
+                for (let r = 0; r < rowCount; r++) {
+                  let row = '';
+                  for (let c = 0; c < C; c++) {
+                    const idx = r * C + c;
+                    if (c > 0) row += ' ';
+                    if (idx < ids.length) {
+                      row += 'fg_t' + idx;
+                    } else {
+                      const ph = 'fg_ph' + fgPhIdx++;
+                      row += ph;
+                      fields[ph] = '<div></div>';
+                      fstyle[ph] = [{ 'justify-self': 'stretch' }];
+                    }
+                  }
+                  areas += (r > 0 ? ' ' : '') + '"' + row + '"';
+                }
+  
+                return {
+                  type: 'custom:button-card',
+                  entity: groupId,
+                  tap_action: { action: 'none' },
+                  show_icon: false, show_name: false, show_label: false, show_state: false,
+                  card_mod: { style: ghostStyle },
+                  styles: {
+                    card: [
+                      { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                      { padding: isDesktop ? '10px 24px 24px 24px' : '10px 14px 20px 14px' },
+                    ],
+                    grid: [
+                      { 'grid-template-areas': areas },
+                      { 'grid-template-columns': 'repeat(' + C + ', minmax(0,1fr))' },
+                      { gap: '10px' },
+                      { 'align-items': 'start' },
+                    ],
+                    custom_fields: fstyle,
+                  },
+                  custom_fields: fields,
+                };
+              };
+  
+              const makeFilterPills = (rooms) => {
+                const _n  = rooms.length;
+                const _gk = JSON.stringify(groupId);
+  
+                const pillsInitSnip = `
+                  window._hemmaLPR_pills = window._hemmaLPR_pills || {};
+                  window._hemmaLPR_pills[${_gk}] = this.shadowRoot;
+                  const _pf = window._hemmaLF?.[${_gk}];
+                  const _psel = (_pf !== undefined) ? _pf : -1;
+                  const _pn = ${_n};
+                  function _pSV(el, isSel) {
+                    if (!el) return;
+                    if (isSel) { el.style.setProperty('--hp-bg','${_hp.activeBg}'); el.style.setProperty('--hp-clr','${_hp.activeClr}'); }
+                    else { el.style.setProperty('--hp-bg','${_hp.inactBg}'); el.style.setProperty('--hp-clr','${_hp.inactClr}'); }
+                    el.style.removeProperty('filter'); el.style.opacity='1';
+                  }
+                  const _psr = this.shadowRoot;
+                  _pSV(_psr.querySelector('#pill_all'), _psel === -1);
+                  for (let _ppi = 0; _ppi < _pn; _ppi++) { _pSV(_psr.querySelector('#pill_' + _ppi), _psel === _ppi); }
+                  return '';
+                `;
+  
+                const makePill = (label, action, idx) => ({
+                  type: 'custom:button-card',
+                  tap_action: {
+                    action: 'fire-dom-event',
+                    event_data: { hemma_lf_gid: groupId, hemma_lf_action: action, hemma_lf_idx: idx },
+                  },
+                  haptic: 'light',
+                  name: label,
+                  show_icon: false, show_name: true, show_label: false, show_state: false,
+                  card_mod: {
+                    style: [
+                      isDesktop
+                        ? ':host { display: block !important; width: 100% !important; --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }'
+                        : ':host { display: inline-flex !important; width: auto !important; --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
+                      'ha-card { border: none !important; border-radius: 999px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer !important; position: relative !important; overflow: hidden !important; transition: background 0.2s ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease !important; }',
+                      'ha-card::after { content: "" !important; position: absolute !important; inset: 0 !important; border-radius: inherit !important; background: transparent !important; transition: background var(--hemma-popup-tile-hover-duration, 0.2s) ease !important; pointer-events: none !important; }',
+                      '#name { transition: color 0.2s ease !important; }',
+                      'ha-card:hover { transform: scale(var(--hemma-popup-tile-hover-scale, 1.01)) !important; }',
+                      'ha-card:hover::after { background: rgba(255,255,255,0.06) !important; }',
+                      'ha-card:active { transform: scale(0.97) !important; }',
+                      'ha-ripple { display: none !important; }',
+                      '#name { overflow: visible !important; text-overflow: clip !important; max-width: none !important; }',
+                    ].join('\n'),
+                  },
+                  styles: {
+                    card: [
+                      { background: `var(--hp-bg, ${_hp.inactBg})` },
+                      { border: 'none' },
+                      { 'border-radius': '999px' }, { 'box-shadow': 'none' },
+                      { padding: isDesktop ? '13px 20px' : '11px 15px' },
+                      { 'white-space': 'nowrap' },
+                    ],
+                    name: [
+                      { 'font-size': '14px' }, { 'font-weight': '500' },
+                      { 'line-height': '1.2' },
+                      { color: `var(--hp-clr, ${_hp.inactClr})` },
+                      { 'white-space': 'nowrap' },
+                    ],
+                  },
+                });
+  
+                const pillFields = {};
+                const pillFStyle = {};
+  
+                pillFields.pills_init = `[[[ ${pillsInitSnip} ]]]`;
+
+                pillFStyle.pills_init = isDesktop
+                  ? [{ height: '0' }, { overflow: 'hidden' }, { padding: '0' }, { margin: '0' }]
+                  : [{ display: 'none' }];
+  
+                pillFields.pill_all = { card: makePill('All', 'all', -1) };
+                pillFStyle.pill_all = isDesktop
+                  ? [{ flex: '1 1 0px' }, { 'align-self': 'center' }, { 'margin-left': '-6px' }]
+                  : [{ flex: '0 0 auto' }, { 'align-self': 'center' }];
+  
+                rooms.forEach((room, i) => {
+                  const pid = 'pill_' + i;
+                  pillFields[pid] = { card: makePill(room.name, 'toggle', i) };
+                  pillFStyle[pid] = isDesktop
+                    ? [{ flex: '1 1 0px' }, { 'align-self': 'center' }]
+                    : [{ flex: '0 0 auto' }, { 'align-self': 'center' }];
+                });
+  
+                pillFields.pill_sp = '<span></span>';
+                pillFStyle.pill_sp = isDesktop
+                  ? [{ 'justify-self': 'stretch' }]
+                  : [{ display: 'none' }];
+  
+                const pillIds  = ['pills_init', 'pill_all', ...rooms.map((_, i) => 'pill_' + i), 'pill_sp'];
+                const pillArea = '"' + pillIds.join(' ') + '"';
+                const pillCols = ['0', 'auto', ...rooms.map(() => 'auto'), '1fr'].join(' ');
+
+                const pillRowStyle = ghostStyle
+                  + '\n#container { align-items: center !important; }'
+                  + '\n#container > div { overflow: visible !important; }'
+                  + '\n#pills_init, #pill_sp { display: none !important; }'
+                  + (isDesktop ? '' :
+                      '\n#container { display: flex !important; flex-wrap: wrap !important; row-gap: 10px !important; column-gap: 10px !important; justify-content: flex-start !important; }'
+                    + '\n#container > div { flex: 0 0 auto !important; }');
+
+                return {
+                  type: 'custom:button-card',
+                  entity: groupId,
+                  tap_action: { action: 'none' },
+                  show_icon: false, show_name: false, show_label: false, show_state: false,
+                  card_mod: { style: pillRowStyle },
+                  styles: {
+                    card: [
+                      { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                      { padding: isDesktop ? '26px 24px 6px 24px' : '22px 14px 6px 8px' },
+                    ],
+                    grid: isDesktop
+                      ? [
+                          { 'grid-template-areas': pillArea },
+                          { 'grid-template-columns': pillCols },
+                          { gap: '10px' },
+                          { 'align-items': 'center' },
+                        ]
+                      : [
+                          { display: 'flex' },
+                          { 'flex-wrap': 'wrap' },
+                          { gap: '10px' },
+                          { 'align-items': 'center' },
+                          { 'justify-content': 'flex-start' },
+                        ],
+                    custom_fields: pillFStyle,
+                  },
+                  custom_fields: pillFields,
+                };
+              };
+  
+              const swipeGuardSnip = `
+                if (!this._hemmaSwipeGuardSetup) {
+                  this._hemmaSwipeGuardSetup = true;
+                  const _sgEl = this;
+                  let _sgStartY = 0, _sgAtTop = true;
+                  const _sgGetST = () => {
+                    if (!_sgEl._sc) {
+                      const _d = _sgEl.closest('ha-adaptive-dialog');
+                      if (_d && _d.shadowRoot) {
+                        _sgEl._sc = _d.shadowRoot.querySelector('.content .container');
+                      }
+                    }
+                    return _sgEl._sc ? _sgEl._sc.scrollTop : 0;
+                  };
+                  _sgEl.addEventListener('touchstart', (e) => {
+                    _sgStartY = e.touches[0].clientY;
+                    _sgAtTop = _sgGetST() <= 2;
+                  }, { passive: true });
+                  _sgEl.addEventListener('touchmove', (e) => {
+                    if (_sgAtTop && e.touches[0].clientY - _sgStartY > 0) return;
+                    e.stopPropagation();
+                  }, { passive: true });
+                }
+              `;
+  
+              if (!rooms) {
+                const grid = makeFlatGrid(lightIds);
+  
+                const flatInitSnip = `
+                  ${swipeGuardSnip}
+                  return '';
+                `;
+  
+                headerCard.custom_fields.f_init = `[[[ ${flatInitSnip} ]]]`;
+  
+                return {
+                  type: 'vertical-stack',
+                  cards: [
+                    headerCard,
+                    grid || { type: 'custom:button-card', show_icon: false, show_name: false, tap_action: { action: 'none' } },
+                  ],
+                };
+              }
+  
+              const outerInitSnip = `
+                const _gid = ${gidKey};
+                const _n   = ${n};
+                const _hasScenes = ${hasScenes ? 'true' : 'false'};
+                ${swipeGuardSnip}
+                window._hemmaLF = window._hemmaLF || {};
+                if (window._hemmaLF[_gid] === undefined) {
+                  window._hemmaLF[_gid] = ${initialFilter};
+                }
+  
+                const _getHad = () => this.getRootNode()?.host?.parentNode?.parentNode?.parentNode;
+                const _applyWidthFix = (_h) => {
+                  if (!_h) return;
+                  if (_h.style) _h.style.setProperty('--ha-dialog-width-md', '880px');
+                  const _wa = _h.shadowRoot?.querySelector('wa-dialog');
+                  if (_wa?.style) _wa.style.setProperty('--width', 'min(880px, 92vw)');
+                };
+  
+                const _applyHeightFix = (_h) => {
+                  if (!_h) return;
+                  const _wd = _h.shadowRoot?.querySelector('wa-drawer');
+                  if (!_wd?.style) return;
+                  const _fh = 'calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh)';
+                  _wd.style.setProperty('--size', _fh);
+                  _wd.style.setProperty('height', _fh);
+                  _wd.style.setProperty('min-height', _fh);
+                };
+  
+                const _hadEarly = _getHad();
+                if (window.innerWidth >= 769) _applyWidthFix(_hadEarly);
+                else _applyHeightFix(_hadEarly);
+  
+                function _sv(el, isSel) {
+                  if (!el) return;
+                  if (isSel) {
+                    el.style.setProperty('--hp-bg', '${_hp.activeBg}');
+                    el.style.setProperty('--hp-clr', '${_hp.activeClr}');
+                  } else {
+                    el.style.setProperty('--hp-bg', '${_hp.inactBg}');
+                    el.style.setProperty('--hp-clr', '${_hp.inactClr}');
+                  }
+                  el.style.removeProperty('filter');
+                  el.style.opacity = '1';
+                }
+                function _getPR() {
+                  return window._hemmaLPR_pills?.[_gid] || null;
+                }
+                function _updatePills() {
+                  const _pr = _getPR();
+                  if (!_pr) return;
+                  const _s = window._hemmaLF[_gid];
+                  _sv(_pr.querySelector('#pill_all'), _s === -1);
+                  for (let pi = 0; pi < _n; pi++) {
+                    _sv(_pr.querySelector('#pill_' + pi), _s === pi);
+                  }
+                }
+
+                function _refreshBadge() {
+                  const _be = window._hemmaLPRbadgeEl ? window._hemmaLPRbadgeEl[_gid] : null;
+                  if (!_be) return;
+                  const _h = document.querySelector('home-assistant')?.hass;
+                  if (_h) _be.hass = _h;
+                  const _sel2 = window._hemmaLF[_gid] !== undefined ? window._hemmaLF[_gid] : -1;
+                  const _rLIds = ${_roomLIds};
+                  const _aLIds = ${_lightIds};
+                  const _aIds = (_sel2 === -1 || _sel2 === ${n}) ? _aLIds : (_rLIds[_sel2] || _aLIds);
+                  const _states = _h?.states || {};
+                  const _oc = _aIds.filter(id => _states[id]?.state === 'on').length;
+                  const _hc = _be.shadowRoot?.querySelector('ha-card');
+                  if (_hc) {
+                    _hc.style.setProperty('--pill-fill', _oc > 0 ? '#ffffff' : 'var(--hemma-glass-pill-fill, rgba(255,255,255,0.07))');
+                  }
+                  const _img = _be.shadowRoot?.querySelector('img');
+                  if (_img) {
+                    _img.style.filter = _oc > 0 ? 'brightness(0)' : 'brightness(0) invert(1)';
+                  }
+                }
+
+                if (window._hemmaLHandlers && window._hemmaLHandlers[_gid]) {
+                  document.removeEventListener('ll-custom', window._hemmaLHandlers[_gid]);
+                }
+  
+                const _handler = function(e) {
+                  const d = (e.detail && e.detail.event_data) ? e.detail.event_data : (e.detail || {});
+  
+                  if (d.hemma_lf_badge_tap === _gid) {
+                    const _ha = document.querySelector('home-assistant');
+                    if (!_ha?.hass) return;
+                    const _curSel = window._hemmaLF[_gid] !== undefined ? window._hemmaLF[_gid] : -1;
+                    const _ent = (_curSel === -1 || _curSel === _n) ? _gid : (${_tidsJson}[_curSel] || _gid);
+                    _ha.hass.callService('script', 'hemma_light_smart_toggle', { light_entity: _ent });
+                    return;
+                  }
+  
+                  if (_hasScenes && d.hemma_lf_scene_tap && d.hemma_lf_gid === _gid) {
+                    const _sid = d.hemma_lf_scene_tap;
+                    const _ha = document.querySelector('home-assistant');
+                    if (!_ha?.hass) return;
+                    _ha.hass.callService('scene', 'turn_on', { entity_id: _sid, transition: 4 });
+                    window._hemmaActiveScene = window._hemmaActiveScene || {};
+                    window._hemmaActiveScene[_gid] = _sid;
+                    window._hemmaSceneSnap = window._hemmaSceneSnap || {};
+                    delete window._hemmaSceneSnap[_gid];
+                    setTimeout(() => {
+                      const h = document.querySelector('home-assistant')?.hass;
+                      if (!h || window._hemmaActiveScene?.[_gid] !== _sid) return;
+                      const snap = {};
+                      ${_lightIds}.forEach(id => {
+                        const s = h.states[id]; if (!s) return;
+                        snap[id] = s.state+'|'+(s.attributes?.brightness??'')+'|'+(s.attributes?.color_temp??'')+'|'+JSON.stringify(s.attributes?.rgb_color??null);
+                      });
+                      window._hemmaSceneSnap[_gid] = snap;
+                    }, 2500);
+                    return;
+                  }
+  
+                  if (_hasScenes && d.hemma_sc_toggle === _gid) {
+                    const _sg = window._hemmaScGrid?.[_gid];
+                    const _sl = window._hemmaScLbl?.[_gid];
+                    if (_sg) {
+                      const _wasCollapsed = _sg.style.maxHeight === '0px';
+                      if (_wasCollapsed) {
+                        _sg.style.overflow = 'hidden';
+                        _sg.style.opacity = '0';
+                        _sg.style.transform = 'translateY(-6px)';
+                        _sg.style.transition = 'none';
+                        _sg.style.maxHeight = '0px';
+                        requestAnimationFrame(function(){ requestAnimationFrame(function(){
+                          const _nh = _sg.scrollHeight + 'px';
+                          _sg.style.transition = 'max-height 0.25s cubic-bezier(0.25,0.46,0.45,0.94),opacity 0.22s ease,transform 0.22s ease';
+                          _sg.style.maxHeight = _nh;
+                          _sg.style.opacity = '1';
+                          _sg.style.transform = 'none';
+                          setTimeout(function(){
+                            _sg.style.maxHeight = '';
+                            _sg.style.overflow = '';
+                            _sg.style.transition = '';
+                          }, 280);
+                        }); });
+                        if (_sl) { _sl.style.setProperty('--sc-rot', '90deg'); _sl.style.setProperty('--sc-lbl-pb', '0px'); }
+                      } else {
+                        const _ch = _sg.offsetHeight + 'px';
+                        _sg.style.maxHeight = _ch;
+                        _sg.style.overflow = 'hidden';
+                        _sg.style.pointerEvents = 'none';
+                        requestAnimationFrame(function(){
+                          _sg.style.transition = 'max-height 0.2s cubic-bezier(0.55,0,0.1,1),opacity 0.15s ease';
+                          _sg.style.maxHeight = '0px';
+                          _sg.style.opacity = '0';
+                          setTimeout(function(){
+                            _sg.style.transition = '';
+                            _sg.style.transform = 'none';
+                            _sg.style.pointerEvents = '';
+                          }, 220);
+                        });
+                        if (_sl) { _sl.style.setProperty('--sc-rot', '0deg'); _sl.style.setProperty('--sc-lbl-pb', '12px'); }
+                      }
+                      setTimeout(function(){ _applyHeightFix(_getHad()); }, 50);
+                    }
+                    return;
+                  }
+  
+                  if (d.hemma_lf_gid !== _gid) return;
+  
+                  function _hShow(el){if(!el)return;
+                    el.style.pointerEvents='none';
+                    el.style.willChange='transform,opacity';
+                    el.style.transition='none';
+                    el.style.maxHeight='';el.style.overflow='';
+                    el.style.opacity='0';el.style.transform='translateY(12px)';
+                    requestAnimationFrame(function(){requestAnimationFrame(function(){
+                      el.style.transition='opacity 0.28s ease,transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)';
+                      el.style.opacity='1';el.style.transform='none';
+                      setTimeout(function(){el.style.transition='';el.style.willChange='';el.style.pointerEvents='';},350);
+                    });});
+                  }
+                  function _hHide(el){if(!el)return;
+                    el.style.pointerEvents='none';
+                    el.style.transition='none';
+                    el.style.maxHeight='0px';el.style.overflow='hidden';
+                    el.style.opacity='0';el.style.transform='none';
+                  }
+                  const action   = d.hemma_lf_action;
+                  const idx      = d.hemma_lf_idx;
+                  const prevSel  = window._hemmaLF[_gid] !== undefined ? window._hemmaLF[_gid] : -1;
+
+                  if (action === 'toggle' && typeof idx === 'number' && idx >= 0 && idx < _n) {
+                    if (prevSel === idx) return;
+                    window._hemmaLF[_gid] = idx;
+                    for (let i = 0; i < _n; i++) {
+                      const rd = window._hemmaLPRooms?.[_gid]?.[i] || null;
+                      const wasVisible = prevSel === -1 || prevSel === i;
+                      const willBeVisible = idx === i;
+                      if (!wasVisible && willBeVisible) _hShow(rd);
+                      else if (wasVisible && !willBeVisible) _hHide(rd);
+                      else if (wasVisible && willBeVisible && prevSel === -1) _hShow(rd);
+                    }
+                    if (prevSel === -1 && _hasScenes) {
+                      const _scLblEl = window._hemmaLPRooms?.[_gid]?.[_n] || null;
+                      if (_scLblEl) _hHide(_scLblEl);
+                      const _scGridEl = window._hemmaScGrid?.[_gid];
+                      if (_scGridEl) {
+                        window._hemmaScWasOpen = window._hemmaScWasOpen || {};
+                        window._hemmaScWasOpen[_gid] = _scGridEl.style.maxHeight !== '0px';
+                        _scGridEl.style.maxHeight = '0px'; _scGridEl.style.overflow = 'hidden'; _scGridEl.style.opacity = '0';
+                      }
+                    }
+                    _refreshBadge();
+                    if (window.innerWidth < 769) _applyHeightFix(_getHad());
+                  } else if (action === 'all') {
+                    if (prevSel === -1) return;
+                    window._hemmaLF[_gid] = -1;
+                    for (let i = 0; i < _n; i++) {
+                      if (i !== prevSel) {
+                        const rd = window._hemmaLPRooms?.[_gid]?.[i] || null;
+                        _hShow(rd);
+                      }
+                    }
+                    if (_hasScenes) {
+                      const _scLblEl = window._hemmaLPRooms?.[_gid]?.[_n] || null;
+                      if (_scLblEl) _hShow(_scLblEl);
+                      const _scGridEl = window._hemmaScGrid?.[_gid];
+                      if (_scGridEl && window._hemmaScWasOpen?.[_gid]) {
+                        requestAnimationFrame(function(){ requestAnimationFrame(function(){
+                          _scGridEl.style.transition = 'opacity 0.25s ease';
+                          _scGridEl.style.maxHeight = ''; _scGridEl.style.overflow = ''; _scGridEl.style.opacity = '1';
+                          setTimeout(function(){ _scGridEl.style.transition = ''; }, 280);
+                        }); });
+                      }
+                    }
+                    _refreshBadge();
+                    if (window.innerWidth < 769) _applyHeightFix(_getHad());
+                  }
+
+                  _updatePills();
+                };
+  
+                window._hemmaLHandlers = window._hemmaLHandlers || {};
+                window._hemmaLHandlers[_gid] = _handler;
+                document.addEventListener('ll-custom', _handler);
+
+                window._hemmaLFStateSub = window._hemmaLFStateSub || {};
+                if (window._hemmaLFStateSub[_gid]) { try { window._hemmaLFStateSub[_gid](); } catch(e) {} delete window._hemmaLFStateSub[_gid]; }
+                (function() {
+                  const _conn = document.querySelector('home-assistant')?.hass?.connection;
+                  if (!_conn) return;
+                  const _watch = new Set(${_lightIds});
+                  let _t = null;
+                  _conn.subscribeEvents(function(ev) {
+                    if (!_watch.has(ev?.data?.entity_id)) return;
+                    clearTimeout(_t);
+                    _t = setTimeout(_refreshBadge, 120);
+                  }, 'state_changed').then(function(unsub) { window._hemmaLFStateSub[_gid] = unsub; });
+                })();
+
+                setTimeout(function() {
+                  const _sel = window._hemmaLF[_gid];
+  
+                  if (_sel !== -1) {
+                    for (let i = 0; i < _n; i++) {
+                      const rd = window._hemmaLPRooms?.[_gid]?.[i] || null;
+                      if (!rd) continue;
+                      if (i === _sel) {
+                        rd.style.transition='none'; rd.style.maxHeight=''; rd.style.overflow=''; rd.style.opacity='1'; rd.style.transform='none'; rd.style.pointerEvents='';
+                      } else {
+                        rd.style.transition='none'; rd.style.maxHeight='0px'; rd.style.overflow='hidden'; rd.style.opacity='0'; rd.style.transform='translateY(-6px)'; rd.style.pointerEvents='none';
+                      }
+                    }
+                  }
+  
+                  _updatePills();
+                  setTimeout(function() { _updatePills(); }, 250);
+
+                  window._hemmaLPRbadgeEl = window._hemmaLPRbadgeEl || {};
+                  const _hbd = this.shadowRoot?.querySelector('#hdr_b');
+                  window._hemmaLPRbadgeEl[_gid] = _hbd?.firstElementChild || null;
+
+                  const _had = _getHad();
+
+                  if (_had) {
+                    _had._hemmaLFClose = _had._hemmaLFClose || {};
+                    if (!_had._hemmaLFClose[_gid]) {
+                      _had._hemmaLFClose[_gid] = true;
+                      _had.addEventListener('closed', function() {
+                        if (window._hemmaLF) delete window._hemmaLF[_gid];
+                        if (_had._hemmaLFClose) delete _had._hemmaLFClose[_gid];
+                        if (window._hemmaLPRbadgeEl) delete window._hemmaLPRbadgeEl[_gid];
+                        if (window._hemmaLFStateSub && window._hemmaLFStateSub[_gid]) { try { window._hemmaLFStateSub[_gid](); } catch(e) {} delete window._hemmaLFStateSub[_gid]; }
+                      }, { once: true });
+                    }
+                  }
+  
+                  if (window.innerWidth >= 769) {
+                    _applyWidthFix(_had);
+                    setTimeout(() => _applyWidthFix(_had), 300);
+                    setTimeout(() => _applyWidthFix(_had), 800);
+                  } else {
+                    _applyHeightFix(_had);
+                    setTimeout(() => _applyHeightFix(_had), 300);
+                    setTimeout(() => _applyHeightFix(_had), 800);
+                  }
+                }.bind(this), 20);
+                return '';
+              `;
+  
+              headerCard.custom_fields.f_init = `[[[ ${outerInitSnip} ]]]`;
+  
+              const stackCards = [headerCard, makeFilterPills(rooms)];
+              if (hasScenes) {
+                const scSec = makeScenesSection(sceneIds);
+                if (scSec) stackCards.push(scSec);
+              }
+              rooms.forEach((room, i) => {
+                const sec = makeRoomSection(room, i);
+                if (sec) stackCards.push(sec);
+              });
+  
+              return { type: 'vertical-stack', cards: stackCards };
+              }; // end window._hemmaLPC
+        }
+        return '';
+      ]]]
+
+  styles:
+    custom_fields:
+      lpc_init:
+        - display: none
+        - position: absolute
+        - height: "0"
+        - width: "0"
+        - overflow: hidden
+        - pointer-events: none
+
+  tap_action:
+    haptic: light
+    action: >
+      [[[
+        return typeof window.browser_mod !== 'undefined' ? 'fire-dom-event' : 'more-info';
+      ]]]
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        tag: '[[[ return (entity?.entity_id || "hemma_light").replace(/\./g, "_") + "_popup"; ]]]'
+        title: ""
+        dismissable: true
+        adaptive: true
+        size: auto
+        style: "--popup-width: 880px; --popup-max-width: 880px;"
+        popup_styles:
+          - style: all
+            styles: |
+              :host {
+                --dialog-surface-margin-top: 100px;
+                --ha-ripple-hover-opacity: 0;
+                --ha-ripple-pressed-opacity: 0.04;
+                opacity: 0;
+                animation: hemma-popup-reveal 0s 0.8s ease forwards;
+              }
+              @keyframes hemma-popup-reveal { to { opacity: 1; } }
+              .content .container > * {
+                width: 100% !important;
+                max-width: none !important;
+                box-sizing: border-box !important;
+              }
+              .content .container {
+                scrollbar-width: none;
+                overscroll-behavior: contain;
+                touch-action: pan-y;
+                padding-bottom: 24px !important;
+              }
+              .content .container::-webkit-scrollbar {
+                display: none;
+              }
+              wa-dialog {
+                --width: min(880px, 92vw);
+              }
+              @media (max-width: 768px) {
+                :host {
+                  --dialog-surface-margin-top: 0px;
+                }
+                wa-drawer {
+                  --size: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                  height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                }
+                .content .container {
+                  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                }
+              }
+
+        content: |
+          [[[
+            return typeof window._hemmaLPC === 'function'
+              ? window._hemmaLPC(entity, states, typeof hass !== 'undefined' ? hass : null, variables)
+              : null;
+          ]]]
+
+  icon_tap_action:
+    haptic: light
+    action: more-info

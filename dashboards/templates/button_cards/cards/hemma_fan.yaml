@@ -17,8 +17,7 @@ hemma_fan:
     entity: '[[[ return entity.entity_id ]]]'
 
   icon_tap_action:
-    action: more-info
-    entity: '[[[ return entity.entity_id ]]]'
+    action: toggle
 
   icon_hold_action:
     action: more-info
@@ -58,46 +57,16 @@ hemma_fan:
       - cursor: pointer
 
   variables:
+    mobile_filter_category: climate
     icon: fan
 
   extra_styles: |
-    #img-cell {
-      position: relative;
-      border-radius: 50% !important;
-      background: var(--hemma-icon-circle-bg, rgba(255,255,255,0.10)) !important;
-      width: 44px !important;
-      height: 44px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      overflow: hidden !important;
-      transform: translateZ(0) !important;
-    }
-    #img-cell::before { opacity: 0 !important; }
     #img-cell img {
-      flex: none !important;
-      width: 68% !important;
-      height: 68% !important;
-      max-width: 68% !important;
-      max-height: 68% !important;
-      object-fit: contain !important;
       transform-origin: 50% 50% !important;
       animation: var(--hemma-fan-animation, none) !important;
       animation-play-state: var(--hsr-anim-paused, running) !important;
     }
-    #img-cell ha-icon {
-      --mdc-icon-size: 26px !important;
-      flex: none !important;
-      color: rgba(255,255,255,1.0) !important;
-    }
-    #icon { color: rgba(255,255,255,1.0) !important; }
-    @media (max-width: 767px) and (orientation: portrait) {
-      #img-cell { width: 38px !important; height: 38px !important; }
-      #img-cell ha-icon { --mdc-icon-size: 23px !important; }
-      #toggle { filter: invert(var(--hemma-toggle-invert, 0)); }
-    }
 
-    /* Fan icon animation */
     @keyframes hemma-fan-spin {
       from { transform: rotate(0deg); }
       to   { transform: rotate(360deg); }
@@ -105,11 +74,4 @@ hemma_fan:
     @keyframes hemma-fan-coast {
       from { transform: rotate(0deg); }
       to   { transform: rotate(360deg); }
-    }
-
-    @media (hover: hover) {
-      #img-cell:hover { filter: brightness(1.15); transform: scale(1.03); transition: filter 0.15s ease, transform 0.15s ease; }
-    }
-    @media (hover: none) {
-      #img-cell:active { filter: brightness(1.15); transform: scale(1.03); }
     }

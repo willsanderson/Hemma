@@ -1,0 +1,1548 @@
+# Mobile Now Playing row
+# The dashboard's Now Playing section and its Media-popup column:
+#   np_title  - the "Now Playing" section header
+#   media_row - the horizontal, snap-scrolling row of full-width media tiles
+#   np_rail   - everything active except the primary tile, as a column,
+#               revealed only while the Media filter popup is open
+hemma_mobile_now_playing:
+  show_icon: false
+  show_name: false
+  show_state: false
+  show_label: false
+  show_entity_picture: false
+  # Bound purely for the subscription — media_row/np_rail gate on the
+  # filter, and this seeds it into button-card's _monitoredEntities.
+  entity: input_select.hemma_mobile_filter
+
+  tap_action: {action: none}
+  hold_action: {action: none}
+  double_tap_action: {action: none}
+
+  variables:
+    media_player_1: null
+    media_player_2: null
+    media_player_3: null
+    media_player_4: null
+    media_player_5: null
+    plex_stream_1: null
+    plex_stream_2: null
+    psn_1: null
+    psn_2: null
+    discord_steam_image: null
+    discord_steam_game: null
+    discord_steam_online: null
+    discord_steam_details: null
+    hemma_np_init:
+      force_eval: true
+      value: |
+        [[[
+          if (typeof window._hemmaNPSources !== 'function') {
+            window._hemmaNPSources = function (states, V) {
+              const norm = (x) => String(x ?? '').trim();
+              const low  = (x) => norm(x).toLowerCase();
+              const abs  = (u) => {
+                if (!u) return null;
+                const s = String(u);
+                const full = s.startsWith('/') ? (location.origin + s) : s;
+                try {
+                  const p = new URL(full, location.origin);
+                  p.searchParams.delete('refresh');
+                  return p.toString();
+                } catch (e) { return full; }
+              };
+              const ms = (t) => { const n = t ? Date.parse(t) : NaN; return Number.isFinite(n) ? n : 0; };
+
+              const pauseTimeout = Number(V.pause_timeout_minutes ?? 10);
+              const out = [];
+
+              for (let i = 1; i <= 10; i++) {
+                if (!V['show_media_player_' + i]) continue;
+                const eid = V['media_player_' + i];
+                const s = eid && states[eid];
+                if (!s) continue;
+
+                const st = low(s.state);
+                const a  = s.attributes || {};
+                const rawTitle = norm(a.media_title);
+                let artist = norm(a.media_artist || a.artist || a.media_album_artist);
+                const hasContent = !!(rawTitle || artist);
+
+                const feats = Number(a.supported_features || 0);
+                const controls = {
+                  toggle: !!(feats & 16385),
+                  next: !!(feats & 32),
+                  prev: !!(feats & 16),
+                };
+                const hasControls = !!(controls.toggle || controls.next || controls.prev);
+
+                let active = false;
+                let pauseUntil = 0;
+                if (st === 'playing' || st === 'buffering') active = true;
+                else if (st === 'paused' && hasContent && hasControls) {
+                  if (pauseTimeout <= 0) active = true;
+                  else {
+                    pauseUntil = ms(s.last_changed) + (pauseTimeout * 60000);
+                    active = Date.now() <= pauseUntil;
+                  }
+                }
+                if (!active) continue;
+
+                let title = rawTitle;
+                if (!artist && a.media_content_type === 'tvshow') {
+                  const series  = norm(a.media_series_title);
+                  const season  = a.media_season  ? 'S' + String(a.media_season).padStart(2, '0')  : '';
+                  const episode = a.media_episode ? 'E' + String(a.media_episode).padStart(2, '0') : '';
+                  artist = [series, [season, episode].filter(Boolean).join('')].filter(Boolean).join(' · ');
+                }
+                if (!artist) {
+                  const parts = rawTitle.split(/\s+[-–—]\s+/);
+                  if (parts.length >= 3) {
+                    title = parts[parts.length - 1];
+                    artist = parts.slice(0, -1).join(' – ');
+                  }
+                }
+
+                let art = abs(a.entity_picture || a.media_image_url || a.media_album_cover_url || a.image_url);
+                if (!art) {
+                  const app = low(a.app_name || a.source) + ' ' + low(a.app_id);
+                  if (app.includes('youtube')) art = '/local/hemma/icons/youtube.png';
+                }
+
+                out.push({
+                  key: 'mp' + i,
+                  kind: 'player',
+                  entity: eid,
+                  art: art,
+                  title: title || norm(a.friendly_name) || 'Media',
+                  subtitle: artist,
+                  source: norm(a.app_name || a.source || a.friendly_name),
+                  started: ms(s.last_changed),
+                  state: st,
+                  playing: st === 'playing' || st === 'buffering',
+                  controls: controls,
+                  pauseUntil: pauseUntil,
+                  pos: Number(a.media_position),
+                  dur: Number(a.media_duration),
+                  posAt: ms(a.media_position_updated_at),
+                });
+              }
+
+              for (let i = 1; i <= 2; i++) {
+                if (!V['show_plex_' + i]) continue;
+                const sid = V['plex_stream_' + i];
+                const sState = sid && states[sid];
+                if (!sState || low(sState.state) !== 'playing') continue;
+                const a = sState.attributes || {};
+                const full = norm(a.full_title || a.title);
+                if (!full) continue;
+                const tau = sid.replace(/^(sensor\.)plex_stream_(\d+)$/, '$1plex_session_$2_tautulli');
+                const pst = low((states[tau]?.state) || sState.state || '');
+                if (pst !== 'playing' && pst !== 'buffering') continue;
+                out.push({
+                  key: 'plex' + i,
+                  kind: 'plex',
+                  entity: sid,
+                  art: abs(a.image_url || a.entity_picture_local || a.entity_picture || a.media_image_url),
+                  title: full,
+                  subtitle: '',
+                  source: 'Plex · ' + (norm(a.user) || 'Unknown'),
+                  started: ms(sState.last_changed),
+                  state: 'playing',
+                  playing: true,
+                  controls: { toggle: false, next: false, prev: false },
+                });
+              }
+
+              for (let i = 1; i <= 2; i++) {
+                if (!V['show_psn_' + i]) continue;
+                const eid = V['psn_' + i];
+                const s = eid && states[eid];
+                if (!s) continue;
+                const st = low(s.state);
+                if (['unavailable', 'unknown', 'off', 'standby', 'none', ''].includes(st)) continue;
+                const a = s.attributes || {};
+                const title = norm(a.full_title || a.media_title || a.title);
+                if (!title) continue;
+                out.push({
+                  key: 'psn' + i,
+                  kind: 'activity',
+                  entity: eid,
+                  art: abs(a.entity_picture_local || a.entity_picture || a.image_url || a.media_image_url),
+                  title: title,
+                  subtitle: norm(a.user),
+                  source: norm(a.friendly_name) || norm(a.source) || 'PlayStation',
+                  started: ms(s.last_changed),
+                  state: st,
+                  playing: st === 'playing',
+                  controls: { toggle: false, next: false, prev: false },
+                });
+              }
+
+              if (V.show_discord_steam && V.discord_steam_online && V.discord_steam_game) {
+                const online = low(states[V.discord_steam_online]?.state) === 'online';
+                const game = norm(states[V.discord_steam_game]?.state);
+                const dead = !game || ['unknown', 'unavailable'].includes(game.toLowerCase());
+                if (online && !dead) {
+                  const imgS = V.discord_steam_image && states[V.discord_steam_image];
+                  const ia = (imgS && imgS.attributes) || {};
+                  out.push({
+                    key: 'steam',
+                    kind: 'activity',
+                    entity: V.discord_steam_image || V.discord_steam_game,
+                    art: abs(ia.entity_picture_local || ia.entity_picture || ia.image_url),
+                    title: game,
+                    subtitle: norm(states[V.discord_steam_details]?.state).replace(/^(unknown|unavailable)$/i, ''),
+                    source: 'Steam',
+                    started: ms(states[V.discord_steam_game]?.last_changed),
+                    state: 'playing',
+                    playing: true,
+                    controls: { toggle: false, next: false, prev: false },
+                  });
+                }
+              }
+
+              const rank = (r) => {
+                const c = r.controls;
+                const hasCtl = !!(c && (c.toggle || c.next || c.prev));
+                const isMedia = r.kind !== 'activity';
+                return (hasCtl ? 4 : 0) + (r.playing ? 2 : 0) + (isMedia ? 1 : 0);
+              };
+              out.sort((x, y) => (rank(y) - rank(x)) || (y.started - x.started));
+
+              const pin = String(V.pinned_key || '').trim();
+              if (pin) {
+                const i = out.findIndex(r => r.key === pin);
+                if (i > 0) out.unshift(out.splice(i, 1)[0]);
+              }
+              return out;
+            };
+          }
+
+          if (typeof window._hemmaNPView !== 'function') {
+            window._hemmaNPView = function (states, V) {
+              const live = window._hemmaNP(states, V);
+              const st = window._hemmaNPHold = window._hemmaNPHold || {};
+              if (live.length) { st.last = live; st.emptyAt = 0; return live; }
+              if (st.last && st.last.length) {
+                if (!st.emptyAt) st.emptyAt = Date.now();
+                if (Date.now() - st.emptyAt < 900) return st.last;
+              }
+              return live;
+            };
+          }
+
+          if (typeof window._hemmaNP !== 'function') {
+            window._hemmaNP = function (states, V) {
+              const artSig = (u) => String(u || '').split('?')[0];
+              const parts = [];
+              for (let i = 1; i <= 10; i++) {
+                const e = V['show_media_player_' + i] && V['media_player_' + i];
+                if (e) {
+                  const s = states[e]; const a = s?.attributes || {};
+                  parts.push(e + s?.state + (a.media_title || '') + (a.media_position || '') +
+                    artSig(a.entity_picture || a.media_image_url || a.media_album_cover_url || a.image_url));
+                }
+              }
+              for (let i = 1; i <= 2; i++) {
+                const t = V['show_plex_' + i] && V['plex_stream_' + i];
+                if (t) {
+                  const ta = states[t]?.attributes || {};
+                  parts.push(t + states[t]?.state + String(ta.full_title || '') +
+                    String((states[t.replace(/^(sensor\.)plex_stream_(\d+)$/, '$1plex_session_$2_tautulli')]?.state) || states[t]?.state || '') +
+                    artSig(ta.image_url || ta.entity_picture_local || ta.entity_picture || ta.media_image_url));
+                }
+                const p = V['show_psn_' + i] && V['psn_' + i];
+                if (p) {
+                  const pa = states[p]?.attributes || {};
+                  parts.push(p + states[p]?.state + (pa.full_title || '') +
+                    artSig(pa.entity_picture_local || pa.entity_picture || pa.image_url || pa.media_image_url));
+                }
+              }
+              if (V.show_discord_steam) {
+                const ia = (V.discord_steam_image && states[V.discord_steam_image]?.attributes) || {};
+                parts.push(String(states[V.discord_steam_online]?.state) + String(states[V.discord_steam_game]?.state) +
+                  artSig(ia.entity_picture_local || ia.entity_picture || ia.image_url));
+              }
+              parts.push('pin:' + String(V.pinned_key || ''));
+              const sig = parts.join('|');
+              const c = window._hemmaNPCache;
+              if (c && c.sig === sig) return c.list;
+              const list = window._hemmaNPSources(states, V);
+              window._hemmaNPCache = { sig, list };
+
+              const prevKeys = window._hemmaNPKeys || [];
+              const newKeys = list.map(x => x.key);
+              if (prevKeys.length && prevKeys[0] && newKeys[0] !== prevKeys[0]) {
+                const idx = newKeys.indexOf(prevKeys[0]);
+                if (idx > 0) window._hemmaNPDemoted = { key: prevKeys[0], at: Date.now() };
+              }
+              window._hemmaNPKeys = newKeys;
+
+              return list;
+            };
+          }
+
+          // Slot plan. Two jobs.
+          //
+          // 1. A wrapper belongs to a SOURCE, for that source's whole life. Slot index is NOT
+          //    position-in-row: empty slots are display:none and contribute nothing to the flex
+          //    row, so the visual order is simply the occupied wrappers in index order. Sources
+          //    are therefore laid out from a middle anchor and grow outward — a head-insert
+          //    claims a free wrapper to the LEFT of the incumbent. That is what lets the
+          //    incumbent slide right by LAYOUT alone when something takes over slot 1; moving it
+          //    with a transform would kill its backdrop-filter, and swapping its content into
+          //    the next wrapper (what an index==position model forces) would give it no element
+          //    to animate at all. It also removes compaction: after a departure the survivor
+          //    stays put and the emptied wrapper just drops out of flow.
+          // 2. A departing source keeps its wrapper for EXIT_MS so it has something of its own
+          //    to animate out with, instead of being recycled into the next source.
+          if (typeof window._hemmaNPPlan !== 'function') {
+            window._hemmaNPPlan = function (states, V) {
+              const EXIT_MS = 480;
+              // Cap on waiting for artwork before opening an arrival anyway.
+              const ART_CAP = 400;
+              // An arrival must paint at least one frame closed, or there is no start value to
+              // transition from and it appears fully formed.
+              const OPEN_MIN = 60;
+              const ANCHOR = 4;
+              const S = window._hemmaNPPlanState = window._hemmaNPPlanState || {
+                order: [], pos: {}, slotKeys: [], exits: [], exitSrc: {}, lastRec: {},
+                changed: {}, done: {}, pending: {}, aliveN: -1, sig: null, timer: 0, gen: 0,
+              };
+
+              const live = (typeof window._hemmaNPView === 'function')
+                ? window._hemmaNPView(states, V) : [];
+              const now = Date.now();
+              const liveKeys = live.map((x) => x && x.key).filter(Boolean);
+              const sig = liveKeys.join(',');
+
+              live.forEach((r) => {
+                if (!r || !r.key) return;
+                S.lastRec[r.key] = r;
+                delete S.done[r.key];
+              });
+
+              const forceRender = () => {
+                const targets = [window._hemmaNPRowCard, window._hemmaNPShell]
+                  .filter((t) => t && t.isConnected);
+                for (const t of targets) {
+                  try {
+                    const h = t._hass || t.hass;
+                    if (h) t.hass = Object.assign({}, h);
+                    if (typeof t.requestUpdate === 'function') t.requestUpdate('_config', undefined);
+                  } catch (err) {}
+                }
+              };
+
+              const alive = [];
+              for (const e of S.exits) {
+                if ((now - e.at) < EXIT_MS) alive.push(e);
+                else S.done[e.key] = 1;
+              }
+
+              if (S.sig !== sig || alive.length !== S.aliveN) {
+                S.exits = alive;
+                const liveSet = {};
+                liveKeys.forEach((k) => { liveSet[k] = 1; });
+                const exiting = {};
+                S.exits.forEach((e) => { exiting[e.key] = 1; });
+
+                const prevOrder = S.order.slice();
+
+                for (const k of prevOrder) {
+                  if (!k || liveSet[k] || exiting[k] || S.done[k]) continue;
+                  if (!S.lastRec[k]) continue;
+                  S.exits.push({ key: k, at: now });
+                  S.exitSrc[k] = S.lastRec[k];
+                  exiting[k] = 1;
+                }
+
+                // Existing sources hold their relative order; only genuinely new keys are placed.
+                const order = prevOrder.filter((k) => liveSet[k] || exiting[k]);
+                const fresh = [];
+                for (const k of liveKeys) {
+                  if (order.indexOf(k) !== -1) continue;
+                  const rk = liveKeys.indexOf(k);
+                  let at = order.length;
+                  for (let i = 0; i < order.length; i++) {
+                    const oi = liveKeys.indexOf(order[i]);
+                    if (oi !== -1 && oi > rk) { at = i; break; }
+                  }
+                  order.splice(at, 0, k);
+                  fresh.push(k);
+                }
+
+                // Anchor on the head so the leftmost (only fully visible) tile never changes
+                // wrapper. A new head takes the wrapper immediately left of the old head.
+                let base = ANCHOR;
+                if (order.length) {
+                  const head = order[0];
+                  if (S.pos[head] !== undefined) base = S.pos[head];
+                  else {
+                    const prevHead = prevOrder.filter((k) => S.pos[k] !== undefined)[0];
+                    base = (prevHead !== undefined) ? (S.pos[prevHead] - 1) : ANCHOR;
+                  }
+                }
+                if (base + order.length > 9) base = 9 - order.length;
+                if (base < 0) base = 0;
+
+                const next = new Array(9).fill(null);
+                const pos = {};
+                order.forEach((k, i) => {
+                  const idx = base + i;
+                  if (idx >= 0 && idx < 9) { next[idx] = k; pos[k] = idx; }
+                });
+
+                const changed = {};
+                for (let i = 0; i < 9; i++) {
+                  if ((S.slotKeys[i] || null) !== (next[i] || null)) changed['media' + (i + 1)] = true;
+                }
+
+                for (const k of Object.keys(S.exitSrc)) if (!exiting[k]) delete S.exitSrc[k];
+                for (const k of Object.keys(S.pending)) if (!liveSet[k]) delete S.pending[k];
+
+                const rowWasEmpty = !prevOrder.length;
+                for (const k of fresh) {
+                  if (rowWasEmpty) continue;
+                  S.pending[k] = 1;
+                  const rec = S.lastRec[k];
+                  const art = rec && rec.art;
+                  let fired = false;
+                  const open = () => {
+                    if (fired) return;
+                    fired = true;
+                    setTimeout(() => {
+                      if (!S.pending[k]) return;
+                      delete S.pending[k];
+                      forceRender();
+                    }, OPEN_MIN);
+                  };
+                  if (art) {
+                    try {
+                      const img = new Image();
+                      img.decoding = 'async';
+                      img.src = art;
+                      if (img.decode) img.decode().then(open).catch(open);
+                      else { img.onload = open; img.onerror = open; }
+                    } catch (err) { open(); }
+                    setTimeout(open, ART_CAP);
+                  } else {
+                    open();
+                  }
+                }
+
+                S.order = order;
+                S.pos = pos;
+                S.slotKeys = next;
+                S.changed = changed;
+                S.sig = sig;
+                S.aliveN = S.exits.length;
+                S.gen = (S.gen || 0) + 1;
+
+                try { clearTimeout(S.timer); } catch (err) {}
+                if (S.exits.length) {
+                  const due = Math.min.apply(null, S.exits.map((e) => e.at + EXIT_MS));
+                  const delay = Math.max(30, (due - Date.now()) + 40);
+                  if (window._hemmaNPDebug === true) {
+                    console.log('%c[NP release scheduled]', 'color:#fa0', delay + 'ms');
+                  }
+                  S.timer = setTimeout(() => {
+                    forceRender();
+                    if (window._hemmaNPDebug === true) {
+                      console.log('%c[NP release fired]', 'color:#fa0');
+                    }
+                  }, delay);
+                }
+              }
+
+              const byKey = {};
+              live.forEach((r) => { if (r && r.key) byKey[r.key] = r; });
+              return S.slotKeys.map((k) => (k ? (byKey[k] || S.exitSrc[k] || null) : null));
+            };
+          }
+
+          window._hemmaNPSyncMobileRow = function () {};
+
+          return true;
+        ]]]
+
+    hemma_np_subscribe:
+      force_eval: true
+      value: >
+        [[[
+          const el = this;
+          window._hemmaNPShell = el;
+          let anyMissing = false;
+          for (let i = 1; i <= 5; i++) {
+            const e = variables['media_player_' + i];
+            if (e) { if (states[e] === undefined) anyMissing = true; }
+          }
+          for (let i = 1; i <= 2; i++) {
+            const s = variables['plex_stream_' + i];
+            if (s && states[s] === undefined) anyMissing = true;
+            const p = variables['psn_' + i];
+            if (p && states[p] === undefined) anyMissing = true;
+          }
+
+          // Retry
+          if (anyMissing && !el._npSyncRecheckScheduled) {
+            el._npSyncRecheckScheduled = true;
+            setTimeout(() => {
+              try {
+                const h = el._hass || el.hass;
+                if (h) el.hass = Object.assign({}, h);
+                if (typeof el.requestUpdate === 'function') el.requestUpdate('_config', undefined);
+              } catch (e) {}
+            }, 1500);
+          }
+
+          for (let i = 1; i <= 5; i++) {
+            const e = variables['media_player_' + i];
+            if (e) states[e];
+          }
+          for (let i = 1; i <= 2; i++) {
+            const s = variables['plex_stream_' + i];
+            if (s) states[s];
+            const p = variables['psn_' + i];
+            if (p) states[p];
+          }
+          // Touch the Discord/Steam entities so button-card tracks them too — without this the
+          // row would only pick up a game starting or stopping on some unrelated render.
+          for (const k of ['discord_steam_online', 'discord_steam_game',
+                           'discord_steam_details', 'discord_steam_image']) {
+            const e = variables[k];
+            if (e) states[e];
+          }
+
+          // ── Departure recheck ────────────────────────────────────────────
+          const rawList = (typeof window._hemmaNP === 'function')
+            ? window._hemmaNP(states, variables.cfg) : [];
+          const liveKeys = new Set(rawList.map((x) => x && x.key).filter(Boolean));
+          let anyStale = false;
+          for (let i = 1; i <= 9; i++) {
+            const h = window._hemmaNPSlotState?.['media' + i]?._npHoldSrc;
+            if (h && !liveKeys.has(h.key)) { anyStale = true; break; }
+          }
+          if (anyStale) {
+            try { clearTimeout(el._npDepartTimer); } catch (e) {}
+            el._npDepartTimer = setTimeout(() => {
+              try {
+                const h = el._hass || el.hass;
+                if (h) el.hass = Object.assign({}, h);
+                if (typeof el.requestUpdate === 'function') el.requestUpdate('_config', undefined);
+              } catch (e) {}
+            }, 1000);
+          }
+
+          return true;
+        ]]]
+    cfg: >
+      [[[
+        return {
+          pause_timeout_minutes: 10,
+          show_media_player_1: !!variables.media_player_1,
+          media_player_1: variables.media_player_1,
+          show_media_player_2: !!variables.media_player_2,
+          media_player_2: variables.media_player_2,
+          show_media_player_3: !!variables.media_player_3,
+          media_player_3: variables.media_player_3,
+          show_media_player_4: !!variables.media_player_4,
+          media_player_4: variables.media_player_4,
+          show_media_player_5: !!variables.media_player_5,
+          media_player_5: variables.media_player_5,
+          show_plex_1: !!variables.plex_stream_1,
+          plex_stream_1: variables.plex_stream_1,
+          show_plex_2: !!variables.plex_stream_2,
+          plex_stream_2: variables.plex_stream_2,
+          show_psn_1: !!variables.psn_1,
+          psn_1: variables.psn_1,
+          show_psn_2: !!variables.psn_2,
+          psn_2: variables.psn_2,
+          show_discord_steam: !!(variables.discord_steam_online && variables.discord_steam_game),
+          discord_steam_image: variables.discord_steam_image,
+          discord_steam_game: variables.discord_steam_game,
+          discord_steam_online: variables.discord_steam_online,
+          discord_steam_details: variables.discord_steam_details,
+          pinned_key: states['input_text.hemma_now_playing_pinned']?.state || '',
+        };
+      ]]]
+
+  extra_styles: >
+    [[[
+      const staticCSS = `:host(.hemma-navbar-card.hemma-navbar-card):active{filter:none!important;-webkit-filter:none!important}:host{position:sticky!important;top:-9999px!important;filter:none!important;-webkit-filter:none!important}#aspect-ratio{display:block!important;min-width:0!important;min-height:0!important}ha-card.button-card-main{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important;border:none!important;overflow:visible!important;padding:0!important;contain:none!important;isolation:auto!important;will-change:auto!important;transition:none!important}.button-card-main,.button-card-content,#customfields{overflow:visible!important;contain:none!important;isolation:auto!important}#media_row::-webkit-scrollbar{display:none!important}`;
+      const npCSS = `
+        #media_row > * {
+          width: 100% !important;
+          min-width: 100% !important;
+          max-width: 100% !important;
+          flex: 0 0 100% !important;
+          scroll-snap-align: start;
+          scroll-snap-stop: always;
+          box-sizing: border-box !important;
+          --np-bloom-strength: 0.62;
+        }
+
+        #np_rail > * {
+          width: 100% !important;
+          max-width: 100% !important;
+          flex: 1 1 auto !important;
+          --np-bloom-strength: 0.62;
+        }
+      `;
+
+      const npList = (typeof window._hemmaNPView === 'function')
+        ? (typeof window._hemmaNPView === "function" ? window._hemmaNPView(states, variables.cfg) : [])
+        : [];
+      const anyActive = npList.length > 0;
+      const shown = anyActive;
+      const ov = shown ? 'visible' : 'hidden';
+      this.toggleAttribute('data-hemma-np-empty', !shown);
+      return staticCSS + npCSS +
+        `:host{display:grid!important;overflow:${ov}!important;grid-template-rows:${shown?'1fr':'0fr'}!important;grid-template-columns:minmax(0,1fr)!important;opacity:${shown?'1':'0'};pointer-events:${shown?'auto':'none'};transition:grid-template-rows .5s cubic-bezier(0.32,0.72,0,1),opacity ${shown?'.35s ease .12s':'.25s ease'}}` +
+        `#aspect-ratio{overflow:${ov}!important}` +
+        `ha-card.button-card-main{min-height:0!important;overflow:${ov}!important}`;
+    ]]]
+
+  styles:
+    card:
+      - background: transparent !important
+      - backdrop-filter: none !important
+      - -webkit-backdrop-filter: none !important
+      - box-shadow: none !important
+      - border: none
+      - border-radius: 0
+      - padding: 0
+      - margin: 0
+      - height: auto
+      - min-height: 0
+      - overflow: visible
+    grid:
+      - display: block
+    custom_fields:
+      np_title:
+        - font-size: 18px
+        - font-weight: 700
+        - color: "#ffffff"
+        - text-align: left
+        - letter-spacing: "-0.3px"
+        - line-height: "1.3"
+        - padding: "10px 0 18px max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))"
+        - margin: 0
+      media_row:
+        - display: |
+            [[[
+              const filter = states['input_select.hemma_mobile_filter']?.state ?? 'all';
+              if (filter === 'media') return 'block';
+              if (filter !== 'all') return 'none';
+              const npList = (typeof window._hemmaNPView === 'function')
+                ? (typeof window._hemmaNPView === "function" ? window._hemmaNPView(states, variables.cfg) : [])
+                : [];
+              return npList.length ? 'block' : 'none';
+            ]]]
+        - overflow-x: auto
+        - overflow-y: hidden
+        - overscroll-behavior-x: contain
+        - scrollbar-width: none
+        - "-ms-overflow-style": none
+        - scroll-snap-type: "x mandatory"
+        - scroll-padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))"
+        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) !important"
+        - padding-right: "var(--hemma-rail-left, 11px) !important"
+        - padding-top: "16px !important"
+        - padding-bottom: "16px !important"
+        - margin: "-16px 0 -16px 0 !important"
+        - width: "100%"
+        - box-sizing: border-box
+        - height: auto
+
+      # ── Media popup column ──────────────────────────────────────────────
+      np_rail:
+        - display: block
+        - --npm-open: >
+            [[[
+              return (states['input_select.hemma_mobile_filter']?.state === 'media') ? 1 : 0;
+            ]]]
+        - overflow: >
+            [[[
+              return (states['input_select.hemma_mobile_filter']?.state === 'media') ? 'visible' : 'hidden';
+            ]]]
+        - pointer-events: >
+            [[[
+              return (states['input_select.hemma_mobile_filter']?.state === 'media') ? 'auto' : 'none';
+            ]]]
+        - max-height: >
+            [[[
+              const list = (typeof window._hemmaNPPlan === 'function')
+                ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [];
+              const count = Math.max(0, list.length - 1);
+              return `calc(var(--npm-open, 0) * ${count * 218}px)`;
+            ]]]
+        - opacity: 'var(--npm-open, 0)'
+        - transform: 'translateY(calc((1 - var(--npm-open, 0)) * 28px))'
+        - transition: >
+            transform 0.38s cubic-bezier(0.32, 0.72, 0, 1),
+            opacity 0.26s ease,
+            max-height 0.38s cubic-bezier(0.32, 0.72, 0, 1)
+        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) !important"
+        - padding-right: "var(--hemma-rail-left, 11px) !important"
+        - margin: "calc(var(--npm-open, 0) * 10px) 0 0 0 !important"
+        - width: "100%"
+        - box-sizing: border-box
+
+
+  custom_fields:
+
+    np_title: Now Playing
+
+    # ── MEDIA ROW ──────────
+    media_row:
+      card:
+        type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        show_label: false
+        show_entity_picture: false
+        tap_action: {action: none}
+        hold_action: {action: none}
+        variables:
+          cfg: '[[[ return variables.cfg; ]]]'
+
+        extra_styles: >
+          [[[
+            const staticCSS = `:host(.hemma-navbar-card.hemma-navbar-card):active{filter:none!important;-webkit-filter:none!important}:host{filter:none!important;-webkit-filter:none!important;touch-action:pan-x!important}ha-card.button-card-main{will-change:auto!important;isolation:auto!important;contain:none!important;transition:none!important;touch-action:pan-x!important}.button-card-main,.button-card-content,#customfields{touch-action:pan-x!important}#media1 > *,#media2 > *,#media3 > *,#media4 > *,#media5 > *,#media6 > *,#media7 > *,#media8 > *,#media9 > *{width:100%!important;min-width:100%!important;max-width:100%!important;flex:1 1 auto!important}`;
+
+            /* Slot width */
+            const flipIds = ['media1','media2','media3','media4','media5','media6','media7','media8','media9'];
+            const filter = states['input_select.hemma_mobile_filter']?.state ?? 'all';
+            const inColumn = filter === 'media';
+
+            /* Toggling the filter re-renders the whole dashboard and blocks the main thread for
+               ~200ms (measured: the first rAF after this render lands at +210ms). width/min-width
+               are LAYOUT properties, so their transition runs on the main thread and elapses
+               entirely inside that jank — by the first painted frame the tile is already at its
+               target, which is why the change looked instant no matter what duration was set.
+               transform/opacity survive it because they run on the compositor, which is exactly
+               why hemma-core's scaleX FLIP appeared to work where this did not.
+               So: hold the PREVIOUS geometry through the janky render, then apply the new one on a
+               later frame once the thread is free, so the transition actually gets painted. */
+            const wantColumn = inColumn;
+            if (this._npColumnApplied === undefined) this._npColumnApplied = wantColumn;
+            let useColumn = wantColumn;
+            if (this._npColumnApplied !== wantColumn) {
+              useColumn = this._npColumnApplied;
+              if (!this._npColumnPending) {
+                this._npColumnPending = true;
+                const settle = () => {
+                  this._npColumnApplied = wantColumn;
+                  this._npColumnPending = false;
+                  const targets = [window._hemmaNPRowCard, window._hemmaNPShell]
+                    .filter((t) => t && t.isConnected);
+                  for (const t of targets) {
+                    try {
+                      const h = t._hass || t.hass;
+                      if (h) t.hass = Object.assign({}, h);
+                      if (typeof t.requestUpdate === 'function') t.requestUpdate('_config', undefined);
+                    } catch (err) {}
+                  }
+                };
+                // Two frames plus a task: the frames immediately after a heavy re-render are
+                // still busy, and starting the transition into a busy frame loses it again.
+                requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(settle, 0)));
+              }
+            }
+            if (typeof window._hemmaNPView === 'function') {
+              (typeof window._hemmaNPView === "function" ? window._hemmaNPView(states, variables.cfg) : []);
+            }
+
+            const settled = flipIds.map(id => window._hemmaNPSlotState?.[id]?._npHoldSrc || null);
+
+            const liveList = (typeof window._hemmaNPView === "function")
+              ? window._hemmaNPView(states, variables.cfg) : [];
+
+            /* Plan first — it owns which slot each source occupies, including a departing one
+               held open for its exit. usesPeek below still counts LIVE tiles, so the survivor
+               starts expanding to full width on the same render the exit starts. */
+            const plan = (typeof window._hemmaNPPlan === "function")
+              ? window._hemmaNPPlan(states, variables.cfg) : liveList.slice();
+            const planState = window._hemmaNPPlanState || {};
+            /* Slot indices come from the plan's pos map now — a source owns its wrapper, so the
+               exit record no longer carries one. */
+            const planPos = planState.pos || {};
+            const planPending = planState.pending || {};
+            const exitSlots = {};
+            for (const e of (planState.exits || [])) {
+              if (planPos[e.key] !== undefined) exitSlots[planPos[e.key]] = true;
+            }
+            /* Declared here, above the probe that reads it — not down beside the CSS that uses it. */
+            /* First occupied wrapper — the tile the Media view keeps in the row. */
+            const headIdx = plan.findIndex((p) => !!p);
+
+            /* ── MEDIA FILTER OPEN SPEED — tune this ── Only the open direction. Closing keeps the
+               .46s used by departures and arrivals; opening has to keep pace with the filter view,
+               which switches instantly. Below ~0.15s it starts to read as a jump cut. */
+            const columnDur = '0.18s';
+            /* Spring for the head only. Measured overshoot is 3.7px on its 26px of travel — the
+               theme's usual spring gives 0.6px here, which is invisible, because overshoot scales
+               with distance and the head barely moves. Reads as the tile reacting to being pushed:
+               on open it overshoots outward past full width and settles; on close it dips inward
+               past its resting width as the returning tile pushes it. */
+            const columnSpring = 'cubic-bezier(0.34, 1.7, 0.5, 1)';
+            /* The slot sliding out has less distance to cover and nothing waiting on it, so it
+               reads as lagging if it runs at the head's pace — by the time it finishes, the filter
+               view and the column beneath have long since settled. Deliberately shorter than
+               columnDur; they are adjacent, so the leaver simply clears out sooner. */
+            const columnCollapseDur = '0.13s';
+            const columnEase = 'cubic-bezier(0.32, 0.72, 0, 1)';
+
+            /* Closing the filter runs through the BASE transition (useColumn is false by then), so
+               without this the return journey used the .46s departure timing and felt stiff next to
+               the 0.18s open. Latched for 100ms because extra_styles can evaluate more than once
+               per render and a plain flag would be consumed by the first pass. */
+            if (useColumn) this._npColumnWasOpen = true;
+            else if (this._npColumnWasOpen) {
+              this._npColumnWasOpen = false;
+              this._npColumnCloseAt = Date.now();
+            }
+            const closingColumn = !useColumn
+              && (Date.now() - (this._npColumnCloseAt || 0)) < 100;
+            const entering = {};
+            plan.forEach((p, i) => { if (p && planPending[p.key]) entering[i] = true; });
+            /* Snap applies only on the render that actually changed the assignment. Re-emitting it
+               on the cached renders that follow leaves transition:none stuck on the slot. */
+            const planGen = planState.gen || 0;
+            const snapOn = planState.snapGen !== planGen;
+            planState.snapGen = planGen;
+            const slotSnapped = snapOn ? (planState.changed || {}) : {};
+            const usesPeek = !useColumn && liveList.filter(Boolean).length > 1;
+            const gutters = `(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + var(--hemma-rail-left, 11px))`;
+            const peekW = `calc(100vw - ${gutters} - var(--np-peek, 26px))`;
+            const activeW = usesPeek ? peekW : `calc(100vw - ${gutters})`;
+            /* The gap must NOT animate. It is margin-right on every slot, and column mode used to
+               drop it to 0 — so while a neighbour was still visibly collapsing, the head's right
+               margin was closing at the same time and the two tiles met. Holding it constant
+               whenever more than one slot is occupied means the separation is always there and
+               the collapsing slot simply carries its own margin down to 0 with its width. */
+            const activeGap = (usesPeek || useColumn) ? 'var(--np-gap, 10px)' : '0px';
+
+            const curKeys = settled.map(e => e?.key || null);
+            const prevKeys = this._npSlotKeys || [];
+            const slotKeyChanged = new Set();
+            curKeys.forEach((k, i) => { if (prevKeys[i] !== k) slotKeyChanged.add(flipIds[i]); });
+            this._npSlotKeys = curKeys;
+
+            const reduceMotion = window.matchMedia
+              && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+
+            /* Publish the row card for the plan's release timer, which has no element of its own
+               and must still fire with the probe silenced. Deliberately OUTSIDE the debug block —
+               it used to live inside it, which would have made exits stop clearing the moment the
+               instrumentation was turned off. */
+            if (!this.__npRoot || !this.__npRoot.getElementById
+                || !this.__npRoot.getElementById('media1')) {
+              const dig0 = (root, depth) => {
+                if (!root || depth > 5) return null;
+                if (root.getElementById && root.getElementById('media1')) return root;
+                const kids = root.querySelectorAll ? root.querySelectorAll('*') : [];
+                for (const k of kids) {
+                  if (k.shadowRoot) {
+                    const r = dig0(k.shadowRoot, depth + 1);
+                    if (r) return r;
+                  }
+                }
+                return null;
+              };
+              const r0 = this.shadowRoot ? dig0(this.shadowRoot, 0) : null;
+              if (r0) { this.__npRoot = r0; this.__npPath = 'this.shadowRoot > button-card'; }
+            }
+            if (this.__npRoot && this.__npRoot.host) window._hemmaNPRowCard = this.__npRoot.host;
+
+            /* Apple's rule for a partially visible card: the first tap brings it into view, you act
+               on it with the second. Without this, a thumb landing on the 26px peek edge opens
+               more-info for a source you can barely see.
+               Capture phase on the scroller, because button-card binds its action to touchend/click
+               on the tile — capture runs first, so stopPropagation prevents the action ever firing.
+               touchstart is deliberately left alone (it is passive, and blocking it would kill the
+               swipe gesture), and a drag that merely ends over the peek tile is ignored so normal
+               carousel swiping still works. */
+            const scroller = this.shadowRoot ? this.shadowRoot.getElementById('media_row') : null;
+            if (scroller && !scroller.__npPeekTap) {
+              scroller.__npPeekTap = true;
+              let sx = 0, sy = 0, stime = 0;
+              const slotOf = (ev) => {
+                const path = ev.composedPath ? ev.composedPath() : [];
+                for (const n of path) {
+                  if (n === scroller) break;
+                  if (n && n.id && /^media[1-9]$/.test(n.id)) return n;
+                }
+                return null;
+              };
+              const edges = () => {
+                const cs = getComputedStyle(scroller);
+                const sr = scroller.getBoundingClientRect();
+                return {
+                  left: sr.left + (parseFloat(cs.paddingLeft) || 0),
+                  right: sr.right - (parseFloat(cs.paddingRight) || 0),
+                };
+              };
+              const clipped = (slot) => {
+                const r = slot.getBoundingClientRect();
+                if (r.width < 2) return false;
+                const e = edges();
+                return (r.left < e.left - 1) || (r.right > e.right + 1);
+              };
+              scroller.addEventListener('touchstart', (ev) => {
+                const t = ev.touches && ev.touches[0];
+                if (!t) return;
+                sx = t.clientX; sy = t.clientY; stime = Date.now();
+              }, { passive: true, capture: true });
+              const intercept = (ev) => {
+                const slot = slotOf(ev);
+                if (!slot || !clipped(slot)) return;
+                if (ev.type === 'touchend') {
+                  const t = ev.changedTouches && ev.changedTouches[0];
+                  if (t && (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10)) return;
+                  if (Date.now() - stime > 500) return;
+                }
+                ev.stopPropagation();
+                if (ev.cancelable) ev.preventDefault();
+                const delta = slot.getBoundingClientRect().left - edges().left;
+                scroller.scrollTo({ left: scroller.scrollLeft + delta, behavior: 'smooth' });
+              };
+              scroller.addEventListener('touchend', intercept, true);
+              scroller.addEventListener('click', intercept, true);
+            }
+
+            /* ── NP PROBE — opt-in. `window._hemmaNPDebug = true` in the console re-enables it. ── */
+            if (window._hemmaNPDebug === true) try {
+              const W = window;
+              W._hemmaNPProbe = W._hemmaNPProbe || { n: 0, last: 0, uid: 0 };
+              const P = W._hemmaNPProbe;
+              P.n += 1;
+              const now = Date.now();
+              const dt = P.last ? (now - P.last) : 0;
+              P.last = now;
+
+              /* Resolve the shadow root that actually owns #media1. `this` may be the PARENT
+                 shell rather than this card (see feedback_nested_card_templates_eval_in_parent),
+                 so walk down through shadow roots and report the path we actually took. */
+              const dig = (root, depth, path) => {
+                if (!root || depth > 5) return null;
+                if (root.getElementById && root.getElementById('media1')) return { root: root, path: path };
+                const kids = root.querySelectorAll ? root.querySelectorAll('*') : [];
+                for (const k of kids) {
+                  if (k.shadowRoot) {
+                    const r = dig(k.shadowRoot, depth + 1, path + ' > ' + k.tagName.toLowerCase());
+                    if (r) return r;
+                  }
+                }
+                return null;
+              };
+              /* Cached PER ELEMENT, never on the shared window store: if this row is mounted more
+                 than once, a global cache makes one instance measure another instance's slots —
+                 which reads as the emitted value and the applied value disagreeing. */
+              if (!this.__npInst) {
+                P.insts = (P.insts || 0) + 1;
+                this.__npInst = P.insts;
+              }
+              let found = this.__npRoot && this.__npRoot.getElementById
+                && this.__npRoot.getElementById('media1')
+                ? { root: this.__npRoot, path: this.__npPath } : null;
+              if (!found) {
+                found = this.shadowRoot ? dig(this.shadowRoot, 0, 'this.shadowRoot') : null;
+                if (found) { this.__npRoot = found.root; this.__npPath = found.path; }
+              }
+
+              /* Stable per-element identity: tells us whether a wrapper or the tile inside it
+                 is REUSED across a departure, or torn down and rebuilt. */
+              const idOf = (el) => {
+                if (!el) return '-';
+                if (!el.__npUid) { el.__npUid = 'e' + (++P.uid); el.__npBorn = P.n; }
+                return el.__npUid + (el.__npBorn === P.n ? '*NEW' : '');
+              };
+
+              const rows = [];
+              for (let i = 0; i < flipIds.length; i++) {
+                const id = flipIds[i];
+                const wrap = found ? found.root.getElementById(id) : null;
+                if (!wrap) continue;
+                const inner = wrap.firstElementChild;
+                const hold = W._hemmaNPSlotState && W._hemmaNPSlotState[id]
+                  && W._hemmaNPSlotState[id]._npHoldSrc
+                  ? W._hemmaNPSlotState[id]._npHoldSrc.key : null;
+                const slot = plan[i] ? plan[i].key : null;
+                // Rank position in the live list. Was `liveList[i]`, which is meaningless now
+                // that a wrapper index is an identity, not a position.
+                const live = slot
+                  ? (liveList.findIndex((x) => x && x.key === slot) + 1 || '-')
+                  : null;
+                const disp = wrap.style.display || getComputedStyle(wrap).display;
+                if (!slot && !hold && disp === 'none') continue;
+                rows.push('    ' + id +
+                  '  slot=' + (slot || '-') +
+                  (exitSlots[i] ? '(EXITING)' : '') +
+                  (entering[i] ? '(OPENING)' : '') +
+                  (slotSnapped[id] ? '(SNAP)' : '') +
+                  '  rank=' + (live || '-') +
+                  '  hold=' + (hold || '-') +
+                  '  wrap=' + idOf(wrap) +
+                  '  tile=' + idOf(inner) +
+                  '  disp=' + disp +
+                  '  w=' + Math.round(wrap.getBoundingClientRect().width) +
+                  '  op=' + getComputedStyle(wrap).opacity);
+              }
+
+              console.log('%c[NP#' + P.n + ']',
+                'color:#0cf;font-weight:700',
+                '+' + dt + 'ms  ' + new Date(now).toISOString().substr(11, 12) +
+                '  inst=' + this.__npInst + '/' + P.insts +
+                '  conn=' + this.isConnected +
+                '  this=' + String(this.tagName || '?').toLowerCase() +
+                '  dom=' + (found ? found.path : 'MEDIA1-NOT-FOUND') +
+                '  peek=' + usesPeek +
+                '  plan=[' + plan.map((x) => (x && x.key) || '-').join(',') + ']' +
+                '  order=[' + (planState.order || []).map((k) => k + '@' + planPos[k]).join(',') + ']' +
+                '  exits=[' + (planState.exits || []).map((e) => e.key).join(',') + ']' +
+                '  pending=[' + Object.keys(planPending).join(',') + ']' +
+                '  live=[' + liveList.map((x) => (x && x.key) || '-').join(',') + ']' +
+                '  settled=[' + curKeys.map((k) => k || '-').join(',') + ']' +
+                '  prev=[' + prevKeys.map((k) => k || '-').join(',') + ']');
+              for (const r of rows) console.log(r);
+
+              /* Everything above is read BEFORE this render's stylesheet is applied, so it shows
+                 the previous render's geometry. This pass runs after style+layout have settled and
+                 reports what the browser actually resolved — the only way to tell an emitted-value
+                 bug (peek formula written when it shouldn't be) from an applied-value bug
+                 (--np-active-w correct but the width overridden or failing to resolve). */
+              /* FILTER-SWITCH SAMPLER. A shift-left-then-jump-back is not something a width
+                 transition can produce, so sample every frame across the switch and look at what
+                 actually moves: slot geometry, the scroller's scrollLeft, and its scrollWidth.
+                 Snap containers re-snap when content width changes, which would show up as
+                 scrollLeft moving on its own. */
+              /* Triggered on the GEOMETRY change (useColumn), not the filter change — those are
+                 now different renders, and sampling the filter render would only capture the
+                 deliberate hold before anything moves. */
+              const curFilter = useColumn ? 'media' : 'all';
+              if (found && this._npPrevFilter !== undefined && this._npPrevFilter !== curFilter) {
+                const root = found.root;
+                const scroller = this.shadowRoot ? this.shadowRoot.getElementById('media_row') : null;
+                const from = this._npPrevFilter;
+                const t0 = performance.now();
+                const frames = [];
+                let n = 0;
+                const sample = () => {
+                  const parts = [];
+                  for (const id of flipIds) {
+                    const w = root.getElementById(id);
+                    if (!w) continue;
+                    const c = getComputedStyle(w);
+                    if (c.display === 'none') continue;
+                    const r = w.getBoundingClientRect();
+                    /* rect vs computed distinguishes the two candidates: if computed width
+                       animates but the rect does not, something is clamping (min/max); if computed
+                       width jumps straight to target with a live duration, the transition never
+                       started — most likely because the previous value was `auto` for a frame,
+                       and transitions never run to or from auto. */
+                    parts.push(id +
+                      ' rect=' + r.width.toFixed(1) +
+                      ' w=' + c.width +
+                      ' min=' + c.minWidth +
+                      ' max=' + c.maxWidth +
+                      ' dur=' + c.transitionDuration.split(',')[0].trim());
+                  }
+                  frames.push('  f' + String(n).padStart(2) +
+                    ' +' + (performance.now() - t0).toFixed(0).padStart(4) + 'ms' +
+                    '  sL=' + (scroller ? scroller.scrollLeft.toFixed(1) : '?') +
+                    '  sW=' + (scroller ? scroller.scrollWidth.toFixed(0) : '?') +
+                    '  | ' + (parts.join('  ') || 'no visible slots'));
+                  if (++n < 24) requestAnimationFrame(sample);
+                  else {
+                    console.log('%c[NP filter ' + from + '->' + curFilter + ']',
+                      'color:#e91e63;font-weight:700', '\n' + frames.join('\n'));
+                  }
+                };
+                requestAnimationFrame(sample);
+              }
+              this._npPrevFilter = curFilter;
+
+              const hostEl = found ? found.root.host : null;
+              if (hostEl) {
+                const gen = P.n;
+                const inst = this.__npInst;
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                  try {
+                    const hs = getComputedStyle(hostEl);
+                    const out = ['[NP#' + gen + ' POST inst=' + inst + '] emitted=' + activeW +
+                      '  resolved --np-active-w=' + (hs.getPropertyValue('--np-active-w') || '').trim() +
+                      '  peek=' + usesPeek + '  gutters-probe=' + hs.width];
+                    for (const id of flipIds) {
+                      const w = found.root.getElementById(id);
+                      if (!w) continue;
+                      const c = getComputedStyle(w);
+                      if (c.display === 'none') continue;
+                      out.push('    ' + id + '  w=' + c.width + '  min=' + c.minWidth +
+                        '  max=' + c.maxWidth + '  dur=' + c.transitionDuration +
+                        '  op=' + c.opacity + '  tf=' + c.transform);
+                    }
+                    console.log('%c' + out.join('\n'), 'color:#f80');
+                  } catch (err) {}
+                }));
+              }
+            } catch (e) { console.warn('[NP] probe failed', e); }
+
+            /* Per-slot exit. The wrapper is the only element that survives a departure (the tile
+               inside it is rebuilt on nearly every render — probe: tile e2>e5>e7>e9), so all
+               motion lives here.
+               Collapsing width to 0 is what shifts the survivors LEFT: it's a layout change, so
+               no surviving tile is transformed and no backdrop-filter drops. The fade+scale run
+               on the exiting wrapper only, which is allowed precisely because it reaches zero.
+               transform stays `none` (never `scale(1)`) at rest — an identity transform would
+               still make the wrapper a containing block and kill the tile's blur permanently.
+               Everything is a plain CSS transition off values re-emitted each render: nothing
+               fills, nothing needs cleaning up, so a 12s gap to the next render is harmless. */
+            /* Width the exiting slot occupied BEFORE it started leaving: peek applies whenever
+               more than one slot was filled (counting the leaver itself), which is not the same
+               as usesPeek — that already reflects the post-departure live count. */
+            const occupied = plan.filter(Boolean).length;
+            const exitChildW = occupied > 1 ? peekW : `calc(100vw - ${gutters})`;
+
+            /* When the slot leaving is NOT the rightmost one, there is nothing to the right of the
+               survivors to make room for — they should already BE full width as they slide across,
+               so the collapse is the only motion. Growing into it reads as a second, laggy step.
+               When the rightmost slot leaves it's the opposite: slot 1 expanding IS the motion that
+               pushes it off, so survivors keep their width transition. */
+            let lastOcc = -1;
+            plan.forEach((p, i) => { if (p) lastOcc = i; });
+            const anyExit = Object.keys(exitSlots).length > 0;
+            const snapSurvivors = anyExit && !exitSlots[lastOcc];
+
+            let slotCSS = '';
+            for (let i = 0; i < flipIds.length; i++) {
+              const id = flipIds[i];
+              if (exitSlots[i]) {
+                /* The tile inside is pinned to 100% of the wrapper by staticCSS, so a bare
+                   collapse would reflow its text and squash its artwork on the way out. Hold the
+                   child at the peek width and let the wrapper clip it instead, so it fades in
+                   place rather than deforming. scroll-snap-align is dropped too — a zero-width
+                   snap target is a scroll trap. */
+                slotCSS += `#${id}{width:0!important;min-width:0!important;max-width:0!important;` +
+                  `margin-right:0!important;opacity:0;transform:scale(0.96);` +
+                  `pointer-events:none;overflow:hidden;scroll-snap-align:none;}` +
+                  `#${id} > *{width:${exitChildW}!important;min-width:${exitChildW}!important;` +
+                  `max-width:${exitChildW}!important;}`;
+              }
+              /* Arrival, still closed. Zero width with the tile inside pinned at its final size,
+                 so opening REVEALS it left-to-right instead of squashing it into place — the exit
+                 run backwards. transition:none holds it flat here; the moment the plan clears
+                 `pending` (artwork decoded, or the cap elapsed) the base rule takes over and it
+                 animates open, pushing everything to its right along by layout. Nothing
+                 transforms, so no surviving tile loses its blur. */
+              /* NOTE: no opacity here, deliberately. An ancestor with opacity < 1 forms a
+                 backdrop root, so the tile's backdrop-filter would have nothing to sample and the
+                 glass would render unblurred for the whole reveal, popping in at the end — the
+                 same trap as animating transform. Width 0 + overflow:hidden already clips the tile
+                 completely, so the fade was only ever cosmetic. The reveal is pure width. */
+              else if (entering[i]) {
+                slotCSS += `#${id}{width:0!important;min-width:0!important;max-width:0!important;` +
+                  `margin-right:0!important;overflow:hidden;` +
+                  `border-radius:var(--np-inner-radius, 26px);` +
+                  `scroll-snap-align:none;pointer-events:none;transition:none!important;}` +
+                  `#${id} > *{width:${activeW}!important;min-width:${activeW}!important;` +
+                  `max-width:${activeW}!important;}`;
+              }
+              /* Media filter open: every slot but the head collapses to zero width. Opening snaps
+                 (see the inColumn transition:none below); closing reopens these like an arrival.
+                 Pure width, never opacity or transform — these tiles are visible again at the end,
+                 and either would strip their backdrop-filter on the way back in. */
+              else if (useColumn && i !== headIdx) {
+                /* border-radius on the clip: without it the wrapper's square edge cuts straight
+                   through the tile's rounded corner and you see a hard vertical slice. Matching
+                   the tile's own radius makes the clip edge stay rounded as it closes. */
+                slotCSS += `#${id}{width:0!important;min-width:0!important;max-width:0!important;` +
+                  `margin-right:0!important;overflow:hidden;` +
+                  `border-radius:var(--np-inner-radius, 26px);` +
+                  `scroll-snap-align:none;pointer-events:none;}` +
+                  `#${id} > *{width:${peekW}!important;min-width:${peekW}!important;` +
+                  `max-width:${peekW}!important;}`;
+              }
+              else if (snapSurvivors) {
+                slotCSS += `#${id}{transition-property:opacity,transform!important;}`;
+              }
+              /* Media filter OPEN: same motion, its own much shorter duration. The filter view
+                 itself appears instantly, so the row has to arrive on the same beat — at the .46s
+                 used elsewhere the tile visibly trails the mode switch, and at 0s it reads as a
+                 jump cut. The curve is unchanged and heavily front-loaded, so this stays smooth
+                 rather than clipped.
+                 This also gives the CLOSE animation for free with no direction tracking: leaving
+                 column mode swaps this rule for the base transition in the SAME style change as
+                 the widths, and CSS starts transitions from the after-change style — so closing
+                 runs at the full .46s while opening runs at --np-column-dur. */
+              if (useColumn || closingColumn) {
+                const isHead = (i === headIdx);
+                const d = isHead ? columnDur : columnCollapseDur;
+                const e = isHead ? columnSpring : columnEase;
+                slotCSS += `#${id}{transition:` +
+                  `width ${d} ${e},` +
+                  `min-width ${d} ${e},` +
+                  `max-width ${d} ${e},` +
+                  `margin-right ${d} ${e}!important;}`;
+              }
+
+              /* Slot taken over by a different source: snap to the new geometry instead of
+                 animating out of whatever the previous occupant left behind. */
+              if (slotSnapped[id]) slotCSS += `#${id}{transition:none!important;}`;
+
+              /* Was computed and thrown away. Honour it: every motion in this row is a width
+                 transition, so suppressing them here removes all of it at once. */
+              if (reduceMotion) slotCSS += `#${id}{transition:none!important;}`;
+            }
+
+            return staticCSS + `
+              /* Kept for debugging only — the slot rules above use the literal, NOT this var.
+                 Measured: when the stylesheet is regenerated, the !important declarations take
+                 effect immediately while this non-important custom property still resolves to the
+                 previous render's value, so a slot reading var(--np-active-w) applies a stale
+                 width. Combined with a snap render that locked the stale peek value in, that is
+                 what left the survivor narrow. */
+              :host { --np-active-w: ${activeW}; --np-active-gap: ${activeGap}; --np-bloom-strength: 0.62; }
+              #media1, #media2, #media3, #media4, #media5,
+              #media6, #media7, #media8, #media9 {
+                width: ${activeW} !important;
+                min-width: ${activeW} !important;
+                max-width: ${activeW} !important;
+                margin-right: ${activeGap} !important;
+                opacity: 1;
+                transform: none;
+                transition:
+                  width .46s cubic-bezier(0.32, 0.72, 0, 1),
+                  min-width .46s cubic-bezier(0.32, 0.72, 0, 1),
+                  max-width .46s cubic-bezier(0.32, 0.72, 0, 1),
+                  margin-right .46s cubic-bezier(0.32, 0.72, 0, 1),
+                  opacity .24s ease,
+                  transform .30s cubic-bezier(0.32, 0.72, 0, 1);
+                flex: 0 0 auto !important;
+                scroll-snap-align: start;
+                scroll-snap-stop: always;
+                box-sizing: border-box !important;
+                overflow: visible;
+                display: flex;
+                flex-direction: column;
+              }
+            ` + slotCSS;
+          ]]]
+
+        styles:
+          card:
+            - background: transparent !important
+            - box-shadow: none !important
+            - backdrop-filter: none !important
+            - -webkit-backdrop-filter: none !important
+            - padding: "0 !important"
+            - margin: "0 !important"
+            - border-radius: 0 !important
+            - border: none !important
+            - overflow: visible !important
+            - width: max-content !important
+          grid:
+            - display: flex !important
+            - flex-direction: row !important
+            - flex-wrap: nowrap !important
+            - gap: "0 !important"
+            - align-items: flex-start !important
+            - justify-content: flex-start !important
+            - overflow: visible !important
+            - padding: "0 !important"
+            - margin: "0 !important"
+            - width: max-content !important
+          custom_fields:
+            media1:
+              - display: >
+                  [[[
+                    const P = (typeof window._hemmaNPPlan === "function"
+                      ? window._hemmaNPPlan(states, variables.cfg) : []);
+                    return P[0] ? 'block' : 'none';
+                  ]]]
+            media2:
+              - display: >
+                  [[[
+                    const P = (typeof window._hemmaNPPlan === "function"
+                      ? window._hemmaNPPlan(states, variables.cfg) : []);
+                    return P[1] ? 'block' : 'none';
+                  ]]]
+            media3:
+              - display: >
+                  [[[
+                    const P = (typeof window._hemmaNPPlan === "function"
+                      ? window._hemmaNPPlan(states, variables.cfg) : []);
+                    return P[2] ? 'block' : 'none';
+                  ]]]
+            media4:
+              - display: >
+                  [[[
+                    const P = (typeof window._hemmaNPPlan === "function"
+                      ? window._hemmaNPPlan(states, variables.cfg) : []);
+                    return P[3] ? 'block' : 'none';
+                  ]]]
+            media5:
+              - display: >
+                  [[[
+                    const P = (typeof window._hemmaNPPlan === "function"
+                      ? window._hemmaNPPlan(states, variables.cfg) : []);
+                    return P[4] ? 'block' : 'none';
+                  ]]]
+            media6:
+              - display: >
+                  [[[
+                    const P = (typeof window._hemmaNPPlan === "function"
+                      ? window._hemmaNPPlan(states, variables.cfg) : []);
+                    return P[5] ? 'block' : 'none';
+                  ]]]
+            media7:
+              - display: >
+                  [[[
+                    const P = (typeof window._hemmaNPPlan === "function"
+                      ? window._hemmaNPPlan(states, variables.cfg) : []);
+                    return P[6] ? 'block' : 'none';
+                  ]]]
+            media8:
+              - display: >
+                  [[[
+                    const P = (typeof window._hemmaNPPlan === "function"
+                      ? window._hemmaNPPlan(states, variables.cfg) : []);
+                    return P[7] ? 'block' : 'none';
+                  ]]]
+            media9:
+              - display: >
+                  [[[
+                    const P = (typeof window._hemmaNPPlan === "function"
+                      ? window._hemmaNPPlan(states, variables.cfg) : []);
+                    return P[8] ? 'block' : 'none';
+                  ]]]
+
+        custom_fields:
+          media1:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'media1'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[0] || null; ]]]'
+          media2:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'media2'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[1] || null; ]]]'
+          media3:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'media3'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[2] || null; ]]]'
+          media4:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'media4'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[3] || null; ]]]'
+          media5:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'media5'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[4] || null; ]]]'
+          media6:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'media6'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[5] || null; ]]]'
+          media7:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'media7'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[6] || null; ]]]'
+          media8:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'media8'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[7] || null; ]]]'
+          media9:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'media9'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[8] || null; ]]]'
+
+    # ── MEDIA RAIL (Media popup only) ────────────────────────────────────
+    np_rail:
+      card:
+        type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        show_label: false
+        tap_action: {action: none}
+        hold_action: {action: none}
+        variables:
+          cfg: '[[[ return variables.cfg; ]]]'
+        extra_styles: >
+          [[[
+            const list = (typeof window._hemmaNPPlan === 'function')
+              ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [];
+            let css = `
+              :host, ha-card {
+                background: none !important;
+                box-shadow: none !important;
+                border: none !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+              }
+              #c1, #c2, #c3, #c4, #c5, #c6, #c7, #c8 {
+                display: flex;
+                flex-direction: column;
+                width: 100% !important;
+              }
+              #c1 > *, #c2 > *, #c3 > *, #c4 > *, #c5 > *, #c6 > *, #c7 > *, #c8 > * {
+                width: 100% !important;
+                min-width: 100% !important;
+                max-width: 100% !important;
+                flex: 1 1 auto !important;
+              }
+            `;
+            for (let i = 1; i <= 8; i++) {
+              const on = list[i] ? 1 : 0;
+              css += `
+                #c${i} {
+                  --np-c${i}: ${on};
+                  max-height: calc(var(--np-c${i}, 0) * 210px);
+                  opacity: var(--np-c${i}, 0);
+                  margin-top: calc(var(--np-c${i}, 0) * 8px);
+                  overflow: hidden;
+                  pointer-events: ${on ? 'auto' : 'none'};
+                  transition:
+                    max-height .42s cubic-bezier(0.32, 0.72, 0, 1),
+                    margin-top .42s cubic-bezier(0.32, 0.72, 0, 1),
+                    opacity .3s ease;
+                }
+              `;
+            }
+            return css;
+          ]]]
+        styles:
+          card:
+            - background: transparent !important
+            - box-shadow: none !important
+            - border: none !important
+            - padding: "0 !important"
+            - margin: "0 !important"
+            - overflow: visible !important
+            - width: "100%"
+          grid:
+            - display: flex !important
+            - flex-direction: column !important
+            - width: "100%"
+            - padding: "0 !important"
+            - margin: "0 !important"
+        custom_fields:
+          c1:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'c1'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[1] || null; ]]]'
+          c2:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'c2'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[2] || null; ]]]'
+          c3:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'c3'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[3] || null; ]]]'
+          c4:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'c4'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[4] || null; ]]]'
+          c5:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'c5'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[5] || null; ]]]'
+          c6:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'c6'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[6] || null; ]]]'
+          c7:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'c7'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[7] || null; ]]]'
+          c8:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_primary
+              variables:
+                entry_direction: 'horizontal'
+                slot_id: 'c8'
+                swap_motion: false
+                src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[8] || null; ]]]'

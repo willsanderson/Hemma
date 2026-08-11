@@ -1,14 +1,4 @@
-# Shared Styles
 # ============================================================================
-# This template provides shared styles for the Hemma room hero cards.
-#
-# CONFIGURABLE VARIABLES:
-#   preload_rooms: Array of room names to preload images for (light + dark)
-#                  Default: ['home', 'livingroom', 'kitchen', 'bedroom']
-#
-#   preload_night_suffix: Suffix for dark mode images (default: '-night')
-#   preload_path: Base path for room images (default: '/local/hemma/rooms')
-#   preload_extension: Image file extension (default: '.jpg')
 # ============================================================================
 hemma_shared:
   variables:
@@ -17,19 +7,12 @@ hemma_shared:
     preload_rooms: []  # Set in your dashboard file — see hemma.yaml for example
     preload_night_suffix: "-night"
     preload_path: "/local/hemma/rooms"
-    mobile_preload_path: "/local/hemma/mobile"
-    preload_mobile_dark_suffix: "-dark"
     preload_extension: ".jpg"
-    preload_mobile_shared_prefix: "mobile"
-    preload_mobile_shared_phases:
-      - morning
-      - day
-      - night
 
   styles:
     grid:
       - grid-template-columns: 1fr max-content
-      - grid-template-areas: '"n n" "badges badges" "badges_climate badges_climate" "badges_presence badges_presence" "badges_media badges_media" "badges_lights badges_lights"'
+      - grid-template-areas: '"n n" "badges badges" "badges_climate badges_climate" "badges_presence badges_presence" "badges_media badges_media" "badges_lights badges_lights" "badges_security badges_security" "badges_energy badges_energy" "now_playing now_playing"'
       - grid-template-rows: min-content min-content min-content min-content min-content min-content
       - row-gap: 0
       - align-content: start
@@ -40,33 +23,40 @@ hemma_shared:
       const suffix = variables.preload_night_suffix || '-night';
       const basePath = variables.preload_path || '/local/hemma/rooms';
       const ext = variables.preload_extension || '.jpg';
-      const mobilePrefix = variables.preload_mobile_shared_prefix || 'mobile';
-      const mobilePhases = variables.preload_mobile_shared_phases || ['morning', 'day', 'night'];
 
-      if (!window.hemmaPreloadedImages) {
+      const isDark =
+        typeof hass?.themes?.darkMode === 'boolean'
+          ? hass.themes.darkMode
+          : window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+      // Keyed so a dark-mode switch re-warms the other variant and releases the previous one.
+      const preloadKey = (isDark ? 'night' : 'day') + '|' + rooms.join(',');
+
+      if (window.hemmaPreloadKey !== preloadKey) {
+        window.hemmaPreloadKey = preloadKey;
         window.hemmaPreloadedImages = [];
 
-        rooms.forEach(room => {
-          const imgLight = new Image();
-          imgLight.src = `${basePath}/${room}${ext}`;
-          window.hemmaPreloadedImages.push(imgLight);
+        // decode() is the point: a display:none <img> is fetched but never decoded,
+        // and decode is the expensive half for a full-viewport hero.
+        const warm = (src) => {
+          const img = new Image();
+          img.decoding = 'async';
+          if ('fetchPriority' in img) img.fetchPriority = 'low';
+          img.src = src;
+          window.hemmaPreloadedImages.push(img);
+          return (img.decode ? img.decode() : Promise.resolve()).catch(() => {});
+        };
 
-          const imgDark = new Image();
-          imgDark.src = `${basePath}/${room}${suffix}${ext}`;
-          window.hemmaPreloadedImages.push(imgDark);
-        });
-
-        mobilePhases.forEach(phase => {
-          const mobilePath = variables.mobile_preload_path || '/local/hemma/mobile';
-
-          const imgLight = new Image();
-          imgLight.src = `${mobilePath}/${mobilePrefix}-${phase}${ext}`;
-          window.hemmaPreloadedImages.push(imgLight);
-
-          const imgDark = new Image();
-          imgDark.src = `${mobilePath}/${mobilePrefix}-${phase}-dark${ext}`;
-          window.hemmaPreloadedImages.push(imgDark);
-        });
+        // One at a time on idle, so warming other rooms never competes with the current paint.
+        const queue = rooms.map(r => `${basePath}/${r}${isDark ? suffix : ''}${ext}`);
+        const idle = window.requestIdleCallback
+          ? (fn) => window.requestIdleCallback(fn, { timeout: 3000 })
+          : (fn) => setTimeout(fn, 300);
+        const step = () => {
+          const next = queue.shift();
+          if (next) warm(next).then(() => idle(step));
+        };
+        idle(step);
       }
 
       return `
@@ -83,6 +73,10 @@ hemma_shared:
       --hero-temp-font-weight: 600;
       --hero-temp-letter-spacing: 0.04em;
       --hero-temp-reserve: calc(var(--hero-temp-font-size) * 1.2);
+      /* Read by hemma_room as the weather widget's own height, which it subtracts to
+         bottom-anchor the block. Must track the real height or the widget drifts down
+         into the room name as the weather scales. 48px at the 10px floor. */
+      --hero-weather-hero-height: calc(var(--hemma-u-weather, 10px) * 4.8);
       --hero-header-gap-current: var(--hero-header-gap-desktop, 6px);
       --hero-img-blur-current: var(--hero-img-blur, 4px) !important;
       --hero-img-scale-current: var(--hero-img-scale, 1.08);
@@ -141,25 +135,19 @@ hemma_shared:
       background-image:
         linear-gradient(var(--hero-tint, rgba(56,56,56,0.50)), var(--hero-tint, rgba(56,56,56,0.50))),
         var(--hero-img);
-      background-position: 0 0, var(--hero-img-pos, center center);
-      background-size: 100% 100%, cover;
+      background-position: 0 0, var(--hero-img-pos, center center), var(--hero-img-pos, center center);
+      background-size: 100% 100%, cover, cover;
       background-repeat: no-repeat;
       filter: var(--hero-img-filter);
       transform: scale(var(--hero-img-scale-current, 1.08));
       transform-origin: center;
       transition: filter .45s ease, transform .5s ease;
       animation: hemmaRoomParallax 0.5s 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-      will-change: filter, transform;
     }
 
     @keyframes hemmaRoomParallax {
       from { transform: scale(var(--hero-img-scale-current, 1.08)) translateX(1.2%); }
       to   { transform: scale(var(--hero-img-scale-current, 1.08)) translateX(0%); }
-    }
-
-    @keyframes hemmaRoomReveal{
-      from{ background: rgba(56,56,56,0.8); }
-      to{   background: var(--hero-tint, rgba(56,56,56,0.50)); }
     }
 
     #name{
@@ -174,20 +162,16 @@ hemma_shared:
     /* Mobile */
     @media (max-width: 767px), (max-height: 500px){
       :host{
-        --hero-img-blur: 0px !important;
+        --hero-img-blur-current: var(--hero-img-blur-mobile, 1px) !important;
         --hero-img-saturate: var(--hero-img-saturate-mobile, 1.02);
-        --hero-img-brightness: var(--hero-img-brightness-mobile, .985);
-        --hero-img-scale-current: 1 !important;
-        --hero-tint: var(--hero-tint-mobile, rgba(56,56,56,0.20));
+        --hero-img-brightness: var(--hero-img-brightness-mobile, .99);
+        --hero-img-scale-current: var(--hero-img-scale-mobile, 1.04) !important;
+        --hero-tint: var(--hero-tint-mobile, rgba(56,56,56,0.08));
         --hero-top: calc(var(--header-top-mobile, clamp(80px, 12svh, 120px)) - var(--header-top-mobile-nudge, 0px));
         --hero-temp-font-size: var(--hero-temp-font-size-mobile, 13px);
         --hero-temp-reserve: 0px;
         --hero-header-gap-current: var(--hero-header-gap-mobile, 5px);
-        --tiles-pad-bottom: calc(
-          var(--hemma-nav-height, 112px)
-          + env(safe-area-inset-bottom, 0px)
-          - 6px
-        );
+        --tiles-pad-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
         --hero-gutter: var(--content-rail,
                       var(--hemma-rail-left,
                       var(--page-gutter-mobile, 10px)));
@@ -200,9 +184,10 @@ hemma_shared:
         animation: none !important;
         transition: none !important;
         filter:
+          blur(var(--hero-img-blur-current))
           saturate(var(--hero-img-saturate-mobile, 1.02))
-          brightness(var(--hero-img-brightness-mobile, .985)) !important;
-        transform: scale(1) !important;
+          brightness(var(--hero-img-brightness-mobile, .99)) !important;
+        transform: scale(var(--hero-img-scale-current, 1.04)) !important;
       }
 
       :host ha-card{
@@ -295,7 +280,7 @@ hemma_shared:
            (max-width: 767px) and (orientation: portrait) and (hover: none) {
       :host .button-card-content,
       :host .grid {
-        grid-template-areas: "n weather" "badges badges" "badges_climate badges_climate" "badges_presence badges_presence" "badges_media badges_media" "badges_lights badges_lights" !important;
+        grid-template-areas: "n weather" "badges badges" "badges_climate badges_climate" "badges_presence badges_presence" "badges_media badges_media" "badges_lights badges_lights" "badges_security badges_security" "badges_energy badges_energy" "now_playing now_playing" !important;
         grid-template-rows: min-content min-content min-content min-content min-content min-content !important;
       }
 

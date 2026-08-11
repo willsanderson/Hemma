@@ -1,0 +1,471 @@
+# Lock Group Popup
+# Variables: room_name, locks (entity_id list), battery_entities (lock_id -> battery entity_id), door_sensors (lock_id -> contact sensor entity_id)
+hemma_popup_lock:
+  template:
+    - hemma_popup_base
+
+  variables:
+    room_name: "Access Control"
+    locks: []
+    battery_entities: {}
+    door_sensors: {}
+
+  tap_action:
+    haptic: light
+    action: >
+      [[[
+        return typeof window.browser_mod !== 'undefined' ? 'fire-dom-event' : 'more-info';
+      ]]]
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        tag: '[[[ return (entity?.entity_id || "hemma_lock").replace(/\./g, "_") + "_popup"; ]]]'
+        title: ""
+        dismissable: true
+        adaptive: true
+        size: auto
+        popup_styles:
+          - style: all
+            styles: |
+              [[[
+                const n = (Array.isArray(variables.locks) && variables.locks.length > 0
+                            ? variables.locks
+                            : (entity ? [entity.entity_id] : [])).length;
+                return 'ha-adaptive-dialog, ha-dialog { --dialog-surface-margin-top: 90px;'
+                  + (n <= 1 ? ' --popup-min-width: 460px; --popup-max-width: 460px;' : '')
+                  + ' }';
+              ]]]
+        content: |
+          [[[
+            /* Variables */
+            const groupId  = entity?.entity_id || null;
+            const lockIds  = Array.isArray(variables.locks) && variables.locks.length > 0
+                            ? variables.locks
+                            : (groupId ? [groupId] : []);
+            const roomName = variables.room_name || 'Access Control';
+
+            const _gid     = JSON.stringify(groupId);
+            const _lockIds = JSON.stringify(lockIds);
+
+            const _countSnip = `
+              const lockIds = ${_lockIds};
+              const lc  = lockIds.filter(id => states[id]?.state === 'locked').length;
+              const uc  = lockIds.length - lc;
+              const tot = lockIds.length;
+              const allLkd  = lc === tot && tot > 0;
+              const allUlkd = lc === 0   && tot > 0;
+              const badgeColor = allLkd ? 'var(--hemma-popup-green-color,#67f5a0)' : 'var(--hemma-popup-orange-color,#ff9230)';
+            `;
+
+            /* Styles (static) */
+            const wrapperStyle = [
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; overflow: visible !important; }',
+              'ha-card { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: default !important; overflow: visible !important; }',
+              'ha-card:hover { box-shadow: none !important; }',
+              'ha-ripple { display: none !important; }',
+            ].join('\n');
+
+            const contentCardStyle = wrapperStyle + '\n@media (max-width: 600px) { ha-card { padding-left: 14px !important; padding-right: 14px !important; } }';
+
+            const tileTapStyle = [
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: inset 0 1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-tight,0.20) * 1.5)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-tight,0.15) * 1.5)), inset 0 3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-soft,0.08) * 1.5)), inset 0 -3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-soft,0.05) * 1.5)) !important; overflow: visible !important; }',
+              'ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: default !important; overflow: visible !important; transition: background var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }',
+              '@media (hover: hover) { ha-card:hover { background: var(--hemma-popup-tile-background-hover, rgba(255,255,255,0.10)) !important; } }',
+              'ha-ripple { display: none !important; }',
+            ].join('\n');
+
+            const lockTileStaticStyle = [
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; overflow: visible !important; }',
+              'ha-card { border: none !important; border-radius: 24px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: default !important; overflow: visible !important; }',
+              '@media (hover: hover) { ha-card:hover { filter: brightness(1.04) !important; } }',
+              'ha-ripple { display: none !important; }',
+            ].join('\n');
+
+            const lockIconBtnStyle = [
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; overflow: visible !important; display: block !important; }',
+              'ha-card { border: none !important; border-radius: 999px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer !important; overflow: visible !important; aspect-ratio: 1 !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: background 0.15s ease, filter 0.15s ease, transform 0.15s ease !important; }',
+              'ha-card:hover { filter: brightness(1.25) !important; transform: scale(1.08) !important; }',
+              '#container { display: flex !important; align-items: center !important; justify-content: center !important; }',
+              'ha-ripple { display: none !important; }',
+            ].join('\n');
+
+            const openBtnStyle = [
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
+              'ha-card { border: none !important; border-radius: 999px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer !important; transition: background 0.15s ease, filter 0.15s ease !important; }',
+              'ha-card:hover { filter: brightness(1.25) !important; }',
+              '#icon { display: flex !important; align-items: center !important; justify-content: center !important; }',
+              'ha-icon { --mdc-icon-size: 16px !important; display: flex !important; align-items: center !important; justify-content: center !important; }',
+              'ha-ripple { display: none !important; }',
+            ].join('\n');
+
+            /* Header card */
+            const headerCard = {
+              type: 'custom:button-card',
+              entity: groupId,
+              tap_action: { action: 'none' },
+              show_icon: false, show_name: false, show_label: false, show_state: false,
+              card_mod: { style: contentCardStyle },
+              styles: {
+                card: [
+                  { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                  { padding: '28px 28px 0 28px' },
+                ],
+                grid: [
+                  { 'grid-template-areas': '"title"' },
+                  { 'grid-template-columns': '1fr auto' },
+                  { 'align-items': 'flex-start' },
+                  { 'row-gap': '16px' },
+                ],
+                custom_fields: {
+                  title: [{ 'justify-self': 'start' }, { 'text-align': 'left' }],
+                  right: [{ 'justify-self': 'end' }, { 'align-self': 'flex-start' }],
+                },
+              },
+              custom_fields: {
+                title: `[[[
+                  return '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tiles-text-primary,#ffffff);text-align:left;">'
+                    + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;">' + ${JSON.stringify(roomName)} + '</div>'
+                    + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary,rgba(255,255,255,0.6));margin-top:2px;">Security · Access Control</div>'
+                  + '</div>';
+                ]]]`,
+              },
+            };
+
+            /* Advice card */
+            const adviceCard = {
+              type: 'custom:button-card',
+              entity: groupId,
+              tap_action: { action: 'none' },
+              show_icon: false, show_name: false, show_label: false, show_state: false,
+              card_mod: { style: contentCardStyle },
+              styles: {
+                card: [
+                  { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                  { padding: '20px 28px 18px 28px' },
+                ],
+                grid: [{ 'grid-template-areas': '"body"' }, { 'grid-template-columns': '1fr' }],
+                custom_fields: { body: [{ 'justify-self': 'stretch' }, { width: '100%' }, { 'text-align': 'left' }] },
+              },
+              custom_fields: {
+                body: `[[[
+                  ${_countSnip}
+                  const advice = allLkd  ? (tot === 1 ? 'Door locked' : 'All doors locked')
+                               : allUlkd ? (tot === 1 ? 'Door unlocked' : 'All doors unlocked')
+                               : uc === 1 ? '1 door unlocked' : uc + ' doors unlocked';
+                  return '<div style="font-family:var(--primary-font-family,system-ui);">'
+                    + '<div style="font-size:22px;color:var(--primary-text-color,#e4e7eb);font-weight:400;letter-spacing:-.5px;">' + advice + '</div>'
+                  + '</div>';
+                ]]]`,
+              },
+            };
+
+            /* Lock tiles */
+            const makeLockTile = (lockId) => {
+              const _lid = JSON.stringify(lockId);
+
+              const rawName = states[lockId]?.attributes?.friendly_name || lockId.split('.').pop() || lockId;
+              let tileName = rawName;
+              if (tileName.includes(')')) tileName = tileName.substring(tileName.lastIndexOf(')') + 1);
+              tileName = tileName.replace(/^[-\s]+/, '').replace(/_/g, ' ').trim() || rawName;
+              const _name = JSON.stringify(tileName);
+
+              const battId = (variables.battery_entities && variables.battery_entities[lockId]) || null;
+              const _battId = JSON.stringify(battId);
+              const doorId = (variables.door_sensors && variables.door_sensors[lockId]) || null;
+              const _doorId = JSON.stringify(doorId);
+
+              const togglePillCard = {
+                type: 'custom:button-card',
+                entity: lockId,
+                show_icon: false,
+                show_name: false,
+                show_state: false,
+                show_label: false,
+                show_entity_picture: false,
+                tap_action: `[[[
+                  const s = entity.state;
+                  if (s === 'locked') return { action: 'call-service', service: 'lock.unlock', service_data: { entity_id: entity.entity_id } };
+                  if (s === 'unlocked') return { action: 'call-service', service: 'lock.lock', service_data: { entity_id: entity.entity_id } };
+                  return { action: 'none' };
+                ]]]`,
+                haptic: 'medium',
+                extra_styles: `
+                  @keyframes hemma-thumb-on-d{from{transform:translateX(0)}to{transform:translateX(20px)}}
+                  @keyframes hemma-thumb-off-d{from{transform:translateX(20px)}to{transform:translateX(0)}}
+                  @keyframes hemma-thumb-on-m{from{transform:translateX(0)}to{transform:translateX(20px)}}
+                  @keyframes hemma-thumb-off-m{from{transform:translateX(20px)}to{transform:translateX(0)}}
+                  :host { display: block !important; overflow: visible !important; }
+                  ha-card { background: transparent !important; border: none !important; box-shadow: none !important; backdrop-filter: none !important; padding: 0 !important; overflow: visible !important; cursor: pointer !important; }
+                  #container { padding: 0 !important; overflow: visible !important; }
+                  ha-ripple { display: none !important; }
+                  svg .lk-hover-track { opacity: 0; transition: opacity 0.2s ease; pointer-events: none; }
+                  svg .lk-overlay { fill: transparent; transition: fill 0.2s ease; pointer-events: none; }
+                  @media (hover: hover) {
+                    :host(:hover) svg .lk-hover-track { opacity: 0.65; }
+                    :host(:hover) svg .lk-overlay { fill: rgba(255,255,255,0.06); }
+                  }
+                `,
+                styles: {
+                  card: [{ background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' }, { padding: '0' }, { overflow: 'visible' }],
+                  grid: [{ 'grid-template-areas': '"svg"' }, { 'grid-template-columns': 'auto' }, { 'align-items': 'center' }, { 'justify-items': 'center' }],
+                  custom_fields: { svg: [{ 'line-height': '0' }] },
+                },
+                custom_fields: {
+                  svg: `[[[
+                    const KF_ID = 'hemma-toggle-kf-v14';
+                    if (!document.getElementById(KF_ID)) {
+                      const kf = document.createElement('style');
+                      kf.id = KF_ID;
+                      kf.textContent = '@keyframes hemma-thumb-on-d{from{transform:translateX(0)}to{transform:translateX(20px)}}@keyframes hemma-thumb-off-d{from{transform:translateX(20px)}to{transform:translateX(0)}}@keyframes hemma-thumb-on-m{from{transform:translateX(0)}to{transform:translateX(20px)}}@keyframes hemma-thumb-off-m{from{transform:translateX(20px)}to{transform:translateX(0)}}@keyframes hemma-lk-svg-fade{from{opacity:0.15}to{opacity:1}}';
+                      document.head.appendChild(kf);
+                    }
+                    const mob = window.matchMedia('(max-width:767px),(max-height:600px)').matches;
+                    const W = mob ? 60 : 62, H = mob ? 40 : 42, r = mob ? 15 : 16, cx0 = mob ? 21 : 22;
+                    const travel = 20;
+                    const SW = W + 2;
+                    const s = entity.state;
+                    const isTransitioning = s === 'locking' || s === 'unlocking';
+                    const thumbRight = s === 'locked' || s === 'locking';
+                    const stateKey = '_hemma_lk_' + entity.entity_id.replace(/[^a-zA-Z0-9]/g, '_');
+                    const prevState = window[stateKey];
+                    const prevThumbRight = prevState === 'locked' || prevState === 'locking';
+                    const shouldAnimate = prevState !== undefined && prevThumbRight !== thumbRight;
+                    window[stateKey] = s;
+                    const gClass = shouldAnimate ? (thumbRight ? 'lk-on' : 'lk-off') : '';
+                    const gCx = (!shouldAnimate && thumbRight) ? cx0 + travel : cx0;
+                    const trackFill = s === 'locked' ? 'rgba(52,199,89,0.25)' : s === 'unlocked' ? 'rgba(255,59,48,0.25)' : 'rgba(255,204,0,0.25)';
+                    const trackStroke = s === 'locked' ? '' : s === 'unlocked' ? ' stroke="rgba(255,59,48,0.4)" stroke-width="1.5"' : ' stroke="rgba(255,204,0,0.40)" stroke-width="1.5"';
+                    const thumbFill = s === 'locked' ? '#34C759' : s === 'unlocked' ? '#FF3B30' : '#FFCC00';
+                    const prevThumbFill = prevState === 'locked' ? '#34C759' : prevState === 'unlocked' ? '#FF3B30' : prevState ? '#FFCC00' : null;
+                    const prevTrackFill = prevState === 'locked' ? 'rgba(52,199,89,0.25)' : prevState === 'unlocked' ? 'rgba(255,59,48,0.25)' : prevState ? 'rgba(255,204,0,0.25)' : null;
+                    const shouldColorFade = prevThumbFill !== null && prevThumbFill !== thumbFill;
+                    const trkCls = shouldColorFade ? ' class="lk-tc"' : '';
+                    const cirCls = shouldColorFade ? ' class="lk-cc"' : '';
+                    const imgCls = isTransitioning ? ' class="lk-pls"' : '';
+                    const imgSt = isTransitioning ? 'filter:drop-shadow(0px 0.5px 1.5px rgba(0,0,0,0.4));' : 'opacity:0.95;filter:drop-shadow(0px 0.5px 1.5px rgba(0,0,0,0.4));';
+                    const LK_PATH = 'M2.63672 22.9922L13.3594 22.9922C15.082 22.9922 15.9961 22.0547 15.9961 20.2031L15.9961 12.1289C15.9961 10.2773 15.082 9.35156 13.3594 9.35156L2.63672 9.35156C0.914062 9.35156 0 10.2773 0 12.1289L0 20.2031C0 22.0547 0.914062 22.9922 2.63672 22.9922ZM2.05078 10.2539L3.91406 10.2539L3.91406 6.29297C3.91406 3.33984 5.80078 1.76953 7.99219 1.76953C10.1836 1.76953 12.0938 3.33984 12.0938 6.29297L12.0938 10.2539L13.9453 10.2539L13.9453 6.55078C13.9453 2.14453 11.0625 0 7.99219 0C4.93359 0 2.05078 2.14453 2.05078 6.55078Z';
+                    return '<svg width="' + SW + '" height="' + H + '" viewBox="0 0 ' + SW + ' ' + H + '" style="display:block;overflow:visible;">'
+                      + '<defs><style>'
+                      + '.lk-on{animation:lk-slide-on 0.2s ease forwards}'
+                      + '.lk-off{animation:lk-slide-off 0.2s ease forwards}'
+                      + '@keyframes lk-slide-on{from{transform:translateX(0)}to{transform:translateX(' + travel + 'px)}}'
+                      + '@keyframes lk-slide-off{from{transform:translateX(' + travel + 'px)}to{transform:translateX(0)}}'
+                      + '.lk-pls{animation:lk-pulse 1.2s ease-in-out infinite}'
+                      + '@keyframes lk-pulse{0%,100%{opacity:0.85}50%{opacity:0.15}}'
+                      + (shouldColorFade ? '.lk-tc{animation:lk-track-clr 0.3s ease forwards}.lk-cc{animation:lk-thumb-clr 0.3s ease forwards}@keyframes lk-track-clr{from{fill:' + prevTrackFill + '}to{fill:' + trackFill + '}}@keyframes lk-thumb-clr{from{fill:' + prevThumbFill + '}to{fill:' + thumbFill + '}}' : '')
+                      + '</style></defs>'
+                      + '<rect x="2" y="1" width="' + (W-2) + '" height="' + (H-2) + '" rx="' + ((H-2)/2) + '"' + trkCls + ' fill="' + trackFill + '"' + trackStroke + '/>'
+                      + '<rect class="lk-hover-track" x="2" y="1" width="' + (W-2) + '" height="' + (H-2) + '" rx="' + ((H-2)/2) + '" fill="' + trackFill + '"' + trackStroke + '/>'
+                      + '<rect class="lk-overlay" x="2" y="1" width="' + (W-2) + '" height="' + (H-2) + '" rx="' + ((H-2)/2) + '" fill="transparent"/>'
+                      + '<g class="' + gClass + '">'
+                        + '<circle cx="' + gCx + '" cy="' + (H/2) + '" r="' + r + '"' + cirCls + ' fill="' + thumbFill + '"/>'
+                        + '<svg x="' + (gCx - r + 7) + '" y="' + ((H/2) - r + 7) + '" width="' + (r*2 - 14) + '" height="' + (r*2 - 14) + '" viewBox="0 0 16.3477 23.6133"' + imgCls + ' style="' + imgSt + '"><path d="' + LK_PATH + '" fill="white"/></svg>'
+                      + '</g>'
+                      + '</svg>';
+                  ]]]`,
+                },
+              };
+
+              /* "Open door" button */
+              const supportsOpen = !!((states[lockId]?.attributes?.supported_features || 0) & 1);
+
+              const openBtnCard = {
+                type: 'custom:button-card',
+                entity: lockId,
+                icon: 'mdi:door-open',
+                tap_action: { action: 'call-service', service: 'lock.open', service_data: { entity_id: lockId }, confirmation: { text: 'Are you sure you want to open?' } },
+                haptic: 'medium',
+                show_icon: true, show_name: false, show_label: false, show_state: false,
+                card_mod: { style: openBtnStyle },
+                styles: {
+                  card: [{ background: 'rgba(255,255,255,0.08)' }, { 'border-radius': '999px' }, { padding: '8px 9px' }, { 'box-shadow': 'none' }],
+                  grid: [{ 'align-items': 'center' }, { 'justify-items': 'center' }],
+                  icon: [{ color: 'var(--hemma-popup-tiles-text-secondary, rgba(255,255,255,0.7))' }, { width: '16px' }, { height: '16px' }],
+                },
+              };
+
+              const actionGroupAreas = supportsOpen ? '"open toggle"' : '"toggle"';
+              const actionGroupCols  = supportsOpen ? 'auto auto' : 'auto';
+              const actionGroupCF    = supportsOpen ? { open: { card: openBtnCard }, toggle: { card: togglePillCard } } : { toggle: { card: togglePillCard } };
+              const actionGroupFS    = supportsOpen ? { open: [{ 'justify-self': 'center' }], toggle: [{ 'justify-self': 'center' }] } : { toggle: [{ 'justify-self': 'center' }] };
+
+              const actionGroup = {
+                type: 'custom:button-card',
+                entity: lockId,
+                tap_action: { action: 'none' },
+                show_icon: false, show_name: false, show_label: false, show_state: false,
+                card_mod: { style: wrapperStyle },
+                styles: {
+                  card: [{ background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' }, { padding: '0' }],
+                  grid: [
+                    { 'grid-template-areas': actionGroupAreas },
+                    { 'grid-template-columns': actionGroupCols },
+                    { gap: '10px' }, { 'align-items': 'center' },
+                  ],
+                  custom_fields: actionGroupFS,
+                },
+                custom_fields: actionGroupCF,
+              };
+
+              /* Icon circle card */
+              const iconCircleCard = {
+                type: 'custom:button-card',
+                entity: lockId,
+                tap_action: { action: 'more-info' },
+                haptic: 'light',
+                show_icon: false, show_name: false, show_label: false, show_state: false,
+                card_mod: {
+                  style: [
+                    ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; overflow: visible !important; display: block !important; }',
+                    'ha-card { background: transparent !important; border: none !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer !important; overflow: visible !important; border-radius: 999px !important; }',
+                    '#container { overflow: visible !important; }',
+                    '#i { overflow: visible !important; transition: filter 0.15s ease, transform 0.15s ease; }',
+                    '#i .ellipsis { overflow: visible !important; white-space: normal !important; }',
+                    '@media (hover: hover) { #i:hover { filter: brightness(1.35); transform: scale(1.02); } }',
+                    'ha-ripple { display: none !important; }',
+                    '@keyframes lk-dr-open { from { background: rgba(255,255,255,0.08) } to { background: rgba(255,204,0,0.15) } }',
+                    '@keyframes lk-dr-close { from { background: rgba(255,204,0,0.15) } to { background: rgba(255,255,255,0.08) } }',
+                  ].join('\n'),
+                },
+                styles: {
+                  card: [{ background: 'transparent' }, { border: 'none' }, { padding: '0' }, { 'box-shadow': 'none' }, { overflow: 'visible' }],
+                  grid: [{ 'grid-template-areas': '"i"' }, { 'grid-template-columns': 'auto' }],
+                  custom_fields: { i: [{ 'line-height': '0' }] },
+                },
+                custom_fields: {
+                  i: `[[[
+                    const lockId = ${_lid};
+                    const doorId = ${_doorId};
+                    const doorOpen = doorId ? states[doorId]?.state === 'on' : false;
+                    const mob = window.matchMedia('(max-width:767px),(max-height:600px)').matches;
+                    const cs = mob ? 40 : 42;
+                    const dk = '_hemma_lk_dr_' + lockId.replace(/[^a-zA-Z0-9]/g,'_');
+                    const prevDoor = window[dk];
+                    window[dk] = doorOpen;
+                    const justOpened  = prevDoor === false && doorOpen;
+                    const justClosed  = prevDoor === true  && !doorOpen;
+                    const unlkd = states[lockId]?.state === 'unlocked';
+                    const lockCircleBg = unlkd ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.08)';
+                    const lockIconFill = unlkd ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.70)';
+                    const doorCircleBg = unlkd ? 'rgba(255,204,0,0.35)' : 'rgba(255,204,0,0.15)';
+                    const LK_PATH ='M2.63672 22.9922L13.3594 22.9922C15.082 22.9922 15.9961 22.0547 15.9961 20.2031L15.9961 12.1289C15.9961 10.2773 15.082 9.35156 13.3594 9.35156L2.63672 9.35156C0.914062 9.35156 0 10.2773 0 12.1289L0 20.2031C0 22.0547 0.914062 22.9922 2.63672 22.9922ZM2.05078 10.2539L3.91406 10.2539L3.91406 6.29297C3.91406 3.33984 5.80078 1.76953 7.99219 1.76953C10.1836 1.76953 12.0938 3.33984 12.0938 6.29297L12.0938 10.2539L13.9453 10.2539L13.9453 6.55078C13.9453 2.14453 11.0625 0 7.99219 0C4.93359 0 2.05078 2.14453 2.05078 6.55078Z';
+                    const DR_PATH = 'M440-453.85q11.46 0 18.81-7.84 7.34-7.85 7.34-18.31 0-11.46-7.34-18.81-7.35-7.34-18.81-7.34-10.46 0-18.31 7.34-7.84 7.35-7.84 18.81 0 10.46 7.84 18.31 7.85 7.84 18.31 7.84ZM270.77-160v-30.77l298.46-32.08v-483.69q0-22.46-14.04-38.34-14.04-15.89-35.5-17.89l-224.31-22.08v-30.53L526-790.15q31.23 2.69 52.62 26.65Q600-739.54 600-707.54v512.16L270.77-160Zm-92.31 0v-30.77H240V-760q0-23.69 16.35-39.54 16.34-15.84 39.03-15.84h369.24q23.69 0 39.53 15.84Q720-783.69 720-760v569.23h61.54V-160H178.46Zm92.31-30.77h418.46V-760q0-10.77-6.92-17.69-6.93-6.93-17.69-6.93H295.38q-10.76 0-17.69 6.81-6.92 6.81-6.92 17.58v569.46Z';
+                    const doorBg = justOpened ? 'animation:lk-dr-open 0.35s ease forwards;' : 'background:' + doorCircleBg + ';';
+                    const lockBg = (justClosed && !unlkd) ? 'animation:lk-dr-close 0.45s ease forwards;' : 'background:' + lockCircleBg + ';';
+                    if (doorOpen) {
+                      return '<div style="width:' + cs + 'px;height:' + cs + 'px;border-radius:999px;' + doorBg + 'display:flex;align-items:center;justify-content:center;">'
+                          + '<svg width="' + (mob ? 20 : 21) + '" height="' + (mob ? 20 : 21) + '" viewBox="0 -960 960 960" style="display:block;"><path d="' + DR_PATH + '" fill="rgba(255,204,0,0.90)"/></svg>'
+                        + '</div>';
+                    }
+                    return '<div style="width:' + cs + 'px;height:' + cs + 'px;border-radius:999px;' + lockBg + 'display:flex;align-items:center;justify-content:center;">'
+                        + '<svg width="' + (mob ? 18 : 19) + '" height="' + (mob ? 18 : 19) + '" viewBox="0 0 16.3477 23.6133" style="display:block;"><path d="' + LK_PATH + '" fill="' + lockIconFill + '"/></svg>'
+                      + '</div>';
+                  ]]]`,
+                },
+              };
+
+              return {
+                type: 'custom:button-card',
+                entity: lockId,
+                tap_action: { action: 'none' },
+                show_icon: false, show_name: false, show_label: false, show_state: false,
+                card_mod: { style: lockTileStaticStyle },
+                styles: {
+                  card: [
+                    { background: `[[[ const s = states[${_lid}]?.state; return s === 'unlocked' ? 'rgba(255,255,255,0.80)' : 'var(--hemma-popup-tiles-fill,rgba(255,255,255,0.07))'; ]]]` },
+                    { 'box-shadow': 'none' }, { padding: '14px 16px 14px 16px' },
+                  ],
+                  grid: [
+                    { 'grid-template-areas': '"icon head action"' },
+                    { 'grid-template-columns': 'auto 1fr auto' },
+                    { gap: '12px' },
+                    { 'align-items': 'center' },
+                  ],
+                  custom_fields: {
+                    icon:   [{ 'justify-self': 'start' }, { 'align-self': 'center' }],
+                    head:   [{ 'justify-self': 'stretch' }, { 'align-self': 'center' }, { 'min-width': '0' }, { 'text-align': 'left' }],
+                    action: [{ 'justify-self': 'end' }, { 'align-self': 'center' }],
+                  },
+                },
+                custom_fields: {
+                  icon: { card: iconCircleCard },
+                  head: `[[[
+                    const lockId = ${_lid};
+                    const name   = ${_name};
+                    const battId = ${_battId};
+                    const doorId = ${_doorId};
+                    const s = states[lockId]?.state || 'unavailable';
+                    const locked = s === 'locked';
+                    const unlkd  = s === 'unlocked';
+                    const trans  = !locked && !unlkd;
+                    const doorOpen = doorId ? states[doorId]?.state === 'on' : false;
+                    const nmCol  = trans && !doorOpen ? 'rgba(255,255,255,0.4)' : unlkd ? 'rgba(0,0,0,0.85)' : 'var(--hemma-popup-tiles-text-primary,#ffffff)';
+                    const battPct = battId && states[battId] ? Math.round(Number(states[battId].state)) : null;
+                    const stateLabel = doorOpen ? 'Door Open'
+                                    : s === 'locked' ? 'Locked' : s === 'unlocked' ? 'Unlocked' : s === 'locking' ? 'Locking…' : s === 'unlocking' ? 'Unlocking…' : 'Unavailable';
+                    const stateCol = doorOpen ? (unlkd ? 'rgba(160,110,0,0.90)' : 'var(--hemma-color-yellow,#FFCC00)') : unlkd ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.45)';
+                    const safeId = lockId.replace(/[^a-zA-Z0-9]/g,'_');
+                    const showBatt = !!window['_hemma_lk_batt_' + safeId] && battPct !== null && !doorOpen;
+                    const battLow = battPct !== null && battPct < 20;
+                    const battCol = battLow ? 'rgba(255,59,48,0.85)' : unlkd ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.60)';
+                    const stOp = showBatt ? '0' : '1';
+                    const btOp = (showBatt && battPct !== null) ? '1' : '0';
+                    const oc = "(function(ev){ev.stopPropagation();var k='_hemma_lk_batt_" + safeId + "';window[k]=!window[k];var b=ev.currentTarget.querySelector('.lk-bt'),s=ev.currentTarget.querySelector('.lk-st'),h=b&&b.dataset.has==='1';if(s)s.style.opacity=(!window[k]||!h)?'1':'0';if(b)b.style.opacity=(window[k]&&h)?'1':'0';})(event)";
+                    return '<div onpointerdown="' + oc + '" style="cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;overflow:hidden;">'
+                      + '<div style="font-size:15px;color:' + nmCol + ';font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
+                      + '<div style="position:relative;height:16px;margin-top:3px;">'
+                        + '<div class="lk-st" style="position:absolute;top:0;left:0;right:0;opacity:' + stOp + ';transition:opacity 0.18s ease;font-size:12px;color:' + stateCol + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + stateLabel + '</div>'
+                        + '<div class="lk-bt" data-has="' + (battPct !== null ? '1' : '0') + '" style="position:absolute;top:0;left:0;right:0;opacity:' + btOp + ';transition:opacity 0.18s ease;font-size:12px;color:' + battCol + ';white-space:nowrap;">' + (battPct !== null ? battPct + '% battery' : '') + '</div>'
+                      + '</div>'
+                    + '</div>';
+                  ]]]`,
+                  action: { card: actionGroup },
+                },
+              };
+            };
+
+            const _tileMob = window.matchMedia('(max-width:767px),(max-height:600px)').matches;
+            const _twoCols = !_tileMob && lockIds.length > 1;
+            const tileAreas = _twoCols
+              ? lockIds.reduce((acc, _, i) => {
+                  if (i % 2 === 0) {
+                    const hasNext = lockIds[i + 1] !== undefined;
+                    acc.push(hasNext ? '"l' + i + ' l' + (i + 1) + '"' : '"l' + i + ' ."');
+                  }
+                  return acc;
+                }, []).join(' ')
+              : lockIds.map((_, i) => '"l' + i + '"').join(' ');
+            const tileCF = {}, tileFS = {};
+            lockIds.forEach((id, i) => {
+              tileCF['l' + i] = { card: makeLockTile(id) };
+              tileFS['l' + i] = [{ 'justify-self': 'stretch' }];
+            });
+
+            const tilesCard = {
+              type: 'custom:button-card',
+              entity: groupId,
+              tap_action: { action: 'none' },
+              show_icon: false, show_name: false, show_label: false, show_state: false,
+              card_mod: { style: contentCardStyle },
+              styles: {
+                card: [
+                  { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                  { padding: '4px 28px 20px 28px' },
+                ],
+                grid: [
+                  { 'grid-template-areas': tileAreas },
+                  { 'grid-template-columns': _twoCols ? '1fr 1fr' : '1fr' },
+                  { gap: '8px' },
+                  { 'align-items': 'start' },
+                ],
+                custom_fields: tileFS,
+              },
+              custom_fields: tileCF,
+            };
+
+            return { type: 'vertical-stack', cards: [headerCard, adviceCard, tilesCard] };
+          ]]]
+
+  icon_tap_action:
+    haptic: light
+    action: more-info

@@ -1,0 +1,210 @@
+# Bare glyph transport controls, matching the media badge.
+hemma_now_playing_controls:
+  template:
+    - hemma_default
+
+  show_icon: false
+  show_name: false
+  show_state: false
+  show_label: false
+
+  variables:
+    src: null
+    # compact = phone touch-target sizing (44pt), not "small"; override btn/icon/gap size vars explicitly if needed.
+    compact: false
+    btn_size: null
+    icon_size: null
+    gap_size: null
+    ring: false
+    only_toggle: false
+    # ── GLYPH SIZE — tune this ── Ink height of the Apple glyphs. Defaults below are ~47% of the
+    # button box (16px in 34px desktop, 18px in 44px compact), matching Apple's transport proportions.
+    glyph_size: null
+    glyph_size_primary: null
+
+  tap_action:
+    action: none
+  hold_action:
+    action: none
+
+  styles:
+    card:
+      - --ha-card-background: transparent
+      - --ha-card-box-shadow: none
+      - --hemma-card-hover-shadow: none
+      - --hemma-card-hover-filter: none
+      - background: transparent !important
+      - box-shadow: none !important
+      - border: none !important
+      - padding: 0 !important
+      - margin: 0 !important
+      - width: max-content !important
+      - overflow: visible !important
+      - --np-btn-size-current: >
+          [[[
+            return variables.btn_size || (variables.compact ? '44px' : 'calc(var(--hemma-u-np, 10px) * 3.4)');
+          ]]]
+      - --np-btn-icon-size-current: >
+          [[[
+            return variables.icon_size || (variables.compact ? '24px' : 'calc(var(--hemma-u-np, 10px) * 2.2)');
+          ]]]
+      # No transport (Plex/PSN/Steam): hide so the grid column collapses instead of leaving an empty box.
+      - display: >
+          [[[
+            const c = variables.src?.controls;
+            if (variables.only_toggle) return c?.toggle ? 'grid' : 'none';
+            return (c && (c.toggle || c.next || c.prev)) ? 'grid' : 'none';
+          ]]]
+    grid:
+      - display: flex !important
+      - flex-direction: row !important
+      - align-items: center !important
+      - gap: >
+          [[[
+            return variables.gap_size || (variables.compact ? '14px' : 'calc(var(--hemma-u-np, 10px) * 2)');
+          ]]]
+
+    custom_fields:
+      ring:
+        - position: absolute
+        - top: 50%
+        - left: 50%
+        - width: var(--np-btn-size-current, 40px)
+        - height: var(--np-btn-size-current, 40px)
+        - transform: translate(-50%, -50%)
+        - z-index: 0
+        - pointer-events: none
+        - line-height: 0
+        - overflow: visible
+
+  custom_fields:
+    # Declared before the buttons so DOM order puts it behind them.
+    ring: >
+      [[[
+        if (!variables.ring || !variables.src?.controls?.toggle) return '';
+        const s = variables.src;
+        const SW = 2.2;
+        // 0.5 units of clearance between the stroke's outer edge and the viewBox boundary — sitting
+        // exactly on the boundary leaves the outermost half-pixel to any ancestor's clip.
+        const R = 20 - (SW / 2) - 0.5;
+        const C = 2 * Math.PI * R;
+
+        let arc = '';
+        if (Number.isFinite(s.dur) && s.dur > 0 && Number.isFinite(s.pos)) {
+          const elapsed = s.playing && s.posAt ? (Date.now() - s.posAt) / 1000 : 0;
+          const now = Math.min(s.dur, Math.max(0, s.pos + elapsed));
+          const frac = Math.max(0, Math.min(1, now / s.dur));
+          const remain = Math.max(0, s.dur - now);
+          // Same trick as the primary tile's linear bar: seed the real offset, then let one
+          // linear keyframe run out the remaining seconds so it advances between state updates.
+          const anim = s.playing && remain > 0
+            ? `animation: np-ring-advance ${remain.toFixed(1)}s linear forwards;`
+            : '';
+          arc = `
+            <circle class="np-ring-track" cx="20" cy="20" r="${R.toFixed(3)}"></circle>
+            <circle class="np-ring-fill" cx="20" cy="20" r="${R.toFixed(3)}"
+              transform="rotate(-90 20 20)"
+              style="stroke-dasharray: ${C.toFixed(3)}; stroke-dashoffset: ${(C * (1 - frac)).toFixed(3)}; ${anim}"></circle>
+          `;
+        }
+
+        return `
+          <svg class="np-ring" viewBox="0 0 40 40" aria-hidden="true">
+            <circle class="np-ring-disc" cx="20" cy="20" r="${(R - (SW / 2)).toFixed(3)}"></circle>
+            ${arc}
+          </svg>
+        `;
+      ]]]
+
+    prev:
+      card:
+        type: custom:button-card
+        template: hemma_now_playing_button
+        variables:
+          src: '[[[ return variables.src; ]]]'
+          shape: prev
+          glyph_h: '[[[ return variables.glyph_size || (variables.compact ? "18px" : "calc(var(--hemma-u-np, 10px) * 1.6)"); ]]]'
+          service: media_previous_track
+          shown: '[[[ return !variables.only_toggle && !variables.compact && !!variables.src?.controls?.prev; ]]]'
+    toggle:
+      card:
+        type: custom:button-card
+        template: hemma_now_playing_button
+        variables:
+          src: '[[[ return variables.src; ]]]'
+          shape: '[[[ return variables.src?.playing ? "pause" : "play"; ]]]'
+          glyph_h: '[[[ return variables.glyph_size_primary || (variables.compact ? (variables.glyph_size || "18px") : "calc(var(--hemma-u-np, 10px) * 2)"); ]]]'
+          service: media_play_pause
+          shown: '[[[ return !!variables.src?.controls?.toggle; ]]]'
+          primary: true
+    next:
+      card:
+        type: custom:button-card
+        template: hemma_now_playing_button
+        variables:
+          src: '[[[ return variables.src; ]]]'
+          shape: next
+          glyph_h: '[[[ return variables.glyph_size || (variables.compact ? "18px" : "calc(var(--hemma-u-np, 10px) * 1.6)"); ]]]'
+          service: media_next_track
+          shown: '[[[ return !variables.only_toggle && !!variables.src?.controls?.next; ]]]'
+
+
+  extra_styles: >
+    [[[
+      const c = variables.src?.controls;
+      const any = variables.only_toggle
+        ? !!c?.toggle
+        : !!(c && (c.toggle || c.next || c.prev));
+      return `
+        :host{
+          display: ${any ? 'block' : 'none'} !important;
+          --hemma-card-hover-shadow: none;
+          --hemma-card-hover-filter: none;
+        }
+        :host, ha-card{
+          background: none !important;
+          box-shadow: none !important;
+          border: none !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+        }
+
+        /* Containing block for the ring overlay. overflow must stay visible: #container measures
+           smaller than the 40px ring box in at least one axis, and the default clip flattened the
+           circle's top, bottom and right edges. */
+        #container{
+          position: relative !important;
+          overflow: visible !important;
+        }
+
+        .np-ring{
+          display: block;
+          width: 100%;
+          height: 100%;
+          overflow: visible;
+        }
+
+        .np-ring-disc{
+          fill: rgba(255,255,255,var(--np-ring-disc-alpha, 0.16));
+        }
+
+        .np-ring-track{
+          fill: none;
+          stroke: rgba(255,255,255,var(--np-ring-track-alpha, 0.22));
+          stroke-width: 2.2;
+        }
+
+        .np-ring-fill{
+          fill: none;
+          stroke: rgba(255,255,255,var(--np-ring-fill-alpha, 0.95));
+          stroke-width: 2.2;
+          stroke-linecap: round;
+        }
+
+        @keyframes np-ring-advance{ to { stroke-dashoffset: 0; } }
+
+        @media (prefers-reduced-motion: reduce){
+          .np-ring-fill{ animation: none !important; }
+        }
+      `;
+    ]]]

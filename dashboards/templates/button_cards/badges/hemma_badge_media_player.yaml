@@ -1,6 +1,15 @@
 # Media Player Badge
+# Now Playing badge for a single media_player, with play/pause and skip
+# controls. Shares its look with the activity + plex badges via hemma_badge_media.
+#
+# Variables:
+#   enabled               - show/hide this badge (default: true)
+#   entity                - media_player entity_id (falls back to the card's own entity)
+#   pause_timeout_minutes - minutes a paused player still counts as active (default: 10)
+#   group_entities        - array of additional entity_ids controlled alongside `entity`
+#                           (e.g. grouped speakers) and shown as a "+N" pill
 hemma_badge_media_player:
-  template: [hemma_badge_base]
+  template: [hemma_badge_base, hemma_badge_media]
   show_icon: false
   show_entity_picture: true
   show_name: true
@@ -10,40 +19,22 @@ hemma_badge_media_player:
   variables:
     enabled: true
     entity: null
-    pause_timeout_minutes: 5
+    pause_timeout_minutes: 10
     group_entities: null
 
   entity: '[[[ return variables.entity || entity?.entity_id ]]]'
 
-  triggers_update:
-    - '[[[ return variables.entity || entity?.entity_id; ]]]'
-
   styles:
     card:
-      - padding: 0 8px 0 8px !important
-      - background: rgba(0,0,0,0.18) !important
-      - -webkit-backdrop-filter: blur(14px) saturate(1.2) !important
-      - backdrop-filter: blur(14px) saturate(1.2) !important
-      - border-radius: 9999px !important
-      - overflow: hidden !important
-      - border: none !important
-      - width: fit-content !important
-      - max-width: var(--badge-media-max-width-current, none) !important
-      - min-height: calc(var(--badge-min-height-current, var(--badge-min-height, 50px)) + 3px) !important
-      - align-items: center !important
-      - justify-content: flex-start !important
-      - text-align: left !important
-      - gap: 6px !important
-      - isolation: isolate
-      - margin: 0 !important
-      - display: inline-grid
-      - justify-self: start !important
-      - align-self: start !important
-      - place-self: start !important
-      - --badge-icon-size-current: var(--badge-media-icon-size-current, var(--badge-media-icon-size, 44px))
-
+      - padding: "var(--hemma-media-badge-pad-v, 0px) calc(var(--hemma-badge-opacity, 1) * 8px) var(--hemma-media-badge-pad-v, 0px) calc(var(--hemma-badge-opacity, 1) * 12px) !important"
+      - max-width: "calc(var(--hemma-badge-opacity, 1) * var(--badge-media-max-width-current, 600px)) !important"
+      - min-height: "calc(var(--hemma-badge-opacity, 1) * (var(--badge-min-height-current, var(--badge-min-height, 50px)) + 3px)) !important"
+      
       - --hemma-badge-opacity: >
           [[[
+            const P = (v) => { try { this.style.setProperty('--hemma-badge-opacity', v); } catch (e) {} return v; };
+            return P((() => {
+            const cacheKey = '_hemmaBadgeOpacity';
             const enabled = (v) => {
               if (v === undefined || v === null) return true;
               if (typeof v === 'boolean') return v;
@@ -56,28 +47,32 @@ hemma_badge_media_player:
 
             const eid = variables.entity || entity?.entity_id;
             const s = eid ? states[eid] : null;
-            if (!s) return '0';
+            if (!s) return this[cacheKey] || '0';
 
             const st = String(s.state || '');
-            if (['unavailable','unknown','off','standby'].includes(st)) return '0';
+            if (['unavailable','unknown','off','standby'].includes(st)) { this[cacheKey] = '0'; return '0'; }
 
             const a = s.attributes || {};
             const title  = String(a.media_title || '').trim();
             const artist = String(a.media_artist || a.artist || a.media_album_artist || '').trim();
             const hasContent = !!(title || artist);
 
-            if (['playing','buffering'].includes(st)) return hasContent ? '1' : '0';
+            if (['playing','buffering'].includes(st)) { const r = hasContent ? '1' : '0'; this[cacheKey] = r; return r; }
 
             if (st === 'paused') {
-              if (!hasContent) return '0';
-              const timeout = Number(variables.pause_timeout_minutes ?? 5);
-              if (timeout <= 0) return '1';
-              return ((new Date() - new Date(s.last_changed)) / 60000) > timeout ? '0' : '1';
+              if (!hasContent) { this[cacheKey] = '0'; return '0'; }
+              const timeout = Number(variables.pause_timeout_minutes ?? 10);
+              if (timeout <= 0) { this[cacheKey] = '1'; return '1'; }
+              const r = ((new Date() - new Date(s.last_changed)) / 60000) > timeout ? '0' : '1';
+              this[cacheKey] = r;
+              return r;
             }
 
-            if (['idle','on'].includes(st)) return hasContent ? '1' : '0';
+            if (['idle','on'].includes(st)) { const r = hasContent ? '1' : '0'; this[cacheKey] = r; return r; }
 
+            this[cacheKey] = '0';
             return '0';
+            })());
           ]]]
 
       - --hemma-badge-ptr: >
@@ -108,7 +103,7 @@ hemma_badge_media_player:
 
             if (st === 'paused') {
               if (!hasContent) return 'none';
-              const timeout = Number(variables.pause_timeout_minutes ?? 5);
+              const timeout = Number(variables.pause_timeout_minutes ?? 10);
               if (timeout <= 0) return 'auto';
               return ((new Date() - new Date(s.last_changed)) / 60000) > timeout ? 'none' : 'auto';
             }
@@ -121,8 +116,8 @@ hemma_badge_media_player:
       - --bg-url: >
           [[[
             const cacheKey = '_hemmaMpBgUrl';
-            const eid = variables.entity || entity?.entity_id;
-            const a = eid ? (states[eid]?.attributes || {}) : {};
+            const overrideEid = variables.entity;
+            const a = overrideEid ? (states[overrideEid]?.attributes || {}) : (entity?.attributes || {});
 
             const raw =
               a.entity_picture ||
@@ -132,9 +127,20 @@ hemma_badge_media_player:
 
             if (raw) {
               const url = String(raw).startsWith('/') ? `${location.origin}${raw}` : raw;
-              const wrapped = `url("${url}")`;
-              this[cacheKey] = wrapped;
-              return wrapped;
+              if (this._hemmaBgRawUrl !== url) {
+                this._hemmaBgRawUrl = url;
+                const img = new Image();
+                img.onload = () => {
+                  if (this._hemmaBgRawUrl !== url) return; // superseded already
+                  const wrapped = `url("${url}")`;
+                  this[cacheKey] = wrapped;
+                  const card = this.shadowRoot?.querySelector('ha-card');
+                  if (card) { card.style.setProperty('--bg-url', wrapped);
+                               card.style.setProperty('--hemma-badge-has-art', '1'); }
+                  this.requestUpdate?.();
+                };
+                img.src = url;
+              }
             }
             return this[cacheKey] || 'none';
           ]]]
@@ -144,17 +150,6 @@ hemma_badge_media_player:
       - grid-template-columns: min-content minmax(0, 1fr) min-content
       - column-gap: 11px
       - align-items: center
-
-    entity_picture:
-      - grid-area: i
-      - width: var(--badge-media-icon-size-current, var(--badge-media-icon-size, 44px)) !important
-      - height: var(--badge-media-icon-size-current, var(--badge-media-icon-size, 44px)) !important
-      - min-width: var(--badge-media-icon-size-current, var(--badge-media-icon-size, 44px)) !important
-      - min-height: var(--badge-media-icon-size-current, var(--badge-media-icon-size, 44px)) !important
-      - border-radius: 9999px !important
-      - object-fit: cover !important
-      - box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14) !important
-      - z-index: 6
 
     name:
       - grid-area: info
@@ -258,6 +253,7 @@ hemma_badge_media_player:
             - border: none !important
             - box-shadow: none !important
             - backdrop-filter: none !important
+            - overflow: visible !important
           grid:
             - grid-template-areas: '"play next"'
             - grid-template-columns: min-content min-content
@@ -282,15 +278,17 @@ hemma_badge_media_player:
                   - width: var(--badge-media-btn-size-current, var(--badge-media-btn-size, 44px))
                   - height: var(--badge-media-btn-size-current, var(--badge-media-btn-size, 44px))
                   - border-radius: 9999px
-                  - background: rgba(255,255,255,0.10)
-                  - box-shadow: none !important
+                  - background: rgba(0,0,0,0)
+                  - backdrop-filter: none !important
+                  - -webkit-backdrop-filter: none !important
                   - border: none !important
                   - padding: 6px
                   - transform: none !important
+                  - position: relative
                 grid:
                   - place-items: center
                 icon:
-                  - color: rgba(255,255,255,0.92)
+                  - color: rgba(255,255,255,0.96)
                   - width: var(--badge-media-btn-icon-size-current, var(--badge-media-btn-icon-size, 28px))
                   - height: var(--badge-media-btn-icon-size-current, var(--badge-media-btn-icon-size, 28px))
               tap_action:
@@ -303,18 +301,42 @@ hemma_badge_media_player:
                 mwc-ripple {
                   display: none !important;
                 }
+                /* Glow */
+                ha-card::after{
+                  content:"";
+                  position:absolute;
+                  inset:0;
+                  border-radius:9999px;
+                  pointer-events:none;
+                  mix-blend-mode: screen;
+                  z-index: 1;
+                  box-shadow:
+                    0 0 3px 0px rgba(255,255,255,0.05),
+                    0 0 7px 0px rgba(255,255,255,0.02);
+                }
+                /* Hover */
+                ha-card::before{
+                  content:"";
+                  position:absolute;
+                  inset:0;
+                  border-radius:9999px;
+                  background:#000;
+                  opacity:0;
+                  pointer-events:none;
+                  z-index: 2;
+                  transition: opacity .18s ease;
+                }
                 ha-card{
-                  transition: background-color .22s ease,
-                              box-shadow .24s ease,
-                              transform .14s ease,
-                              filter .18s ease !important;
                   transform: none !important;
                 }
-                ha-card:hover{ background: rgba(255,255,255,0.14) !important; }
+                ha-card:hover::before{
+                  opacity:0.12;
+                }
                 ha-card:active{
-                  background: rgba(255,255,255,0.18) !important;
-                  filter: brightness(1.06) !important;
                   transform: none !important;
+                }
+                ha-card:active::before{
+                  opacity:0.20;
                 }
 
           next:
@@ -328,15 +350,17 @@ hemma_badge_media_player:
                   - width: var(--badge-media-btn-size-current, var(--badge-media-btn-size, 44px))
                   - height: var(--badge-media-btn-size-current, var(--badge-media-btn-size, 44px))
                   - border-radius: 9999px
-                  - background: rgba(255,255,255,0.10)
+                  - background: rgba(0,0,0,0)
+                  - backdrop-filter: none !important
+                  - -webkit-backdrop-filter: none !important
                   - padding: 6px
                   - transform: none !important
-                  - box-shadow: none !important
                   - border: none !important
+                  - position: relative
                 grid:
                   - place-items: center
                 icon:
-                  - color: rgba(255,255,255,0.92)
+                  - color: rgba(255,255,255,0.96)
                   - width: var(--badge-media-btn-icon-size-current, var(--badge-media-btn-icon-size, 28px))
                   - height: var(--badge-media-btn-icon-size-current, var(--badge-media-btn-icon-size, 28px))
               tap_action:
@@ -349,150 +373,68 @@ hemma_badge_media_player:
                 mwc-ripple {
                   display: none !important;
                 }
+                /* Glow */
+                ha-card::after{
+                  content:"";
+                  position:absolute;
+                  inset:0;
+                  border-radius:9999px;
+                  pointer-events:none;
+                  mix-blend-mode: screen;
+                  z-index: 1;
+                  box-shadow:
+                    0 0 3px 0px rgba(255,255,255,0.18),
+                    0 0 7px 0px rgba(255,255,255,0.09);
+                }
+                /* Hover */
+                ha-card::before{
+                  content:"";
+                  position:absolute;
+                  inset:0;
+                  border-radius:9999px;
+                  background:#000;
+                  opacity:0;
+                  pointer-events:none;
+                  z-index: 2;
+                  transition: opacity .18s ease;
+                }
                 ha-card{
-                  transition: background-color .22s ease,
-                              box-shadow .24s ease,
-                              transform .14s ease,
-                              filter .18s ease !important;
                   transform: none !important;
                 }
-                ha-card:hover{ background: rgba(255,255,255,0.14) !important; }
+                ha-card:hover::before{
+                  opacity:0.10;
+                }
                 ha-card:active{
-                  background: rgba(255,255,255,0.18) !important;
-                  filter: brightness(1.06) !important;
                   transform: none !important;
+                }
+                ha-card:active::before{
+                  opacity:0.20;
                 }
 
   extra_styles: |
-    ha-ripple,
-    mwc-ripple {
-      display: none !important;
-    }
-
     :host{
       --hemma-badge-title: var(--badge-font-size-current, var(--badge-font-size, 15px));
       --hemma-badge-sub: calc(var(--hemma-badge-title) - 2px);
 
-      display: inline-block !important;
-      width: fit-content !important;
+      display: var(--hemma-badge-display, inline-block) !important;
+      width: var(--hemma-badge-width, fit-content) !important;
       max-width: 100% !important;
       justify-self: start !important;
       align-self: start !important;
       pointer-events: none !important;
-      padding-top: 2px !important;
       margin-left: 1px !important;
     }
 
     :host ha-card{
       cursor: pointer;
       pointer-events: var(--hemma-badge-ptr, none);
-      opacity: 1 !important;
-      transform: none !important;
-      transition: box-shadow 0.2s ease !important;
-    }
-
-    :host ha-card:not(#hemma-badge-shadow-suppress):hover{
-      box-shadow: inset 0 0 0 9999px rgba(255,255,255,0.08) !important;
-    }
-
-    :host ha-card:not(#hemma-badge-shadow-suppress):active{
-      box-shadow: inset 0 0 0 9999px rgba(255,255,255,0.16) !important;
-    }
-
-    :host ha-card::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      pointer-events:none;
-      border-radius: inherit;
-      background: var(--bg-url);
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      filter: blur(26px) saturate(2.0);
-      opacity: .62;
-      transform: scale(1.25);
-    }
-
-    :host ha-card::before{
-      content:"";
-      position:absolute;
-      inset:0;
-      pointer-events:none;
-      border-radius: inherit;
-      border: 1px solid rgba(255,255,255,0.5) !important;
-      background:
-        radial-gradient(
-          ellipse at 50% -20%,
-          rgba(255,255,255,0.32) 0%,
-          rgba(255,255,255,0.15) 45%,
-          transparent 68%
-        ),
-        radial-gradient(
-          ellipse at 50% 120%,
-          rgba(255,255,255,0.18) 0%,
-          transparent 50%
-        );
-      mix-blend-mode: overlay;
-      opacity: 1 !important;
+      opacity: calc((1 - var(--hemma-badge-enter-p)) * var(--hemma-row-fade, 1)) !important;
     }
 
     @media (max-width: 767px) and (orientation: portrait) {
       :host {
         --badge-media-max-width-current: calc(100vw - 2 * var(--hero-gutter, 16px));
       }
-    }
-
-    #container{
-      height: auto !important;
-      min-height: 0 !important;
-      align-items: center !important;
-      align-content: center !important;
-    }
-
-    .badge-wrap{
-      display:flex;
-      flex-direction:column;
-      align-items:flex-start;
-      gap:2px;
-      min-width:0;
-      max-width:100%;
-      overflow:hidden;
-      padding-top: 0 !important;
-      padding-bottom: 2px !important;
-      line-height: normal !important;
-    }
-
-    .badge-title{
-      font-size: var(--hemma-badge-title);
-      font-weight: 700;
-      line-height: 1.1;
-      color: rgba(255,255,255,0.96);
-      text-shadow: 0 0 3px rgba(0,0,0,0.25);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width:100%;
-      text-align:left;
-    }
-
-    .badge-sub{
-      font-size: var(--hemma-badge-sub);
-      font-weight: 500;
-      line-height: 1.14;
-      opacity: .82;
-      color: rgba(255,255,255,0.90);
-      text-shadow: 0 0 3px rgba(0,0,0,0.20);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width:100%;
-      text-align:left;
-    }
-
-    #img-cell, #name, #custom_fields{
-      position: relative;
-      z-index: 6;
     }
 
     .group-count {

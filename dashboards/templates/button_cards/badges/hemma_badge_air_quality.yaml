@@ -1,22 +1,15 @@
 # Air Quality Badge
 # Shows air quality sensor with color-coded status.
-# Tap: opens hemma_climate_popup (browser_mod popup via hemma_popup_base).
-#      Falls back to more-info if browser_mod is unavailable.
+# Tap: opens hemma_climate_popup (shared climate popup).
 #
-# Variables (passed from hemma_room.yaml):
-#   enabled         - show/hide badge (default: true)
-#   room_name       - display name shown in popup header
-#   entity_quality  - AQ sensor entity_id (used for state in popup header)
-#   entity_pm25     - PM2.5 sensor entity_id
-#   entity_pm10     - PM10 sensor entity_id
-#   entity_voc      - VOC index sensor entity_id
-#   entity_co2      - CO2 sensor entity_id
-#   entity_temp     - temperature sensor entity_id
-#   entity_humidity - humidity sensor entity_id
-#
-# TODO (CO2): once sensor arrives, restore original weights in the scoring section:
-#   pm25Penalty max → 40, vocPenalty max → 25, add co2Penalty max → 35
-# ============================================================================
+# Variables:
+#   enabled         - show/hide this badge (default: true)
+#   room_name       - display name shown in the climate popup
+#   entity_quality  - air quality sensor entity_id
+#   entity_temp     - temperature sensor entity_id (passed through to the popup)
+#   entity_humidity - humidity sensor entity_id (passed through to the popup)
+#   sensors         - array of raw pollutant sensor entity_ids for the popup breakdown
+
 hemma_badge_air_quality:
   template: [hemma_badge_base, hemma_popup_base, hemma_climate_popup]
 
@@ -44,8 +37,58 @@ hemma_badge_air_quality:
       const hide    = !enabled || !hasEnt || !stRaw || ['unknown','unavailable','none'].includes(st);
 
       const svgUrl = ['poor', 'bad', 'very bad'].includes(st)
-        ? '/local/hemma/icons/aqi-high.svg'
-        : '/local/hemma/icons/aqi-medium.svg';
+        ? window.hemmaIconUrl('aqi-high')
+        : window.hemmaIconUrl('aqi-medium');
+
+      let gaugeCSS = '';
+      if (variables?.gauge && !hide) {
+        const levels = { excellent: 1, good: 0.8, fair: 0.55, moderate: 0.55,
+                         poor: 0.3, bad: 0.15, 'very bad': 0.15, 'very poor': 0.15 };
+        const gf  = levels[st] ?? 0.5;
+        const arc = Math.round(gf * 270);
+        const rr = 13.5, C = 16, W = 3;
+        const pt = (deg) => {
+          const a = deg * Math.PI / 180;
+          return `${(C + rr * Math.sin(a)).toFixed(3)} ${(C - rr * Math.cos(a)).toFixed(3)}`;
+        };
+        const arcPath = (a0, a1) =>
+          `M ${pt(a0)} A ${rr} ${rr} 0 ${(a1 - a0) > 180 ? 1 : 0} 1 ${pt(a1)}`;
+        let paths = '';
+        if (arc < 269) paths += `<path d='${arcPath(225 + arc, 495)}' stroke='white' stroke-opacity='0.30' stroke-width='${W}' stroke-linecap='round' fill='none'/>`;
+        paths += `<path d='${arcPath(225, 225 + arc)}' stroke='white' stroke-width='${W}' stroke-linecap='round' fill='none'/>`;
+
+        const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'>${paths}</svg>`;
+        const maskUrl = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+        gaugeCSS = `
+          #img-cell::before, .img-cell::before {
+            background-color: var(--hemma-badge-icon-fg, var(--hemma-icon-color, var(--primary-text-color))) !important;
+          }
+
+          #img-cell::after, .img-cell::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 9999px;
+            background: var(--hemma-icon-color, #fff);
+            -webkit-mask: ${maskUrl} no-repeat center / 100% 100%;
+            mask: ${maskUrl} no-repeat center / 100% 100%;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+          }
+
+          #container { column-gap: var(--hemma-gauge-col-gap, 12px) !important; }
+
+          ha-card.button-card-main, ha-card.button-card-main:hover, ha-card.button-card-main:active,
+          :host(:hover) ha-card, :host(:active) ha-card {
+            background: transparent !important;
+            box-shadow: none !important;
+            filter: none !important;
+            -webkit-filter: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+          }
+          ha-ripple, mwc-ripple { display: none !important; }
+        `;
+      }
 
       return `
         :host{display:${hide ? 'none' : 'inline-block'} !important;}
@@ -56,11 +99,11 @@ hemma_badge_air_quality:
           position: absolute;
           inset: 0;
           background-color: var(--hemma-icon-color, var(--primary-text-color));
-          -webkit-mask: url('${svgUrl}') no-repeat center / 85% 85%;
-          mask: url('${svgUrl}') no-repeat center / 85% 85%;
+          -webkit-mask: url('${svgUrl}') no-repeat center / var(--hemma-badge-icon-scale, 85%) var(--hemma-badge-icon-scale, 85%);
+          mask: url('${svgUrl}') no-repeat center / var(--hemma-badge-icon-scale, 85%) var(--hemma-badge-icon-scale, 85%);
           transform: translateZ(0);
         }
-      `;
+      ` + gaugeCSS;
     ]]]
 
   styles:
@@ -95,8 +138,9 @@ hemma_badge_air_quality:
 
   name: >
     [[[
-      const raw = String(entity?.state ?? 'Unknown');
-      const nice = raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : 'Unknown';
+      // entity is undefined during HA startup — formatEntityState(undefined) throws.
+      const raw = (entity ? hass.formatEntityState(entity) : '') || entity?.state || 'Unknown';
+      const nice = raw.charAt(0).toUpperCase() + raw.slice(1);
       const esc = (t) => String(t || '').replaceAll('"','&quot;');
       return `
         <div class="badge-wrap">

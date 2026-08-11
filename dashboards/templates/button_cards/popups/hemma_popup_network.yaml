@@ -37,11 +37,20 @@ hemma_popup_network:
   tap_action:
     browser_mod:
       data:
+        popup_styles:
+          - style: all
+            styles: |
+              ha-adaptive-dialog, ha-dialog, wa-drawer {
+                --dialog-surface-margin-top: 90px;
+                --ha-card-backdrop-filter: none;
+                --ha-card-background: transparent;
+                --card-background-color: transparent;
+                --ha-card-box-shadow: none;
+                --ha-card-border-width: 0px;
+              }
         content: |
           [[[
-            /* -------------------------------------------------------
-             * Helpers
-             * ------------------------------------------------------- */
+            /* Helpers */
 
             const safeNum = (id) => {
               if (!id) return null;
@@ -86,9 +95,12 @@ hemma_popup_network:
               show_state: false,
             };
 
-            /* -------------------------------------------------------
-             * Shared Local Styles
-             * ------------------------------------------------------- */
+            // Tooltip time format
+            const _tf = hass?.locale?.time_format;
+            const _use12hr = _tf === '12' || (_tf !== '24' && new Intl.DateTimeFormat(hass?.locale?.language || 'en', { hour: 'numeric' }).resolvedOptions().hour12);
+            const tooltipTimeFormat = _use12hr ? 'h:mm tt' : 'HH:mm';
+
+            /* Shared Local Styles */
 
             const noHoverStyle = `
               :host {
@@ -122,8 +134,8 @@ hemma_popup_network:
             const contentCardStyle = noHoverStyle + `@media (max-width: 600px) { ha-card { padding-left: 14px !important; padding-right: 14px !important; } }`;
 
             const tileTapStyle = `
-              :host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }
-              ha-card { background: var(--hemma-popup-tile-background, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease !important; }
+              :host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: inset 0 1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-tight,0.20) * 1.5)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-tight,0.15) * 1.5)), inset 0 3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-soft,0.08) * 1.5)), inset 0 -3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-soft,0.05) * 1.5)) !important; }
+              ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }
               ha-card:hover { background: var(--hemma-popup-tile-hover, rgba(255,255,255,0.09)) !important; transform: scale(var(--hemma-popup-tile-hover-scale, 1.01)) !important; }
               ha-ripple { display: none !important; }
               @keyframes hemma-action-swap { from { opacity:0; } to { opacity:1; } }
@@ -171,8 +183,62 @@ hemma_popup_network:
               }
             `;
 
+            /* card_mod lands too late to hide the empty chart shell, so the
+               entrance animation runs from apex_config instead. EVAL: is
+               apexcharts-card's hook for a function in a serialised config. */
+            const chartEnter = 'EVAL:' + [
+              'function (ctx) {',
+              '  try {',
+              '    var graph = ctx && ctx.el;',
+              '    if (!graph || (ctx.w && ctx.w.globals && ctx.w.globals.noData)) return;',
+              '    var wrap = graph.closest("#graph-wrapper") || graph.parentElement;',
+              '    if (!wrap || !graph.animate || wrap.dataset.hemmaChartEntered) return;',
+              '    wrap.dataset.hemmaChartEntered = "1";',
+              '    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {',
+              '      graph.animate([{ opacity: 0 }, { opacity: 1 }],',
+              '        { duration: 200, easing: "ease-out", fill: "backwards" });',
+              '      return;',
+              '    }',
+              '    /* squash, not lift, drives the apparent rise; raise it for less. */',
+              '    var D = { persp: 640, z: -130, lift: 8, squash: 0.34, blur: 9, floor: 10 };',
+              '    /* Clip goes on the stationary wrapper; on #graph it would travel along. */',
+              '    var n = graph.getRootNode().host, guard = 0, edge = null;',
+              '    while (n && guard++ < 6 && edge === null) {',
+              '      var sib = n.nextElementSibling;',
+              '      if (sib) { var sr = sib.getBoundingClientRect(); if (sr.height) edge = sr.top; }',
+              '      n = n.parentElement || (n.getRootNode() && n.getRootNode().host);',
+              '    }',
+              '    if (edge !== null) {',
+              '      var gap = Math.round(edge - wrap.getBoundingClientRect().bottom);',
+              '      if (gap > -40 && gap < 80) D.floor = gap;',
+              '    }',
+              '    var fy = D.floor < 0 ? "calc(100% - " + Math.abs(D.floor) + "px)"',
+              '                         : "calc(100% + " + D.floor + "px)";',
+              '    wrap.style.clipPath =',
+              '      "polygon(-100% -200%, 200% -200%, 200% " + fy + ", -100% " + fy + ")";',
+              '    graph.style.transformOrigin = "50% 90%";',
+              '    var from = "perspective(" + D.persp + "px) translateZ(" + D.z + "px)"',
+              '             + " translateY(" + D.lift + "px) scaleY(" + D.squash + ")";',
+              '    var to = "perspective(" + D.persp + "px) translateZ(0px)"',
+              '           + " translateY(0px) scaleY(1)";',
+              '    graph.animate([{ opacity: 0 }, { opacity: 1 }],',
+              '      { duration: 600, easing: "ease-out", fill: "backwards" });',
+              '    graph.animate([{ filter: "blur(" + D.blur + "px)" }, { filter: "blur(0px)" }],',
+              '      { duration: 600, easing: "ease-out", fill: "backwards" });',
+              '    var rise = graph.animate([{ transform: from }, { transform: to }],',
+              '      { duration: 700, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "backwards" });',
+              '    /* Clear the clip or it can trap a tooltip later. */',
+              '    var unclip = function () { wrap.style.clipPath = ""; };',
+              '    if (rise.finished) rise.finished.then(unclip).catch(unclip);',
+              '    else rise.onfinish = unclip;',
+              '  } catch (e) {}',
+              '}',
+            ].join('\n');
+
             const graphStyle = `
               :host {
+                position: relative !important;
+                z-index: 1 !important;
                 --ha-card-box-shadow: none !important;
                 --button-card-box-shadow: none !important;
                 --button-card-box-shadow-hover: none !important;
@@ -185,116 +251,110 @@ hemma_popup_network:
                 box-shadow: none !important;
                 backdrop-filter: none !important;
                 -webkit-backdrop-filter: none !important;
-                overflow: hidden !important;
-                padding: 10px 0px 10px 0px !important;
+                overflow: visible !important;
                 --primary-color: transparent !important;
               }
 
-              ha-card:hover {
-                box-shadow: none !important;
-                border-color: transparent !important;
+              ha-card:hover { box-shadow: none !important; border-color: transparent !important; }
+              #spinner-wrapper { display: none !important; }
+
+              #graph {
+                margin: 0 !important;
+                padding: 8px 0 !important;
+                overflow: visible !important;
+                background: transparent !important;
               }
 
-              .graph {
-                position: relative !important;
-                overflow: visible !important;
-              }
+              .apexcharts-canvas { overflow: visible !important; background: transparent !important; }
 
-              .graph__container {
-                overflow: visible !important;
-              }
-
-              .graph__container svg {
-                width: calc(100% + 100px) !important;
-                margin-left: -50px !important;
-                display: block !important;
-                overflow: visible !important;
-
+              .apexcharts-canvas > svg {
                 -webkit-mask-image:
-                  linear-gradient(
-                    to right,
-                    rgba(0,0,0,0) 0%,
-                    rgba(0,0,0,0) 11%,
-                    rgba(0,0,0,0.1) 16%,
-                    rgba(0,0,0,0.5) 25%,
-                    black 38%,
-                    black 65%,
-                    rgba(0,0,0,0.5) 78%,
-                    rgba(0,0,0,0.1) 87%,
-                    rgba(0,0,0,0) 90%,
-                    rgba(0,0,0,0) 100%
-                  ),
-                  linear-gradient(
-                    to bottom,
-                    transparent 0%,
-                    black 12%,
-                    black 78%,
-                    transparent 100%
-                  );
-
+                  linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 4%, rgba(0,0,0,0.4) 12%, black 22%, black 78%, rgba(0,0,0,0.4) 88%, rgba(0,0,0,0) 96%, rgba(0,0,0,0) 100%),
+                  linear-gradient(to bottom, transparent 0%, black 10%, black 82%, transparent 100%);
                 mask-image:
-                  linear-gradient(
-                    to right,
-                    rgba(0,0,0,0) 0%,
-                    rgba(0,0,0,0) 11%,
-                    rgba(0,0,0,0.1) 16%,
-                    rgba(0,0,0,0.5) 25%,
-                    black 38%,
-                    black 65%,
-                    rgba(0,0,0,0.5) 78%,
-                    rgba(0,0,0,0.1) 87%,
-                    rgba(0,0,0,0) 90%,
-                    rgba(0,0,0,0) 100%
-                  ),
-                  linear-gradient(
-                    to bottom,
-                    transparent 0%,
-                    black 12%,
-                    black 78%,
-                    transparent 100%
-                  );
-
+                  linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 4%, rgba(0,0,0,0.4) 12%, black 22%, black 78%, rgba(0,0,0,0.4) 88%, rgba(0,0,0,0) 96%, rgba(0,0,0,0) 100%),
+                  linear-gradient(to bottom, transparent 0%, black 10%, black 82%, transparent 100%);
                 -webkit-mask-composite: destination-in;
                 mask-composite: intersect;
-                -webkit-mask-repeat: no-repeat;
-                mask-repeat: no-repeat;
-                -webkit-mask-size: 100% 100%;
-                mask-size: 100% 100%;
+                -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+                -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
               }
 
-              .graph__line {
-                opacity: 0.95;
-                filter: drop-shadow(0 0 3px rgba(255,255,255,0.06));
+              .apexcharts-tooltip {
+                transition: opacity 0.12s ease !important;
+                display: inline-block !important;
+                width: max-content !important;
+                max-width: 200px !important;
+                min-width: 80px !important;
+                white-space: nowrap !important;
+                --hemma-chart-tooltip-fill: rgba(22,22,24,0.78);
+                background:
+                  linear-gradient(var(--hemma-glass-background, rgba(255,255,255,0.10)),
+                                  var(--hemma-glass-background, rgba(255,255,255,0.10))),
+                  var(--hemma-chart-tooltip-fill) !important;
+                border: none !important;
+                border-radius: 14px !important;
+                box-shadow: var(--hemma-glass-rim,
+                  inset 0 1px .5px -0.5px rgba(255,255,255,0.55),
+                  inset 0 -1px .5px -0.5px rgba(255,255,255,0.48),
+                  inset 0 3px 6px -3px rgba(255,255,255,0.20),
+                  inset 0 -3px 6px -3px rgba(255,255,255,0.12),
+                  2px 0 3px -2px rgba(0,0,0,0.45),
+                  -2px 0 3px -2px rgba(0,0,0,0.45),
+                  0 2px 8px rgba(0,0,0,0.18)) !important;
+                overflow: hidden !important;
               }
 
-              .graph__fill {
-                opacity: 0.42;
+              .apexcharts-tooltip-title,
+              .apexcharts-tooltip-series-group { width: auto !important; max-width: 200px !important; }
+
+              .apexcharts-tooltip-title {
+                background: transparent !important;
+                border-bottom: none !important;
+                font-size: 10px !important;
+                color: rgba(255,255,255,0.58) !important;
+                font-weight: 600 !important;
+                padding: 9px 12px 2px !important;
+                margin: 0 !important;
+                letter-spacing: 0.07em !important;
+                text-transform: uppercase !important;
               }
 
-              .graph.flex {
-                margin-left: 0px !important;
-                margin-right: 0px !important;
-                padding-bottom: 0px !important;
+              .apexcharts-tooltip-series-group {
+                background: transparent !important;
+                padding: 0 12px 6px !important;
+                align-items: center !important;
               }
 
-              .graph__hover {
-                overflow: visible !important;
-                pointer-events: auto !important;
-              }
+              .apexcharts-tooltip-series-group:last-child { padding-bottom: 9px !important; }
+              .apexcharts-tooltip-series-group.apexcharts-active { background: transparent !important; }
+              .apexcharts-tooltip-marker { display: none !important; }
 
-              .graph__labels {
-                overflow: visible !important;
-              }
-
-              .graph__label {
-                font-size: 11px !important;
+              .apexcharts-tooltip-text-y-label {
+                color: rgba(255,255,255,0.64) !important;
+                font-size: 12px !important;
                 font-weight: 500 !important;
+                margin-right: 6px !important;
               }
+
+              .apexcharts-tooltip-text-y-value {
+                color: rgba(255,255,255,0.98) !important;
+                font-weight: 700 !important;
+                font-size: 14px !important;
+                margin-left: 0 !important;
+              }
+
+              .apexcharts-xcrosshairs {
+                stroke: rgba(255,255,255,0.14) !important;
+                stroke-dasharray: 3 3 !important;
+                stroke-width: 1 !important;
+              }
+
+              .apexcharts-xaxistooltip { display: none !important; }
+              .apexcharts-ycrosshairs { display: none !important; }
             `;
 
-            /* -------------------------------------------------------
-             * Entity Resolution
-             * ------------------------------------------------------- */
+            /* Entity Resolution */
 
             const dlId =
               variables.entity_download ||
@@ -337,9 +397,7 @@ hemma_popup_network:
               || (action2Id ? 'input_boolean.hemma_restart_done_2'    : null);
             const hasActions           = !!(action1Id || action2Id);
 
-            /* -------------------------------------------------------
-             * Values
-             * ------------------------------------------------------- */
+            /* Values */
 
             const dl = safeNum(dlId);
             const ul = safeNum(ulId);
@@ -349,12 +407,18 @@ hemma_popup_network:
             window._hc = window._hc || {};
             if (window._hc[_ck]?.h === _ch) return window._hc[_ck].r;
 
+            const _memoSub = (subKey, dep, factory) => {
+              const key = _ck + '_' + subKey;
+              if (window._hc[key]?.h === dep) return window._hc[key].r;
+              const r = factory();
+              window._hc[key] = { h: dep, r };
+              return r;
+            };
+
             const dlOk = Number.isFinite(dl);
             const ulOk = Number.isFinite(ul);
 
-            /* -------------------------------------------------------
-             * Status
-             * ------------------------------------------------------- */
+            /* Status */
 
             const statusRaw = statusId ? states[statusId]?.state : null;
             const online = statusRaw === 'on';
@@ -371,9 +435,7 @@ hemma_popup_network:
                     : 'rgba(255,255,255,0.4)'
                 );
 
-            /* -------------------------------------------------------
-             * Advice
-             * ------------------------------------------------------- */
+            /* Advice */
 
             const roomName = variables.room_name || 'Network';
 
@@ -395,7 +457,7 @@ hemma_popup_network:
                   ? 'Active'
                   : 'Heavy';
 
-            // Direction from WAN speeds (dl/ul) which correctly reflect internet traffic direction.
+            // Judged from WAN dl/ul, not the wired/wifi tiles below.
             const dir = (!dlOk || (ulOk && ul > dl)) ? 'Upload' : 'Download';
 
             let advice;
@@ -412,9 +474,7 @@ hemma_popup_network:
               advice = 'No status data';
             }
 
-            /* -------------------------------------------------------
-             * Ping Gauge
-             * ------------------------------------------------------- */
+            /* Ping Gauge */
 
             const ping = safeNum(pingId);
             const pingMax = 200;
@@ -436,81 +496,7 @@ hemma_popup_network:
 
             const fmtPing = (v) => v == null ? '—' : String(Math.round(v));
 
-            /* -------------------------------------------------------
-             * Status Badge Card
-             * ------------------------------------------------------- */
-
-            const statusBadgeCard = {
-              type: 'custom:button-card',
-              entity: statusId || dlId,
-              name: statusLabel,
-              tap_action: statusId ? { action: 'more-info' } : { action: 'none' },
-              show_icon: false,
-              show_name: true,
-              show_label: false,
-              show_state: false,
-              card_mod: {
-                style: [
-                  ':host {',
-                  '  --ha-card-box-shadow: none !important;',
-                  '  --button-card-box-shadow: none !important;',
-                  '  --button-card-box-shadow-hover: none !important;',
-                  '}',
-                  'ha-card {',
-                  `  background: color-mix(in srgb,${statusColor} 12%,transparent) !important;`,
-                  `  border: 1px solid color-mix(in srgb,${statusColor} 35%,transparent) !important;`,
-                  '  border-radius: 999px !important;',
-                  '  box-shadow: none !important;',
-                  '  backdrop-filter: none !important;',
-                  '  -webkit-backdrop-filter: none !important;',
-                  '  transition: background 0.2s ease, filter 0.2s ease !important;',
-                  '}',
-                  `ha-card:hover { box-shadow: none !important; background: color-mix(in srgb,${statusColor} 22%,transparent) !important; ${statusId ? 'filter: brightness(1.2) saturate(1.1);' : ''} }`,
-                  'ha-ripple { display: none !important; }',
-                ].join('\n'),
-              },
-              styles: {
-                card: [
-                  {
-                    background: `color-mix(in srgb,${statusColor} 12%,transparent)`
-                  },
-                  {
-                    border: `1px solid color-mix(in srgb,${statusColor} 35%,transparent)`
-                  },
-                  {
-                    'border-radius': '999px'
-                  },
-                  {
-                    'box-shadow': 'none'
-                  },
-                  {
-                    padding: '8px 15px'
-                  },
-                ],
-
-                name: [
-                  {
-                    'font-size': '15px'
-                  },
-                  {
-                    'font-weight': '500'
-                  },
-                  {
-                    color: statusColor
-                  },
-                  {
-                    'white-space': 'nowrap'
-                  },
-                  {
-                    'font-family': 'var(--primary-font-family,system-ui)'
-                  },
-                ],
-              },
-            };
-
-            /* -------------------------------------------------------
-             * Stat Cards
-             * ------------------------------------------------------- */
+            /* Stat Cards */
 
             const dlStatCard = {
               ...baseCard,
@@ -540,12 +526,12 @@ hemma_popup_network:
                   const d = isNaN(v) ? '—' : (prec != null ? v.toFixed(prec) : (v >= 100 ? Math.round(v).toString() : v.toFixed(1)));
                   return '<div>'
                     + '<div style="display:flex;align-items:baseline;gap:4px;padding-right:6px;">'
-                    + '<span style="font-size:26px;font-weight:400;color:var(--hemma-popup-tile-text-primary);line-height:1.15;">' + d + '</span>'
-                    + '<span style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);">Mbit/s</span>'
+                    + '<span style="font-size:26px;font-weight:400;color:var(--hemma-popup-tiles-text-primary);line-height:1.15;">' + d + '</span>'
+                    + '<span style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary);">Mbit/s</span>'
                     + '</div>'
                     + '<div style="display:flex;align-items:center;gap:6px;margin-top:7px;">'
                     + '<span style="width:8px;height:8px;background:var(--hemma-badge-network-low-color, #44e371);border-radius:50%;display:inline-block;flex-shrink:0;"></span>'
-                    + '<span style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);">Download</span>'
+                    + '<span style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary);">Download</span>'
                     + '</div>'
                     + '</div>';
                 ]]]`,
@@ -580,12 +566,12 @@ hemma_popup_network:
                   const d = isNaN(v) ? '—' : (prec != null ? v.toFixed(prec) : (v >= 100 ? Math.round(v).toString() : v.toFixed(1)));
                   return '<div>'
                     + '<div style="display:flex;align-items:baseline;gap:4px;padding-left:6px;">'
-                    + '<span style="font-size:26px;font-weight:400;color:var(--hemma-popup-tile-text-primary);line-height:1.15;">' + d + '</span>'
-                    + '<span style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);">Mbit/s</span>'
+                    + '<span style="font-size:26px;font-weight:400;color:var(--hemma-popup-tiles-text-primary);line-height:1.15;">' + d + '</span>'
+                    + '<span style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary);">Mbit/s</span>'
                     + '</div>'
                     + '<div style="display:flex;align-items:center;gap:6px;margin-top:7px;margin-left:6px;">'
                     + '<span style="width:8px;height:8px;background:var(--hemma-badge-network-active-color, #ffd600);border-radius:50%;display:inline-block;flex-shrink:0;"></span>'
-                    + '<span style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);">Upload</span>'
+                    + '<span style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary);">Upload</span>'
                     + '</div>'
                     + '</div>';
                 ]]]`,
@@ -623,11 +609,9 @@ hemma_popup_network:
               },
             };
 
-            /* -------------------------------------------------------
-             * Ping Gauge Card
-             * ------------------------------------------------------- */
+            /* Ping Gauge Card */
 
-            const pingGaugeCard = {
+            const pingGaugeCard = _memoSub('gauge', String(pingId || dlId), () => ({
               type: 'custom:button-card',
               entity: pingId || dlId,
               tap_action: pingId ? { action: 'more-info' } : { action: 'none' },
@@ -662,20 +646,18 @@ hemma_popup_network:
                     + (ping != null ? '<circle cx="50" cy="50" r="' + pingRadius + '" fill="none" stroke="' + pingColor + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + pingCircumference + '" stroke-dashoffset="' + pingDashOffset + '"/>' : '')
                     + '</svg>'
                     + '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">'
-                    + '<div style="font-size:11px;color:var(--hemma-popup-tile-text-muted);letter-spacing:.08em;font-weight:500;">PING</div>'
+                    + '<div style="font-size:11px;color:var(--hemma-popup-tiles-text-muted);letter-spacing:.08em;font-weight:500;">PING</div>'
                     + '<div style="color:' + pingColor + ';font-size:28px;font-weight:600;line-height:1;">' + fmtPing + '</div>'
-                    + '<div style="color:var(--hemma-popup-tile-text-secondary);font-size:14px;margin-top:-4px;">ms</div>'
+                    + '<div style="color:var(--hemma-popup-tiles-text-secondary);font-size:14px;margin-top:-4px;">ms</div>'
                     + '</div>'
                     + '</div>';
                 ]]]`,
               },
-            };
+            }));
 
-            /* -------------------------------------------------------
-             * Right Column: status badge + ping gauge
-             * ------------------------------------------------------- */
+            /* Right Column: status badge + ping gauge */
 
-            const rightColCard = {
+            const rightColCard = _memoSub('rightcol', String(statusRaw), () => ({
               type: 'custom:button-card',
               entity: dlId,
               tap_action: { action: 'none' },
@@ -687,21 +669,17 @@ hemma_popup_network:
                   { display: 'flex' }, { 'flex-direction': 'column' }, { 'align-items': 'flex-end' }, { gap: '28px' },
                 ],
                 custom_fields: {
-                  pill: [{ flex: '0 0 auto' }],
-                  ring: [{ flex: '0 0 auto' }],
+                  ring: [{ flex: '0 0 auto' }, { 'margin-top': '66px' }],
                 },
               },
               custom_fields: {
-                pill: { card: statusBadgeCard },
                 ring: { card: pingGaugeCard },
               },
-            };
+            }));
 
-            /* -------------------------------------------------------
-             * Header Card
-             * ------------------------------------------------------- */
+            /* Header Card */
 
-            const headerCard = {
+            const headerCard = _memoSub('header', String(statusRaw), () => ({
               ...baseCard,
               entity: dlId,
               variables: {
@@ -750,64 +728,84 @@ hemma_popup_network:
                   if (dlOk || ulOk) { advice = max < idleT ? 'Connection idle' : tier + ' ' + dir; }
                   else { advice = 'No status data'; }
                   const room = variables.room || 'Network';
-                  return '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tile-text-primary);text-align:left;">'
+                  return '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tiles-text-primary);text-align:left;">'
                     + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;">' + room + '</div>'
-                    + '<div style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);font-weight:400;margin-top:2px;">Internet \xb7 Network</div>'
+                    + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary);font-weight:400;margin-top:2px;">Internet \xb7 Network</div>'
                     + '<div style="font-size:22px;font-weight:400;letter-spacing:-.5px;margin-top:20px;margin-bottom:16px;">' + advice + '</div>'
                     + '</div>';
                 ]]]`,
                 right: { card: rightColCard },
                 stats: { card: statsWrapperCard },
               },
-            };
+            }));
 
-            /* -------------------------------------------------------
-             * Graph Card
-             * ------------------------------------------------------- */
+            /* Graph Card */
 
-            const graphEntities = [
-              {
-                entity: dlId,
-                name: 'Download',
-                color: 'var(--hemma-badge-network-low-color, #44e371)',
-              },
-            ];
-
+            const networkSeries = [{
+              entity: dlId,
+              name: 'Download',
+              color: '#30D158',
+              type: 'area',
+              curve: 'monotoneCubic',
+              stroke_width: 2.5,
+              float_precision: 1,
+              extend_to: 'now',
+              group_by: { func: 'avg', duration: '10min', fill: 'last' },
+            }];
             if (ulId) {
-              graphEntities.push({
+              networkSeries.push({
                 entity: ulId,
                 name: 'Upload',
-                color: 'var(--hemma-badge-network-active-color, #ffd600)',
-                y_axis: 'secondary',
+                color: '#FFD60A',
+                type: 'area',
+                curve: 'monotoneCubic',
+                stroke_width: 2.5,
+                float_precision: 1,
+                extend_to: 'now',
+                group_by: { func: 'avg', duration: '10min', fill: 'last' },
               });
             }
 
             const graphCard = {
-              type: 'custom:mini-graph-card',
-              entities: graphEntities,
-              hours_to_show: 12,
-              points_per_hour: 2,
-              line_width: 3,
-              animate: true,
-              smoothing: true,
-              hour24: true,
-              height: 70,
-              decimals: 0,
-              show: {
-                name: false,
-                icon: false,
-                state: false,
-                legend: false,
-                labels: false,
-                fill: 'fade',
-                points: false,
+              type: 'custom:apexcharts-card',
+              graph_span: '2h',
+              header: { show: false },
+              yaxis: [{ min: 0, show: false }],
+              series: networkSeries,
+              apex_config: {
+                noData: { text: '' },
+                chart: {
+                  events: { mounted: chartEnter, updated: chartEnter },
+                  height: 88,
+                  background: 'transparent',
+                  toolbar: { show: false },
+                  zoom: { enabled: false },
+                  animations: { enabled: true, speed: 300, animateGradually: { enabled: false }, dynamicAnimation: { speed: 300 } },
+                },
+                theme: { mode: 'dark' },
+                stroke: { curve: 'monotoneCubic', width: 2.5, lineCap: 'round' },
+                grid: { show: false, padding: { left: 0, right: 0, top: -8, bottom: -12 } },
+                xaxis: { labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false } },
+                dataLabels: { enabled: false },
+                legend: { show: false },
+                tooltip: {
+                  enabled: true,
+                  shared: true,
+                  intersect: false,
+                  theme: 'dark',
+                  x: { show: true, format: tooltipTimeFormat },
+                  fixed: { enabled: false },
+                },
+                fill: {
+                  type: 'gradient',
+                  gradient: { type: 'vertical', shadeIntensity: 0, opacityFrom: 0.55, opacityTo: 0.0, stops: [0, 100] },
+                },
+                markers: { size: 0, hover: { size: 5 } },
               },
               card_mod: { style: graphStyle },
             };
 
-            /* -------------------------------------------------------
-             * Tiles
-             * ------------------------------------------------------- */
+            /* Tiles */
 
             const tileThresh = (val, maxScale) => {
               if (val == null) {
@@ -883,7 +881,7 @@ hemma_popup_network:
                     const val = isNaN(v) ? null : v;
                     const maxScale = ${maxScale};
 
-                    let pct = 0, label = '—', color = 'var(--hemma-popup-tile-text-muted, var(--disabled-text-color, rgba(255,255,255,0.4)))';
+                    let pct = 0, label = '—', color = 'var(--hemma-popup-tiles-text-muted, var(--disabled-text-color, rgba(255,255,255,0.4)))';
                     if (val != null) {
                       if (val < 1)       { pct = val * 15;                                                      label = 'Idle';   color = 'var(--hemma-badge-network-idle-color, rgba(255,255,255,0.90))'; }
                       else if (val < 10) { pct = 15 + ((val - 1) / 9) * 25;                                    label = 'Light';  color = 'var(--hemma-badge-network-low-color, #44e371)'; }
@@ -891,12 +889,7 @@ hemma_popup_network:
                       else               { pct = Math.min(100, 70 + ((val - 50) / Math.max(1, maxScale - 50)) * 30); label = 'High'; color = 'var(--hemma-badge-network-high-color, #ff9230)'; }
                     }
 
-                    let gradient;
-                    if (val == null)    gradient = 'rgba(255,255,255,0.12)';
-                    else if (val < 1)   gradient = 'linear-gradient(90deg,#8e8e93 0%,#b0b0b5 100%)';
-                    else if (val < 10)  gradient = 'linear-gradient(90deg,#57FFFC 0%,#54F2A0 35%,#65F785 70%,#4CFA57 100%)';
-                    else if (val < 50)  gradient = 'linear-gradient(90deg,#FFD166 0%,#FFB347 100%)';
-                    else                gradient = 'linear-gradient(90deg,#FF7A59 0%,#FF4D6D 100%)';
+                    const gradient = val == null ? 'rgba(255,255,255,0.12)' : color;
 
                     const prec = hass?.entities?.['${entityId}']?.display_precision ?? s?.attributes?.suggested_display_precision ?? null;
                     const display = val == null ? '—' : (prec != null ? val.toFixed(prec) : (val >= 100 ? Math.round(val).toString() : val.toFixed(1)));
@@ -907,20 +900,20 @@ hemma_popup_network:
 
                     const iconAttr = s?.attributes?.icon || hass?.entities?.['${entityId}']?.icon || null;
                     const iconHtml = iconAttr
-                      ? '<ha-icon icon="' + iconAttr + '" style="--mdc-icon-size:13px;width:13px;height:13px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--hemma-popup-tile-text-muted);"></ha-icon>'
+                      ? '<ha-icon icon="' + iconAttr + '" style="--mdc-icon-size:13px;width:13px;height:13px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--hemma-popup-tiles-text-muted);"></ha-icon>'
                       : '';
 
                     return '<div style="margin-top:1px;min-width:0;overflow:hidden;">'
                       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">'
                       + '<div style="display:flex;align-items:center;gap:6px;min-width:0;">'
                       + iconHtml
-                      + '<span style="font-size:13px;color:var(--hemma-popup-tile-text-primary, var(--primary-text-color));font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;">' + nameLabel + '</span>'
+                      + '<span style="font-size:13px;color:var(--hemma-popup-tiles-text-primary, var(--primary-text-color));font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;">' + nameLabel + '</span>'
                       + '</div>'
-                      + '<span style="font-size:13px;color:' + (val != null ? color : 'var(--hemma-popup-tile-text-muted, var(--disabled-text-color, rgba(255,255,255,0.35)))') + ';white-space:nowrap;font-weight:600;letter-spacing:.01em;flex-shrink:0;">' + label + '</span>'
+                      + '<span style="font-size:13px;color:' + (val != null ? color : 'var(--hemma-popup-tiles-text-muted, var(--disabled-text-color, rgba(255,255,255,0.35)))') + ';white-space:nowrap;font-weight:600;letter-spacing:.01em;flex-shrink:0;">' + label + '</span>'
                       + '</div>'
                       + '<div style="display:flex;align-items:baseline;gap:3px;">'
-                      + '<span style="font-size:20px;font-weight:400;color:' + (val != null ? 'var(--hemma-popup-tile-text-primary, var(--primary-text-color, #fff))' : 'var(--hemma-popup-tile-text-muted, var(--disabled-text-color, rgba(255,255,255,0.35)))') + ';line-height:1;white-space:nowrap;">' + display + '</span>'
-                      + (val != null ? '<span style="font-size:12px;color:var(--hemma-popup-tile-text-muted, var(--secondary-text-color));white-space:nowrap;">Mbit/s</span>' : '')
+                      + '<span style="font-size:20px;font-weight:400;color:' + (val != null ? 'var(--hemma-popup-tiles-text-primary, var(--primary-text-color, #fff))' : 'var(--hemma-popup-tiles-text-muted, var(--disabled-text-color, rgba(255,255,255,0.35)))') + ';line-height:1;white-space:nowrap;">' + display + '</span>'
+                      + (val != null ? '<span style="font-size:12px;color:var(--hemma-popup-tiles-text-muted, var(--secondary-text-color));white-space:nowrap;">Mbit/s</span>' : '')
                       + '</div>'
                       + '<div style="position:relative;height:8px;width:100%;background:var(--hemma-popup-progress-track, rgba(255,255,255,0.09));border-radius:999px;overflow:hidden;margin-top:10px;">'
                       + (val != null ? '<div style="position:absolute;inset:0 auto 0 0;width:' + pct.toFixed(1) + '%;border-radius:999px;background:' + gradient + ';transition:width .35s ease;"></div>' : '')
@@ -964,9 +957,7 @@ hemma_popup_network:
               },
             };
 
-            /* -------------------------------------------------------
-             * Divider
-             * ------------------------------------------------------- */
+            /* Divider */
 
             const dividerCard = {
               ...baseCard,
@@ -988,9 +979,7 @@ hemma_popup_network:
               },
             };
 
-            /* -------------------------------------------------------
-             * Action Buttons
-             * ------------------------------------------------------- */
+            /* Action Buttons */
 
             const makeActionButton = (entityId, label, statusId, confirmHelper, doneHelper) => {
               const s = entityId ? states[entityId] : null;
@@ -1022,12 +1011,12 @@ hemma_popup_network:
                 'ha-ripple { display: none !important; }',
               ].join('\n');
 
-              /* ---- Tap actions ---- */
+              /* Tap actions */
               const cancelTap = _ch
                 ? { action: 'call-service', service: 'input_boolean.turn_off', service_data: { entity_id: _ch } }
                 : { action: 'none' };
 
-              /* ---- Cancel ---- */
+              /* Cancel */
               const cancelPillCard = {
                 type: 'custom:button-card', name: 'Cancel', tap_action: cancelTap,
                 show_icon: false, show_name: true, show_label: false, show_state: false,
@@ -1038,7 +1027,7 @@ hemma_popup_network:
                 },
               };
 
-              /* ---- Smart action ---- */
+              /* Smart action */
               // Name
               const actionName = (_ch || _dh) ? `[[[
                 const ch = '${_ch}', dh = '${_dh}';
@@ -1082,8 +1071,8 @@ hemma_popup_network:
                 const ch = '${_ch}', dh = '${_dh}';
                 if (dh && states[dh]?.state === 'on') return 'var(--hemma-badge-network-online-color,#44e371)';
                 if (ch && states[ch]?.state === 'on') return 'var(--hemma-popup-red-color,#ff453a)';
-                return 'var(--hemma-popup-tile-text-primary)';
-              ]]]` : 'var(--hemma-popup-tile-text-primary)';
+                return 'var(--hemma-popup-tiles-text-primary)';
+              ]]]` : 'var(--hemma-popup-tiles-text-primary)';
 
               const actionFontWeight = (_ch || _dh) ? `[[[
                 const ch = '${_ch}', dh = '${_dh}';
@@ -1124,21 +1113,21 @@ hemma_popup_network:
                 },
               };
 
-              /* ---- Display ---- */
+              /* Display */
               const infoOpacity = (_ch || _dh)
                 ? `[[[return (states['${_ch}']?.state === 'on' || states['${_dh}']?.state === 'on') ? '0' : '1']]]`
                 : '1';
               const infoPE = (_ch || _dh)
                 ? `[[[return (states['${_ch}']?.state === 'on' || states['${_dh}']?.state === 'on') ? 'none' : 'auto']]]`
                 : 'auto';
-              // Cancel: display:none/flex + animation-fill-mode:both — from{opacity:0} applied in same tick as display:flex
+              // animation-fill-mode:both applies from{opacity:0} the same tick display:flex takes effect.
               const caVisible = _ch
                 ? `states['${_ch}']?.state === 'on' && states['${_dh}']?.state !== 'on'`
                 : 'false';
               const caDisplay      = _ch ? `[[[return ${caVisible} ? 'flex' : 'none']]]` : 'none';
               const caContainerAnim = _ch ? `[[[return ${caVisible} ? 'hemma-ca-in' : 'none']]]` : 'none';
 
-              /* ---- Info field ---- */
+              /* Info field */
               const infoField = _sid ? `[[[
                 const sid = '${_sid}', name = '${_esc}';
                 const ss = states[sid];
@@ -1147,11 +1136,11 @@ hemma_popup_network:
                 if (!unav) { if (ss.state === 'on') { stt = 'Connected'; stc = 'var(--hemma-badge-network-online-color,#44e371)'; } else { stt = 'Offline'; stc = 'var(--hemma-badge-network-offline-color,#ff453a)'; } }
                 const sr = stt ? '<div style="margin-top:0;"><span style="font-size:12px;color:' + stc + ';font-weight:500;letter-spacing:.01em;">' + stt + '</span></div>' : '';
                 return '<div style="display:flex;flex-direction:column;align-items:flex-start;">'
-                  + '<span style="font-size:13px;font-weight:600;color:var(--hemma-popup-tile-text-primary);letter-spacing:.01em;white-space:nowrap;">' + name + '</span>'
+                  + '<span style="font-size:13px;font-weight:600;color:var(--hemma-popup-tiles-text-primary);letter-spacing:.01em;white-space:nowrap;">' + name + '</span>'
                   + sr + '</div>';
-              ]]]` : '<div style="display:flex;flex-direction:column;align-items:flex-start;"><span style="font-size:13px;font-weight:600;color:var(--hemma-popup-tile-text-primary);letter-spacing:.01em;white-space:nowrap;">' + nameLabel + '</span></div>';
+              ]]]` : '<div style="display:flex;flex-direction:column;align-items:flex-start;"><span style="font-size:13px;font-weight:600;color:var(--hemma-popup-tiles-text-primary);letter-spacing:.01em;white-space:nowrap;">' + nameLabel + '</span></div>';
 
-              /* ---- Outer tile ---- */
+              /* Outer tile */
               const outerTap = _ch ? {
                 action: `[[[return states['${_ch}']?.state === 'on' ? 'call-service' : '${_sid || entityId ? 'more-info' : 'none'}']]]`,
                 service: 'input_boolean.turn_off',
@@ -1175,7 +1164,7 @@ hemma_popup_network:
                   },
                 },
                 custom_fields: {
-                  icon:   '<ha-icon icon="' + iconAttr + '" style="--mdc-icon-size:22px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--hemma-popup-tile-text-muted);"></ha-icon>',
+                  icon:   '<ha-icon icon="' + iconAttr + '" style="--mdc-icon-size:22px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--hemma-popup-tiles-text-muted);"></ha-icon>',
                   info:   infoField,
                   ca:     { card: cancelPillCard },
                   action: entityId ? { card: actionPillCard } : '<div></div>',
@@ -1216,9 +1205,7 @@ hemma_popup_network:
               },
             } : null;
 
-            /* -------------------------------------------------------
-             * Final Stack
-             * ------------------------------------------------------- */
+            /* Final Stack */
 
             const _cards = [headerCard, graphCard, tilesCard];
             if (hasActions) _cards.push(actionsCard);

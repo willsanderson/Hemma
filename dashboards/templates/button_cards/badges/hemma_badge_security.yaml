@@ -1,0 +1,160 @@
+# Security Sub-Badge
+# One template covering every security entity type, switching on domain rather
+# than duplicating a near-identical template per kind:
+#   lock.*                 -> Locked / Unlocked
+#   alarm_control_panel.*  -> Armed Home / Armed Away / Disarmed / Triggered
+#   binary_sensor.*        -> Open / Closed  (door, window, garage, opening)
+#   camera.*               -> Live / Idle
+#   cover.* (garage)       -> Open / Closed
+#
+# Variables:
+#   enabled - show/hide this badge (default: true)
+#   label   - title override; falls back to the entity's friendly name
+hemma_badge_security:
+  template: [hemma_badge_base]
+
+  show_state: false
+  show_label: false
+  show_icon: true
+
+  variables:
+    enabled: true
+    label: null
+    icon_size: null
+
+  tap_action:
+    action: more-info
+  hold_action:
+    action: more-info
+  double_tap_action:
+    action: none
+
+  icon: >
+    [[[
+      const id = String(entity?.entity_id || '');
+      const dom = id.split('.')[0];
+      const s = String(entity?.state || '').toLowerCase();
+      const dc = String(entity?.attributes?.device_class || '').toLowerCase();
+
+      if (dom === 'lock') return s === 'locked' ? 'mdi:lock' : 'mdi:lock-open-variant';
+      if (dom === 'alarm_control_panel')
+        return s === 'disarmed' ? 'mdi:shield-off-outline' : 'mdi:shield-check';
+      if (dom === 'camera') return 'mdi:cctv';
+      if (dc === 'garage' || dc === 'garage_door') return 'mdi:garage';
+      if (dc === 'window') return s === 'on' ? 'mdi:window-open' : 'mdi:window-closed';
+      if (dc === 'motion') return 'mdi:motion-sensor';
+      return s === 'on' ? 'mdi:door-open' : 'mdi:door-closed';
+    ]]]
+
+  styles:
+    card:
+      - display: >
+          [[[
+            const v = variables?.enabled;
+            const enabled = (v === undefined || v === null) ? true :
+              (typeof v === 'boolean') ? v :
+              (typeof v === 'number') ? v !== 0 :
+              !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
+            const st = String(entity?.state ?? '').trim().toLowerCase();
+            const dead = !entity?.entity_id || !st || ['unknown','unavailable'].includes(st);
+            return (!enabled || dead) ? 'none' : 'inline-grid';
+          ]]]
+      - --hemma-badge-icon-color: >
+          [[[
+            const id = String(entity?.entity_id || '');
+            const dom = id.split('.')[0];
+            const s = String(entity?.state || '').toLowerCase();
+            let secure = true;
+            if (dom === 'lock') secure = s === 'locked';
+            else if (dom === 'alarm_control_panel') secure = s !== 'disarmed' && s !== 'triggered';
+            else if (dom === 'binary_sensor') secure = s === 'off';
+            else if (dom === 'cover') secure = s === 'closed';
+            return secure
+              ? 'var(--hemma-badge-security-color, #00c3d0)'
+              : 'var(--hemma-badge-security-alert-color, #ff9f0a)';
+          ]]]
+      - --icon-primary-color: var(--hemma-badge-icon-color)
+      - --paper-item-icon-color: var(--hemma-badge-icon-color)
+      - --state-icon-color: var(--hemma-badge-icon-color)
+
+    icon:
+      - color: var(--hemma-badge-icon-color)
+
+  name: >
+    [[[
+      const esc = (t) => String(t ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+      const id  = String(entity?.entity_id || '');
+      const dom = id.split('.')[0];
+      const s   = String(entity?.state || '').toLowerCase();
+      const dc  = String(entity?.attributes?.device_class || '').toLowerCase();
+
+      const title = variables?.label || entity?.attributes?.friendly_name || 'Security';
+
+      let sub = '';
+      if (dom === 'lock') {
+        sub = s === 'locked' ? 'Locked' : s === 'unlocked' ? 'Unlocked' : 'Jammed';
+      } else if (dom === 'alarm_control_panel') {
+        sub = s === 'disarmed' ? 'Disarmed'
+            : s === 'triggered' ? 'Triggered'
+            : s === 'armed_home' ? 'Armed Home'
+            : s === 'armed_away' ? 'Armed Away'
+            : 'Armed';
+      } else if (dom === 'camera') {
+        sub = s === 'recording' ? 'Recording' : s === 'streaming' ? 'Live' : 'Idle';
+      } else if (dom === 'cover') {
+        sub = s === 'closed' ? 'Closed' : 'Open';
+      } else if (dc === 'motion') {
+        sub = s === 'on' ? 'Motion' : 'Clear';
+      } else {
+        sub = s === 'on' ? 'Open' : 'Closed';
+      }
+
+      return `
+        <div class="badge-wrap">
+          <div class="badge-title">${esc(title)}</div>
+          <div class="badge-sub">${esc(sub)}</div>
+        </div>
+      `;
+    ]]]
+
+  extra_styles: >
+    [[[
+      const v = variables?.enabled;
+      const enabled = (v === undefined || v === null) ? true :
+        (typeof v === 'boolean') ? v :
+        (typeof v === 'number') ? v !== 0 :
+        !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
+      const st = String(entity?.state ?? '').trim().toLowerCase();
+      const dead = !entity?.entity_id || !st || ['unknown','unavailable'].includes(st);
+
+      const dom = String(entity?.entity_id || '').split('.')[0];
+      let name = 'lock';
+      if (dom === 'camera') name = 'doorbell';
+      else if (dom === 'lock') name = st === 'locked' ? 'lock-fill' : 'lock-open-fill';
+      else if (dom === 'binary_sensor' || dom === 'cover') name = st === 'on' || st === 'open' ? 'lock-open' : 'lock';
+      const URL = window.hemmaIconUrl(name);
+      // One size for every security glyph so the group badge and its
+      // sub-badges are visually identical. The lock glyphs carry 6% of
+      // transparent padding in their viewBox, so they need 6% more here.
+      const SIZE = variables?.icon_size || (name.startsWith('lock') ? '72%' : '68%');
+
+      return `:host{display:${(!enabled || dead) ? 'none' : 'inline-block'} !important;}
+        #img-cell, .img-cell{ position: relative; }
+
+        #img-cell #icon, .img-cell #icon{
+          color: transparent !important;
+          opacity: 0 !important;
+        }
+
+        #img-cell::before,
+        .img-cell::before{
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-color: var(--hemma-badge-icon-color, var(--hemma-badge-security-color, #00c3d0)) !important;
+          -webkit-mask: url('${URL}') no-repeat center / auto ${SIZE};
+          mask: url('${URL}') no-repeat center / auto ${SIZE};
+          transform: translateZ(0);
+        }`;
+    ]]]

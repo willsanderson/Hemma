@@ -1,0 +1,4 @@
+# Hemma Mobile — view layout (grid-layout options for the single mobile view).
+grid-template-columns: 1fr
+margin: 0
+padding: "0 0 calc(env(safe-area-inset-bottom, 0px) + 16px)"

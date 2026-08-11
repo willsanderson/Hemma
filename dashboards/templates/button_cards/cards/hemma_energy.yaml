@@ -8,8 +8,12 @@ hemma_energy:
   show_entity_picture: true
 
   variables:
+    mobile_filter_category: energy
     icon: energy
     high_threshold: 500
+    normal_threshold: 200
+    heavy_threshold: 1000
+    extreme_threshold: 3000
     room_name: null
     entity_power: null
     entity_usage_today: null
@@ -25,11 +29,16 @@ hemma_energy:
 
   name: Current Consumption
 
+  # Idle · Normal · Heavy Usage · Extreme Usage (same tiers as the popup pill)
   state_display: |
     [[[
-      const w = parseFloat(entity?.state);
-      if (!Number.isFinite(w)) return '— W';
-      return Math.round(w) + ' W';
+      const id = variables.entity_power || entity?.entity_id;
+      const w = parseFloat(states[id]?.state);
+      if (!Number.isFinite(w)) return 'Unavailable';
+      if (w >= Number(variables.extreme_threshold ?? 3000)) return 'Extreme Usage';
+      if (w >= Number(variables.heavy_threshold   ?? 1000)) return 'Heavy Usage';
+      if (w >= Number(variables.normal_threshold  ?? 200))  return 'Normal';
+      return 'Idle';
     ]]]
 
   state:
@@ -42,6 +51,7 @@ hemma_energy:
       styles:
         card:
           - "--hemma-active-overlay-opacity": "1"
+          - --hemma-entity-overlay-tint: var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))
           - "--hemma-active-overlay-dur": "0s"
           - --hemma-entity-top-gradient: none
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important

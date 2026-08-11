@@ -1,0 +1,119 @@
+# Presence Card
+# Displays home/away status for a single person sensor (e.g. sensor.will_status).
+# Read-only — no tap controls.
+#
+# Variables:
+#   person_name  - display name override (defaults to first word of friendly_name,
+#                  with any trailing " Status" stripped automatically)
+hemma_presence:
+  template:
+    - hemma_entity
+
+  show_icon: false
+  show_entity_picture: true
+  show_last_changed: false
+  show_state: true
+
+  tap_action:
+    action: more-info
+
+  hold_action:
+    action: none
+
+  double_tap_action:
+    action: none
+
+  icon_tap_action:
+    action: more-info
+
+  entity_picture: >
+    [[[
+      return entity?.attributes?.entity_picture
+        || hass.states[variables?.person_entity]?.attributes?.entity_picture
+        || null;
+    ]]]
+
+  variables:
+    person_name: null
+    person_entity: null
+
+  extra_styles: |
+    #img-cell img#icon {
+      position: absolute !important;
+      top: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      object-fit: cover !important;
+      border-radius: 50% !important;
+      opacity: 1 !important;
+      z-index: 10 !important;
+      flex: none !important;
+      filter: none !important;
+    }
+
+  styles:
+    card:
+      - --hemma-icon-mask-active: "0"
+      - background: >
+          [[[
+            const s = (entity?.state || '').toLowerCase().replace(/_/g, ' ');
+            const home = s === 'home' || s === 'just arrived';
+            return home
+              ? 'var(--hemma-entity-background-active)'
+              : 'var(--hemma-entity-background)';
+          ]]]
+      - --hemma-icon-color: >
+          [[[
+            const s = (entity?.state || '').toLowerCase().replace(/_/g, ' ');
+            const home = s === 'home' || s === 'just arrived';
+            return home
+              ? 'rgba(0,0,0,0.75)'
+              : 'var(--badge-title-inactive, var(--secondary-text-color))';
+          ]]]
+      - --hemma-icon-circle-bg: >
+          [[[
+            const s = (entity?.state || '').toLowerCase().replace(/_/g, ' ');
+            const home = s === 'home' || s === 'just arrived';
+            return home
+              ? 'rgba(0,0,0,0.14)'
+              : 'rgba(255,255,255,0.12)';
+          ]]]
+    name:
+      - color: >
+          [[[
+            const s = (entity?.state || '').toLowerCase().replace(/_/g, ' ');
+            const home = s === 'home' || s === 'just arrived';
+            return home
+              ? 'var(--hemma-entity-name-active)'
+              : 'var(--hemma-entity-name)';
+          ]]]
+    state:
+      - color: >
+          [[[
+            const s = (entity?.state || '').toLowerCase().replace(/_/g, ' ');
+            const home = s === 'home' || s === 'just arrived';
+            return home
+              ? 'var(--hemma-entity-state-active)'
+              : 'var(--hemma-entity-state)';
+          ]]]
+
+  state_display: >
+    [[[
+      const s = (entity?.state || '').toLowerCase().replace(/_/g, ' ');
+      if (s === 'home' || s === 'just arrived') return 'Home';
+      if (s === 'not home' || s === 'away')     return 'Away';
+      if (!s || ['unavailable', 'unknown'].includes(s)) return '';
+      return (entity?.state || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    ]]]
+
+  name: >
+    [[[
+      if (variables?.person_name) return variables.person_name;
+      const fn = entity?.attributes?.friendly_name || '';
+      return fn.replace(/\s*status\s*/i, '').trim().split(' ')[0] || 'Person';
+    ]]]

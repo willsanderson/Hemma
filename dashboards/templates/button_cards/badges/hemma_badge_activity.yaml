@@ -1,0 +1,207 @@
+# Activity Badge
+hemma_badge_activity:
+  template: [hemma_badge_base, hemma_badge_media]
+  show_state: false
+  show_label: false
+  show_entity_picture: true
+  tap_action: { action: more-info }
+  hold_action: { action: more-info }
+
+  card_mod:
+    style: >
+      [[[
+        const v = variables?.enabled;
+        const isEnabled = () => {
+          if (v === undefined || v === null) return true;
+          if (typeof v === 'boolean') return v;
+          if (typeof v === 'number') return v !== 0;
+          const s = String(v).trim().toLowerCase();
+          return !['false','0','no','off','disabled'].includes(s);
+        };
+        if (!isEnabled()) return ':host { display: none !important; }';
+        return ':host { display: block; }';
+      ]]]
+
+  styles:
+    card:
+      - padding: "var(--hemma-media-badge-pad-v, 0px) calc(var(--hemma-badge-opacity, 1) * 14px) var(--hemma-media-badge-pad-v, 0px) calc(var(--hemma-badge-opacity, 1) * 12px) !important"
+      - max-width: "calc(var(--hemma-badge-opacity, 1) * var(--badge-media-max-width-current, 600px)) !important"
+      - min-height: "calc(var(--hemma-badge-opacity, 1) * (var(--badge-min-height-current, var(--badge-min-height, 50px)) + 3px)) !important"
+
+      - --hemma-badge-opacity: >
+          [[[
+            // Mirror onto the host as well as ha-card. styles.card writes only
+            // to ha-card, but :host rules — and the media rim, which reads its
+            // vars from :host — need this value too, or the rim animates on a
+            // different gate from the card it outlines.
+            const P = (v) => { try { this.style.setProperty('--hemma-badge-opacity', v); } catch (e) {} return v; };
+            return P((() => {
+            const cacheKey = '_hemmaBadgeActivityOpacity';
+            const v = variables?.enabled;
+            const isEnabled = () => {
+              if (v === undefined || v === null) return true;
+              if (typeof v === 'boolean') return v;
+              if (typeof v === 'number')  return v !== 0;
+              const s = String(v).trim().toLowerCase();
+              if (['false','0','no','off','disabled'].includes(s)) return false;
+              if (['true','1','yes','on','enabled'].includes(s))   return true;
+              return !!s;
+            };
+            if (!isEnabled()) return '0';
+
+            if (entity === undefined || entity === null) return this[cacheKey] || '0';
+
+            const s = String(entity?.state || '').toLowerCase();
+            const a = entity?.attributes || {};
+
+            if (['unavailable','unknown','off','standby'].includes(s)) { this[cacheKey] = '0'; return '0'; }
+            if (['playing','buffering','paused'].includes(s)) { this[cacheKey] = '1'; return '1'; }
+
+            const norm = (x) => String(x ?? '').trim();
+            const title  = norm(a.media_title || a.title);
+            const artist = norm(a.media_artist || a.artist || a.media_album_artist);
+            const app    = norm(a.app_name || a.source);
+
+            const r = (title || artist || app) ? '1' : '0';
+            this[cacheKey] = r;
+            return r;
+            })());
+          ]]]
+
+      - --hemma-badge-ptr: >
+          [[[
+            const v = variables?.enabled;
+            const isEnabled = () => {
+              if (v === undefined || v === null) return true;
+              if (typeof v === 'boolean') return v;
+              if (typeof v === 'number')  return v !== 0;
+              const s = String(v).trim().toLowerCase();
+              if (['false','0','no','off','disabled'].includes(s)) return false;
+              if (['true','1','yes','on','enabled'].includes(s))   return true;
+              return !!s;
+            };
+            if (!isEnabled()) return 'none';
+
+            const s = String(entity?.state || '').toLowerCase();
+            const a = entity?.attributes || {};
+
+            if (['unavailable','unknown','off','standby'].includes(s)) return 'none';
+            if (['playing','buffering','paused'].includes(s)) return 'auto';
+
+            const norm = (x) => String(x ?? '').trim();
+            const title  = norm(a.media_title || a.title);
+            const artist = norm(a.media_artist || a.artist || a.media_album_artist);
+            const app    = norm(a.app_name || a.source);
+
+            return (title || artist || app) ? 'auto' : 'none';
+          ]]]
+
+      - --bg-url: >
+          [[[
+            const cacheKey = '_hemmaMediaBgUrl';
+            const a = entity?.attributes || {};
+            const pref = a.entity_picture_local || a.entity_picture || a.media_image_url;
+
+            if (pref) {
+              const url = String(pref).startsWith('/') ? `${location.origin}${pref}` : pref;
+              if (this._hemmaBgRawUrl !== url) {
+                this._hemmaBgRawUrl = url;
+                const img = new Image();
+                img.onload = () => {
+                  if (this._hemmaBgRawUrl !== url) return;
+                  const wrapped = `url("${url}")`;
+                  this[cacheKey] = wrapped;
+                  const card = this.shadowRoot?.querySelector('ha-card');
+                  if (card) { card.style.setProperty('--bg-url', wrapped);
+                               card.style.setProperty('--hemma-badge-has-art', '1'); }
+                  this.requestUpdate?.();
+                };
+                img.src = url;
+              }
+            }
+            return this[cacheKey] || 'none';
+          ]]]
+
+    grid:
+      - grid-template-areas: '"i l"'
+      - grid-template-columns: min-content minmax(0, 1fr)
+      - column-gap: 6px
+      - row-gap: 0
+      - align-items: center
+
+    name:
+      - grid-area: l
+      - padding: 0 !important
+      - min-width: 0
+
+  entity_picture: >
+    [[[
+      const a = entity?.attributes || {};
+      const raw = a.entity_picture_local || a.entity_picture || a.media_image_url;
+      if (raw) return String(raw).startsWith('/') ? `${location.origin}${raw}` : raw;
+
+      const appName = String(a.app_name || a.source || '').toLowerCase();
+      const appId   = String(a.app_id || '').toLowerCase();
+      if (appName.includes('youtube') || appId.includes('youtube'))
+        return '/local/hemma/icons/youtube.png';
+
+      return null;
+    ]]]
+
+  name: >
+    [[[
+      // Mirrors hemma_now_playing's derivation exactly, so the same source
+      // reads identically on mobile and on desktop:
+      //   top    what is playing   (the game)
+      //   bottom device - person   ("PS5 - username")
+      const a = entity?.attributes || {};
+      const norm = (x) => String(x ?? '').trim();
+
+      const title = norm(a.full_title) || norm(a.media_title) || norm(a.title)
+        || norm(a.friendly_name) || 'Activity';
+
+      // friendly_name ("PS5"), not a.source — that is the verbose
+      // "PlayStation Network", which says nothing the console name doesn't.
+      const device = norm(a.friendly_name) || norm(a.source);
+      const who    = norm(a.user);
+      const sub    = [device, who].filter(Boolean).join(' · ');
+
+      const esc = (s) => String(s ?? '')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+
+      return `
+        <div class="badge-wrap">
+          <div class="badge-title">${esc(title)}</div>
+          <div class="badge-sub">${esc(sub)}</div>
+        </div>
+      `;
+    ]]]
+
+  extra_styles: |
+    @media (max-width: 767px) and (orientation: portrait) {
+      :host {
+        --badge-media-max-width-current: calc(100vw - 2 * var(--hero-gutter, 16px));
+      }
+    }
+
+    @media (max-height: 600px) and (orientation: landscape) {
+      :host {
+        --badge-media-max-width-current: calc(100vw - 2 * var(--hero-gutter, 16px));
+      }
+    }
+
+    ha-card {
+      opacity: calc((1 - var(--hemma-badge-enter-p)) * var(--hemma-row-fade, 1));
+      pointer-events: var(--hemma-badge-ptr, none);
+    }
+
+    #name{
+      display:flex !important;
+      align-items:center !important;
+      padding-block: 2px !important;
+      overflow: hidden !important;
+    }

@@ -1,0 +1,147 @@
+# Mobile Dashboard Background
+hemma_mobile_bg:
+  template: [hemma_shared]
+
+  show_icon: false
+  show_name: false
+  show_state: false
+  show_label: false
+  show_entity_picture: false
+  tap_action: {action: none}
+  hold_action: {action: none}
+  double_tap_action: {action: none}
+
+  variables:
+    preload_rooms: []
+
+  styles:
+    card:
+      - box-shadow: "none !important"
+      - border-radius: "0 !important"
+      #   :host { --hero-img-scale-current: var(--hero-img-scale-mobile, 1.04) }
+      - "--hero-img-scale": "1.0"
+      - "--hero-img-scale-mobile": "1.0"
+      - "--hero-img-scale-current": "1.0"
+      - "--hero-img-blur-current": "0px"
+
+      - "--hemma-safe-top": "env(safe-area-inset-top, 0px)"
+      - "--hemma-hero-overscan": "var(--hemma-mobile-hero-overscan, calc(3 * var(--hemma-mobile-hero-blur, 2px)))"
+      - background-color: "var(--hemma-mobile-hero-floor, #524f4d) !important"
+      - background-image: "none !important"
+
+  extra_styles: |
+    /* The card is position:fixed to the viewport, so it starts at the physical
+       top of the screen. The dashboard's content does not: HA pads #view by
+       env(safe-area-inset-top), ~59px on a notch/Dynamic Island iPhone and
+       exactly 0 in Chrome's device emulation — which is why this looks correct
+       in DevTools and cropped on the phone. So the wallpaper's whole vertical
+       coordinate system absorbs the same inset: the photo grows by it (staying
+       full-bleed to the physical top, no dead strip under the status bar) and
+       every stop shifts down by it. Resolves to +0px where there is no safe
+       area, so desktop is unaffected. --hemma-safe-top is set in styles.card, on
+       ha-card, so both pseudo-elements inherit it. */
+
+    /* LAYER 2 — the photo, uniformly blurred.
+       A flat 2px, matching the desktop hero's --hero-img-blur, rather than a
+       blur that ramps down the image. A progressive blur needs a tall photo to
+       read: at hero-height 28% the ramp had ~1% of screen to happen in, and the
+       colour gradient was already ~94% opaque by the time it got there, so it
+       was invisible. The gradient does the dissolving; this just takes the
+       hard edge off the photo so it sits behind the title rather than fighting
+       it. Raise hero-height above ~55% and a ramped blur becomes worth having
+       again. */
+    /* The blur has to have image to sample at every edge of this box or it
+       averages against transparent and lays a dark rim over the wallpaper. The
+       sides are bought by growing the box past the card, which is
+       overflow:hidden, so the rim is clipped away off-screen. The top can't be
+       bought the same way on its own: the photo is top-anchored, so an
+       oversized box just puts empty space above the image and the rim comes
+       back at y=0. It needs the box AND the photo to overhang, which is what
+       the +overscan on background-size does — the photo grows upward out of
+       the viewport while its bottom edge stays exactly on the gradient
+       handoff. `bottom: overscan` keeps the box's height at 100dvh so the
+       percentage in background-size still resolves against the viewport;
+       without it the join would drift down by 0.62 × overscan. */
+    :host ha-card::after {
+      content: "" !important;
+      inset:
+        calc(-1 * var(--hemma-hero-overscan))
+        calc(-1 * var(--hemma-hero-overscan))
+        var(--hemma-hero-overscan) !important;
+      z-index: -10 !important;
+      pointer-events: none !important;
+      background-color: transparent !important;
+      background-image: var(--hemma-mobile-hero-img) !important;
+      background-size:
+        auto calc(var(--hemma-mobile-hero-height, 28%) + var(--hemma-safe-top)
+                  + var(--hemma-hero-overscan)) !important;
+      background-position:
+        var(--hemma-mobile-hero-x, 50%) var(--hemma-mobile-hero-y, 0%) !important;
+      background-repeat: no-repeat !important;
+      filter:
+        blur(var(--hemma-mobile-hero-blur, 2px))
+        contrast(var(--hemma-mobile-hero-photo-contrast, 0.90))
+        saturate(var(--hemma-mobile-hero-photo-saturate, 0.94))
+        brightness(var(--hemma-mobile-hero-photo-brightness, 1.05)) !important;
+      transform: none !important;
+      animation: none !important;
+      -webkit-mask-image: none !important;
+      mask-image: none !important;
+    }
+
+    /* LAYER 3 — wash, mesh and the colour gradient. No mask and no filter, so
+       the fade is completely independent of the blur beneath it. Layer order
+       within background-image is first = topmost. */
+    :host ha-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -9;
+      pointer-events: none;
+      background-image:
+        /* Wash */
+        linear-gradient(
+          to bottom,
+          var(--hemma-mobile-hero-tint-top, rgba(28,24,20,0.34)) 0%,
+          var(--hemma-mobile-hero-tint-bot, rgba(28,24,20,0.12))
+            calc(var(--hemma-mobile-hero-wash-mid, 27%) + var(--hemma-safe-top)),
+          transparent
+            calc(var(--hemma-mobile-hero-wash-end, 70%) + var(--hemma-safe-top))),
+        /* Mesh Colors */
+        radial-gradient(
+          var(--hemma-mobile-hero-mesh-a-size, 120% 46%) at
+            var(--hemma-mobile-hero-mesh-a-pos, 18% 58%),
+          var(--hemma-mobile-hero-mesh-a, rgba(226,206,176,0.34)) 0%,
+          transparent 72%),
+        radial-gradient(
+          var(--hemma-mobile-hero-mesh-b-size, 130% 50%) at
+            var(--hemma-mobile-hero-mesh-b-pos, 88% 92%),
+          var(--hemma-mobile-hero-mesh-b, rgba(150,132,112,0.30)) 0%,
+          transparent 70%),
+        /* The dissolve the photo hands over to. */
+        linear-gradient(
+          var(--hemma-mobile-hero-angle, 180deg),
+          transparent
+            calc(var(--hemma-mobile-hero-fade-start, 12%) + var(--hemma-safe-top)),
+          var(--hemma-mobile-hero-c-handoff, #90857b)
+            calc(var(--hemma-mobile-hero-p-handoff, 30%) + var(--hemma-safe-top)),
+          var(--hemma-mobile-hero-c-upper, #807870)
+            calc(var(--hemma-mobile-hero-p-upper, 55%) + var(--hemma-safe-top)),
+          var(--hemma-mobile-hero-c-mid, #706a64)
+            calc(var(--hemma-mobile-hero-p-mid, 67%) + var(--hemma-safe-top)),
+          var(--hemma-mobile-hero-c-lower, #615d59)
+            calc(var(--hemma-mobile-hero-p-lower, 80%) + var(--hemma-safe-top)),
+          var(--hemma-mobile-hero-c-base, #524f4d)
+            calc(var(--hemma-mobile-hero-p-base, 100%) + var(--hemma-safe-top)));
+      background-size:
+        100% 100%,
+        100% 100%,
+        100% 100%,
+        100% 100%;
+      background-position:
+        0 0,
+        0 0,
+        0 0,
+        0 0;
+      background-repeat: no-repeat;
+    }

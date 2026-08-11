@@ -1,7 +1,4 @@
 # Recently Added Popup
-# vertical-stack: static header card + swipe-card carousel.
-# Only the poster/info content slides; the header never moves.
-# Pill-shaped pagination bars styled via swipe-card-patch.js.
 hemma_popup_recently_added:
 
   tap_action:
@@ -25,9 +22,9 @@ hemma_popup_recently_added:
               ha-adaptive-dialog, ha-dialog {
                 --dialog-surface-margin-top: 100px;
                 --dialog-content-padding: 0px;
-                --mdc-dialog-min-width: 600px;
-                --mdc-dialog-max-width: 600px;
-                --mdc-dialog-max-height: 380px;
+                --mdc-dialog-min-width: 720px;
+                --mdc-dialog-max-width: 720px;
+                --mdc-dialog-max-height: 440px;
               }
               @media (max-width: 767px) {
                 ha-adaptive-dialog, ha-dialog {
@@ -53,7 +50,6 @@ hemma_popup_recently_added:
 
             const rawM = Array.isArray(moviesData) ? moviesData.slice(1).filter(i => i && i.title) : [];
             const rawT = Array.isArray(tvData)     ? tvData.slice(1).filter(i => i && i.title)     : [];
-            /* merge, filter to last 3 days, and sort by most recently added (airdate desc) */
             const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
             const items = [
               ...rawM.map(i => Object.assign({}, i, {_isTV: false})),
@@ -62,7 +58,7 @@ hemma_popup_recently_added:
              .sort((a, b) => new Date(b.airdate || 0) - new Date(a.airdate || 0));
             const N = items.length;
 
-            /* ── helpers ─────────────────────────────────── */
+            /* helpers */
             const esc = s => String(s ?? '')
               .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
               .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -84,7 +80,7 @@ hemma_popup_recently_added:
               return Math.floor(d / 7) + 'w ago';
             };
 
-            /* ── empty state ─────────────────────────────── */
+            /* empty state */
             if (N === 0) {
               const noHoverStyle = [
                 ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
@@ -93,7 +89,6 @@ hemma_popup_recently_added:
                 'ha-ripple { display: none !important; }',
               ].join('\n');
 
-              const g1 = '#57FFFC'; const g2 = '#67F5A0';
               const emptyBadge = {
                 type: 'custom:button-card',
                 name: 'Up to date',
@@ -102,19 +97,21 @@ hemma_popup_recently_added:
                 card_mod: {
                   style: [
                     ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
-                    'ha-card { background: linear-gradient(135deg,color-mix(in srgb,' + g1 + ' 18%,transparent) 0%,color-mix(in srgb,' + g2 + ' 13%,transparent) 100%) !important; border: 1px solid color-mix(in srgb,' + g1 + ' 40%,transparent) !important; border-radius: 999px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }',
+                    'ha-card { border: none !important; border-radius: 999px !important; padding: 11px 16px !important; backdrop-filter: var(--hemma-glass-pill-backdrop, none) !important; -webkit-backdrop-filter: var(--hemma-glass-pill-backdrop, none) !important; box-shadow: inset 0 1px 0.5px -0.5px var(--pill-glow-top-tight), inset 0 -1px 0.5px -0.5px var(--pill-glow-bottom-tight), inset 0 3px 6px -3px var(--pill-glow-top-soft), inset 0 -3px 6px -3px var(--pill-glow-bottom-soft), inset 0 0 0 999px rgba(255,255,255,0) !important; cursor: default !important; position: relative !important; overflow: visible !important; transition: box-shadow 0.2s ease !important; --pill-glow-top-tight: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint-tight,65%), white) calc(var(--hemma-glass-pill-glow-top-tight,0.30) * 100%), transparent) !important; --pill-glow-top-soft: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint,40%), white) calc(var(--hemma-glass-pill-glow-top-soft,0.10) * 100%), transparent) !important; --pill-glow-bottom-tight: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint-tight,65%), white) calc(var(--hemma-glass-pill-glow-bottom-tight,0.20) * 100%), transparent) !important; --pill-glow-bottom-soft: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint,40%), white) calc(var(--hemma-glass-pill-glow-bottom-soft,0.06) * 100%), transparent) !important; }',
+                    'ha-card::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; background: conic-gradient(from 0deg, transparent 0deg 50deg, rgba(0,0,0,0.32) 80deg 100deg, transparent 130deg 230deg, rgba(0,0,0,0.32) 260deg 280deg, transparent 310deg 360deg); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; pointer-events: none; }',
+                    '@media (hover: hover) { :host(:hover) ha-card { box-shadow: inset 0 1px 0.5px -0.5px var(--pill-glow-top-tight), inset 0 -1px 0.5px -0.5px var(--pill-glow-bottom-tight), inset 0 3px 6px -3px var(--pill-glow-top-soft), inset 0 -3px 6px -3px var(--pill-glow-bottom-soft), inset 0 0 0 999px rgba(255,255,255,0.10) !important; } }',
                     'ha-ripple { display: none !important; }',
                   ].join('\n'),
                 },
                 styles: {
                   card: [
-                    { background: 'linear-gradient(135deg,color-mix(in srgb,' + g1 + ' 18%,transparent) 0%,color-mix(in srgb,' + g2 + ' 13%,transparent) 100%)' },
-                    { border: '1px solid color-mix(in srgb,' + g1 + ' 40%,transparent)' },
-                    { 'border-radius': '999px' }, { 'box-shadow': 'none' }, { padding: '8px 15px' },
+                    { background: 'var(--hemma-glass-pill-fill,rgba(255,255,255,0.07))' },
+                    { '--pill-accent': 'var(--hemma-popup-green-color,#67f5a0)' },
+                    { border: 'none' },
                   ],
                   name: [
-                    { 'font-size': '15px' }, { 'font-weight': '500' },
-                    { color: 'var(--hemma-popup-green-color, #67f5a0)' },
+                    { 'font-size': '13px' }, { 'font-weight': '600' }, { 'letter-spacing': '0.01em' },
+                    { color: '#ffffff' },
                     { 'white-space': 'nowrap' }, { 'font-family': 'var(--primary-font-family,system-ui)' },
                   ],
                 },
@@ -134,9 +131,9 @@ hemma_popup_recently_added:
                   },
                 },
                 custom_fields: {
-                  title: '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tile-text-primary);">'
+                  title: '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tiles-text-primary);">'
                     + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;">Media</div>'
-                    + '<div style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);font-weight:400;">Plex \xb7 Recently Added</div>'
+                    + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary);font-weight:400;">Plex \xb7 Recently Added</div>'
                     + '</div>',
                   badge: { card: emptyBadge },
                 },
@@ -162,13 +159,13 @@ hemma_popup_recently_added:
               return { type: 'vertical-stack', cards: [emptyHeader, emptyAdvice] };
             }
 
-            /* ── responsive layout ──────────────────────────── */
+            /* responsive layout */
             const isMobile     = window.innerWidth < 600;
-            const slideH       = isMobile ? 420 : 300;
+            const slideH       = isMobile ? 420 : 330;
             const swipeH       = slideH + 14;
             const summaryClamp = isMobile ? 8 : 7;
 
-            /* ── shared extra_styles for transparent button-cards ── */
+            /* shared extra_styles for transparent button-cards */
             const transparentStyles = 'ha-card{'
               + 'background:transparent!important;'
               + 'border:none!important;'
@@ -183,14 +180,20 @@ hemma_popup_recently_added:
               + '#container{padding:0!important;height:100%!important;}'
               + 'ha-ripple{display:none!important;}';
 
-            /* ── slide cards (poster + info only, no header) ── */
+            /* Media Type Pill */
+            const typeBadge = (txt, accent) =>
+              '<span style="position:relative;display:inline-flex;width:fit-content;'
+              + 'font-size:10px;font-weight:700;letter-spacing:0.05em;color:#ffffff;'
+              + 'background:' + accent + ';'
+              + 'border-radius:999px;padding:6px 7px;'
+              + 'white-space:nowrap;font-family:var(--primary-font-family,system-ui);">' + esc(txt) + '</span>';
+
+            /* slide cards */
             const slideCards = items.map(function(item) {
               const posterUrl = resolveUrl(item.poster);
               const timeAgo   = ago(item.airdate);
               const isTV      = item._isTV;
               const badgeClr     = isTV ? '#A547FE' : '#FA7D24';
-              const badgeClr2    = isTV ? '#C574FE' : '#F27B13';
-              const badgeTextClr = isTV ? '#DFB0FB' : '#FA9D51';
               const badgeTxt     = isTV ? 'TV SHOW' : 'MOVIE';
               const isWatched    = item.flag === false || item.flag === 'false';
 
@@ -208,7 +211,13 @@ hemma_popup_recently_added:
 
               const makePoster = (h, w, r) =>
                 '<div style="position:relative;' + (w ? 'width:' + w + 'px;' : '') + 'height:' + h + 'px;border-radius:' + r + 'px;box-shadow:0 4px 16px rgba(0,0,0,0.4);">'
-                + '<div style="height:100%;border-radius:' + r + 'px;overflow:hidden;">' + posterImg + '</div>'
+                + '<div style="position:relative;height:100%;border-radius:' + r + 'px;overflow:hidden;">'
+                  + posterImg
+                  + '<div style="position:absolute;inset:0;border-radius:' + r + 'px;pointer-events:none;'
+                    + 'box-shadow:var(--hemma-media-poster-highlight, inset 0 1px .5px -0.5px rgba(255,255,255,0.35), inset 0 -1px .5px -0.5px rgba(255,255,255,0.22));'
+                    + 'background:var(--hemma-media-poster-glow-top, linear-gradient(to bottom, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.12) 22%, rgba(255,255,255,0) 48%)), '
+                    + 'var(--hemma-media-poster-glow-bottom, linear-gradient(to top, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.12) 22%, rgba(255,255,255,0) 48%));"></div>'
+                + '</div>'
                 + watchedDot
                 + '</div>';
 
@@ -230,33 +239,18 @@ hemma_popup_recently_added:
                 ? '<div style="font-size:15px;color:rgba(255,255,255,0.4);">Added ' + timeAgo + '</div>'
                 : '';
 
-              const summaryLen = (item.summary || '').length;
-              let summaryFont, sClamp;
-              if (isMobile && summaryLen > 0) {
-                const availH = slideH - 14 - 20 - 168 - 14;
-                const colW   = window.innerWidth - 40;
-                summaryFont  = 14;
-                sClamp       = summaryClamp;
-                for (let f = 16; f >= 14; f--) {
-                  const cpl  = Math.floor(colW / (f * 0.58));
-                  const need = Math.ceil(summaryLen / cpl);
-                  const fits = Math.floor(availH / (f * 1.5));
-                  if (need <= fits) { summaryFont = f; sClamp = fits; break; }
-                }
-              } else {
-                summaryFont = summaryLen > 420 ? 12 : summaryLen > 280 ? 13 : 14;
-                sClamp      = summaryClamp;
-              }
+              const summaryFont = 13;
+              const sClamp = summaryClamp;
               const summaryLine = item.summary
-                ? '<div style="font-size:' + summaryFont + 'px;color:rgba(255,255,255,0.5);padding-top:10px;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:' + sClamp + ';-webkit-box-orient:vertical;word-break:break-word;text-align:left;">' + esc(item.summary) + '</div>'
+                ? '<div style="font-size:' + summaryFont + 'px;color:rgba(255,255,255,0.5);padding-top:2px;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:' + sClamp + ';-webkit-box-orient:vertical;word-break:break-word;text-align:left;">' + esc(item.summary) + '</div>'
                 : '';
 
-              const badgeSpan = '<span style="display:inline-flex;width:fit-content;background:linear-gradient(135deg,color-mix(in srgb,' + badgeClr + ' 32%,transparent) 0%,color-mix(in srgb,' + badgeClr2 + ' 24%,transparent) 100%);border:1px solid color-mix(in srgb,' + badgeClr2 + ' 65%,transparent);border-radius:999px;padding:2px 6px;font-size:10px;font-weight:600;letter-spacing:0.06em;color:' + badgeTextClr + ';font-family:var(--primary-font-family,system-ui);white-space:nowrap;">' + badgeTxt + '</span>';
+              const badgeSpan = typeBadge(badgeTxt, badgeClr);
               const titleDiv  = '<div style="font-size:20px;font-weight:700;color:var(--primary-text-color,#fff);line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">' + esc(item.title) + '</div>';
               const font      = 'font-family:var(--primary-font-family,\'Hanken Grotesk\',system-ui);';
 
               const slideHtml = isMobile
-                /* ── mobile ── */
+                /* mobile */
                 ? '<div style="width:100%;height:' + slideH + 'px;padding:14px 20px 20px;overflow:hidden;box-sizing:border-box;' + font + 'display:flex;flex-direction:column;gap:14px;">'
                   + '<div style="display:flex;flex-direction:row;gap:14px;align-items:flex-start;">'
                   + makePoster(168, 112, 10)
@@ -265,9 +259,9 @@ hemma_popup_recently_added:
                   + '</div></div>'
                   + summaryLine
                   + '</div>'
-                /* ── desktop: side-by-side grid ── */
-                : '<div style="width:100%;display:grid;grid-template-columns:150px 1fr;height:' + slideH + 'px;padding:14px 20px 20px;column-gap:18px;align-items:center;overflow:hidden;box-sizing:border-box;' + font + '">'
-                  + makePoster(225, null, 10)
+                /* desktop: side-by-side grid */
+                : '<div style="width:100%;display:grid;grid-template-columns:193px 1fr;height:' + slideH + 'px;padding:14px 28px 20px 22px;column-gap:18px;align-items:center;overflow:hidden;box-sizing:border-box;' + font + '">'
+                  + makePoster(290, null, 10)
                   + '<div style="width:100%;min-width:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start;text-align:left;gap:10px;white-space:normal;">'
                   + badgeSpan + titleDiv + episodeLine + yearGenreLine + agoLine + summaryLine
                   + '</div></div>';
@@ -297,7 +291,7 @@ hemma_popup_recently_added:
               };
             });
 
-            /* ── header ── */
+            /* header */
             const headerCard = {
               type: 'custom:button-card',
               tap_action: { action: 'none' },
@@ -318,14 +312,16 @@ hemma_popup_recently_added:
                 custom_fields: { c: [{ 'justify-self': 'stretch' }] },
               },
               custom_fields: {
-                c: '<div style="padding:20px 20px 12px;text-align:left;">'
+                c: '<div style="padding:20px ' + (isMobile ? '20px' : '28px') + ' 12px;">'
+                  + '<div style="text-align:left;">'
                   + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;color:var(--primary-text-color,#fff);line-height:1.2;">Media</div>'
                   + '<div style="font-size:14px;color:rgba(255,255,255,0.6);margin-top:2px;">Plex \xb7 Recently Added</div>'
+                  + '</div>'
                   + '</div>',
               },
             };
 
-            /* ── swipe-card (carousel, rounded bottom corners) ── */
+            /* swipe-card (carousel, rounded bottom corners) */
             const bulletCss = items.map(function(item, idx) {
               const clr = item._isTV ? '#A547FE' : '#FA7D24';
               return '.swiper-pagination-bullet:nth-child(' + (idx+1) + ').swiper-pagination-bullet-active{width:30px!important;background:' + clr + '!important;}';
@@ -366,7 +362,7 @@ hemma_popup_recently_added:
               },
             };
 
-            /* ── vertical-stack: pinned header above carousel ── */
+            /* vertical-stack: pinned header above carousel */
             return {
               type: 'vertical-stack',
               card_mod: {

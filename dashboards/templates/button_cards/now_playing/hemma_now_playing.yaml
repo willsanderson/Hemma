@@ -1,0 +1,912 @@
+# Now Playing panel — replaces the Media badge; shows every active source, primary = most recently started.
+
+hemma_now_playing:
+  template:
+    - hemma_default
+
+  show_icon: false
+  show_name: false
+  show_state: false
+  show_label: false
+
+  variables:
+    enabled: true
+    pause_timeout_minutes: 10
+    # shell_mode: '0' = free-floating tiles (no panel), '1' = glass panel with header; see PANEL MODE in styles.card.
+    shell_mode: '0'
+
+    show_media_player_1: false
+    media_player_1: null
+    show_media_player_2: false
+    media_player_2: null
+    show_media_player_3: false
+    media_player_3: null
+    show_media_player_4: false
+    media_player_4: null
+    show_media_player_5: false
+    media_player_5: null
+    show_media_player_6: false
+    media_player_6: null
+    show_media_player_7: false
+    media_player_7: null
+    show_media_player_8: false
+    media_player_8: null
+    show_media_player_9: false
+    media_player_9: null
+    show_media_player_10: false
+    media_player_10: null
+
+    show_plex_1: false
+    plex_stream_1: null
+    show_plex_2: false
+    plex_stream_2: null
+
+    show_psn_1: false
+    psn_1: null
+    show_psn_2: false
+    psn_2: null
+
+    # Key of manually pinned source (empty = rank normally).
+    pinned_key: ''
+    pin_entity: input_text.hemma_now_playing_pinned
+    # Collapsed to just the header row. Toggled by the caret.
+    minimized_entity: input_boolean.hemma_now_playing_minimized
+
+    show_discord_steam: false
+    discord_steam_image: null
+    discord_steam_game: null
+    discord_steam_online: null
+    discord_steam_details: null
+
+    # Shared source-normalizer, force_eval'd once (button-card can't share JS across templates); explicit entity lookups only — never Object.values(states), which would subscribe to all ~1500 entities.
+    hemma_np_init:
+      force_eval: true
+      value: |
+        [[[
+          if (typeof window._hemmaNPSources !== 'function') {
+            window._hemmaNPSources = function (states, V) {
+              const norm = (x) => String(x ?? '').trim();
+              const low  = (x) => norm(x).toLowerCase();
+              const abs  = (u) => {
+                if (!u) return null;
+                const s = String(u);
+                const full = s.startsWith('/') ? (location.origin + s) : s;
+                // Strip Plex's cache-busting ?refresh= so images don't flash on each poll.
+                try {
+                  const p = new URL(full, location.origin);
+                  p.searchParams.delete('refresh');
+                  return p.toString();
+                } catch (e) { return full; }
+              };
+              const ms = (t) => { const n = t ? Date.parse(t) : NaN; return Number.isFinite(n) ? n : 0; };
+
+              const pauseTimeout = Number(V.pause_timeout_minutes ?? 10);
+              const out = [];
+
+              for (let i = 1; i <= 10; i++) {
+                if (!V['show_media_player_' + i]) continue;
+                const eid = V['media_player_' + i];
+                const s = eid && states[eid];
+                if (!s) continue;
+
+                const st = low(s.state);
+                const a  = s.attributes || {};
+                const rawTitle = norm(a.media_title);
+                let artist = norm(a.media_artist || a.artist || a.media_album_artist);
+                const hasContent = !!(rawTitle || artist);
+
+                const feats = Number(a.supported_features || 0);
+                const controls = {
+                  toggle: !!(feats & 16385),
+                  next: !!(feats & 32),
+                  prev: !!(feats & 16),
+                };
+                const hasControls = !!(controls.toggle || controls.next || controls.prev);
+
+                let active = false;
+                let pauseUntil = 0;
+                if (st === 'playing' || st === 'buffering') active = true;
+                else if (st === 'paused' && hasContent && hasControls) {
+                  if (pauseTimeout <= 0) active = true;
+                  else {
+                    pauseUntil = ms(s.last_changed) + (pauseTimeout * 60000);
+                    active = Date.now() <= pauseUntil;
+                  }
+                }
+                if (!active) continue;
+
+                // Same title/artist derivation as the media player badge, to stay in sync.
+                let title = rawTitle;
+                if (!artist && a.media_content_type === 'tvshow') {
+                  const series  = norm(a.media_series_title);
+                  const season  = a.media_season  ? 'S' + String(a.media_season).padStart(2, '0')  : '';
+                  const episode = a.media_episode ? 'E' + String(a.media_episode).padStart(2, '0') : '';
+                  artist = [series, [season, episode].filter(Boolean).join('')].filter(Boolean).join(' · ');
+                }
+                if (!artist) {
+                  const parts = rawTitle.split(/\s+[-–—]\s+/);
+                  if (parts.length >= 3) {
+                    title = parts[parts.length - 1];
+                    artist = parts.slice(0, -1).join(' – ');
+                  }
+                }
+
+                let art = abs(a.entity_picture || a.media_image_url || a.media_album_cover_url || a.image_url);
+                if (!art) {
+                  const app = low(a.app_name || a.source) + ' ' + low(a.app_id);
+                  if (app.includes('youtube')) art = '/local/hemma/icons/youtube.png';
+                }
+
+                out.push({
+                  key: 'mp' + i,
+                  kind: 'player',
+                  entity: eid,
+                  art: art,
+                  title: title || norm(a.friendly_name) || 'Media',
+                  subtitle: artist,
+                  source: norm(a.app_name || a.source || a.friendly_name),
+                  started: ms(s.last_changed),
+                  state: st,
+                  playing: st === 'playing' || st === 'buffering',
+                  controls: controls,
+                  pauseUntil: pauseUntil,
+                  pos: Number(a.media_position),
+                  dur: Number(a.media_duration),
+                  posAt: ms(a.media_position_updated_at),
+                });
+              }
+
+              for (let i = 1; i <= 2; i++) {
+                if (!V['show_plex_' + i]) continue;
+                const sid = V['plex_stream_' + i];
+                const sState = sid && states[sid];
+                // sensor.plex_stream_N's own state (playing vs everything else) is equivalent to
+                // binary_sensor.plex_active_stream_N's check — no separate entity needed; same logic duplicated in hemma-core.js.
+                if (!sState || low(sState.state) !== 'playing') continue;
+                const a = sState.attributes || {};
+                const full = norm(a.full_title || a.title);
+                if (!full) continue;
+                // Upstream Tautulli session entity — see hemma-core.js.
+                const tau = sid.replace(/^(sensor\.)plex_stream_(\d+)$/, '$1plex_session_$2_tautulli');
+                const pst = low((states[tau]?.state) || sState.state || '');
+                if (pst !== 'playing' && pst !== 'buffering') continue;
+                out.push({
+                  key: 'plex' + i,
+                  kind: 'plex',
+                  entity: sid,
+                  art: abs(a.image_url || a.entity_picture_local || a.entity_picture || a.media_image_url),
+                  title: full,
+                  subtitle: '',
+                  source: 'Plex · ' + (norm(a.user) || 'Unknown'),
+                  started: ms(sState.last_changed),
+                  state: 'playing',
+                  playing: true,
+                  controls: { toggle: false, next: false, prev: false },
+                });
+              }
+
+              for (let i = 1; i <= 2; i++) {
+                if (!V['show_psn_' + i]) continue;
+                const eid = V['psn_' + i];
+                const s = eid && states[eid];
+                if (!s) continue;
+                const st = low(s.state);
+                if (['unavailable', 'unknown', 'off', 'standby', 'none', ''].includes(st)) continue;
+                const a = s.attributes || {};
+                const title = norm(a.full_title || a.media_title || a.title);
+                if (!title) continue;
+                out.push({
+                  key: 'psn' + i,
+                  kind: 'activity',
+                  entity: eid,
+                  art: abs(a.entity_picture_local || a.entity_picture || a.image_url || a.media_image_url),
+                  title: title,
+                  subtitle: norm(a.user),
+                  // Friendly name ("PS5"), not a.source (verbose "PlayStation Network").
+                  source: norm(a.friendly_name) || norm(a.source) || 'PlayStation',
+                  started: ms(s.last_changed),
+                  state: st,
+                  playing: st === 'playing',
+                  controls: { toggle: false, next: false, prev: false },
+                });
+              }
+
+              if (V.show_discord_steam && V.discord_steam_online && V.discord_steam_game) {
+                const online = low(states[V.discord_steam_online]?.state) === 'online';
+                const game = norm(states[V.discord_steam_game]?.state);
+                const dead = !game || ['unknown', 'unavailable'].includes(game.toLowerCase());
+                if (online && !dead) {
+                  const imgS = V.discord_steam_image && states[V.discord_steam_image];
+                  const ia = (imgS && imgS.attributes) || {};
+                  out.push({
+                    key: 'steam',
+                    kind: 'activity',
+                    entity: V.discord_steam_image || V.discord_steam_game,
+                    art: abs(ia.entity_picture_local || ia.entity_picture || ia.image_url),
+                    title: game,
+                    subtitle: norm(states[V.discord_steam_details]?.state).replace(/^(unknown|unavailable)$/i, ''),
+                    source: 'Steam',
+                    started: ms(states[V.discord_steam_game]?.last_changed),
+                    state: 'playing',
+                    playing: true,
+                    controls: { toggle: false, next: false, prev: false },
+                  });
+                }
+              }
+
+              const rank = (r) => {
+                const c = r.controls;
+                const hasCtl = !!(c && (c.toggle || c.next || c.prev));
+                const isMedia = r.kind !== 'activity';
+                return (hasCtl ? 4 : 0) + (r.playing ? 2 : 0) + (isMedia ? 1 : 0);
+              };
+              out.sort((x, y) => (rank(y) - rank(x)) || (y.started - x.started));
+
+              // No stability/hysteresis here by design — hold_src and window._hemmaNPStableView cover that, scoped where needed.
+
+              // Manual pin overrides ranking; ignored if that source is no longer active.
+              const pin = String(V.pinned_key || '').trim();
+              if (pin) {
+                const i = out.findIndex(r => r.key === pin);
+                if (i > 0) out.unshift(out.splice(i, 1)[0]);
+              }
+              return out;
+            };
+          }
+
+          // --np-open flips immediately (exit animation fires on time), but tiles/chips keep last
+          // content briefly — otherwise the collapsing tile shows an empty placeholder.
+          if (typeof window._hemmaNPView !== 'function') {
+            window._hemmaNPView = function (states, V) {
+              const live = window._hemmaNP(states, V);
+              const st = window._hemmaNPHold = window._hemmaNPHold || {};
+              if (live.length) { st.last = live; st.emptyAt = 0; return live; }
+              if (st.last && st.last.length) {
+                if (!st.emptyAt) st.emptyAt = Date.now();
+                // Comfortably past the 420ms exit animation; overshoot costs nothing.
+                if (Date.now() - st.emptyAt < 900) return st.last;
+              }
+              return live;
+            };
+          }
+
+          // Memoised per render pass — avoids re-running the sweep for every consumer.
+          if (typeof window._hemmaNP !== 'function') {
+            window._hemmaNP = function (states, V) {
+              // Artwork must be part of the cache signature — Plex/PSN/Steam can publish title
+              // before image, so a title-only signature would freeze art:null in the cache; see hemma-core.js.
+              const artSig = (u) => String(u || '').split('?')[0];
+              const parts = [];
+              for (let i = 1; i <= 10; i++) {
+                const e = V['show_media_player_' + i] && V['media_player_' + i];
+                if (e) {
+                  const s = states[e]; const a = s?.attributes || {};
+                  parts.push(e + s?.state + (a.media_title || '') + (a.media_position || '') +
+                    artSig(a.entity_picture || a.media_image_url || a.media_album_cover_url || a.image_url));
+                }
+              }
+              for (let i = 1; i <= 2; i++) {
+                const t = V['show_plex_' + i] && V['plex_stream_' + i];
+                if (t) {
+                  const ta = states[t]?.attributes || {};
+                  parts.push(t + states[t]?.state + String(ta.full_title || '') +
+                    String((states[t.replace(/^(sensor\.)plex_stream_(\d+)$/, '$1plex_session_$2_tautulli')]?.state) || states[t]?.state || '') +
+                    artSig(ta.image_url || ta.entity_picture_local || ta.entity_picture || ta.media_image_url));
+                }
+                const p = V['show_psn_' + i] && V['psn_' + i];
+                if (p) {
+                  const pa = states[p]?.attributes || {};
+                  parts.push(p + states[p]?.state + (pa.full_title || '') +
+                    artSig(pa.entity_picture_local || pa.entity_picture || pa.image_url || pa.media_image_url));
+                }
+              }
+              if (V.show_discord_steam) {
+                const ia = (V.discord_steam_image && states[V.discord_steam_image]?.attributes) || {};
+                parts.push(String(states[V.discord_steam_online]?.state) + String(states[V.discord_steam_game]?.state) +
+                  artSig(ia.entity_picture_local || ia.entity_picture || ia.image_url));
+              }
+              parts.push('pin:' + String(V.pinned_key || ''));
+              const sig = parts.join('|');
+              const c = window._hemmaNPCache;
+              if (c && c.sig === sig) return c.list;
+              const list = window._hemmaNPSources(states, V);
+              window._hemmaNPCache = { sig, list };
+
+              // Detect demotion (was-primary source pushed to rail) here, before children evaluate,
+              // so its chip can FLIP-animate in from the primary tile's position/size.
+              const prevKeys = window._hemmaNPKeys || [];
+              const newKeys = list.map(x => x.key);
+              if (prevKeys.length && prevKeys[0] && newKeys[0] !== prevKeys[0]) {
+                const idx = newKeys.indexOf(prevKeys[0]);
+                if (idx > 0) window._hemmaNPDemoted = { key: prevKeys[0], at: Date.now() };
+              }
+              window._hemmaNPKeys = newKeys;
+
+              return list;
+            };
+          }
+          return true;
+        ]]]
+
+    # Shared grace-settled list for np_main + chips; nested custom_fields see parent context, so
+    # force_eval here resolves before children read it (see hemma-core.js's _hemmaNPDesktopSettle).
+    settled:
+      force_eval: true
+      value: >
+        [[[
+          // NOT Object.assign({}, variables, {...}) — variables includes `settled` itself, so spreading
+          // it triggers button-card's "Detected a loop" error; read specific keys instead.
+          const V = { pause_timeout_minutes: variables.pause_timeout_minutes };
+          for (let i = 1; i <= 10; i++) {
+            V['show_media_player_' + i] = variables['show_media_player_' + i];
+            V['media_player_' + i] = variables['media_player_' + i];
+          }
+          for (let i = 1; i <= 2; i++) {
+            V['show_plex_' + i] = variables['show_plex_' + i];
+            V['plex_stream_' + i] = variables['plex_stream_' + i];
+            V['show_psn_' + i] = variables['show_psn_' + i];
+            V['psn_' + i] = variables['psn_' + i];
+          }
+          V.show_discord_steam = variables.show_discord_steam;
+          V.discord_steam_image = variables.discord_steam_image;
+          V.discord_steam_game = variables.discord_steam_game;
+          V.discord_steam_online = variables.discord_steam_online;
+          V.discord_steam_details = variables.discord_steam_details;
+          V.pinned_key = states[variables.pin_entity]?.state || '';
+
+          // Falls back to the ungraced view if hemma-core.js hasn't loaded yet.
+          if (typeof window._hemmaNPDesktopSettle !== 'function') {
+            return window._hemmaNPView(states, V);
+          }
+          const result = window._hemmaNPDesktopSettle(states, V);
+          if (result.pending) {
+            // Mid-grace/departure-hold — nudge a re-render once it finishes, since nothing else would trigger it.
+            try { clearTimeout(window._hemmaNPDesktopRecheckTimer); } catch (e) {}
+            window._hemmaNPDesktopRecheckTimer = setTimeout(() => {
+              try {
+                if (this.hass) this.hass = Object.assign({}, this.hass);
+                else if (typeof this.requestUpdate === 'function') this.requestUpdate();
+              } catch (e) {}
+            }, 650);
+          }
+          return result.list;
+        ]]]
+
+  # Shell is a container, not a control — primary card/chips carry their own tap actions
+  # (an action here made the padding itself feel clickable).
+  tap_action:
+    action: none
+  hold_action:
+    action: none
+  double_tap_action:
+    action: none
+
+  styles:
+    card:
+      # Guard for theme's global card-mod-card hover rule; declared here AND in extra_styles' :host
+      # (neither alone has proven reliable).
+      - --hemma-card-hover-shadow: var(--np-shadow)
+      - --hemma-card-hover-filter: none
+      # 1 while any source is active, 0 otherwise — everything below multiplies through this
+      # instead of display:none, which would kill the exit animation.
+      - --np-open: >
+          [[[
+            const v = variables?.enabled;
+            const on = (v === undefined || v === null) ? true :
+              (typeof v === 'boolean') ? v :
+              !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
+            const open = (on && window._hemmaNP(states, Object.assign({}, variables, { pinned_key: states[variables.pin_entity]?.state || '' })).length) ? 1 : 0;
+
+            if ((this._npPanelOpen ?? 0) !== open) {
+              const runDroplet = () => {
+                const card = this.shadowRoot?.querySelector('ha-card');
+                if (!card) return;
+                try { this._npPanelAnim?.cancel(); } catch (e) {}
+
+                this._npPanelAnim = card.animate(
+                  open
+                    ? [{ opacity: 0 }, { opacity: 1 }]
+                    : [{ opacity: 1 }, { opacity: 0 }],
+                  {
+                    duration: open ? 340 : 260,
+                    easing: open ? 'ease-out' : 'ease-in',
+                    fill: 'both',
+                  }
+                );
+
+                this._npPanelAnim.finished
+                  .then(() => { try { this._npPanelAnim?.cancel(); } catch (e) {} })
+                  .catch(() => {});
+              };
+
+              if (this.shadowRoot?.querySelector('ha-card')) runDroplet();
+              else requestAnimationFrame(runDroplet);
+            }
+            this._npPanelOpen = open;
+
+            requestAnimationFrame(() => {
+              const slot = this.shadowRoot?.querySelector('#np_main');
+              if (slot) {
+                const r = slot.getBoundingClientRect();
+                if (r.width > 4 && r.height > 4) window._hemmaNPPrimaryRect = r;
+              }
+            });
+
+            try {
+              this.style.setProperty('--np-open', String(open));
+              this.style.setProperty('--np-ptr', open ? 'auto' : 'none');
+              this.style.setProperty('--np-vis', open ? 'visible' : 'hidden');
+              this.style.setProperty('--np-shell',
+                String(variables.shell_mode ?? '1') === '0' ? '0' : '1');
+            } catch (e) {}
+            return open;
+          ]]]
+      - --np-pad: 'calc(var(--np-open) * 16px)'
+      - --np-inner-radius: 'calc(var(--hemma-u-np, 10px) * 2.6)'
+      - --np-shell: >
+          [[[
+            return String(variables.shell_mode ?? '1') === '0' ? '0' : '1';
+          ]]]
+      - --np-tile-width: >
+          [[[
+            return String(variables.shell_mode ?? '1') === '0' ? 'min(520px, 100%)' : '100%';
+          ]]]
+
+      # --np-inner-glass: 1=glass, 0=flat (revert switch)
+      - --np-inner-glass: '1'
+      - --np-min-hold: 'calc(var(--np-min, 0) * 0.46s)'
+
+      - --np-min: >
+          [[[
+            const minimized = states[variables.minimized_entity]?.state === 'on' ? 1 : 0;
+
+            // First evaluation only records state — no morph on cold load; the shell's own droplet already owns first appearance.
+            if (this._npMinState === undefined) {
+              this._npMinState = minimized;
+              return minimized;
+            }
+            if (this._npMinState === minimized) return minimized;
+            this._npMinState = minimized;
+
+            const opening = minimized === 0;
+            const reduce = window.matchMedia
+              && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (reduce) return minimized;
+
+            const root = this.shadowRoot;
+            if (!root) return minimized;
+
+            // Animate each tile's own ha-card (the element carrying backdrop-filter) — animating
+            // any ancestor moves the backdrop root and freezes the blur.
+            const targets = [];
+            const push = (holder) => {
+              const bc = holder ? holder.querySelector('button-card') : null;
+              const sr = bc && bc.shadowRoot;
+              const card = sr ? sr.querySelector('ha-card') : null;
+              if (!card) return;
+              // Collapsed chips are height:0 — skip them or they steal a stagger slot from a visible tile.
+              if (card.getBoundingClientRect().height < 4) return;
+              targets.push({ host: bc, card: card, container: sr.getElementById('container') });
+            };
+
+            push(root.querySelector('#np_main'));
+
+            const railHost = root.querySelector('#np_rail button-card');
+            const railRoot = railHost && railHost.shadowRoot;
+            if (railRoot) {
+              for (let i = 1; i <= 6; i++) push(railRoot.querySelector('#c' + i));
+            }
+            if (!targets.length) return minimized;
+
+            const n = targets.length;
+
+            const spring = (t, zeta, omega) => {
+              if (t <= 0) return 0;
+              if (t >= 1) return 1;
+              const wd = omega * Math.sqrt(Math.max(1e-6, 1 - zeta * zeta));
+              return 1 - Math.exp(-zeta * omega * t) *
+                (Math.cos(wd * t) + ((zeta * omega) / wd) * Math.sin(wd * t));
+            };
+            // Slight anticipation on the way out, so the collapse reads as elastic rather than switched off.
+            const easeInBack = (t) => (2.10 * t * t * t) - (1.10 * t * t);
+
+            const DROP = 40;
+            const SAMPLES = 26;
+
+            targets.forEach((t, i) => {
+              const card = t.card;
+              const r = card.getBoundingClientRect();
+              const w = Math.max(r.width, 1);
+              const h = Math.max(r.height, 1);
+              if (w < 8 || h < 8) return;
+
+              // Scales derived from the tile's own box (not a flat ratio) so the start reads as
+              // a circular droplet regardless of tile shape.
+              const sx0 = Math.min(0.9, DROP / w);
+              const sy0 = Math.min(0.9, DROP / h);
+
+              // Radius is pre-scale, so it must be divided back out per axis to look circular at
+              // droplet size — same correction the promotion FLIP below uses.
+              const R = parseFloat(getComputedStyle(card).borderTopLeftRadius) || 26;
+              const rx0 = (DROP / 2) / sx0;
+              const ry0 = (DROP / 2) / sy0;
+
+              // Offset from the tile's own top-right corner up onto the waveform toggle, so the droplet is born at the button.
+              const dx = 10;
+              const dy = -20;
+
+              const extra = n > 1 ? (i / (n - 1)) : 0;
+              // Lower tiles ride a looser spring — the stack absorbs the shove, so the bottom tile whips furthest and settles last.
+              const zeta = 0.74 - (0.09 * extra);
+
+              const kf = [];
+              for (let k = 0; k <= SAMPLES; k++) {
+                const u = k / SAMPLES;
+                let px, py, op;
+                if (opening) {
+                  px = spring(u, zeta, 9);
+                  // Height trails width by a tenth of the run — droplet spreads sideways first, then fills downward.
+                  py = spring(Math.max(0, (u - 0.10) / 0.90), zeta + 0.04, 9);
+                  op = Math.min(1, u / 0.26);
+                } else {
+                  const e = easeInBack(u);
+                  px = 1 - e;
+                  py = 1 - e;
+                  op = Math.max(0, 1 - Math.pow(u, 1.6));
+                }
+                const sx = sx0 + (1 - sx0) * px;
+                const sy = sy0 + (1 - sy0) * py;
+                kf.push({
+                  offset: u,
+                  easing: 'linear',
+                  transformOrigin: '100% 0%',
+                  translate: (dx * (1 - px)).toFixed(2) + 'px ' +
+                             (dy * (1 - px)).toFixed(2) + 'px',
+                  scale: sx.toFixed(4) + ' ' + sy.toFixed(4),
+                  borderRadius: (rx0 + (R - rx0) * px).toFixed(1) + 'px / ' +
+                                (ry0 + (R - ry0) * py).toFixed(1) + 'px',
+                  opacity: op.toFixed(3),
+                });
+              }
+
+              // Opening runs top-down; collapsing runs bottom-up, so the rail follows the tile out and leads it back in.
+              const order = opening ? i : (n - 1 - i);
+              const delay = order * (opening ? 70 : 45);
+              const dur = opening ? (520 + extra * 70) : 300;
+
+              const run = (el, pseudo) => {
+                if (!el) return;
+                const opts = { duration: dur, delay: delay, fill: 'both' };
+                if (pseudo) opts.pseudoElement = pseudo;
+                let anim;
+                try { anim = el.animate(kf, opts); } catch (e) { return; }
+                // fill:'both' left uncancelled would keep the animation live forever; safe to cancel
+                // since resting CSS already equals the final keyframe.
+                anim.finished
+                  .then(() => { try { anim.cancel(); } catch (e) {} })
+                  .catch(() => {});
+              };
+
+              // ha-card carries the blur; the glass rim (:host::after) is a separate pseudo-element
+              // and needs its own animation copy or it stays full-size around a shrinking tile.
+              run(card, null);
+              run(t.host, '::after');
+            });
+
+            return minimized;
+          ]]]
+      - --np-glass-lift: '22%'
+      - --np-glass-fill: >
+          color-mix(in srgb,
+            rgba(255,255,255,0.5) var(--np-glass-lift),
+            var(--hemma-entity-background, rgba(0,0,0,0.18)))
+      - background: >
+          color-mix(in srgb, var(--np-glass-fill) calc(var(--np-shell) * 100%), transparent) !important
+      - -webkit-backdrop-filter: >
+          [[[
+            return String(variables.shell_mode ?? '1') === '0'
+              ? 'none !important'
+              : 'blur(calc(var(--np-shell) * 30px)) saturate(calc(1 + (var(--np-shell) * 0.5))) !important';
+          ]]]
+      - backdrop-filter: >
+          [[[
+            return String(variables.shell_mode ?? '1') === '0'
+              ? 'none !important'
+              : 'blur(calc(var(--np-shell) * 30px)) saturate(calc(1 + (var(--np-shell) * 0.5))) !important';
+          ]]]
+      - border-radius: 'var(--ha-card-border-radius, 28px) !important'
+      - border: none !important
+      - box-shadow: var(--np-shadow)
+      - padding: 'calc(var(--np-pad) * var(--np-shell)) !important'
+      - opacity: var(--np-open)
+      - margin: 0 !important
+      - width: 100% !important
+      - justify-self: end !important
+      - overflow: >
+          [[[
+            return String(variables.shell_mode ?? '1') === '0' ? 'visible' : 'hidden';
+          ]]]
+      - isolation: >
+          [[[
+            return String(variables.shell_mode ?? '1') === '0' ? 'auto' : 'isolate';
+          ]]]
+
+    grid:
+      - display: grid !important
+      - grid-template-areas: '"np_head" "np_main" "np_rail"'
+      - grid-template-columns: minmax(0, 1fr)
+      - row-gap: 9px
+      - justify-items: >
+          [[[
+            return String(variables.shell_mode ?? '1') === '0' ? 'end' : 'stretch';
+          ]]]
+      - align-content: start !important
+
+    custom_fields:
+      np_head:
+        - grid-area: np_head
+        - width: 100% !important
+        - min-width: 0
+        - display: flex
+        - align-items: flex-start
+        - justify-content: flex-end
+        - padding: '0 0 6px 0'
+        - max-height: 34px
+        - overflow: visible
+      np_main:
+        - grid-area: np_main
+        - width: 100% !important
+        - min-width: 0
+        - display: flex
+        - justify-content: flex-end
+        - max-height: 'calc((1 - var(--np-min, 0)) * 900px)'
+        # Always visible — overflow:hidden would clip the exit animation and promote/swap FLIPs;
+        # nothing shows once collapsed anyway (opacity 0), so hiding buys nothing.
+        - overflow: visible
+        # Each tile's own ha-card sets its own pointer-events, overriding this ancestor — see
+        # --np-src-ptr in hemma_now_playing_primary.yaml and --np-chip-ptr in hemma_now_playing_chip.yaml.
+        - transition: 'max-height 0s var(--np-min-hold, 0s), pointer-events 0s var(--np-min-hold, 0s)'
+        - pointer-events: >
+            [[[
+              return states[variables.minimized_entity]?.state === 'on' ? 'none' : 'auto';
+            ]]]
+      np_rail:
+        - grid-area: np_rail
+        - width: 100% !important
+        - min-width: 0
+        - display: flex
+        - justify-content: flex-end
+        - margin-top: '-9px'
+        # Same as np_main above (layout collapse only; pointer-events overridden per-tile).
+        - max-height: 'calc((1 - var(--np-min, 0)) * 900px)'
+        - overflow: visible
+        - transition: 'max-height 0s var(--np-min-hold, 0s), pointer-events 0s var(--np-min-hold, 0s)'
+        - pointer-events: >
+            [[[
+              return states[variables.minimized_entity]?.state === 'on' ? 'none' : 'auto';
+            ]]]
+
+  custom_fields:
+    np_head:
+      card:
+        type: custom:button-card
+        template: hemma_now_playing_header
+        variables:
+          open: >
+            [[[
+              const v = variables?.enabled;
+              const on = (v === undefined || v === null) ? true :
+                (typeof v === 'boolean') ? v :
+                !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
+              return (on && window._hemmaNP(states, Object.assign({}, variables, { pinned_key: states[variables.pin_entity]?.state || '' })).length) ? 1 : 0;
+            ]]]
+          minimized_entity: '[[[ return variables.minimized_entity; ]]]'
+          playing: '[[[ return !!(variables.settled || [])[0]?.playing; ]]]'
+
+    np_main:
+      card:
+        type: custom:button-card
+        template: hemma_now_playing_primary
+        variables:
+          slot_id: 'np_main'
+          src: '[[[ return (variables.settled || [])[0] || null; ]]]'
+          extra_count: '[[[ return Math.max(0, (variables.settled || []).length - 1); ]]]'
+          # So the tile can tell "collapsed" from "no source" apart — see --np-src-ptr in hemma_now_playing_primary.yaml.
+          minimized_entity: '[[[ return variables.minimized_entity; ]]]'
+
+    np_rail:
+      card:
+        type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        show_label: false
+        tap_action:
+          action: none
+        extra_styles: |
+          /* Belt-and-braces: theme's card-mod-card sets a background fallback var, so zero the var AND !important the property. */
+          :host,
+          ha-card{
+            background: none !important;
+            box-shadow: none !important;
+            border: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+          }
+
+          ha-card{
+            will-change: auto !important;
+            contain: none !important;
+          }
+        # One narrow value per chip, mirroring np_main's variable shape — NOT a copy of the whole
+        # shell variable bag. The previous `cfg: Object.assign({}, variables, …)` minted a fresh
+        variables:
+          s1: '[[[ return (variables.settled || [])[1] || null; ]]]'
+          s2: '[[[ return (variables.settled || [])[2] || null; ]]]'
+          s3: '[[[ return (variables.settled || [])[3] || null; ]]]'
+          s4: '[[[ return (variables.settled || [])[4] || null; ]]]'
+          s5: '[[[ return (variables.settled || [])[5] || null; ]]]'
+          s6: '[[[ return (variables.settled || [])[6] || null; ]]]'
+          minimized_entity: '[[[ return variables.minimized_entity; ]]]'
+        styles:
+          card:
+            - --ha-card-background: transparent
+            - --ha-card-box-shadow: none
+            - --hemma-card-hover-shadow: none
+            - --hemma-card-hover-filter: none
+            - background: transparent !important
+            - box-shadow: none !important
+            - border: none !important
+            - padding: 0 !important
+            - margin: 0 !important
+            - width: 100% !important
+            - overflow: visible !important
+          grid:
+            - display: flex !important
+            - flex-direction: column !important
+            - gap: 0 !important
+            - justify-content: flex-start !important
+            - align-items: >
+                [[[
+                  return String(variables.shell_mode ?? '1') === '0' ? 'flex-end' : 'stretch';
+                ]]]
+        custom_fields:
+          c1:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_chip
+              variables:
+                src: '[[[ return (variables.s1 !== undefined ? variables.s1 : (variables.settled || [])[1]) || null; ]]]'
+                slot: 1
+                slot_id: 'chip1'
+                minimized_entity: '[[[ return variables.minimized_entity; ]]]'
+          c2:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_chip
+              variables:
+                src: '[[[ return (variables.s2 !== undefined ? variables.s2 : (variables.settled || [])[2]) || null; ]]]'
+                slot: 2
+                slot_id: 'chip2'
+                minimized_entity: '[[[ return variables.minimized_entity; ]]]'
+          c3:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_chip
+              variables:
+                src: '[[[ return (variables.s3 !== undefined ? variables.s3 : (variables.settled || [])[3]) || null; ]]]'
+                slot: 3
+                slot_id: 'chip3'
+                minimized_entity: '[[[ return variables.minimized_entity; ]]]'
+          c4:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_chip
+              variables:
+                src: '[[[ return (variables.s4 !== undefined ? variables.s4 : (variables.settled || [])[4]) || null; ]]]'
+                slot: 4
+                slot_id: 'chip4'
+                minimized_entity: '[[[ return variables.minimized_entity; ]]]'
+          c5:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_chip
+              variables:
+                src: '[[[ return (variables.s5 !== undefined ? variables.s5 : (variables.settled || [])[5]) || null; ]]]'
+                slot: 5
+                slot_id: 'chip5'
+                minimized_entity: '[[[ return variables.minimized_entity; ]]]'
+          c6:
+            card:
+              type: custom:button-card
+              template: hemma_now_playing_chip
+              variables:
+                src: '[[[ return (variables.s6 !== undefined ? variables.s6 : (variables.settled || [])[6]) || null; ]]]'
+                slot: 6
+                slot_id: 'chip6'
+                minimized_entity: '[[[ return variables.minimized_entity; ]]]'
+
+  extra_styles: |
+    /* Tablet - Now Playing Padding */
+    @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (pointer: coarse),
+           (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (hover: none) {
+      #np_head {
+        padding-bottom: 26px !important;
+      }
+    }
+
+    :host{
+      --np-hold: calc((1 - var(--np-open, 0)) * 0.42s);
+      --np-shadow:
+        calc(var(--np-open, 0) * var(--np-shell, 1) * 1px)
+        calc(var(--np-open, 0) * var(--np-shell, 1) * 2px)
+        calc(var(--np-open, 0) * var(--np-shell, 1) * 4px) rgba(0,0,0,0.06),
+        0 calc(var(--np-open, 0) * var(--np-shell, 1) * 14px)
+          calc(var(--np-open, 0) * var(--np-shell, 1) * 40px) rgba(0,0,0,0.10);
+      display: block;
+      width: 100%;
+      max-height: calc(var(--np-open, 0) * var(--np-vp, 1) * 640px);
+      opacity: var(--np-vp, 1);
+      visibility: var(--np-vis, visible);
+      transition:
+        opacity .30s ease,
+        max-height 0s var(--np-hold, 0s),
+        visibility 0s var(--np-hold, 0s);
+      overflow: visible;
+      pointer-events: var(--np-ptr, none);
+    }
+
+    :host{
+      --hemma-card-hover-shadow: var(--np-shadow);
+      --hemma-card-hover-filter: none;
+    }
+
+    ha-card{
+      cursor: default !important;
+      /* Theme's card-mod-card sets will-change:filter,transform on every ha-card, which establishes
+         a backdrop root and blocks nested tiles' blur — safe to opt out since this shell never
+         animates those. */
+      will-change: auto !important;
+      /* contain also establishes a backdrop root — same exemption the theme gives .hemma-entity cards via contain: none !important. */
+      contain: none !important;
+    }
+
+    :host{
+      contain: none !important;
+    }
+
+
+    ha-ripple, mwc-ripple { display: none !important; }
+
+    ha-card::before{
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,calc(var(--np-open, 0) * var(--np-shell, 1) * var(--np-glow-top, 0.10))) 0%,
+        rgba(255,255,255,calc(var(--np-open, 0) * var(--np-shell, 1) * var(--np-glow-mid, 0.035))) 34%,
+        rgba(255,255,255,0) 62%
+      );
+    }
+
+    ha-card::after{
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 4;
+      box-shadow:
+        inset 0 0.5px 0 rgba(255,255,255,calc(var(--np-open, 0) * var(--np-shell, 1) * 0.34)),
+        inset 0 0 0 0.5px rgba(255,255,255,calc(var(--np-open, 0) * var(--np-shell, 1) * 0.10)),
+        inset 0 -0.5px 0 rgba(255,255,255,calc(var(--np-open, 0) * var(--np-shell, 1) * 0.10));
+    }
+
+
+    @media (prefers-reduced-motion: reduce) {
+      :host{ transition: opacity .12s linear, max-height 0s var(--np-hold, 0s); }
+    }

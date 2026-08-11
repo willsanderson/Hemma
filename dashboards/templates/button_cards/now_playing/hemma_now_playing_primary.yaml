@@ -1,0 +1,989 @@
+# Now Playing panel (art/title/progress/transport) for one src record from window._hemmaNPSources; purely presentational so the same record can also drive a chip.
+hemma_now_playing_primary:
+  template:
+    - hemma_default
+
+  show_icon: false
+  show_name: true
+  show_state: false
+  show_label: false
+
+  variables:
+    src: null
+    extra_count: 0
+    # Glass surface (rim/elevation/specular), shared with hemma_badge_media; false = flat tile.
+    glass: true
+    # Smaller transport glyphs (28px vs 36px); set by mobile to match entity-tile height.
+    compact_controls: false
+    # 'corner' (desktop) grows from top-right; 'horizontal' (mobile row/rail) slides from the right and doesn't skip the first-content animation.
+    entry_direction: corner
+    swap_motion: true
+    # Keys hold_src/--np-swap state into window._hemmaNPSlotState instead of `this`: mobile's row/rail rebuilds this element on an ordinary track change, which would otherwise reset state and replay the entrance animation.
+    slot_id: null
+    minimized_entity: null
+    # force_eval: must resolve before other fields read the (already-changed) src. Holds departure only — keeps old content ~500ms so --np-swap's exit animation has something to animate away.
+    hold_src:
+      force_eval: true
+      value: >
+        [[[
+          const horizontal = variables.entry_direction === 'horizontal';
+
+          if (!horizontal) return variables.src;
+
+          window._hemmaNPSlotState = window._hemmaNPSlotState || {};
+          const store = variables.slot_id
+            ? (window._hemmaNPSlotState[variables.slot_id] = window._hemmaNPSlotState[variables.slot_id] || {})
+            : this;
+
+          const el = this;
+          const scheduleRecheck = (ms) => {
+            try { clearTimeout(store._npRecheckTimer); } catch (e) {}
+            store._npRecheckTimer = setTimeout(() => {
+              try {
+                // Forcing a render with no state change takes BOTH steps, and neither alone works:
+                //  1. button-card defines `set hass` with no getter, so the old `if (el.hass)`
+                //     guard always read undefined and fell through to a bare requestUpdate().
+                //  2. button-card's shouldUpdate() only passes on a _config change, a timer tick,
+                //     or _hasAnEntityChanged — so a hass clone carrying identical states is
+                //     rejected, and a bare requestUpdate() never reaches render().
+                // _config is a reactive @state(), so marking it dirty is what actually gets the
+                // templates re-evaluated. This is the path a paused tile depends on to lapse: it
+                // emits no state change of its own, so nothing else will re-run the collector.
+                const h = el._hass || el.hass;
+                if (h) el.hass = Object.assign({}, h);
+                if (typeof el.requestUpdate === 'function') el.requestUpdate('_config', undefined);
+              } catch (e) {}
+              try { window._hemmaNPMobileRecheck?.(states); } catch (e) {}
+            }, ms + 30);
+          };
+
+          const live = variables.src;
+          const finish = (result) => {
+            try { window._hemmaNPSyncMobileRow?.(el, states); } catch (e) {}
+            if (result && result.state === 'paused') {
+              const until = Number(result.pauseUntil) || 0;
+              const left = until ? (until - Date.now()) : 0;
+              scheduleRecheck(until ? Math.min(30000, Math.max(1000, left + 150)) : 20000);
+            }
+            return result;
+          };
+
+          if (live) {
+            store._npHoldSrc = live;
+            store._npHoldAt = 0;
+            return finish(live);
+          }
+
+          if (!store._npHoldSrc) return finish(null);
+          if (!store._npHoldAt) store._npHoldAt = Date.now();
+          const heldFor = Date.now() - store._npHoldAt;
+          if (heldFor < 500) {
+            scheduleRecheck(500 - heldFor);
+            return finish(store._npHoldSrc);
+          }
+          store._npHoldSrc = null;
+          return finish(null);
+        ]]]
+
+  tap_action:
+    action: >
+      [[[
+        return (variables.src?.kind === 'plex' && typeof window.browser_mod !== 'undefined')
+          ? 'fire-dom-event' : 'more-info';
+      ]]]
+    entity: '[[[ return variables.src?.entity || null; ]]]'
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        tag: '[[[ return "hemma_np_plex_" + (variables.src?.entity || "").replace(/\./g, "_"); ]]]'
+        title: ""
+        dismissable: true
+        adaptive: true
+        size: auto
+        # Card builder in hemma-core.js (window._hemmaPlexPopupCard); shared with popups/hemma_popup_plex.yaml and this template's _art.yaml/_chip.yaml siblings.
+        content: |
+          [[[
+            const sid = variables?.src?.entity || '';
+            return window._hemmaPlexPopupCard(sid, states);
+          ]]]
+        popup_styles:
+          - style: all
+            styles: |
+              ha-adaptive-dialog, ha-dialog {
+                --dialog-content-padding: 0px;
+              }
+              @media (max-width: 767px) {
+                ha-adaptive-dialog, ha-dialog {
+                  --dialog-surface-margin-top: 0px;
+                }
+              }
+  # Hold clears any manual pin, handing the slot back to automatic ranking.
+  hold_action:
+    haptic: medium
+    action: call-service
+    service: input_text.set_value
+    service_data:
+      entity_id: input_text.hemma_now_playing_pinned
+      value: ''
+  double_tap_action:
+    action: none
+
+  styles:
+    card:
+      # Bloom wash strength — lower on desktop (over a photo), raised on mobile's dense grid.
+      - --np-bloom-strength: 'var(--np-bloom-desktop, 0.30)'
+      - --np-glass: >
+          [[[
+            return variables.glass === false ? 0 : 1;
+          ]]]
+      # Guard for the theme's global card-mod-card hover rule; also set in extra_styles :host since either alone has been unreliable (see feedback_card_mod_card_badge_hover).
+      - --hemma-card-hover-shadow: var(--np-shadow)
+      - --hemma-card-hover-filter: none
+      # --np-art (below) keys off hold_src not src so the bloom survives --np-swap's exit animation; --np-has-src feeds ha-card's resting opacity in extra_styles so that same exit animation's cancel-on-finish (which resets opacity:1) lands on "invisible" not "visible".
+      # Measures via a clip-wrapper + nowrap inline-block rather than container queries: container-type:inline-size zeroes the text's intrinsic width and collapses the tile. ResizeObserver re-measures on width change.
+      - --np-marquee-scan: >
+          [[[
+            const el = this;
+            const scan = () => {
+              const root = el.shadowRoot;
+              if (!root) return;
+              const lines = root.querySelectorAll('.np-line');
+              if (!lines.length) return;
+              // Seamless one-direction loop: a second copy offset by GAP_PX; animating to -(singleWidth+GAP) lands it exactly where the original started.
+              const SPEED_PX_S = 26;
+              const GAP_PX = 48;
+              const MIN_DUR_S = 4;
+              // Plain CSS keyframe shape (not WAAPI offsets) so pause time scales with title length.
+              const PAUSE_FRACTION = 0.12;
+              lines.forEach((ln) => {
+                // Measures the original (first child) alone — scrollWidth would double-count if a clone from a previous pass already exists.
+                const original = ln.firstElementChild;
+                if (!original) return;
+                const singleWidth = original.getBoundingClientRect().width;
+                const over = singleWidth - ln.clientWidth;
+                const clone = ln.children[1] || null;
+
+                if (over > 4) {
+                  const loopDist = singleWidth + GAP_PX;
+                  const dur = Math.max(MIN_DUR_S, (loopDist / SPEED_PX_S) / (1 - PAUSE_FRACTION));
+                  ln.style.setProperty('--np-mq', loopDist.toFixed(0) + 'px');
+                  ln.style.setProperty('--np-marquee-dur', dur.toFixed(2) + 's');
+                  // Set per line: edge-fade (on the line) and translateX (on the text) must share duration+delay to stay in lockstep.
+                  ln.style.setProperty('--np-mq-delay',
+                    ln.querySelector('.np-sub') ? '1.2s' : '0s');
+                  ln.classList.add('np-scroll');
+                  if (!clone) {
+                    const dupe = original.cloneNode(true);
+                    dupe.classList.add('np-marquee-clone');
+                    dupe.setAttribute('aria-hidden', 'true');
+                    dupe.style.marginLeft = GAP_PX + 'px';
+                    ln.appendChild(dupe);
+                  }
+                } else {
+                  ln.style.removeProperty('--np-mq');
+                  ln.style.removeProperty('--np-marquee-dur');
+                  ln.style.removeProperty('--np-mq-delay');
+                  ln.classList.remove('np-scroll');
+                  if (clone) clone.remove();
+                }
+              });
+              if (!el._npMqObs && window.ResizeObserver) {
+                const target = root.getElementById('container');
+                if (target) {
+                  el._npMqObs = new ResizeObserver(() => requestAnimationFrame(scan));
+                  try { el._npMqObs.observe(target); } catch (e) {}
+                }
+              }
+            };
+            // Bounded wait: field may not be in the shadow DOM yet the frame after render (same pattern as the artwork layers).
+            let tries = 0;
+            const wait = () => {
+              if (el.shadowRoot?.querySelector('.np-line')) { scan(); return; }
+              if (++tries < 30) requestAnimationFrame(wait);
+            };
+            requestAnimationFrame(wait);
+            return 1;
+          ]]]
+      - --np-has-src: >
+          [[[
+            return variables.hold_src ? 1 : 0;
+          ]]]
+      # Gates on hold_src AND panel-expanded: this lives on ha-card, and a descendant's own pointer-events overrides the np_main wrapper's ancestor rule, so hold_src alone left a minimised tile fully tappable.
+      - --np-src-ptr: >
+          [[[
+            const open = states[variables.minimized_entity]?.state !== 'on';
+            return (variables.hold_src && open) ? 'auto' : 'none';
+          ]]]
+      - --np-art: >
+          [[[
+            const s = variables.hold_src;
+            const hold = window._hemmaNPArtHold = window._hemmaNPArtHold || {};
+            const warm = window._hemmaNPArtWarm = window._hemmaNPArtWarm || new Map();
+            const path = (u) => String(u || '').split('?')[0];
+            const k = s?.key || '';
+            const cur = s?.art || null;
+            const id = s ? ((s.title || '') + '|' + (s.subtitle || '')) : '';
+
+            let u = cur;
+            if (k) {
+              const prev = hold[k];
+              const sameTrack = !!(prev && prev.id === id);
+              if (cur && sameTrack && path(prev.url) === path(cur) && warm.has(path(cur))) u = prev.url;
+              else if (cur) hold[k] = { id: id, url: cur };
+              // Transient null between polls — hold the last good art, but only for this track.
+              else u = sameTrack ? prev.url : null;
+            }
+
+            // Retaining a decoded Image keeps the bitmap alive across a rebuild
+            // (feedback_preload_needs_decode_not_hidden_img).
+            if (u && !warm.has(path(u))) {
+              try {
+                const im = new Image();
+                im.decoding = 'async';
+                im.src = u;
+                warm.set(path(u), im);
+                if (warm.size > 24) warm.delete(warm.keys().next().value);
+                im.decode?.().catch(() => {});
+              } catch (e) {}
+            }
+
+            return u ? `url("${u}")` : 'none';
+          ]]]
+      # Reads the same hold as --np-art — gating the bloom on the live value alone would drop the
+      # wash to zero on the very poll the held URL is covering for.
+      - --np-has-art: >
+          [[[
+            const s = variables.hold_src;
+            const hold = window._hemmaNPArtHold || {};
+            const k = s?.key || '';
+            const id = s ? ((s.title || '') + '|' + (s.subtitle || '')) : '';
+            const rec = k ? hold[k] : null;
+            return ((rec && rec.id === id && rec.url) || s?.art) ? 1 : 0;
+          ]]]
+      # Retriggers via JS since a CSS animation can't retrigger on a variable change (mirrors window._hemmaMediaAnim for media badges). Outgoing tile isn't animated here — the chip plays its exit via FLIP from this tile's published rect.
+      - --np-swap: >
+          [[[
+            // hold_src (not src) avoids reading a one-poll-cycle blip as an exit+arrival bounce; store keyed by slot_id survives element rebuild (see slot_id note above).
+            window._hemmaNPSlotState = window._hemmaNPSlotState || {};
+            const store = variables.slot_id
+              ? (window._hemmaNPSlotState[variables.slot_id] = window._hemmaNPSlotState[variables.slot_id] || {})
+              : this;
+
+            const key  = variables.hold_src?.key || '';
+            const prev = store._npKey;
+            const prevList = window._hemmaNPKeysPrev || [];
+            const horizontal = variables.entry_direction === 'horizontal';
+
+            // Container-owned motion: record the key so state stays coherent, but never animate.
+            if (variables.swap_motion === false) {
+              store._npKey = key;
+              return key ? 1 : 0;
+            }
+
+            if (prev !== key) {
+              const wasChip = !!key && prevList.indexOf(key) > 0;
+              const isExit  = !key;
+              const isFirst = !prev && !isExit;
+              // Boot timestamp distinguishes "already playing before page load" from "genuinely new arrival": store._npKey resets every page load, so !prev alone can't tell them apart. Only gates isFirst — exits/promotions/reassignments are untouched.
+              window._hemmaNPBootAt = window._hemmaNPBootAt || Date.now();
+              const booting = (Date.now() - window._hemmaNPBootAt) < 2500;
+              const skipFirst = isFirst && (!horizontal || booting);
+
+              if (!skipFirst && !isExit) {
+                const c0 = this;
+                if (c0) {
+                  if (horizontal) {
+                    c0.style.transformOrigin = '50% 50%';
+                    c0.style.transform = 'translateX(40px)';
+                  } else {
+                    c0.style.transformOrigin = '100% 0%';
+                    c0.style.transform = 'scale(0.16)';
+                  }
+                  c0.style.opacity = '0';
+                }
+              }
+
+              requestAnimationFrame(() => {
+                const card = this;
+                // isConnected guard: mobile rebuilds this element on track changes (see slot_id note above), so a rebuild landing before this rAF fires would otherwise animate a disconnected ghost. Skipping lets the rebuilt element's own fresh eval retry the entrance correctly.
+                if (!card || !card.isConnected) return;
+                store._npKey = key;
+                try { store._npBodyAnim?.cancel(); } catch (e) {}
+
+                const clearStamp = () => {
+                  card.style.removeProperty('transform');
+                  card.style.removeProperty('opacity');
+                };
+
+                if (skipFirst) { clearStamp(); return; }
+
+                if (isExit) {
+                  clearStamp();
+                  if (horizontal) {
+                    card.style.transformOrigin = '50% 50%';
+                    store._npBodyAnim = card.animate(
+                      [
+                        { opacity: 1, transform: 'translateX(0px)' },
+                        { opacity: 0, transform: 'translateX(40px)' },
+                      ],
+                      { duration: 320, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'both' }
+                    );
+                  } else {
+                    card.style.transformOrigin = '50% 0%';
+                    store._npBodyAnim = card.animate(
+                      [
+                        { opacity: 1, transform: 'scale(1, 1)' },
+                        { opacity: 0, transform: 'scale(0.78, 0.06)' },
+                      ],
+                      { duration: 320, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'both' }
+                    );
+                  }
+
+                  store._npBodyAnim.finished
+                    .then(() => { try { store._npBodyAnim?.cancel(); } catch (e) {} })
+                    .catch(() => {});
+                  return;
+                }
+
+                // One small overshoot and settle — two overshoots read as wobble.
+                const R = 26;
+
+                // ── Promotion out of the rail ──
+                clearStamp();
+                const chipRect = wasChip
+                  ? (window._hemmaNPChipRects || {})[key]
+                  : null;
+
+                const tr = card.getBoundingClientRect();
+
+                if (chipRect && tr.width > 4 && tr.height > 4) {
+                  const sx = chipRect.width  / tr.width;
+                  const sy = chipRect.height / tr.height;
+                  const dx = (chipRect.left + chipRect.width  / 2) - (tr.left + tr.width  / 2);
+                  const dy = (chipRect.top  + chipRect.height / 2) - (tr.top  + tr.height / 2);
+                  card.style.transformOrigin = '50% 50%';
+                  store._npBodyAnim = card.animate(
+                    [
+                      { transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)})`,
+                        borderRadius: `${(R / sx).toFixed(1)}px / ${(R / sy).toFixed(1)}px`,
+                        opacity: 1 },
+                      { transform: 'translate(0px, -2px) scale(1.004, 1.03)',
+                        borderRadius: `${R}px`, opacity: 1, offset: 0.82 },
+                      { transform: 'translate(0px, 0px) scale(1, 1)',
+                        borderRadius: `${R}px`, opacity: 1 },
+                    ],
+                    { duration: 620, easing: 'cubic-bezier(0.25, 0.9, 0.3, 1)', fill: 'both' }
+                  );
+                  store._npBodyAnim.finished
+                    .then(() => { try { store._npBodyAnim?.cancel(); } catch (e) {} })
+                    .catch(() => {});
+                  return;
+                }
+
+                if (horizontal) {
+                  const priorRect = (window._hemmaNPRowRects || {})[key];
+                  if (priorRect && tr.width > 4 && tr.height > 4) {
+                    const sx = priorRect.width  / tr.width;
+                    const sy = priorRect.height / tr.height;
+                    const dx = (priorRect.left + priorRect.width  / 2) - (tr.left + tr.width  / 2);
+                    const dy = (priorRect.top  + priorRect.height / 2) - (tr.top  + tr.height / 2);
+                    card.style.transformOrigin = '50% 50%';
+                    store._npBodyAnim = card.animate(
+                      [
+                        { transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)})`, opacity: 1 },
+                        { transform: 'translate(0px, 0px) scale(1, 1)', opacity: 1 },
+                      ],
+                      { duration: 460, easing: 'cubic-bezier(0.25, 0.9, 0.3, 1)', fill: 'both' }
+                    );
+                    store._npBodyAnim.finished
+                      .then(() => { try { store._npBodyAnim?.cancel(); } catch (e) {} })
+                      .catch(() => {});
+                    return;
+                  }
+
+                  card.style.transformOrigin = '50% 50%';
+                  store._npBodyAnim = card.animate(
+                    [
+                      { opacity: 0, transform: 'translateX(40px)' },
+                      { opacity: 1, transform: 'translateX(-4px)', offset: 0.75 },
+                      { opacity: 1, transform: 'translateX(0px)' },
+                    ],
+                    { duration: 460, easing: 'cubic-bezier(0.25, 0.9, 0.3, 1)', fill: 'both' }
+                  );
+                  store._npBodyAnim.finished
+                    .then(() => { try { store._npBodyAnim?.cancel(); } catch (e) {} })
+                    .catch(() => {});
+                  return;
+                }
+
+                card.style.opacity = '0';
+                const artUrl = variables.hold_src?.art;
+                const reveal = () => {
+                  card.style.transformOrigin = '50% 50%';
+                  card.style.removeProperty('opacity');
+                  store._npBodyAnim = card.animate(
+                    [
+                      { opacity: 0 },
+                      { opacity: 1 },
+                    ],
+                    { duration: 420, easing: 'ease-out', fill: 'both' }
+                  );
+                  store._npBodyAnim.finished
+                    .then(() => { try { store._npBodyAnim?.cancel(); } catch (e) {} })
+                    .catch(() => {});
+                };
+                if (artUrl) {
+                  let artDone = false;
+                  const proceed = () => { if (artDone) return; artDone = true; reveal(); };
+                  const img = new Image();
+                  img.onload = proceed;
+                  img.onerror = proceed;
+                  img.src = artUrl;
+                  setTimeout(proceed, 400);
+                } else {
+                  reveal();
+                }
+              });
+            }
+
+            // Publishes this slot's resting rect, mirroring window._hemmaNPChipRects, so a future reassignment knows where to FLIP from.
+            if (horizontal && key) {
+              requestAnimationFrame(() => {
+                const el = this;
+                if (!el) return;
+                const r = el.getBoundingClientRect();
+                if (r.width > 4 && r.height > 4) {
+                  window._hemmaNPRowRects = window._hemmaNPRowRects || {};
+                  window._hemmaNPRowRects[key] = r;
+                }
+              });
+            }
+
+            window._hemmaNPKeysPrev = (window._hemmaNPCache?.list || []).map(x => x.key);
+
+            return key ? 1 : 0;
+          ]]]
+      - --np-accent: >
+          [[[
+            const k = variables.hold_src?.kind;
+            if (k === 'plex') return 'var(--hemma-color-orange, #e5a00d)';
+            if (k === 'activity') return 'var(--hemma-color-blue, #007AFF)';
+            return 'var(--hemma-color-teal, #00c3d0)';
+          ]]]
+      # Overridden here (not the shared --hemma-badge-body-tint default) so only this tile's light-mode tint changes, not every media badge.
+      # hass.themes.darkMode (HA's own theme setting) can differ from the OS's prefers-color-scheme, so it's checked first with matchMedia as fallback (same pattern as hemma_room.yaml's --hero-img).
+      - --hemma-badge-body-tint: >
+          [[[
+            const isDark = typeof hass?.themes?.darkMode === 'boolean'
+              ? hass.themes.darkMode
+              : window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const v = isDark ? '0.25' : '0.05';
+            // Also sets --np-scrim-mult here (avoids a second hass.themes read): ha-card::after's readability scrim needs its own dark-mode scaling, uncoupled from this tint.
+            try { this.style.setProperty('--np-scrim-mult', isDark ? '1' : '0.55'); } catch (e) {}
+            return v;
+          ]]]
+      - background: >
+          color-mix(in srgb,
+            rgba(0,0,0,calc(var(--hemma-badge-body-tint, 0.25) + (var(--np-inner-glass, 1) * 0.05)))
+              calc(var(--np-has-art, 0) * 100%),
+            var(--badge-background, rgba(150,150,150,0.18))) !important
+      - -webkit-backdrop-filter: >
+          blur(calc(var(--np-inner-glass, 1) * 22px))
+          saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1)))) !important
+      - backdrop-filter: >
+          blur(calc(var(--np-inner-glass, 1) * 22px))
+          saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1)))) !important
+      - border-radius: var(--np-inner-radius, calc(var(--hemma-u-np, 10px) * 2.6))
+      # ── ARTWORK CORNER RADIUS — tune this value ── Strictly concentric with the card (--np-inner-radius - --np-pad-v) is 10px but reads too square; 15px is deliberately rounder. Range ~10-20px.
+      - --np-art-radius: calc(var(--hemma-u-np, 10px) * 1.5)
+      - border: none !important
+      - padding: var(--np-pad-tb, var(--np-pad-v, 12px)) calc(var(--hemma-u-np, 10px) * 1.6) var(--np-pad-tb, var(--np-pad-v, 12px)) var(--np-pad-v, 12px) !important
+      # Forces the artwork (not the text column) to set tile height, or a tall text column grows the card and the centred art floats off-inset.
+      - min-height: 'calc(var(--np-art-size, 100px) + (2 * var(--np-pad-tb, var(--np-pad-v, 12px))))'
+      # Phone pins height outright: every tile in the row must measure the same regardless of transport controls, or the carousel's pages jump height as you swipe.
+      - height: >
+          [[[
+            return variables.entry_direction === 'horizontal'
+              ? 'calc(var(--np-art-size, 100px) + (2 * var(--np-pad-tb, var(--np-pad-v, 12px))))'
+              : 'auto';
+          ]]]
+      - width: var(--np-tile-width, 100%) !important
+      - min-width: 0
+      # VALUE only, no !important: button-card's styles.card applies via style.setProperty(), which silently drops any value containing "!important" — real enforcement lives in extra_styles as genuine CSS (see ha-card max-width below).
+      - --np-max-w: >
+          [[[
+            return variables.entry_direction === 'horizontal' ? '100%' : 'calc(var(--hemma-u-np, 10px) * 40)';
+          ]]]
+      - justify-self: stretch !important
+      - isolation: isolate
+      - overflow: hidden !important
+      - box-shadow: var(--np-shadow)
+
+    grid:
+      - display: grid !important
+      - grid-template-areas: '"art meta" "art ctl"'
+      - grid-template-columns: max-content minmax(0, 1fr)
+      - grid-template-rows: >
+          [[[
+            const c = variables.hold_src?.controls;
+            const hasControls = !!(c && (c.toggle || c.next || c.prev));
+            return hasControls ? 'max-content max-content' : 'max-content 0px';
+          ]]]
+      - column-gap: calc(var(--hemma-u-np, 10px) * 1.4)
+      # Collapses when there's no transport row — a grid gap still applies between an empty track and its neighbour otherwise (phantom space on Plex/PSN, where ctl is display:none).
+      - row-gap: >
+          [[[
+            const c = variables.hold_src?.controls;
+            return (c && (c.toggle || c.next || c.prev)) ? 'var(--np-row-gap, 8px)' : '0px';
+          ]]]
+      - align-items: center !important
+      - align-content: center !important
+
+    name:
+      - grid-area: meta
+      - align-self: >
+          [[[
+            const c = variables.hold_src?.controls;
+            const hasControls = !!(c && (c.toggle || c.next || c.prev));
+            return hasControls ? 'end' : 'center';
+          ]]]
+      - min-width: 0
+      - overflow: hidden
+      - text-align: left
+      - justify-self: stretch
+
+    custom_fields:
+      art:
+        - grid-area: art
+        - align-self: center
+        - justify-self: start
+        - border-radius: var(--np-art-radius, 10px)
+        - line-height: 0
+        - width: var(--np-art-size, 100px)
+        - height: var(--np-art-size, 100px)
+        - overflow: hidden
+        - position: relative
+        - cursor: pointer
+      ctl:
+        - grid-area: ctl
+        - justify-self: center
+        - align-self: center
+
+  custom_fields:
+    art: '<div class="np-art-img"></div>'
+
+    ctl:
+      card:
+        type: custom:button-card
+        template: hemma_now_playing_controls
+        variables:
+          src: '[[[ return variables.hold_src; ]]]'
+          compact: '[[[ return !!variables.compact_controls; ]]]'
+
+  name: >
+    [[[
+      const s = variables.hold_src;
+      if (!s) return '';
+
+      const esc = (t) => String(t ?? '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+      const bits = s.kind === 'player'
+        ? [s.subtitle]
+        : [s.source, s.subtitle];
+      const sub = bits.map(x => String(x || '').trim()).filter(Boolean).join(' · ');
+
+      let bar = '';
+      if (Number.isFinite(s.dur) && s.dur > 0 && Number.isFinite(s.pos)) {
+        const elapsed = s.playing && s.posAt ? (Date.now() - s.posAt) / 1000 : 0;
+        const now = Math.min(s.dur, Math.max(0, s.pos + elapsed));
+        const frac = Math.max(0, Math.min(1, now / s.dur));
+        const remain = Math.max(0, s.dur - now);
+        const anim = s.playing && remain > 0
+          ? `animation: np-advance ${remain.toFixed(1)}s linear forwards;`
+          : '';
+        bar = `<div class="np-track"><div class="np-fill" style="transform: scaleX(${frac.toFixed(5)}); ${anim}"></div></div>`;
+      }
+
+      return `
+        <div class="np-meta">
+          <div class="np-line"><span class="np-title">${esc(s.title)}</span></div>
+          ${sub ? `<div class="np-line"><span class="np-sub">${esc(sub)}</span></div>` : ''}
+          ${bar}
+        </div>
+      `;
+    ]]]
+
+  extra_styles: |
+    :host{
+      display: block;
+      /* :host must track ha-card's capped width — the glass rim is :host::after (inset:0), so a flat 100% host let the rim draw wider than ha-card's own max-width on wide tracks. margin-left:auto keeps the pair right-aligned. */
+      /* !important: button-card inline-clamps the host to max-width:fit-content whenever styles.card carries a width key (see hemma_mobile_now_playing.yaml), beating a plain :host rule. */
+      width: var(--np-tile-width, 100%) !important;
+      max-width: var(--np-max-w, calc(var(--hemma-u-np, 10px) * 40)) !important;
+      margin-left: auto;
+      --np-shadow: none;
+
+      /* Artwork can't shrink below the text column height, or the column drives card height and breaks the equal insets — so column height is trimmed and the freed space goes to padding. */
+      --np-pad-v: calc(var(--hemma-u-np, 10px) * 1.6);
+      /* 2px less than --np-pad-v — top/bottom read as slightly heavier than left at the same value, tuned down on request. */
+      --np-pad-tb: calc(var(--hemma-u-np, 10px) * 1.4);
+      --np-art-size: calc(var(--hemma-u-np, 10px) * 9.4);
+      --np-row-gap: calc(var(--hemma-u-np, 10px) * 1);
+      --np-track-gap: calc(var(--hemma-u-np, 10px) * 0.8);
+      /* Desktop's title/sub read as loud as the entity grid's own tile names despite living in a peripheral,
+         ambient corner widget — sized down a step so it reads as glanceable status, not a second headline. */
+      --np-title-size: calc(var(--hemma-u-np, 10px) * 1.5);
+      --np-sub-size: calc(var(--hemma-u-np, 10px) * 1.3);
+    }
+
+    /* Minimise/expand motion, lifted from hemma_badge_base's entrance with the origin moved to the header's waveform toggle.
+       Lives on ha-card because it's the element carrying the backdrop-filter — animating any ancestor moves the backdrop root up and the tile spends the animation sampling an empty layer (see hemma_badge_base's `translate` note).
+       Uses translate/scale (not transform) so --np-swap's WAAPI transform animations compose instead of clobbering these mid-swap. */
+    :host{
+      --np-enter-t: calc(1 - var(--np-min, 0));
+      --np-enter-p: var(--np-min, 0);
+      --np-enter-shift: 30px;
+      --np-enter-lift: -20px;
+      --np-enter-depth: 0.22;
+      --np-enter-squash: 0.07;
+      --np-enter-dur: calc(0.34s + var(--np-enter-t) * 0.14s);
+      --np-enter-fade: calc(0.20s + var(--np-enter-t) * 0.05s);
+      --np-enter-ease: cubic-bezier(0.34, 1.26, 0.44, 1);
+    }
+
+    ha-card{
+      /* Real CSS enforcement of --np-max-w (see styles.card comment for why). */
+      max-width: var(--np-max-w, calc(var(--hemma-u-np, 10px) * 40)) !important;
+      transform-origin: 100% 0%;
+      translate:
+        calc(var(--np-enter-p) * var(--np-enter-shift))
+        calc(var(--np-enter-p) * var(--np-enter-lift));
+      scale:
+        calc(1 - var(--np-enter-p) * (var(--np-enter-depth) - var(--np-enter-squash)))
+        calc(1 - var(--np-enter-p) * (var(--np-enter-depth) + var(--np-enter-squash)));
+      opacity: calc(var(--np-enter-t, 1) * var(--np-has-src, 1));
+      /* Empty tile shouldn't stay tappable — it still occupies its slot until the row drops it. */
+      pointer-events: var(--np-src-ptr, auto);
+      cursor: pointer;
+      transition: none !important;
+      /* translate/scale/opacity above are the RESTING state only — the WAAPI spring (driven by the shell's --np-min) owns the motion, so they're deliberately excluded from this transition list. */
+      transition-property: backdrop-filter, -webkit-backdrop-filter !important;
+      transition-duration: .15s !important;
+      transition-timing-function: ease !important;
+    }
+
+    /* Only :host::after gets this copy — #container::before is inside ha-card and already inherits its scale as an ancestor, so adding the same transform again would square it. */
+    :host::after{
+      transform-origin: 100% 0%;
+      translate:
+        calc(var(--np-enter-p) * var(--np-enter-shift))
+        calc(var(--np-enter-p) * var(--np-enter-lift));
+      scale:
+        calc(1 - var(--np-enter-p) * (var(--np-enter-depth) - var(--np-enter-squash)))
+        calc(1 - var(--np-enter-p) * (var(--np-enter-depth) + var(--np-enter-squash)));
+      /* No transition: shell drives this via the same WAAPI keyframes (pseudoElement) as ha-card, so rim/specular spring together. */
+    }
+
+    ha-ripple, mwc-ripple { display: none !important; }
+
+    :host{
+      --hemma-card-hover-shadow: var(--np-shadow);
+      --hemma-card-hover-filter: none;
+    }
+
+    /* Poster — same declarative binding the bloom above uses (--np-art), just sharp instead of blurred. */
+    .np-art-img{
+      position: absolute;
+      inset: 0;
+      background-image: var(--np-art, none);
+      background-size: cover;
+      background-position: center;
+      background-color: rgba(255,255,255,0.08);
+    }
+
+    #art::after{
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.12);
+    }
+
+    /* Artwork bloom */
+    ha-card::before{
+      content: '';
+      position: absolute;
+      inset: -40%;
+      z-index: 0;
+      background-image: var(--np-art, none);
+      background-size: cover;
+      background-position: center;
+      filter: blur(52px) saturate(150%);
+      opacity: calc(var(--np-has-art, 0) * var(--np-bloom-strength, 0.30));
+      transform: translateZ(0);
+      pointer-events: none;
+      transition: opacity .45s ease;
+    }
+
+    /* Readability scrim. --np-scrim-mult (set alongside --hemma-badge-body-tint above) scales it down in light mode. */
+    ha-card::after{
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: linear-gradient(105deg,
+        rgba(0,0,0,calc(var(--np-has-art, 0) * 0.42 * var(--np-scrim-mult, 1))) 0%,
+        rgba(0,0,0,calc(var(--np-has-art, 0) * 0.16 * var(--np-scrim-mult, 1))) 62%,
+        rgba(0,0,0,calc(var(--np-has-art, 0) * 0.30 * var(--np-scrim-mult, 1))) 100%);
+      pointer-events: none;
+    }
+
+    /* Glass surface */
+    :host::after{
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: var(--np-inner-radius, calc(var(--hemma-u-np, 10px) * 2.6));
+      z-index: 6;
+      --np-rim-side:      var(--hemma-badge-rim-side-blur, 2px) var(--hemma-badge-rim-side-spread, -1px) rgba(0,0,0,var(--hemma-badge-rim-side, 0.98));
+      --np-rim-bottom:    0 1px 1px -1px rgba(0,0,0,var(--hemma-badge-rim-bottom, 0.14));
+      --np-rim-top:       0 -1px 1px -1px rgba(0,0,0,var(--hemma-badge-rim-top, 0.12));
+      /* ── BOTTOM DROP SHADOW — tune --np-elev-* ── separate from shared --hemma-badge-elevation so media badges aren't affected; defaults fall through to it. */
+      --np-rim-elevation:
+        0 var(--np-elev-y, 2px) var(--np-elev-blur, 8px)
+        rgba(0,0,0,var(--np-elev-alpha, var(--hemma-badge-elevation, 0.22)));
+      box-shadow:
+        var(--hemma-badge-rim-side-offset, 1px) 0 var(--np-rim-side),
+        calc(-1 * var(--hemma-badge-rim-side-offset, 1px)) 0 var(--np-rim-side),
+        var(--np-rim-bottom),
+        var(--np-rim-top),
+        var(--np-rim-elevation);
+      opacity: calc(var(--np-glass, 1) * var(--np-enter-t, 1));
+    }
+
+    /* Specular ring + inner hairline — ONE pseudo-element. These used to be two separate #container::before
+       rule blocks; an element can only have one ::before, so CSS was merging them property-by-property, and
+       the second block's mismatched border-radius (17px, vs. --np-inner-radius elsewhere) silently won over
+       the first — which is exactly why the hairline's straight edge stopped short of the card's actual
+       (26px) rounded corner instead of tracing it. Merged so both layers share the real radius, and the
+       hairline's box-shadow now rides the same top-to-bottom mask as the ring — which is also the fix for
+       "the highlight should fade out as it curves around the corner" rather than cutting off. */
+    #container::before{
+      content: '';
+      position: absolute;
+      /* Inset tracks --np-pad-tb/--np-pad-v (not hardcoded) so this reaches the card's true edge as padding changes; right stays literal -16px matching the padding shorthand. */
+      inset: calc(-1 * var(--np-pad-tb, var(--np-pad-v, 16px))) -16px
+             calc(-1 * var(--np-pad-tb, var(--np-pad-v, 16px))) calc(-1 * var(--np-pad-v, 16px));
+      border-radius: var(--np-inner-radius, calc(var(--hemma-u-np, 10px) * 2.6));
+      pointer-events: none;
+      z-index: 5;
+      padding: var(--hemma-badge-ring-thickness, 1.3px);
+      backdrop-filter: brightness(var(--hemma-badge-ring-boost, 1.5)) saturate(var(--hemma-badge-ring-sat, 1.8));
+      -webkit-backdrop-filter: brightness(var(--hemma-badge-ring-boost, 1.5)) saturate(var(--hemma-badge-ring-sat, 1.8));
+      mix-blend-mode: screen;
+      box-shadow:
+        inset 0 0.5px 0 rgba(255,255,255,0.34),
+        inset 0 0 0 0.5px rgba(255,255,255,0.10),
+        inset 0 -0.5px 0 rgba(255,255,255,0.10);
+      -webkit-mask:
+        linear-gradient(to bottom,
+          rgba(0,0,0,.5) 0%,
+          rgba(0,0,0,0.15) 32%,
+          rgba(0,0,0,0) 45%,
+          rgba(0,0,0,0) 55%,
+          rgba(0,0,0,0.07) 68%,
+          rgba(0,0,0,0.05) 100%),
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: source-in, xor;
+              mask-composite: intersect, exclude;
+      opacity: var(--np-glass, 1);
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
+
+    #container{
+      position: relative;
+      z-index: 2;
+      /* button-card's shadow DOM makes this a flex/grid child of ha-card (default min-width:auto refuses to shrink below content) — without this, an unwrapped long title could grow ha-card past its max-width caps. */
+      min-width: 0;
+    }
+
+    /* Hover tint */
+    #container::after{
+      content: '';
+      position: absolute;
+      inset: calc(-1 * var(--np-pad-tb, var(--np-pad-v, 16px))) -16px
+             calc(-1 * var(--np-pad-tb, var(--np-pad-v, 16px))) calc(-1 * var(--np-pad-v, 16px));
+      border-radius: var(--np-inner-radius, calc(var(--hemma-u-np, 10px) * 2.6));
+      pointer-events: none;
+      z-index: 5;
+      background: rgba(255,255,255,0.05);
+      opacity: 0;
+      transition: opacity .40s ease;
+    }
+
+    @media (hover: hover) {
+      ha-card:hover #container::after{
+        opacity: 0.6;
+        transition: opacity .18s ease;
+      }
+    }
+
+    .np-meta{
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      min-width: 0;
+    }
+
+    .np-title{
+      font-size: var(--np-title-size, 16px);
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      line-height: 1.15;
+      color: var(--primary-text-color, #fff);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .np-sub{
+      font-size: var(--np-sub-size, 14px);
+      font-weight: 400;
+      letter-spacing: -0.1px;
+      line-height: 1.18;
+      color: rgba(255,255,255,0.62);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .np-track{
+      margin-top: var(--np-track-gap, 12px);
+      height: calc(var(--hemma-u-np, 10px) * 0.4);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.16);
+      overflow: hidden;
+    }
+
+    .np-fill{
+      height: 100%;
+      width: 100%;
+      border-radius: 999px;
+      background: var(--np-accent, #67f5a0);
+      transform-origin: left center;
+    }
+
+    .np-line{
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .np-line > .np-title,
+    .np-line > .np-sub{
+      display: inline-block;
+      max-width: none;
+    }
+
+    /* Right fade only at rest — left fade animates in separately below (avoids dimming the first char before it's actually scrolled). */
+    .np-line.np-scroll{
+      -webkit-mask-image: linear-gradient(90deg,
+        #000 0px, #000 calc(100% - 18px), transparent 100%);
+      mask-image: linear-gradient(90deg,
+        #000 0px, #000 calc(100% - 18px), transparent 100%);
+      animation: np-marquee-fade var(--np-marquee-dur, 12s) linear infinite;
+      animation-delay: var(--np-mq-delay, 0s);
+    }
+
+    /* Offsets (0-12%, 24-100%) match np-marquee's own pause window below — keep them synced if either changes. */
+    @keyframes np-marquee-fade{
+      0%, 12%{
+        -webkit-mask-image: linear-gradient(90deg,
+          #000 0px, #000 0px, #000 calc(100% - 18px), transparent 100%);
+        mask-image: linear-gradient(90deg,
+          #000 0px, #000 0px, #000 calc(100% - 18px), transparent 100%);
+      }
+      24%, 100%{
+        -webkit-mask-image: linear-gradient(90deg,
+          transparent 0px, #000 7px, #000 calc(100% - 18px), transparent 100%);
+        mask-image: linear-gradient(90deg,
+          transparent 0px, #000 7px, #000 calc(100% - 18px), transparent 100%);
+      }
+    }
+
+    .np-marquee-clone{
+      display: inline-block;
+    }
+
+    .np-line.np-scroll > .np-title,
+    .np-line.np-scroll > .np-sub{
+      animation: np-marquee var(--np-marquee-dur, 12s) linear infinite;
+    }
+
+    .np-line.np-scroll > .np-title,
+    .np-line.np-scroll > .np-sub{
+      animation-delay: var(--np-mq-delay, 0s);
+    }
+
+    @keyframes np-marquee{
+      0%,  12% { transform: translateX(0); }
+      100%     { transform: translateX(calc(-1 * var(--np-mq, 0px))); }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .np-line.np-scroll > .np-title,
+      .np-line.np-scroll > .np-sub{ animation: none !important; }
+      .np-line.np-scroll{
+        animation: none !important;
+        -webkit-mask-image: none;
+        mask-image: none;
+      }
+      .np-marquee-clone{ display: none; }
+    }
+
+    @keyframes np-advance { to { transform: scaleX(1); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .np-fill{ animation: none !important; }
+    }
+
+    /* Tablet (touch, 768-1400px) — desktop/mouse keeps the larger :host defaults above. */
+    @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (pointer: coarse),
+           (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (hover: none) {
+      :host{
+        --np-art-size: 78px;
+        --np-title-size: 14px;
+        --np-sub-size: 12px;
+        --np-pad-v: 12px;
+        /* Must be restated per breakpoint: --np-pad-tb is set unconditionally on :host, so it does
+           NOT fall back to this block's --np-pad-v. Left it at the desktop 14px against a 12px left
+           inset, i.e. top/bottom 2px LARGER than the left — the one place the intended relationship
+           was inverted. 12px squares the artwork's inset on all three sides. */
+        --np-pad-tb: 12px;
+        --np-track-gap: 8px;
+      }
+    }
+
+    /* Mobile */
+    @media (max-width: 600px){
+      :host{
+        /* 108 not 100: art must stay ≥ text column height (~107px with 44px transport) or the column drives card height. */
+        --np-art-size: 108px;
+        --np-title-size: 16px;
+        --np-sub-size: 14px;
+        --np-pad-v: 16px;
+        --np-row-gap: 7px;
+        --np-track-gap: 9px;
+        /* Lower than desktop: tiles are usually darker than the wallpaper, so full elevation reads as haze. Raise --np-elev-alpha toward 0.22 for desktop weight, 0 to remove. */
+        --np-elev-alpha: 0.10;
+        --np-elev-blur: 6px;
+        --np-elev-y: 1px;
+        /* Phone slots are sized by the row itself, so the desktop cap and right-align both come off here. */
+        max-width: 100% !important;
+        margin-left: 0;
+      }
+    }

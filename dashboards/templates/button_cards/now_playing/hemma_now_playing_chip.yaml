@@ -1,0 +1,578 @@
+# Now Playing rail chip — one compact pill per non-primary active source; collapses to zero width (not display:none) so chips slide in/out.
+hemma_now_playing_chip:
+  template:
+    - hemma_default
+
+  show_icon: false
+  show_name: true
+  show_state: false
+  show_label: false
+
+  variables:
+    src: null
+    slot: 1
+    # Unused; kept only so existing slot_id: 'chipN' instantiations don't need touching.
+    slot_id: null
+    minimized_entity: null
+    # Passthrough only (settling now happens upstream in the shell); kept as its own var so --np-chip etc. below don't need renaming.
+    hold_src: '[[[ return variables.src; ]]]'
+
+    np_art_init:
+      force_eval: true
+      value: >
+        [[[
+          if (typeof window._hemmaNPArt !== 'function') {
+            window._hemmaNPArt = function (src) {
+              const hold = window._hemmaNPArtHold = window._hemmaNPArtHold || {};
+              const warm = window._hemmaNPArtWarm = window._hemmaNPArtWarm || new Map();
+              const path = (u) => String(u || '').split('?')[0];
+              const k = src?.key || '';
+              const cur = src?.art || null;
+              const id = src ? ((src.title || '') + '|' + (src.subtitle || '')) : '';
+
+              let u = cur;
+              if (k) {
+                const prev = hold[k];
+                const sameTrack = !!(prev && prev.id === id);
+                if (cur && sameTrack && path(prev.url) === path(cur) && warm.has(path(cur))) u = prev.url;
+                else if (cur) hold[k] = { id: id, url: cur };
+                // Transient null between polls — hold the last good art, but only for this track.
+                else u = sameTrack ? prev.url : null;
+              }
+
+              // Retaining a decoded Image keeps the bitmap alive across a rebuild
+              // (feedback_preload_needs_decode_not_hidden_img).
+              if (u && !warm.has(path(u))) {
+                try {
+                  const im = new Image();
+                  im.decoding = 'async';
+                  im.src = u;
+                  warm.set(path(u), im);
+                  if (warm.size > 24) warm.delete(warm.keys().next().value);
+                  im.decode?.().catch(() => {});
+                } catch (e) {}
+              }
+
+              return u || null;
+            };
+          }
+          return true;
+        ]]]
+
+  tap_action:
+    action: >
+      [[[
+        return (variables.hold_src?.kind === 'plex' && typeof window.browser_mod !== 'undefined')
+          ? 'fire-dom-event' : 'more-info';
+      ]]]
+    entity: '[[[ return variables.hold_src?.entity || null; ]]]'
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        tag: '[[[ return "hemma_np_plex_" + (variables.hold_src?.entity || "").replace(/\./g, "_"); ]]]'
+        title: ""
+        dismissable: true
+        adaptive: true
+        size: auto
+        # window._hemmaPlexPopupCard (hemma-core.js) — shared with popups/hemma_popup_plex.yaml and this template's primary/_art siblings.
+        content: |
+          [[[
+            const sid = variables?.hold_src?.entity || '';
+            return window._hemmaPlexPopupCard(sid, states);
+          ]]]
+        popup_styles:
+          - style: all
+            styles: |
+              ha-adaptive-dialog, ha-dialog {
+                --dialog-content-padding: 0px;
+              }
+              @media (max-width: 767px) {
+                ha-adaptive-dialog, ha-dialog {
+                  --dialog-surface-margin-top: 0px;
+                }
+              }
+  # Hold pins this source as primary; tap stays more-info, keeping pinning a deliberate two-step gesture.
+  hold_action:
+    haptic: medium
+    action: call-service
+    service: input_text.set_value
+    service_data:
+      entity_id: input_text.hemma_now_playing_pinned
+      value: '[[[ return variables.hold_src?.key || ""; ]]]'
+  double_tap_action:
+    action: none
+
+  styles:
+    card:
+      # Guard for the theme's global card-mod-card hover rule; #container::after (extra_styles, below) is the actual hover effect.
+      - --hemma-card-hover-shadow: none
+      - --hemma-card-hover-filter: none
+      # Per-chip stagger for minimise motion; read by transition-delay on ha-card below.
+      - --np-slot-stagger: '[[[ return (Number(variables.slot || 1) * 45) + "ms"; ]]]'
+      - --np-chip: >
+          [[[
+            // Keyed by slot_id, not `this` — this element gets torn down/rebuilt on ordinary content updates.
+            window._hemmaNPSlotState = window._hemmaNPSlotState || {};
+            const store = variables.slot_id
+              ? (window._hemmaNPSlotState[variables.slot_id] = window._hemmaNPSlotState[variables.slot_id] || {})
+              : this;
+            const el = this;
+
+            const hasSrc = !!variables.hold_src;
+            const panelOpen = states[variables.minimized_entity]?.state !== 'on';
+            const open = hasSrc ? 1 : 0;
+            try {
+              el.style.setProperty('--np-chip', String(open));
+              // Must gate on both hasSrc AND panelOpen — this lives on ha-card itself and overrides the np_rail wrapper's ancestor pointer-events rule.
+              el.style.setProperty('--np-chip-ptr', (hasSrc && panelOpen) ? 'auto' : 'none');
+              // Open snaps instant so the FLIP below measures the final size; close eases.
+              el.style.setProperty('--np-chip-geo', open ? '0s' : '.34s');
+            } catch (e) {}
+
+            // Chip already open and shifted because something was inserted above — start at last position and let it travel.
+            const prevOpen = store._npChipOpen ?? 0;
+            const prevTop = store._npChipTop;
+            if (open && prevOpen === 1 && prevTop !== undefined) {
+              requestAnimationFrame(() => {
+                const card = el.shadowRoot?.querySelector('ha-card');
+                if (!card) return;
+                // offsetTop, not getBoundingClientRect(): a transformed ancestor (the panel's droplet animation) skews rect-based deltas; layout offsets ignore transforms.
+                const nowTop = card.offsetTop + (card.offsetParent?.offsetTop || 0);
+                const delta = prevTop - nowTop;
+                store._npChipTop = nowTop;
+                if (Math.abs(delta) < 1) return;
+                try { store._npShiftAnim?.cancel(); } catch (e) {}
+
+                // Last chip gets extra squash on landing — end of the queue absorbing the shove.
+                const list = window._hemmaNPCache?.list || [];
+                const isLast = Number(variables.slot || 1) === (list.length - 1);
+                const frames = isLast
+                  ? [
+                      { transform: `translateY(${delta.toFixed(1)}px) scale(1, 1)` },
+                      { transform: 'translateY(2.5px) scale(1, 0.93)', offset: 0.8 },
+                      { transform: 'translateY(0) scale(1, 1)' },
+                    ]
+                  : [
+                      { transform: `translateY(${delta.toFixed(1)}px)` },
+                      { transform: 'translateY(0)' },
+                    ];
+
+                store._npShiftAnim = card.animate(frames, {
+                  duration: isLast ? 620 : 560,
+                  easing: 'cubic-bezier(0.25, 0.9, 0.3, 1)',
+                  fill: 'both',
+                });
+                // fill:'both' leaves the animation live forever unless cancelled — a permanently-active transform on ha-card can mis-clip its rounded overflow:hidden descendants.
+                store._npShiftAnim.finished
+                  .then(() => { try { store._npShiftAnim?.cancel(); } catch (e) {} })
+                  .catch(() => {});
+              });
+            } else if (open) {
+              requestAnimationFrame(() => {
+                const card = el.shadowRoot?.querySelector('ha-card');
+                if (card) store._npChipTop = card.offsetTop + (card.offsetParent?.offsetTop || 0);
+              });
+            }
+
+            const prev = store._npChipOpen ?? 0;
+            if (prev !== open) {
+              requestAnimationFrame(() => {
+                const card = el.shadowRoot?.querySelector('ha-card');
+                if (!card) return;
+                try { store._npChipAnim?.cancel(); } catch (e) {}
+
+                let frames;
+                let dur = open ? 560 : 320;
+
+                const dem = window._hemmaNPDemoted;
+                const pr  = window._hemmaNPPrimaryRect;
+                const isDemoted = open && dem && pr &&
+                  dem.key === variables.hold_src?.key &&
+                  (Date.now() - dem.at) < 1500;
+
+                if (isDemoted) {
+                  const cr = card.getBoundingClientRect();
+                  if (cr.width > 4 && cr.height > 4) {
+                    // Capped at 1.75 — the true ~2.3x scale read as a pill inflated past anything on screen.
+                    const sx = pr.width / cr.width;
+                    const sy = Math.min(pr.height / cr.height, 1.75);
+                    const dx = (pr.left + pr.width  / 2) - (cr.left + cr.width  / 2);
+                    const dy = (pr.top  + pr.height / 2) - (cr.top  + cr.height / 2);
+                    const R = 20;
+                    const restRadius = getComputedStyle(card).getPropertyValue('--np-chip-radius').trim() || '16px';
+                    frames = [
+                      { transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)})`,
+                        borderRadius: `${(R / sx).toFixed(1)}px / ${(R / sy).toFixed(1)}px`,
+                        opacity: 1 },
+                      { transform: `translate(0px, 3px) scale(1, 0.94)`,
+                        borderRadius: restRadius, opacity: 1, offset: 0.82 },
+                      { transform: 'translate(0px, 0px) scale(1, 1)',
+                        borderRadius: restRadius, opacity: 1 },
+                    ];
+                    dur = 600;
+                  }
+                }
+
+                if (!frames) {
+                  // Opacity only, not transform — an active transform animation on this element would suppress its own backdrop-filter for the duration, and this chip must stay blurred continuously.
+                  frames = open
+                    ? [{ opacity: 0 }, { opacity: 1 }]
+                    : [{ opacity: 1 }, { opacity: 0 }];
+                }
+
+                store._npChipAnim = card.animate(frames, {
+                  duration: dur,
+                  easing: 'cubic-bezier(0.25, 0.9, 0.3, 1)',
+                  fill: 'both',
+                });
+                store._npChipAnim.finished
+                  .then(() => {
+                    store._npChipTop = card.offsetTop + (card.offsetParent?.offsetTop || 0);
+                    try { store._npChipAnim?.cancel(); } catch (e) {}
+                  })
+                  .catch(() => {});
+              });
+            }
+            // Published rect is where the primary tile expands from on promote (mirror of the demotion FLIP).
+            if (open && variables.hold_src?.key) {
+              requestAnimationFrame(() => {
+                const card = el.shadowRoot?.querySelector('ha-card');
+                if (!card) return;
+                const r = card.getBoundingClientRect();
+                if (r.width > 4 && r.height > 4) {
+                  window._hemmaNPChipRects = window._hemmaNPChipRects || {};
+                  window._hemmaNPChipRects[variables.hold_src.key] = r;
+                }
+              });
+            }
+
+            store._npChipOpen = open;
+            return open;
+          ]]]
+      - --np-chip-art: >
+          [[[
+            const u = window._hemmaNPArt?.(variables.hold_src) || null;
+            const v = u ? `url("${u}")` : 'none';
+            try {
+              this.style.setProperty('--np-chip-art', v);
+              this.style.setProperty('--bg-url', v);
+              this.style.setProperty('--np-chip-has-art', u ? '1' : '0');
+            } catch (e) {}
+            return v;
+          ]]]
+      - --bg-url: >
+          [[[
+            const u = window._hemmaNPArt?.(variables.hold_src) || null;
+            return u ? `url("${u}")` : 'none';
+          ]]]
+      - --np-chip-delay: >
+          [[[
+            const n = Number(variables.slot || 1);
+            return ((n - 1) * 45) + 'ms';
+          ]]]
+      # Same resolution as --bg-url — gating the bloom on the live value alone would drop the wash
+      # to zero on the very poll the held URL is covering for.
+      - --np-chip-has-art: >
+          [[[
+            return window._hemmaNPArt?.(variables.hold_src) ? 1 : 0;
+          ]]]
+      - --ha-card-background: transparent
+      # Same light/dark-aware override hemma_now_playing_primary uses on itself (not the shared 0.25 default,
+      # which would only match dark mode) — chips don't inherit the primary tile's inline value, they're siblings.
+      - --hemma-badge-body-tint: >
+          [[[
+            const isDark = typeof hass?.themes?.darkMode === 'boolean'
+              ? hass.themes.darkMode
+              : window.matchMedia('(prefers-color-scheme: dark)').matches;
+            return isDark ? '0.25' : '0.05';
+          ]]]
+      - background: >
+          color-mix(in srgb,
+            rgba(0,0,0,calc(var(--hemma-badge-body-tint, 0.25) + (var(--np-inner-glass, 1) * 0.05)))
+              calc(var(--np-chip-has-art, 0) * 100%),
+            var(--badge-background, rgba(150,150,150,0.18))) !important
+      - -webkit-backdrop-filter: 'blur(calc(var(--np-chip, 0) * var(--np-inner-glass, 1) * 12px)) saturate(calc(1 + (var(--np-chip, 0) * var(--np-inner-glass, 1) * 0.5)))'
+      - backdrop-filter: 'blur(calc(var(--np-chip, 0) * var(--np-inner-glass, 1) * 12px)) saturate(calc(1 + (var(--np-chip, 0) * var(--np-inner-glass, 1) * 0.5)))'
+      - --np-chip-radius: calc(var(--hemma-u-np, 10px) * 1.6)
+      - --np-chip-art-radius: calc(var(--hemma-u-np, 10px) * 1)
+      - border-radius: var(--np-chip-radius)
+      - border: none !important
+      - padding: 'calc(var(--np-chip) * 0px) calc(var(--np-chip) * calc(var(--hemma-u-np, 10px) * 0.8)) calc(var(--np-chip) * 0px) calc(var(--np-chip) * calc(var(--hemma-u-np, 10px) * 0.8)) !important'
+      - width: var(--np-tile-width, 100%) !important
+      - min-width: 0
+      - max-width: calc(var(--hemma-u-np, 10px) * 44) !important
+      - overflow: hidden !important
+      - clip-path: inset(0 round var(--np-chip-radius))
+      - position: relative
+      - margin: 0 !important
+      - cursor: pointer
+      - box-shadow: none !important
+
+    grid:
+      - display: grid !important
+      - height: 100%
+      - grid-template-areas: '"art label ctl"'
+      - grid-template-columns: max-content minmax(0, 1fr) max-content
+      - column-gap: 'calc(var(--np-chip) * calc(var(--hemma-u-np, 10px) * 0.9))'
+      - align-items: center !important
+
+    name:
+      - grid-area: label
+      - min-width: 0
+      - overflow: hidden
+      - text-align: left
+      - justify-self: stretch !important
+
+    custom_fields:
+      art:
+        - grid-area: art
+        - border-radius: var(--np-chip-art-radius)
+        - line-height: 0
+      ctl:
+        - grid-area: ctl
+
+  custom_fields:
+    art: >
+      [[[
+        const u = window._hemmaNPArt?.(variables.hold_src) || null;
+        // Single-quoted url() inside a double-quoted attribute — url("…") would terminate the
+        // style attribute at the first inner quote and drop the declaration entirely.
+        const bg = u ? `url('${String(u).replace(/'/g, '%27')}')` : 'none';
+        return `<div class="np-chip-art" style="background-image: ${bg};"></div>`;
+      ]]]
+
+    # Same control template as the primary card; hides itself when there's nothing to control, so Plex/PSN chips stay plain pills.
+    ctl:
+      card:
+        type: custom:button-card
+        template: hemma_now_playing_controls
+        variables:
+          src: '[[[ return variables.hold_src; ]]]'
+          compact: true
+          # Apple Watch Now Playing widget: a lone play/pause disc wrapped in a progress ring.
+          only_toggle: true
+          ring: true
+          # Sized for the 56px pill, not the phone's 44pt targets — the ring is the button's own box.
+          btn_size: '40px'
+          glyph_size: '13px'
+          gap_size: '0px'
+
+  name: >
+    [[[
+      const s = variables.hold_src;
+      if (!s) return '';
+
+      const esc = (t) => String(t ?? '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+      const top = String(s.title || '').trim();
+      const bot = s.kind === 'player'
+        ? String(s.subtitle || '').trim()
+        : [s.source, s.subtitle].map(x => String(x || '').trim()).filter(Boolean).join(' · ');
+
+      return `
+        <div class="np-chip-wrap">
+          <div class="np-chip-top">${esc(top)}</div>
+          ${bot && bot !== top ? `<div class="np-chip-bot">${esc(bot)}</div>` : ''}
+        </div>
+      `;
+    ]]]
+
+  extra_styles: |
+    /* Entrance */
+    :host{
+      display: block;
+      --hemma-card-hover-shadow: none;
+      --hemma-card-hover-filter: none;
+      width: var(--np-tile-width, 100%);
+      align-self: var(--np-tile-align, stretch);
+      pointer-events: var(--np-chip-ptr, none);
+      max-height: calc(var(--np-chip, 0) * calc(var(--hemma-u-np, 10px) * 6));
+      margin-top: calc(var(--np-chip, 0) * calc(var(--hemma-u-np, 10px) * 1.6));
+      overflow: visible;
+      transition:
+        max-height var(--np-chip-geo, .34s) cubic-bezier(0.4, 0, 0.2, 1),
+        margin-top var(--np-chip-geo, .34s) cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Rim */
+    :host::after{
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: var(--np-chip-radius, 16px);
+      z-index: 6;
+      box-shadow:
+        0.5px 0 1px -0.5px rgba(0,0,0,0.25),
+        -0.5px 0 1px -0.5px rgba(0,0,0,0.25),
+        0 0.5px 0.5px -0.5px rgba(0,0,0,0.10),
+        0 1px 3px rgba(0,0,0,0.12);
+      opacity: calc(var(--np-chip, 0) * (1 - var(--np-min, 0)));
+    }
+
+    ha-card{
+      /* height = art (40px) + 8px top/bottom inset */
+      height: calc(var(--np-chip, 0) * calc(var(--hemma-u-np, 10px) * 5.6)) !important;
+      min-height: calc(var(--np-chip, 0) * calc(var(--hemma-u-np, 10px) * 5.6)) !important;
+      cursor: pointer;
+      transform-origin: 30% -40%;
+      /* translate, not transform — transform is already driven by rail-shift/demotion FLIPs on this element via WAAPI; no scale since transform-origin belongs to those FLIPs. */
+      translate:
+        calc(var(--np-min, 0) * 30px)
+        calc(var(--np-min, 0) * -20px);
+      opacity: calc(1 - var(--np-min, 0));
+      /* Resting state only; --np-min drives the actual spring via WAAPI, so these aren't in the transition list. */
+      transition-property: backdrop-filter, -webkit-backdrop-filter !important;
+      transition-duration: .15s !important;
+      transition-timing-function: ease !important;
+    }
+
+    ha-ripple, mwc-ripple { display: none !important; }
+
+    /* Artwork wash */
+    ha-card::after{
+      content: '';
+      position: absolute;
+      inset: -60px;
+      pointer-events: none;
+      z-index: 0;
+      /* No flat black layer over the art (the large tile's bloom has none either) — dimming the
+         cover before compositing, then landing it at 0.30, is what left the pill grey while the
+         large tile read purple off the same artwork. */
+      background:
+        var(--bg-url, none),
+        linear-gradient(var(--hemma-badge-art-floor, rgba(160,160,160,0.28)) 0 0);
+      background-blend-mode: lighten;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      filter: blur(24px) saturate(1.6);
+      /* ── CHIP BLOOM — tune this fallback ── Only the fallback moves, so mobile's ancestor-set 0.62 still wins. */
+      opacity: calc(var(--np-chip, 0) * var(--np-chip-has-art, 0) * var(--np-bloom-strength, 0.48));
+    }
+
+    /* Specular ring */
+    :host::before{
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: var(--np-chip-radius, 16px);
+      z-index: 4;
+      padding: var(--np-chip-ring-thickness, 0.9px);
+      backdrop-filter: brightness(var(--np-chip-ring-boost, 1.2)) saturate(var(--hemma-badge-ring-sat, 1.8));
+      -webkit-backdrop-filter: brightness(var(--np-chip-ring-boost, 1.2)) saturate(var(--hemma-badge-ring-sat, 1.8));
+      mix-blend-mode: screen;
+      -webkit-mask:
+        linear-gradient(to bottom,
+          rgba(0,0,0,.16) 0%,
+          rgba(0,0,0,0.06) 25%,
+          rgba(0,0,0,0) 40%,
+          rgba(0,0,0,0) 60%,
+          rgba(0,0,0,0.06) 75%,
+          rgba(0,0,0,0.05) 100%),
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: source-in, xor;
+              mask-composite: intersect, exclude;
+      opacity: calc(var(--np-chip, 0) * (1 - var(--np-min, 0)));
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
+
+    #container{
+      position: relative !important;
+      z-index: 2 !important;
+    }
+
+    /* Hairline */
+    #container::before{
+      content: '';
+      position: absolute;
+      inset: 0px -8px 0px -8px;
+      border-radius: var(--np-chip-radius, 16px);
+      pointer-events: none;
+      box-shadow:
+        inset 0 0.5px 0 rgba(255,255,255,0.18),
+        inset 0 0 0 0.5px rgba(255,255,255,0.08),
+        inset 0 -0.5px 0 rgba(255,255,255,0.08);
+    }
+
+    /* Hover tint */
+    #container::after{
+      content: '';
+      position: absolute;
+      inset: 0px -8px 0px -8px;
+      border-radius: var(--np-chip-radius, 16px);
+      pointer-events: none;
+      z-index: 5;
+      background: rgba(255,255,255,0.05);
+      opacity: 0;
+      transition: opacity .40s ease;
+    }
+
+    @media (hover: hover) {
+      ha-card:hover #container::after{
+        opacity: 0.6;
+        transition: opacity .18s ease;
+      }
+    }
+
+    :host ha-card,
+    :host ha-card:hover,
+    :host ha-card:focus,
+    :host ha-card:active{
+      box-shadow: none !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      :host{
+        transform: none;
+        transition: opacity .12s linear, max-width .12s linear;
+      }
+    }
+
+    .np-chip-art{
+      width: calc(var(--np-chip, 0) * calc(var(--hemma-u-np, 10px) * 4));
+      height: calc(var(--np-chip, 0) * calc(var(--hemma-u-np, 10px) * 4));
+      border-radius: var(--np-chip-art-radius, 16px);
+      background-image: var(--np-chip-art, none);
+      background-size: cover;
+      background-position: center;
+      background-color: rgba(255,255,255,0.10);
+      box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.14);
+      flex: none;
+      position: relative;
+    }
+
+
+    .np-chip-wrap{
+      display: flex;
+      flex-direction: column;
+      gap: 0px;
+      min-width: 0;
+    }
+
+    .np-chip-top{
+      font-size: calc(var(--hemma-u-np, 10px) * 1.3);
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--primary-text-color, #fff);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .np-chip-bot{
+      font-size: calc(var(--hemma-u-np, 10px) * 1.2);
+      font-weight: 500;
+      line-height: 1.2;
+      /* Same translucent white as the large tile's .np-sub — the artwork hue reaches this row
+         through the bloom behind it, not by tinting the glyph colour directly. */
+      color: rgba(255,255,255,0.62);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }

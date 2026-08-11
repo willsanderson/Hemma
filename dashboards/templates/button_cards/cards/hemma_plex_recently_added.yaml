@@ -6,11 +6,6 @@ hemma_plex_recently_added:
   variables:
     icon: plex
 
-  triggers_update:
-    - sensor.plex_recently_added_count
-    - sensor.recently_added_movies
-    - sensor.recently_added_tv
-
   hold_action:
     action: more-info
     entity: sensor.plex_recently_added_count
@@ -42,6 +37,7 @@ hemma_plex_recently_added:
       styles:
         card:
           - "--hemma-active-overlay-opacity": "1"
+          - --hemma-entity-overlay-tint: var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))
           - "--hemma-active-overlay-dur": "0s"
           - --hemma-entity-top-gradient: none
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
@@ -52,23 +48,12 @@ hemma_plex_recently_added:
         img_cell:
           - opacity: "1 !important"
           - filter: none !important
-          - background: "var(--hemma-color-yellow, #e5a00d) !important"
+          - background: "var(--hemma-color-yellow, #FFCC00) !important"
         entity_picture:
           - opacity: "1 !important"
           - filter: none !important
 
   extra_styles: |
-    #img-cell {
-      position: relative;
-      border-radius: 50% !important;
-      background: var(--hemma-icon-circle-bg, rgba(255,255,255,0.10)) !important;
-      width: 44px !important;
-      height: 44px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      overflow: hidden !important;
-    }
     #img-cell::before { opacity: 0 !important; }
     #img-cell img {
       width: 50% !important;
@@ -77,20 +62,4 @@ hemma_plex_recently_added:
       max-height: 50% !important;
       object-fit: contain !important;
       flex: none !important;
-    }
-    #img-cell ha-icon {
-      --mdc-icon-size: 22px !important;
-      flex: none !important;
-      color: rgba(255,255,255,1.0) !important;
-    }
-    #icon { color: rgba(255,255,255,1.0) !important; }
-    @media (max-width: 767px) and (orientation: portrait) {
-      #img-cell { width: 38px !important; height: 38px !important; }
-      #img-cell ha-icon { --mdc-icon-size: 19px !important; }
-    }
-    @media (hover: hover) {
-      #img-cell:hover { filter: brightness(1.15); transform: scale(1.03); transition: filter 0.15s ease, transform 0.15s ease; }
-    }
-    @media (hover: none) {
-      #img-cell:active { filter: brightness(1.15); transform: scale(1.03); }
     }

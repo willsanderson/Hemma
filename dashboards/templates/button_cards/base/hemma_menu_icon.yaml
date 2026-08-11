@@ -38,8 +38,6 @@ hemma_menu_icon:
       - pointer-events: all
       - transition: background 120ms ease
       - backdrop-filter: none
-    card:hover:
-      - background: rgba(255,255,255,0.10)
 
     custom_fields:
       glyph:

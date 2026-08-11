@@ -1,7 +1,12 @@
 # /config/dashboards/templates/button_cards/cards/hemma_entity_actions.yaml
 #
-# A hemma_entity card with two configurable action buttons in a right-side column.
+# A hemma_entity card with up to two configurable action buttons in a right-side rail.
 # Originally contributed by @hostand.
+#
+# The rail renders each action as its own flat button. A button whose entity is in an
+# "on"-like state fills with its domain accent colour; an unavailable or missing entity
+# renders dimmed. Disabling an action (or leaving its entity unset) removes that capsule
+# entirely, and disabling both collapses the rail so the card reflows to normal padding.
 #
 # Usage:
 # - type: custom:button-card
@@ -18,6 +23,44 @@
 #     action_2_entity: switch.fridge_super_cool
 #     action_2_icon: mdi:snowflake
 #     action_2_action: toggle
+#
+# Variables (N = 1 or 2):
+#   icon                       Icon for the main hemma_entity tile (see hemma_entity).
+#   svg_path                   Base path for bare-name SVG icons. Default /local/hemma/icons.
+#
+#   action_N_enabled           true (default) / false. A falsey value hides the button.
+#   action_N_entity            Entity the button acts on. Required — no entity, no button.
+#   action_N_icon              mdi:xxx, a bare SVG name resolved against svg_path,
+#                              or an explicit /local/... , http(s)://... , .svg/.png/.webp path.
+#                              Defaults to the entity's own icon attribute, then mdi:help-circle.
+#   action_N_active_color      Optional CSS colour for the active fill. Defaults to a colour
+#                              derived from the entity's domain.
+#
+#   action_N_action            One of:
+#     more-info    (default)   Opens the more-info dialog for action_N_entity.
+#     toggle                   Calls <domain>.toggle on action_N_entity.
+#     call-service             Calls action_N_service with action_N_service_data.
+#                              entity_id defaults to action_N_entity if not in the data.
+#     navigate                 Pushes action_N_navigation_path.
+#
+#   action_N_service           "domain.service", required for the call-service action.
+#   action_N_service_data      Mapping passed to the service. Default {}.
+#   action_N_navigation_path   Dashboard path, required for the navigate action.
+#
+# Card-level active state:
+#   The tile's own active state follows its `entity:` as normal — the action buttons light up
+#   independently of it. If the tile's entity is a passive sensor that never reads as active,
+#   inherit hemma_entity's active_entities hook to let the action entities drive the whole card:
+#
+#     variables:
+#       active_entities:
+#         - switch.fridge_mode
+#         - switch.fridge_super_cool
+#       active_entities_mode: all   # all = both on; any (default) = either on
+#
+#   These are deliberately listed explicitly rather than wired up from action_N_entity
+#   automatically, so the card can key off entities that aren't buttons, and so a tile with a
+#   meaningful status sensor can keep using it.
 
 hemma_entity_actions:
   template:
@@ -31,6 +74,7 @@ hemma_entity_actions:
     action_1_entity:
     action_1_icon: mdi:help-circle
     action_1_action: more-info
+    action_1_active_color:
     action_1_navigation_path:
     action_1_service:
     action_1_service_data: {}
@@ -39,15 +83,10 @@ hemma_entity_actions:
     action_2_entity:
     action_2_icon: mdi:help-circle
     action_2_action: more-info
+    action_2_active_color:
     action_2_navigation_path:
     action_2_service:
     action_2_service_data: {}
-
-  triggers_update:
-    - '[[[ return variables.battery_entity || "" ]]]'
-    - '[[[ return variables.progress_entity || "" ]]]'
-    - '[[[ return variables.action_1_entity || "" ]]]'
-    - '[[[ return variables.action_2_entity || "" ]]]'
 
   tap_action:
     action: more-info
@@ -60,47 +99,58 @@ hemma_entity_actions:
 
   styles:
     card:
-      - --hemma-actions-rail-w: |
+      - --hemma-actions-pad-right: |
           [[[
-            const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-            return isMobile ? '46px' : '56px';
+            const on = (idx) => {
+              const enabled = variables[`action_${idx}_enabled`];
+              const ok = (enabled === undefined || enabled === null) ? true :
+                (typeof enabled === 'boolean') ? enabled :
+                (typeof enabled === 'number') ? enabled !== 0 :
+                !['false','0','no','off','disabled'].includes(String(enabled).trim().toLowerCase());
+              return ok && !!variables[`action_${idx}_entity`];
+            };
+            const count = (on(1) ? 1 : 0) + (on(2) ? 1 : 0);
+            return count > 0
+              ? 'calc(var(--hemma-actions-rail-w) + var(--hemma-actions-rail-inset))'
+              : 'var(--hemma-actions-pad)';
           ]]]
       - padding: >
-          [[[
-            const pad = 'var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))';
-            const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-            const rightInset = isMobile ? '14px' : '22px';
-            return `${pad} calc(var(--hemma-actions-rail-w, 62px) + ${rightInset}) ${pad} ${pad}`;
-          ]]]
+          var(--hemma-actions-pad)
+          var(--hemma-actions-pad-right)
+          var(--hemma-actions-pad)
+          var(--hemma-actions-pad)
       - position: relative
       - overflow: hidden !important
 
     custom_fields:
       side_actions:
-        - position: absolute
-        - top: calc(var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px)) - 2px)
-        - right: |
+        - display: |
             [[[
-              const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-              return isMobile ? '14px' : '22px';
+              const on = (idx) => {
+                const enabled = variables[`action_${idx}_enabled`];
+                const ok = (enabled === undefined || enabled === null) ? true :
+                  (typeof enabled === 'boolean') ? enabled :
+                  (typeof enabled === 'number') ? enabled !== 0 :
+                  !['false','0','no','off','disabled'].includes(String(enabled).trim().toLowerCase());
+                return ok && !!variables[`action_${idx}_entity`];
+              };
+              return (on(1) || on(2)) ? 'flex' : 'none';
             ]]]
-        - bottom: calc(var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px)) - 2px)
-        - width: var(--hemma-actions-rail-w, 56px)
-        - min-width: var(--hemma-actions-rail-w, 56px)
+        - flex-direction: column
+        - justify-content: center
+        - gap: var(--hemma-actions-gap)
+        - position: absolute
+        - top: calc(var(--hemma-actions-pad) - 2px)
+        - right: var(--hemma-actions-rail-inset)
+        - bottom: calc(var(--hemma-actions-pad) - 2px)
+        - width: var(--hemma-actions-rail-w)
+        - min-width: var(--hemma-actions-rail-w)
         - z-index: 8
-        - display: grid
-        - grid-template-rows: 1fr 1fr
-        - grid-template-columns: 1fr
         - padding: 0
         - margin: 0
-        - overflow: hidden
+        - background: transparent
+        - overflow: visible
         - pointer-events: auto
-        - background: var(--hemma-entity-actions-rail-bg, rgba(255, 255, 255, 0.09))
-        - border-radius: |
-            [[[
-              const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-              return isMobile ? '20px' : '24px';
-            ]]]
 
   custom_fields:
     side_actions: |
@@ -114,6 +164,8 @@ hemma_entity_actions:
             .replace(/'/g, '&#39;');
 
         const getEntityStateClass = (eid) => {
+          if (!eid || !states[eid]) return 'unavailable';
+
           const st = String(states[eid]?.state || '').toLowerCase().replace(/_/g, ' ');
 
           const active = [
@@ -122,16 +174,40 @@ hemma_entity_actions:
             'cooling', 'heating', 'cleaning', 'running', 'active'
           ];
 
-          const bad = ['unknown', 'unavailable', 'none'];
+          const bad = ['unknown', 'unavailable', 'none', ''];
 
           if (bad.includes(st)) return 'unavailable';
           if (active.includes(st)) return 'active';
           return 'normal';
         };
 
-        const renderIcon = (iconRaw, eid) => {
+        // Mirrors the domain accent map in hemma_entity so an active button reads the
+        // same colour the tile's own icon circle would use for that domain.
+        const accentFor = (idx, eid) => {
+          const override = variables[`action_${idx}_active_color`];
+          if (override) return String(override);
+
+          const teal = 'var(--hemma-color-teal, #00c3d0)';
+          const byDomain = {
+            light:         'var(--hemma-color-yellow, #ffd600)',
+            fan:           'var(--hemma-color-teal, #00d2e0)',
+            humidifier:    'var(--hemma-color-teal, #00d2e0)',
+            climate:       'var(--hemma-color-teal, #00d2e0)',
+            vacuum:        'var(--hemma-color-teal, #00d2e0)',
+            cover:         teal,
+            media_player:  teal,
+            lock:          teal,
+            switch:        teal,
+            input_boolean: teal,
+            script:        teal,
+            automation:    teal,
+          };
+
+          return byDomain[String(eid || '').split('.')[0]] || teal;
+        };
+
+        const renderIcon = (iconRaw, eid, cls) => {
           const raw = String(iconRaw || states[eid]?.attributes?.icon || 'mdi:help-circle').trim();
-          const cls = getEntityStateClass(eid);
 
           if (raw.includes(':')) {
             return `
@@ -247,21 +323,31 @@ hemma_entity_actions:
               el.addEventListener('pointerdown', (ev) => {
                 ev.stopPropagation();
               });
+
+              ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach((type) => {
+                el.addEventListener(type, (ev) => {
+                  ev.stopPropagation();
+                }, { passive: true });
+              });
             });
           } catch(e) {}
         }, 0);
 
         const btn = (idx) => {
+          if (!isEnabled(idx)) return '';
+
           const eid = variables[`action_${idx}_entity`];
           const icon = variables[`action_${idx}_icon`];
-          const enabled = isEnabled(idx);
+          const cls = getEntityStateClass(eid);
+          const label = states[eid]?.attributes?.friendly_name || eid;
 
           return `
             <div
-              class="hemma-side-action-button hemma-side-action-${idx} ${enabled ? '' : 'disabled'}"
+              class="hemma-side-action-button hemma-side-action-${idx} ${cls}"
               data-action-index="${idx}"
-              title="${esc(eid || '')}">
-              ${enabled ? renderIcon(icon, eid) : ''}
+              style="--hemma-side-action-accent: ${esc(accentFor(idx, eid))};"
+              title="${esc(label)}">
+              ${renderIcon(icon, eid, cls)}
             </div>
           `;
         };
@@ -270,14 +356,37 @@ hemma_entity_actions:
       ]]]
 
   extra_styles: |
+    /* Responsive tokens */
+    :host {
+      --hemma-actions-pad: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px));
+      --hemma-actions-rail-w: 56px;
+      --hemma-actions-rail-inset: 22px;
+      --hemma-actions-gap: 6px;
+      --hemma-actions-btn-radius: 18px;
+      --hemma-actions-icon-size: 23px;
+      --hemma-actions-svg-size: 20px;
+    }
+
+    @media (max-width: 767px), (max-height: 600px) {
+      :host {
+        --hemma-actions-rail-w: 56px;
+        --hemma-actions-rail-inset: 14px;
+        --hemma-actions-gap: 5px;
+        --hemma-actions-btn-radius: 15px;
+        --hemma-actions-icon-size: 22px;
+        --hemma-actions-svg-size: 19px;
+      }
+    }
+
     #side_actions {
-      overflow: hidden !important;
+      overflow: visible !important;
       pointer-events: auto !important;
     }
 
+    /* Buttons */
     .hemma-side-action-button {
+      flex: 0 0 calc(50% - var(--hemma-actions-gap) / 2);
       width: 100%;
-      height: 100%;
       min-width: 0;
       min-height: 0;
       box-sizing: border-box;
@@ -294,25 +403,19 @@ hemma_entity_actions:
       user-select: none;
       -webkit-tap-highlight-color: transparent;
 
-      background: transparent;
-      border-radius: 0;
+      background: var(--hemma-entity-actions-btn-bg, rgba(255, 255, 255, 0.09));
+      border-radius: var(--hemma-actions-btn-radius);
       box-shadow: none;
       overflow: hidden;
 
-      transition: background-color 0.18s ease;
+      transition: background-color 0.18s ease, transform 0.15s ease;
     }
 
-    .hemma-side-action-1 {
-      border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+    .hemma-side-action-button.active {
+      background: var(--hemma-side-action-accent, var(--hemma-color-teal, #00c3d0));
     }
 
-    .hemma-side-action-button.disabled {
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    /* ── Icons ── */
-
+    /* Icons */
     .hemma-side-action-icon {
       display: block;
       object-fit: contain;
@@ -330,24 +433,29 @@ hemma_entity_actions:
     }
 
     .hemma-side-action-ha-icon {
-      --mdc-icon-size: 23px;
-      width: 23px;
-      height: 23px;
-      min-width: 23px;
-      max-width: 23px;
+      --mdc-icon-size: var(--hemma-actions-icon-size);
+      width: var(--hemma-actions-icon-size);
+      height: var(--hemma-actions-icon-size);
+      min-width: var(--hemma-actions-icon-size);
+      max-width: var(--hemma-actions-icon-size);
     }
 
     .hemma-side-action-svg {
-      width: 20px;
-      height: 20px;
-      min-width: 20px;
-      max-width: 20px;
+      width: var(--hemma-actions-svg-size);
+      height: var(--hemma-actions-svg-size);
+      min-width: var(--hemma-actions-svg-size);
+      max-width: var(--hemma-actions-svg-size);
       object-fit: contain;
     }
 
+    /* Active button */
     .hemma-side-action-icon.active {
-      color: var(--hemma-icon-color-current, var(--state-active-color, var(--accent-color)));
+      color: #fff;
       opacity: 1;
+    }
+
+    .hemma-side-action-svg.active {
+      filter: brightness(0) invert(1);
     }
 
     .hemma-side-action-icon.normal {
@@ -360,7 +468,6 @@ hemma_entity_actions:
       filter: grayscale(1);
     }
 
-    /* Strip any inherited background/border-radius from global styles */
     .hemma-side-action-button ha-icon,
     .hemma-side-action-button img,
     .hemma-side-action-button *,
@@ -372,35 +479,29 @@ hemma_entity_actions:
       box-shadow: none !important;
     }
 
-    /* ── Hover / active feedback (matches thermostat control buttons) ── */
-
+    /* Interaction */
     @media (hover: hover) and (pointer: fine) {
       .hemma-side-action-button:hover {
-        background: rgba(255, 255, 255, 0.18);
+        background: var(--hemma-entity-actions-btn-bg-hover, rgba(255, 255, 255, 0.16));
       }
+
+      .hemma-side-action-button.active:hover {
+        background: var(--hemma-side-action-accent, var(--hemma-color-teal, #00c3d0));
+        filter: brightness(1.12);
+      }
+    }
+
+    .hemma-side-action-button:active {
+      transform: scale(0.96);
     }
 
     @media (hover: none) and (pointer: coarse) {
       .hemma-side-action-button:active {
-        background: rgba(255, 255, 255, 0.18);
-      }
-    }
-
-    /* ── Mobile sizing ── */
-
-    @media (max-width: 767px), (max-height: 600px) {
-      .hemma-side-action-ha-icon {
-        --mdc-icon-size: 22px;
-        width: 22px;
-        height: 22px;
-        min-width: 22px;
-        max-width: 22px;
+        background: var(--hemma-entity-actions-btn-bg-hover, rgba(255, 255, 255, 0.16));
       }
 
-      .hemma-side-action-svg {
-        width: 19px;
-        height: 19px;
-        min-width: 19px;
-        max-width: 19px;
+      .hemma-side-action-button.active:active {
+        background: var(--hemma-side-action-accent, var(--hemma-color-teal, #00c3d0));
+        filter: brightness(1.12);
       }
     }

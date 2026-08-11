@@ -6,29 +6,20 @@ hemma_lock:
   show_label: false
 
   variables:
+    mobile_filter_category: security
     show_toggle: true
 
   entity_picture: |
     [[[
-      if (entity.state === 'unlocked') return '/local/hemma/icons/lock-open.svg';
-      if (entity.state === 'unlocking') return '/local/hemma/icons/lock-unlocking.svg';
-      return '/local/hemma/icons/lock.svg';
+      if (entity.state === 'unlocked') return window.hemmaIconUrl('lock-open-fill');
+      if (entity.state === 'unlocking') return window.hemmaIconUrl('lock-unlocking-fill');
+      return window.hemmaIconUrl('lock-fill');
     ]]]
 
   state_display: |
     [[[
-      const state = entity.state;
-      if (state === 'locked') {
-        return "Locked";
-      } else if (state === 'unlocked') {
-        return "Unlocked";
-      } else if (state === 'locking') {
-        return "Locking...";
-      } else if (state === 'unlocking') {
-        return "Unlocking...";
-      } else {
-        return "Unknown";
-      }
+      if (!entity) return "";
+      return hass.formatEntityState(entity) || entity.state;
     ]]]
 
   tap_action:
@@ -52,11 +43,12 @@ hemma_lock:
       styles:
         card:
           - "--hemma-active-overlay-opacity": "1"
+          - --hemma-entity-overlay-tint: var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))
           - "--hemma-active-overlay-dur": "0s"
           - --hemma-entity-top-gradient: none
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
-          - --hemma-icon-color-current: var(--hemma-popup-primary-color, #00c3d0)
-          - --hemma-icon-svg-url: "url('/local/hemma/icons/lock-open.svg')"
+          - --hemma-icon-color-current: "var(--hemma-popup-primary-color, #00c3d0)"
+          - --hemma-icon-svg-url: "[[[ return `url('${window.hemmaIconUrl('lock-open-fill')}')`; ]]]"
           - --hemma-icon-use-mask: "1"
           - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
         name:
@@ -76,48 +68,17 @@ hemma_lock:
           - color: var(--hemma-entity-state, rgba(255,255,255,0.65))
 
   styles:
+    card:
+      # lock-fill.svg's viewBox origin is negative — ~6% transparent padding
+      # baked into the artwork, so it needs 60% * 1.06 to match every other icon.
+      - --hemma-icon-mask-scale: 63.6%
+      - --hemma-icon-mask-image: |
+          [[[
+            if (entity.state === 'unlocked') return `url('${window.hemmaIconUrl('lock-open-fill')}')`;
+            if (entity.state === 'unlocking') return `url('${window.hemmaIconUrl('lock-unlocking-fill')}')`;
+            return `url('${window.hemmaIconUrl('lock-fill')}')`;
+          ]]]
     img_cell:
       - color: var(--hemma-entity-name-active, var(--primary-text-color)) !important
-    entity_picture:
-      - opacity: var(--hemma-entity-picture-active-opacity, 1) !important
     icon:
       - color: var(--hemma-entity-name-active, var(--primary-text-color)) !important
-
-  extra_styles: |
-    #img-cell {
-      position: relative;
-      border-radius: 50% !important;
-      background: var(--hemma-icon-circle-bg, rgba(255,255,255,0.10)) !important;
-      width: 44px !important;
-      height: 44px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      overflow: hidden !important;
-    }
-    #img-cell::before { opacity: 0 !important; }
-    #img-cell img {
-      width: 68% !important;
-      height: 68% !important;
-      max-width: 68% !important;
-      max-height: 68% !important;
-      object-fit: contain !important;
-      flex: none !important;
-    }
-    #img-cell ha-icon {
-      --mdc-icon-size: 26px !important;
-      flex: none !important;
-      color: rgba(255,255,255,1.0) !important;
-    }
-    #icon { color: rgba(255,255,255,1.0) !important; }
-    @media (max-width: 767px) and (orientation: portrait) {
-      #img-cell { width: 38px !important; height: 38px !important; }
-      #img-cell ha-icon { --mdc-icon-size: 23px !important; }
-      #toggle { filter: invert(var(--hemma-toggle-invert, 0)); }
-    }
-    @media (hover: hover) {
-      #img-cell:hover { filter: brightness(1.15); transform: scale(1.03); transition: filter 0.15s ease, transform 0.15s ease; }
-    }
-    @media (hover: none) {
-      #img-cell:active { filter: brightness(1.15); transform: scale(1.03); }
-    }

@@ -7,9 +7,6 @@ hemma_time:
     use_12h: true
     time_suffix:
 
-  triggers_update:
-    - '[[[ return variables.time_entity || "sensor.time" ]]]'
-
   name: >
     [[[
       const id  = variables.time_entity || "sensor.time";
@@ -77,12 +74,14 @@ hemma_time:
 
     name:
       - color: var(--primary-text-color)
-      - opacity: var(--hemma-time-opacity, 0.92)
+      - opacity: var(--hemma-time-opacity, 1)
+      # Deliberately wider than the nav/Now Playing tracking — tracked-out uppercase
+      # is what makes this read as a clock rather than another nav label.
       - letter-spacing: 1px
-      - font-size: 18px
+      - font-size: var(--hemma-chrome-font-size, 18px)
       - line-height: 1
       - text-transform: uppercase
-      - font-weight: 700
+      - font-weight: var(--hemma-chrome-font-weight, 700)
       - white-space: nowrap
       - justify-self: end
       - align-self: center

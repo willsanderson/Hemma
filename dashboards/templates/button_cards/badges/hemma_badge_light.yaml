@@ -1,6 +1,8 @@
 # Light Badge
 # Shows individual light entity with on/off state and brightness.
-# Tap/hold for more-info dialog.
+# Tap: group entity → opens full multi-room light popup, pre-selecting this room
+#      individual light → more-info
+# Hold: toggle via script.hemma_light_smart_toggle
 hemma_badge_light:
   template: [hemma_badge_base]
 
@@ -13,6 +15,109 @@ hemma_badge_light:
   icon: mdi:lightbulb
 
   tap_action:
+    haptic: light
+    action: |
+      [[[
+        if (typeof window.browser_mod === 'undefined') return 'more-info';
+        const members = entity?.entity_id ? states[entity.entity_id]?.attributes?.entity_id : null;
+        return Array.isArray(members) && members.length > 0 ? 'fire-dom-event' : 'more-info';
+      ]]]
+    entity: '[[[ return entity.entity_id ]]]'
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        tag: |
+          [[[
+            const eid = entity?.entity_id;
+            if (!eid) return 'hemma_light_popup';
+            for (const sid of Object.keys(states)) {
+              if (!sid.startsWith('light.') || sid === eid) continue;
+              const st = states[sid];
+              const mems = st.attributes?.entity_id;
+              if (Array.isArray(mems) && mems.includes(eid) && mems.length > 1
+                  && Array.isArray(states[mems[0]]?.attributes?.entity_id)) {
+                return sid.replace(/\./g, '_') + '_popup';
+              }
+            }
+            return eid.replace(/\./g, '_') + '_popup';
+          ]]]
+        title: ""
+        dismissable: true
+        adaptive: true
+        size: auto
+        style: "--popup-width: 880px; --popup-max-width: 880px;"
+        popup_styles:
+          - style: all
+            styles: |
+              :host {
+                --dialog-surface-margin-top: 100px;
+                --ha-ripple-hover-opacity: 0;
+                --ha-ripple-pressed-opacity: 0.04;
+                opacity: 0;
+                animation: hemma-popup-reveal 0s 0.8s ease forwards;
+              }
+              @keyframes hemma-popup-reveal { to { opacity: 1; } }
+              .content .container > * {
+                width: 100% !important;
+                max-width: none !important;
+                box-sizing: border-box !important;
+              }
+              .content .container {
+                scrollbar-width: none;
+                overscroll-behavior: contain;
+                touch-action: pan-y;
+                padding-bottom: 24px !important;
+              }
+              .content .container::-webkit-scrollbar {
+                display: none;
+              }
+              wa-dialog {
+                --width: min(880px, 92vw);
+              }
+              @media (max-width: 768px) {
+                :host {
+                  --dialog-surface-margin-top: 0px;
+                }
+                wa-drawer {
+                  --size: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                  height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                }
+                .content .container {
+                  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                }
+              }
+        content: |
+          [[[
+            const badgeEntityId = entity?.entity_id || null;
+            let groupId = badgeEntityId;
+            if (badgeEntityId) {
+              for (const sid of Object.keys(states)) {
+                if (!sid.startsWith('light.') || sid === badgeEntityId) continue;
+                const st = states[sid];
+                const mems = st.attributes?.entity_id;
+                if (Array.isArray(mems) && mems.includes(badgeEntityId) && mems.length > 1
+                    && Array.isArray(states[mems[0]]?.attributes?.entity_id)) {
+                  groupId = sid;
+                  break;
+                }
+              }
+            }
+            const _h = typeof hass !== 'undefined' ? hass : null;
+            // Group entities are often renamed to a bare "Lights" per area, so the area wins over friendly_name.
+            const _areaName = _h?.areas?.[_h?.entities?.[groupId]?.area_id]?.name || null;
+            if (typeof window._hemmaLPC === 'function') {
+              return window._hemmaLPC(entity, states, _h, {
+                group_entity: groupId,
+                room_name: _areaName || states[groupId]?.attributes?.friendly_name || 'Lighting',
+                lights: [],
+                group_rooms: true,
+                initial_filter: -1,
+              });
+            }
+            return null;
+          ]]]
+  hold_action:
     action: call-service
     service: script.turn_on
     service_data:
@@ -20,189 +125,12 @@ hemma_badge_light:
       variables:
         light_entity: '[[[ return entity.entity_id ]]]'
 
-  hold_action:
-    action: |
-      [[[
-        const isMobile = window.matchMedia('(max-width: 767px)').matches;
-        const hasBrowserMod = typeof window.browser_mod !== 'undefined';
-        const members = entity?.entity_id ? states[entity.entity_id]?.attributes?.entity_id : null;
-        const isGroup = Array.isArray(members) && members.length > 0;
-        return (isMobile || !hasBrowserMod || !isGroup) ? 'more-info' : 'fire-dom-event';
-      ]]]
-    entity: '[[[ return entity.entity_id ]]]'
-    browser_mod:
-      service: browser_mod.popup
-      data:
-        title: ""
-        style: |
-          --popup-min-width: 800px;
-        popup_styles:
-          - style: all
-            styles: |
-              ha-dialog .content .container,
-              ha-dialog .container {
-                padding: 28px 10px 16px 10px !important;
-              }
-        content:
-          type: custom:layout-card
-          layout_type: custom:grid-layout
-          card_mod:
-            style: |
-              ha-card,
-              ha-card:hover,
-              ha-card:focus-within,
-              ha-card:active {
-                background: transparent !important;
-                border: none !important;
-                box-shadow: none !important;
-                backdrop-filter: none !important;
-                -webkit-backdrop-filter: none !important;
-                filter: none !important;
-              }
-          layout:
-            grid-template-columns: minmax(320px, 0.95fr) minmax(420px, 1.05fr)
-            grid-template-rows: auto
-            grid-template-areas: |
-              "main list"
-            column-gap: 18px
-            row-gap: 18px
-          cards:
-            - type: custom:more-info-card
-              view_layout:
-                grid-area: main
-              entity: "[[[ return entity.entity_id ]]]"
-              card_mod:
-                style:
-                  $: |
-                    h1.card-header {
-                      display: block !important;
-                      margin: 0 !important;
-                      padding: 8px 0 24px 0 !important;
-                      width: 100% !important;
-                      text-align: center !important;
-                      font-size: 32px !important;
-                      font-weight: 600 !important;
-                      line-height: 1.2 !important;
-                      color: var(--primary-text-color) !important;
-                    }
-
-                  .: |
-                    ha-card,
-                    ha-card:hover,
-                    ha-card:focus-within,
-                    ha-card:active {
-                      background: transparent !important;
-                      border: none !important;
-                      box-shadow: none !important;
-                      filter: none !important;
-                      backdrop-filter: none !important;
-                      -webkit-backdrop-filter: none !important;
-                      transform: none !important;
-                    }
-
-                    state-card-content,
-                    div.action {
-                      display: none !important;
-                    }
-
-                    more-info-content {
-                      opacity: 0;
-                      animation: revealMoreInfo 0s linear 0.5s forwards;
-                    }
-
-                    @keyframes revealMoreInfo {
-                      to { opacity: 1; }
-                    }
-
-                  more-info-content:
-                    $: |
-                      hui-section,
-                      hui-grid-section {
-                        display: none !important;
-                      }
-
-            - type: vertical-stack
-              view_layout:
-                grid-area: list
-              card_mod:
-                style: |
-                  ha-card,
-                  ha-card:hover,
-                  ha-card:focus-within,
-                  ha-card:active {
-                    background: transparent !important;
-                    border: none !important;
-                    box-shadow: none !important;
-                    backdrop-filter: none !important;
-                    -webkit-backdrop-filter: none !important;
-                    overflow-y: auto !important;
-                    filter: none !important;
-                  }
-              cards: |
-                [[[
-                  const expand = (eid, seen = new Set()) => {
-                    if (!eid || seen.has(eid)) return [];
-                    seen.add(eid);
-
-                    const s = states[eid];
-                    if (!s) return [];
-
-                    const members = s.attributes?.entity_id;
-                    return Array.isArray(members)
-                      ? members.flatMap(m => expand(m, seen))
-                      : [eid];
-                  };
-
-                  if (!entity) return [];
-
-                  const lights = [...new Set(expand(entity.entity_id))]
-                    .filter((eid) => eid.startsWith('light.') && eid !== entity.entity_id);
-
-                  return lights.map((eid) => ({
-                    type: 'custom:mushroom-light-card',
-                    entity: eid,
-                    fill_container: false,
-                    primary_info: 'name',
-                    secondary_info: 'state',
-                    icon_type: 'icon',
-                    show_brightness_control: true,
-                    show_color_temp_control: true,
-                    show_color_control: true,
-                    collapsible_controls: false,
-                    layout: 'horizontal',
-                    tap_action: { action: 'toggle' },
-                    hold_action: { action: 'more-info' },
-                    double_tap_action: { action: 'none' },
-                    card_mod: {
-                      style: `
-                        ha-card {
-                          background: var(--hemma-popup-entity-background, rgba(0, 0, 0, 0.4)) !important;
-                          box-shadow: none !important;
-                          border-radius: 9999px !important;
-                          margin-bottom: 8px !important;
-                          transition:
-                            background 0.18s ease,
-                            border-color 0.18s ease !important;
-                        }
-
-                        ha-card:hover,
-                        ha-card:focus-within,
-                        ha-card:active {
-                          background: var(--hemma-popup-entity-hover, rgba(0, 0, 0, 0.5)) !important;
-                          border-color: rgba(255, 255, 255, 0.08) !important;
-                          box-shadow: none !important;
-                        }
-                      `
-                    }
-                  }));
-                ]]]
-
   double_tap_action:
     action: none
 
   extra_styles: >
     [[[
-      const SVG_URL  = "/local/hemma/icons/light.svg";
+      const SVG_URL  = window.hemmaIconUrl('light');
       const ICON_PCT = 85;
 
       return `
@@ -219,16 +147,19 @@ hemma_badge_light:
           position: absolute;
           inset: 0;
           background-color: var(--hemma-icon-color, var(--primary-text-color)) !important;
-
-          -webkit-mask: url('${SVG_URL}') no-repeat center / ${ICON_PCT}% ${ICON_PCT}%;
-          mask: url('${SVG_URL}') no-repeat center / ${ICON_PCT}% ${ICON_PCT}%;
-
+          -webkit-mask: url('${SVG_URL}') no-repeat center / auto ${ICON_PCT}%;
+          mask: url('${SVG_URL}') no-repeat center / auto ${ICON_PCT}%;
           transform: translateZ(0);
         }
       `;
     ]]]
 
   styles:
+    # Has to be here: the base sets overflow:hidden inline with !important,
+    # so an extra_styles override never wins.
+    img_cell:
+      - overflow: visible !important
+
     card:
       - display: >
           [[[

@@ -10,10 +10,42 @@ hemma_popup_energy:
     entity_usage_month: null
     entity_cost_today: null
     entity_cost_month: null
+    # Watt breakpoints for the Idle / Normal / Heavy / Extreme tier shared by the
+    # popup pill, the hemma_energy card state row and the Energy badge.
+    normal_threshold: 200
+    heavy_threshold: 1000
+    extreme_threshold: 3000
 
-  tap_action:
+  tap_action: &energy_popup_action
+    haptic: light
+    action: |
+      [[[
+        return typeof window.browser_mod !== 'undefined' ? 'fire-dom-event' : 'more-info';
+      ]]]
+    entity: "[[[ return variables.entity_power || entity?.entity_id; ]]]"
     browser_mod:
+      service: browser_mod.popup
       data:
+        tag: >
+          [[[
+            const id = variables.entity_power || entity?.entity_id || 'home';
+            return 'hemma_energy_' + String(id).replace(/\./g, '_');
+          ]]]
+        title: ""
+        dismissable: true
+        adaptive: true
+        size: auto
+        popup_styles:
+          - style: all
+            styles: |
+              ha-adaptive-dialog, ha-dialog, wa-drawer {
+                --dialog-surface-margin-top: 90px;
+                --ha-card-backdrop-filter: none;
+                --ha-card-background: transparent;
+                --card-background-color: transparent;
+                --ha-card-box-shadow: none;
+                --ha-card-border-width: 0px;
+              }
         content: |
           [[[
             const powerId     = variables.entity_power || entity?.entity_id;
@@ -31,18 +63,31 @@ hemma_popup_energy:
               return isNaN(n) ? null : n;
             };
 
-            // costCurrency derived from entity attributes at tap time — unit doesn't change at runtime
             const costCurrency = (costTodayId && states[costTodayId]?.attributes?.unit_of_measurement)
               || (costMonthId  && states[costMonthId]?.attributes?.unit_of_measurement)
               || '';
 
-            // graphColor baked for mini-graph-card color property
             const power = safeNum(powerId);
-            const graphColor =
-              power >= 3000 ? '#FF453A' :
-              power >= 1000 ? '#FF9230' :
-              power >= 200  ? '#FFD166' :
-              '#67F5A0';
+
+            window._hc = window._hc || {};
+            const _ck = 'hemma_energy_' + (powerId || 'x');
+            const _memoSub = (subKey, dep, factory) => {
+              const key = _ck + '_' + subKey;
+              if (window._hc[key]?.h === dep) return window._hc[key].r;
+              const r = factory();
+              window._hc[key] = { h: dep, r };
+              return r;
+            };
+
+            const tNormal  = Number(variables.normal_threshold  ?? 200);
+            const tHeavy   = Number(variables.heavy_threshold   ?? 1000);
+            const tExtreme = Number(variables.extreme_threshold ?? 3000);
+
+            // Status badge pill
+            const statusLabel = power >= tExtreme ? 'Extreme' : power >= tHeavy ? 'Heavy' : power >= tNormal ? 'Normal' : 'Idle';
+            const statusColor = power >= tExtreme ? 'var(--hemma-popup-red-color, #ff453a)' : power >= tHeavy ? 'var(--hemma-popup-orange-color, #ff9230)' : power >= tNormal ? 'var(--hemma-popup-yellow-color, #ffd600)' : 'var(--hemma-popup-green-color, #67f5a0)';
+            // apexcharts can't resolve CSS vars, so these mirror the Apple palette literally
+            const graphColor  = power >= tExtreme ? '#FF453A' : power >= tHeavy ? '#FF9F0A' : power >= tNormal ? '#FFD60A' : '#30D158';
 
             // Safe JSON literals for inner templates
             const _pid  = JSON.stringify(powerId     || '');
@@ -52,20 +97,26 @@ hemma_popup_energy:
             const _cmid = JSON.stringify(costMonthId || '');
             const _cur  = JSON.stringify(costCurrency);
 
-            // Shared helper snippets for inner [[[...]]] templates
+            // Shared helper snippets
             const _safe = "const safeNum=(id)=>{if(!id)return null;const s=states[id]&&states[id].state;if(!s||s==='unknown'||s==='unavailable')return null;const n=parseFloat(s);return isNaN(n)?null:n;};";
             const _fmt  = "const fmtPower=(v)=>v==null?'—':String(Math.round(v));const fmtEnergy=(v)=>{if(v==null)return'—';if(v<1)return v.toFixed(2);if(v<10)return v.toFixed(1);return Math.round(v).toString();};";
 
-            // Power → color + label computation snippet for inner templates (requires powerId + safeNum in scope)
+            // Power → color
             const _powerScore = `
+              const tNormal = ${tNormal}, tHeavy = ${tHeavy}, tExtreme = ${tExtreme};
               const power = safeNum(powerId);
               let color = 'var(--hemma-popup-green-color, #67f5a0)', label = 'Idle';
-              if (power >= 3000)      { color = 'var(--hemma-popup-red-color, #ff453a)';    label = 'Extreme'; }
-              else if (power >= 1000) { color = 'var(--hemma-popup-orange-color, #ff9230)'; label = 'Heavy'; }
-              else if (power >= 200)  { color = 'var(--hemma-popup-yellow-color, #ffd600)'; label = 'Normal'; }
+              if (power >= tExtreme)     { color = 'var(--hemma-popup-red-color, #ff453a)';    label = 'Extreme'; }
+              else if (power >= tHeavy)  { color = 'var(--hemma-popup-orange-color, #ff9230)'; label = 'Heavy'; }
+              else if (power >= tNormal) { color = 'var(--hemma-popup-yellow-color, #ffd600)'; label = 'Normal'; }
             `;
 
-            /* ------- Styles (static strings) ------- */
+            // Tooltip time format
+            const _tf = hass?.locale?.time_format;
+            const _use12hr = _tf === '12' || (_tf !== '24' && new Intl.DateTimeFormat(hass?.locale?.language || 'en', { hour: 'numeric' }).resolvedOptions().hour12);
+            const tooltipTimeFormat = _use12hr ? 'h:mm tt' : 'HH:mm';
+
+            /* Styles */
 
             const noHoverStyle = [
               ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
@@ -76,19 +127,19 @@ hemma_popup_energy:
 
             const wrapperStyle = [
               ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
-              'ha-card { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: default !important; }',
+              'ha-card { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; overflow: visible !important; cursor: default !important; }',
               'ha-card:hover { box-shadow: none !important; }',
+              '#container { overflow: visible !important; }',
               'ha-ripple { display: none !important; }',
             ].join('\n');
 
             const contentCardStyle = wrapperStyle + '\n@media (max-width: 600px) { ha-card { padding-left: 14px !important; padding-right: 14px !important; } }';
 
             const tileTapStyle = [
-              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
-              'ha-card { background: var(--hemma-popup-tile-background, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease !important; }',
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: inset 0 1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-tight,0.20) * 1.5)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-tight,0.15) * 1.5)), inset 0 3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-soft,0.08) * 1.5)), inset 0 -3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-soft,0.05) * 1.5)) !important; }',
+              'ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }',
               'ha-card:hover { background: var(--hemma-popup-tile-hover, rgba(255,255,255,0.09)) !important; transform: scale(var(--hemma-popup-tile-hover-scale, 1.01)) !important; }',
               'ha-ripple { display: none !important; }',
-              '@keyframes energyFlow { 0% { background-position: 200% 50%; } 100% { background-position: 0% 50%; } }',
             ].join('\n');
 
             const tapStyle = [
@@ -99,8 +150,62 @@ hemma_popup_energy:
               'ha-ripple { display: none !important; }',
             ].join('\n');
 
+            /* card_mod lands too late to hide the empty chart shell, so the
+               entrance animation runs from apex_config instead. EVAL: is
+               apexcharts-card's hook for a function in a serialised config. */
+            const chartEnter = 'EVAL:' + [
+              'function (ctx) {',
+              '  try {',
+              '    var graph = ctx && ctx.el;',
+              '    if (!graph || (ctx.w && ctx.w.globals && ctx.w.globals.noData)) return;',
+              '    var wrap = graph.closest("#graph-wrapper") || graph.parentElement;',
+              '    if (!wrap || !graph.animate || wrap.dataset.hemmaChartEntered) return;',
+              '    wrap.dataset.hemmaChartEntered = "1";',
+              '    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {',
+              '      graph.animate([{ opacity: 0 }, { opacity: 1 }],',
+              '        { duration: 200, easing: "ease-out", fill: "backwards" });',
+              '      return;',
+              '    }',
+              '    /* squash, not lift, drives the apparent rise; raise it for less. */',
+              '    var D = { persp: 640, z: -130, lift: 8, squash: 0.34, blur: 9, floor: 10 };',
+              '    /* Clip goes on the stationary wrapper; on #graph it would travel along. */',
+              '    var n = graph.getRootNode().host, guard = 0, edge = null;',
+              '    while (n && guard++ < 6 && edge === null) {',
+              '      var sib = n.nextElementSibling;',
+              '      if (sib) { var sr = sib.getBoundingClientRect(); if (sr.height) edge = sr.top; }',
+              '      n = n.parentElement || (n.getRootNode() && n.getRootNode().host);',
+              '    }',
+              '    if (edge !== null) {',
+              '      var gap = Math.round(edge - wrap.getBoundingClientRect().bottom);',
+              '      if (gap > -40 && gap < 80) D.floor = gap;',
+              '    }',
+              '    var fy = D.floor < 0 ? "calc(100% - " + Math.abs(D.floor) + "px)"',
+              '                         : "calc(100% + " + D.floor + "px)";',
+              '    wrap.style.clipPath =',
+              '      "polygon(-100% -200%, 200% -200%, 200% " + fy + ", -100% " + fy + ")";',
+              '    graph.style.transformOrigin = "50% 90%";',
+              '    var from = "perspective(" + D.persp + "px) translateZ(" + D.z + "px)"',
+              '             + " translateY(" + D.lift + "px) scaleY(" + D.squash + ")";',
+              '    var to = "perspective(" + D.persp + "px) translateZ(0px)"',
+              '           + " translateY(0px) scaleY(1)";',
+              '    graph.animate([{ opacity: 0 }, { opacity: 1 }],',
+              '      { duration: 600, easing: "ease-out", fill: "backwards" });',
+              '    graph.animate([{ filter: "blur(" + D.blur + "px)" }, { filter: "blur(0px)" }],',
+              '      { duration: 600, easing: "ease-out", fill: "backwards" });',
+              '    var rise = graph.animate([{ transform: from }, { transform: to }],',
+              '      { duration: 700, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "backwards" });',
+              '    /* Clear the clip or it can trap a tooltip later. */',
+              '    var unclip = function () { wrap.style.clipPath = ""; };',
+              '    if (rise.finished) rise.finished.then(unclip).catch(unclip);',
+              '    else rise.onfinish = unclip;',
+              '  } catch (e) {}',
+              '}',
+            ].join('\n');
+
             const graphStyle = `
               :host {
+                position: relative !important;
+                z-index: 1 !important;
                 --ha-card-box-shadow: none !important;
                 --button-card-box-shadow: none !important;
                 --button-card-box-shadow-hover: none !important;
@@ -113,8 +218,7 @@ hemma_popup_energy:
                 box-shadow: none !important;
                 backdrop-filter: none !important;
                 -webkit-backdrop-filter: none !important;
-                overflow: hidden !important;
-                padding: 10px 0px 10px 0px !important;
+                overflow: visible !important;
                 --primary-color: transparent !important;
               }
 
@@ -123,29 +227,27 @@ hemma_popup_energy:
                 border-color: transparent !important;
               }
 
-              .graph {
-                position: relative !important;
+              #spinner-wrapper { display: none !important; }
+
+              #graph {
+                margin: 0 !important;
+                padding: 8px 0 !important;
                 overflow: visible !important;
+                background: transparent !important;
               }
 
-              .graph__container {
+              .apexcharts-canvas {
                 overflow: visible !important;
+                background: transparent !important;
               }
 
-              .graph__container svg {
-                width: calc(100% + 60px) !important;
-                margin-left: -30px !important;
-                display: block !important;
-                overflow: visible !important;
-
+              .apexcharts-canvas > svg {
                 -webkit-mask-image:
-                  linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 7%, rgba(0,0,0,0.1) 13%, rgba(0,0,0,0.5) 23%, black 35%, black 65%, rgba(0,0,0,0.5) 77%, rgba(0,0,0,0.1) 87%, rgba(0,0,0,0) 93%, rgba(0,0,0,0) 100%),
-                  linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%);
-
+                  linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 4%, rgba(0,0,0,0.4) 12%, black 22%, black 78%, rgba(0,0,0,0.4) 88%, rgba(0,0,0,0) 96%, rgba(0,0,0,0) 100%),
+                  linear-gradient(to bottom, transparent 0%, black 10%, black 82%, transparent 100%);
                 mask-image:
-                  linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 7%, rgba(0,0,0,0.1) 13%, rgba(0,0,0,0.5) 23%, black 35%, black 65%, rgba(0,0,0,0.5) 77%, rgba(0,0,0,0.1) 87%, rgba(0,0,0,0) 93%, rgba(0,0,0,0) 100%),
-                  linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%);
-
+                  linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 4%, rgba(0,0,0,0.4) 12%, black 22%, black 78%, rgba(0,0,0,0.4) 88%, rgba(0,0,0,0) 96%, rgba(0,0,0,0) 100%),
+                  linear-gradient(to bottom, transparent 0%, black 10%, black 82%, transparent 100%);
                 -webkit-mask-composite: destination-in;
                 mask-composite: intersect;
                 -webkit-mask-repeat: no-repeat;
@@ -154,52 +256,83 @@ hemma_popup_energy:
                 mask-size: 100% 100%;
               }
 
-              .graph__line { opacity: 0.95; filter: drop-shadow(0 0 3px rgba(255,255,255,0.06)); }
-              .graph__fill { opacity: 0.42; }
-              .graph.flex { margin-left: 0px !important; margin-right: 0px !important; padding-bottom: 0px !important; }
-              .graph__hover { overflow: visible !important; pointer-events: auto !important; }
+              .apexcharts-tooltip {
+                transition: opacity 0.12s ease !important;
+                display: inline-block !important;
+                width: max-content !important;
+                max-width: 160px !important;
+                min-width: 80px !important;
+                white-space: nowrap !important;
+                --hemma-chart-tooltip-fill: rgba(22,22,24,0.80);
+                background:
+                  linear-gradient(var(--hemma-glass-background, rgba(255,255,255,0.10)),
+                                  var(--hemma-glass-background, rgba(255,255,255,0.10))),
+                  var(--hemma-chart-tooltip-fill) !important;
+                border: none !important;
+                border-radius: 14px !important;
+                box-shadow: var(--hemma-glass-rim,
+                  inset 0 1px .5px -0.5px rgba(255,255,255,0.55),
+                  inset 0 -1px .5px -0.5px rgba(255,255,255,0.48),
+                  inset 0 3px 6px -3px rgba(255,255,255,0.20),
+                  inset 0 -3px 6px -3px rgba(255,255,255,0.12),
+                  2px 0 3px -2px rgba(0,0,0,0.45),
+                  -2px 0 3px -2px rgba(0,0,0,0.45),
+                  0 2px 8px rgba(0,0,0,0.18)) !important;
+                overflow: hidden !important;
+              }
 
-              .graph__labels { overflow: visible !important; opacity: 0 !important; transition: opacity 0.15s ease !important; }
-              ha-card:hover .graph__labels { opacity: 1 !important; }
-              .graph__label { left: auto !important; right: 0 !important; font-size: 11px !important; font-weight: 500 !important; }
+              .apexcharts-tooltip-title,
+              .apexcharts-tooltip-series-group {
+                width: auto !important;
+                max-width: 120px !important;
+              }
+
+              .apexcharts-tooltip-title {
+                background: transparent !important;
+                border-bottom: none !important;
+                font-size: 10px !important;
+                color: rgba(255,255,255,0.58) !important;
+                font-weight: 600 !important;
+                padding: 9px 12px 2px !important;
+                margin: 0 !important;
+                letter-spacing: 0.07em !important;
+                text-transform: uppercase !important;
+              }
+
+              .apexcharts-tooltip-series-group {
+                background: transparent !important;
+                padding: 0 12px 9px !important;
+                align-items: center !important;
+              }
+
+              .apexcharts-tooltip-series-group.apexcharts-active {
+                background: transparent !important;
+              }
+
+              .apexcharts-tooltip-marker { display: none !important; }
+              .apexcharts-tooltip-text-y-label { display: none !important; }
+
+              .apexcharts-tooltip-text-y-value {
+                color: rgba(255,255,255,0.98) !important;
+                font-weight: 700 !important;
+                font-size: 16px !important;
+                margin-left: 0 !important;
+              }
+
+              .apexcharts-xcrosshairs {
+                stroke: rgba(255,255,255,0.14) !important;
+                stroke-dasharray: 3 3 !important;
+                stroke-width: 1 !important;
+              }
+
+              .apexcharts-xaxistooltip { display: none !important; }
+              .apexcharts-ycrosshairs { display: none !important; }
             `;
 
-            /* -------------------------------------------------------
-             * Status Badge Pill — LIVE [[[...]]]
-             * ------------------------------------------------------- */
-            const statusBadgeCard = {
+            /* Power Gauge */
+            const gaugeCard = _memoSub('gauge', String(powerId), () => ({
               type: 'custom:button-card',
               entity: powerId,
-              triggers_update: [powerId].filter(Boolean),
-              tap_action: { action: 'more-info' },
-              show_icon: false, show_name: false, show_label: false, show_state: false,
-              card_mod: { style: tapStyle },
-              styles: {
-                card: [{ background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' }, { padding: '0' }],
-                grid: [{ 'grid-template-areas': '"c"' }, { 'grid-template-columns': '1fr' }],
-                custom_fields: { c: [{ 'justify-self': 'stretch' }] },
-              },
-              custom_fields: {
-                c: `[[[
-                  const powerId = ${_pid};
-                  ${_safe}
-                  ${_powerScore}
-                  const grad1 = power >= 3000 ? '#FF453A' : power >= 1000 ? '#FF9230' : power >= 200 ? '#B8FF47' : '#57FFFC';
-                  const grad2 = power >= 3000 ? '#FF9230' : power >= 1000 ? '#FFD166' : power >= 200 ? '#FFD166' : '#67F5A0';
-                  return '<div style="background:linear-gradient(135deg,color-mix(in srgb,' + grad1 + ' 18%,transparent) 0%,color-mix(in srgb,' + grad2 + ' 13%,transparent) 100%);border:1px solid color-mix(in srgb,' + grad1 + ' 40%,transparent);border-radius:999px;padding:8px 15px;white-space:nowrap;">'
-                    + '<span style="font-size:15px;font-weight:500;color:' + color + ';font-family:var(--primary-font-family,system-ui);">' + label + '</span>'
-                    + '</div>';
-                ]]]`,
-              },
-            };
-
-            /* -------------------------------------------------------
-             * Power Gauge — LIVE [[[...]]]
-             * ------------------------------------------------------- */
-            const gaugeCard = {
-              type: 'custom:button-card',
-              entity: powerId,
-              triggers_update: [powerId].filter(Boolean),
               tap_action: { action: 'more-info' },
               show_icon: false, show_name: false, show_label: false, show_state: false,
               card_mod: { style: tapStyle },
@@ -214,35 +347,25 @@ hemma_popup_energy:
                   ${_safe}
                   ${_fmt}
                   ${_powerScore}
-                  const gaugeGrad1 = power >= 3000 ? '#FF453A' : power >= 1000 ? '#FFD166' : power >= 200 ? '#B8FF47' : '#57FFFC';
-                  const gaugeGrad2 = power >= 3000 ? '#FF2D55' : power >= 1000 ? '#FF453A' : power >= 200 ? '#FFD166' : '#4CFA57';
                   const circ = 2 * Math.PI * 42;
                   const dashOffset = circ - Math.min((power || 0) / 5000, 1) * circ;
                   return '<div style="position:relative;width:120px;height:120px;">'
                     + '<svg viewBox="0 0 100 100" style="width:100%;height:100%;transform:rotate(-90deg);">'
-                      + '<defs>'
-                        + '<linearGradient id="gaugeGrad" x1="8" y1="50" x2="92" y2="50" gradientUnits="userSpaceOnUse">'
-                          + '<stop offset="0%" stop-color="' + gaugeGrad1 + '"/>'
-                          + '<stop offset="100%" stop-color="' + gaugeGrad2 + '"/>'
-                        + '</linearGradient>'
-                      + '</defs>'
-                      + '<circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="7"/>'
-                      + '<circle cx="50" cy="50" r="42" fill="none" stroke="url(#gaugeGrad)" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + circ.toFixed(2) + '" stroke-dashoffset="' + dashOffset.toFixed(2) + '"/>'
+                      + '<circle cx="50" cy="50" r="42" fill="none" stroke="var(--hemma-popup-progress-track, rgba(255,255,255,0.08))" stroke-width="7"/>'
+                      + '<circle cx="50" cy="50" r="42" fill="none" stroke="' + color + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + circ.toFixed(2) + '" stroke-dashoffset="' + dashOffset.toFixed(2) + '"/>'
                     + '</svg>'
                     + '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">'
-                      + '<div style="font-size:11px;color:var(--hemma-popup-tile-text-muted);letter-spacing:.08em;font-weight:500;">WATT</div>'
+                      + '<div style="font-size:11px;color:var(--hemma-popup-tiles-text-muted);letter-spacing:.08em;font-weight:500;">WATT</div>'
                       + '<div style="color:' + color + ';font-size:28px;font-weight:600;line-height:1;">' + fmtPower(power) + '</div>'
-                      + '<div style="color:var(--hemma-popup-tile-text-muted);font-size:14px;margin-top:-4px;">W</div>'
+                      + '<div style="color:var(--hemma-popup-tiles-text-muted);font-size:14px;margin-top:-4px;">W</div>'
                     + '</div>'
                   + '</div>';
                 ]]]`,
               },
-            };
+            }));
 
-            /* -------------------------------------------------------
-             * Right Column — wrapper only
-             * ------------------------------------------------------- */
-            const rightColCard = {
+            /* Right Column */
+            const rightColCard = _memoSub('rightcol', statusLabel, () => ({
               type: 'custom:button-card',
               entity: powerId,
               tap_action: { action: 'none' },
@@ -254,23 +377,18 @@ hemma_popup_energy:
                   { display: 'flex' }, { 'flex-direction': 'column' }, { 'align-items': 'flex-end' }, { gap: '28px' },
                 ],
                 custom_fields: {
-                  pill: [{ flex: '0 0 auto' }],
-                  ring: [{ flex: '0 0 auto' }],
+                  ring: [{ flex: '0 0 auto' }, { 'margin-top': '66px' }],
                 },
               },
               custom_fields: {
-                pill: { card: statusBadgeCard },
                 ring: { card: gaugeCard },
               },
-            };
+            }));
 
-            /* -------------------------------------------------------
-             * Header Stat Cards (Today / Month) — LIVE [[[...]]]
-             * ------------------------------------------------------- */
+            /* Header Stat Cards */
             const makeHeaderStatCard = (entityId, labelText, costEntityId, side) => ({
               type: 'custom:button-card',
               entity: entityId || powerId,
-              triggers_update: [costEntityId].filter(Boolean),
               tap_action: entityId ? { action: 'more-info' } : { action: 'none' },
               show_icon: false, show_name: false, show_label: false, show_state: false,
               card_mod: { style: entityId ? tapStyle : noHoverStyle },
@@ -292,20 +410,18 @@ hemma_popup_energy:
                   const costV = safeNum(costEntityId);
                   const costStr = costV != null ? costCurrency + costV.toFixed(2) : '';
                   return '<div style="text-align:left;' + (side === 'right' ? 'padding-right:6px;' : side === 'left' ? 'padding-left:6px;' : '') + '">'
-                    + '<div style="font-size:11px;color:var(--hemma-popup-tile-text-muted);letter-spacing:.06em;font-weight:500;">' + labelText + '</div>'
+                    + '<div style="font-size:11px;color:var(--hemma-popup-tiles-text-muted);letter-spacing:.06em;font-weight:500;">' + labelText + '</div>'
                     + '<div style="display:flex;align-items:baseline;gap:4px;margin-top:5px;">'
                       + '<span style="font-size:22px;">' + fmtEnergy(v) + '</span>'
-                      + '<span style="font-size:13px;color:var(--hemma-popup-tile-text-muted);">kWh</span>'
+                      + '<span style="font-size:13px;color:var(--hemma-popup-tiles-text-muted);">kWh</span>'
                     + '</div>'
-                    + (costStr ? '<div style="font-size:13px;color:var(--hemma-popup-tile-text-muted);margin-top:5px;">' + costStr + '</div>' : '')
+                    + (costStr ? '<div style="font-size:13px;color:var(--hemma-popup-tiles-text-muted);margin-top:5px;">' + costStr + '</div>' : '')
                   + '</div>';
                 ]]]`,
               },
             });
 
-            /* -------------------------------------------------------
-             * Stats Wrapper (header today/month row) — wrapper only
-             * ------------------------------------------------------- */
+            /* Stats Wrapper */
             const statsWrapperCard = {
               type: 'custom:button-card',
               entity: powerId,
@@ -331,10 +447,8 @@ hemma_popup_energy:
               },
             };
 
-            /* -------------------------------------------------------
-             * Header Card — title is static (room name + fixed text)
-             * ------------------------------------------------------- */
-            const headerCard = {
+            /* Header Card */
+            const headerCard = _memoSub('header', statusLabel, () => ({
               type: 'custom:button-card',
               entity: powerId,
               tap_action: { action: 'none' },
@@ -358,41 +472,77 @@ hemma_popup_energy:
                 },
               },
               custom_fields: {
-                title: '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tile-text-primary);text-align:left;">'
+                title: '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tiles-text-primary);text-align:left;">'
                   + `<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;">${roomName}</div>`
-                  + '<div style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);margin-top:2px;">Power · Consumption</div>'
+                  + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary);margin-top:2px;">Power · Consumption</div>'
                   + '<div style="font-size:22px;font-weight:400;letter-spacing:-.5px;margin-top:20px;margin-bottom:16px;">Energy Usage</div>'
                   + '</div>',
                 right: { card: rightColCard },
                 stats: { card: statsWrapperCard },
               },
-            };
+            }));
 
-            /* -------------------------------------------------------
-             * Graph Card — mini-graph-card manages its own reactivity
-             * ------------------------------------------------------- */
+            /* Graph Card */
             const graphCard = {
-              type: 'custom:mini-graph-card',
-              entities: [{ entity: powerId, color: graphColor }],
-              hours_to_show: 12,
-              points_per_hour: 2,
-              line_width: 3,
-              smoothing: true,
-              animate: true,
-              hour24: true,
-              height: 70,
-              decimals: 0,
-              show: {
-                name: false, icon: false, state: false,
-                legend: false, labels: true, extrema: false,
-                fill: 'fade', points: false,
+              type: 'custom:apexcharts-card',
+              graph_span: '4h',
+              header: { show: false },
+              yaxis: [{ min: 0, max: '~1000', show: false }],
+              series: [{
+                entity: powerId,
+                color: graphColor,
+                type: 'area',
+                curve: 'monotoneCubic',
+                stroke_width: 3,
+                float_precision: 0,
+                extend_to: 'now',
+                group_by: { func: 'avg', duration: '15min', fill: 'last' },
+              }],
+              apex_config: {
+                noData: { text: '' },
+                chart: {
+                  events: { mounted: chartEnter, updated: chartEnter },
+                  height: 88,
+                  background: 'transparent',
+                  toolbar: { show: false },
+                  zoom: { enabled: false },
+                  animations: {
+                    enabled: true,
+                    speed: 300,
+                    animateGradually: { enabled: false },
+                    dynamicAnimation: { speed: 300 },
+                  },
+                },
+                theme: { mode: 'dark' },
+                stroke: { curve: 'monotoneCubic', width: 3, lineCap: 'round' },
+                grid: { show: false, padding: { left: 0, right: 0, top: -8, bottom: -12 } },
+                xaxis: { labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false } },
+                dataLabels: { enabled: false },
+                legend: { show: false },
+                tooltip: {
+                  enabled: true,
+                  shared: true,
+                  intersect: false,
+                  theme: 'dark',
+                  x: { show: true, format: tooltipTimeFormat },
+                  fixed: { enabled: false },
+                },
+                fill: {
+                  type: 'gradient',
+                  gradient: {
+                    type: 'vertical',
+                    shadeIntensity: 0,
+                    opacityFrom: 0.65,
+                    opacityTo: 0.0,
+                    stops: [0, 100],
+                  },
+                },
+                markers: { size: 0, colors: ['#ffffff'], strokeColors: 'rgba(255,255,255,0.4)', strokeWidth: 0, hover: { size: 5 } },
               },
               card_mod: { style: graphStyle },
             };
 
-            /* -------------------------------------------------------
-             * Stat Tiles — three live tiles: Now, Today, Month
-             * ------------------------------------------------------- */
+            /* Stat Tiles */
 
             // Tile card shared styles (same for all three)
             const tileCardStyles = {
@@ -405,7 +555,6 @@ hemma_popup_energy:
               custom_fields: { c: [{ 'justify-self': 'stretch' }] },
             };
 
-            // "Now" tile — LIVE on powerId
             const currentStat = {
               type: 'custom:button-card',
               entity: powerId,
@@ -421,42 +570,34 @@ hemma_popup_energy:
                   ${_powerScore}
                   const currentPct =
                     power == null ? 0 :
-                    power >= 3000 ? Math.min(85 + ((power - 3000) / 2000) * 15, 100) :
-                    power >= 1000 ? 50 + ((power - 1000) / 2000) * 35 :
-                    power >= 200  ? 25 + ((power - 200)  / 800)  * 25 :
-                    (power / 200) * 25;
+                    power >= tExtreme ? Math.min(85 + ((power - tExtreme) / (tExtreme - tHeavy)) * 15, 100) :
+                    power >= tHeavy   ? 50 + ((power - tHeavy)  / (tExtreme - tHeavy)) * 35 :
+                    power >= tNormal  ? 25 + ((power - tNormal) / (tHeavy - tNormal))  * 25 :
+                    (power / tNormal) * 25;
                   const pct = Math.max(0, Math.min(100, currentPct));
-                  let gradient;
-                  if (power >= 3000)      gradient = 'linear-gradient(90deg,#FF2D55 0%,#FF453A 22%,#FF7A59 44%,#FF4D6D 66%,#FF2D55 88%,#FF2D55 100%)';
-                  else if (power >= 1000) gradient = 'linear-gradient(90deg,#FF7A59 0%,#FF9230 22%,#FFD166 44%,#FFB347 66%,#FF7A59 88%,#FF7A59 100%)';
-                  else if (power >= 200)  gradient = 'linear-gradient(90deg,#B8FF47 0%,#D6FF47 50%,#FFD166 100%)';
-                  else                    gradient = 'linear-gradient(90deg,#57FFFC 0%,#54F2A0 35%,#65F785 70%,#4CFA57 100%)';
-                  const animated  = power >= 1000;
-                  const animStyle = animated
-                    ? 'background-size:200% 100%;animation:' + (power >= 3000 ? 'energyFlow 2s linear infinite' : 'energyFlow 3s linear infinite') + ';'
-                    : '';
+                  const gradient = color;
+
                   return '<div style="margin-top:1px;min-width:0;overflow:hidden;">'
                     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">'
-                      + '<span style="font-size:13px;color:var(--hemma-popup-tile-text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;">Now</span>'
+                      + '<span style="font-size:13px;color:var(--hemma-popup-tiles-text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;">Now</span>'
                       + '<span style="font-size:13px;color:' + color + ';white-space:nowrap;font-weight:600;letter-spacing:.01em;flex-shrink:0;">' + label + '</span>'
                     + '</div>'
                     + '<div style="display:flex;align-items:baseline;gap:3px;">'
-                      + '<span style="font-size:20px;font-weight:400;color:var(--hemma-popup-tile-text-primary);line-height:1;white-space:nowrap;">' + fmtPower(power) + '</span>'
-                      + '<span style="font-size:12px;color:var(--hemma-popup-tile-text-muted);white-space:nowrap;">W</span>'
+                      + '<span style="font-size:20px;font-weight:400;color:var(--hemma-popup-tiles-text-primary);line-height:1;white-space:nowrap;">' + fmtPower(power) + '</span>'
+                      + '<span style="font-size:12px;color:var(--hemma-popup-tiles-text-muted);white-space:nowrap;">W</span>'
                     + '</div>'
                     + '<div style="position:relative;height:8px;width:100%;background:var(--hemma-popup-progress-track, rgba(255,255,255,0.09));border-radius:999px;overflow:hidden;margin-top:10px;">'
-                      + '<div style="position:absolute;inset:0 auto 0 0;width:' + pct.toFixed(1) + '%;border-radius:999px;background:' + gradient + ';' + animStyle + 'transition:width .35s ease;"></div>'
+                      + '<div style="position:absolute;inset:0 auto 0 0;width:' + pct.toFixed(1) + '%;border-radius:999px;background:' + gradient + ';transition:width .35s ease;"></div>'
                     + '</div>'
                   + '</div>';
                 ]]]`,
               },
             };
 
-            // "Today" tile — LIVE on todayId + costTodayId
+            // "Today" tile
             const todayStat = {
               type: 'custom:button-card',
               entity: todayId || powerId,
-              triggers_update: [costTodayId].filter(Boolean),
               tap_action: todayId ? { action: 'more-info' } : { action: 'none' },
               show_icon: false, show_name: false, show_label: false, show_state: false,
               card_mod: { style: todayId ? tileTapStyle : noHoverStyle },
@@ -473,19 +614,15 @@ hemma_popup_energy:
                   const costStr = costV != null ? costCurrency + costV.toFixed(2) : '';
                   const pct = Math.max(0, Math.min(100, (v || 0) / 50 * 100));
                   const color = pct >= 85 ? 'var(--hemma-popup-red-color, #ff453a)' : pct >= 45 ? 'var(--hemma-popup-orange-color, #ff9230)' : 'var(--hemma-popup-green-color, #67f5a0)';
-                  const gradient = pct >= 85
-                    ? 'linear-gradient(90deg,#FF7A59 0%,#FF4D6D 100%)'
-                    : pct >= 45
-                    ? 'linear-gradient(90deg,#FFD166 0%,#FFB347 100%)'
-                    : 'linear-gradient(90deg,#57FFFC 0%,#54F2A0 35%,#65F785 70%,#4CFA57 100%)';
+                  const gradient = color;
                   return '<div style="margin-top:1px;min-width:0;overflow:hidden;">'
                     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">'
-                      + '<span style="font-size:13px;color:var(--hemma-popup-tile-text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;">Today</span>'
+                      + '<span style="font-size:13px;color:var(--hemma-popup-tiles-text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;">Today</span>'
                       + (costStr ? '<span style="font-size:13px;color:' + color + ';white-space:nowrap;font-weight:600;letter-spacing:.01em;flex-shrink:0;">' + costStr + '</span>' : '')
                     + '</div>'
                     + '<div style="display:flex;align-items:baseline;gap:3px;">'
-                      + '<span style="font-size:20px;font-weight:400;color:var(--hemma-popup-tile-text-primary);line-height:1;white-space:nowrap;">' + fmtEnergy(v) + '</span>'
-                      + '<span style="font-size:12px;color:var(--hemma-popup-tile-text-muted);white-space:nowrap;">kWh</span>'
+                      + '<span style="font-size:20px;font-weight:400;color:var(--hemma-popup-tiles-text-primary);line-height:1;white-space:nowrap;">' + fmtEnergy(v) + '</span>'
+                      + '<span style="font-size:12px;color:var(--hemma-popup-tiles-text-muted);white-space:nowrap;">kWh</span>'
                     + '</div>'
                     + '<div style="position:relative;height:8px;width:100%;background:var(--hemma-popup-progress-track, rgba(255,255,255,0.09));border-radius:999px;overflow:hidden;margin-top:10px;">'
                       + '<div style="position:absolute;inset:0 auto 0 0;width:' + pct.toFixed(1) + '%;border-radius:999px;background:' + gradient + ';transition:width .35s ease;"></div>'
@@ -495,11 +632,10 @@ hemma_popup_energy:
               },
             };
 
-            // "Month" tile — LIVE on monthId + costMonthId
+            // "Month" tile
             const monthStat = {
               type: 'custom:button-card',
               entity: monthId || powerId,
-              triggers_update: [costMonthId].filter(Boolean),
               tap_action: monthId ? { action: 'more-info' } : { action: 'none' },
               show_icon: false, show_name: false, show_label: false, show_state: false,
               card_mod: { style: monthId ? tileTapStyle : noHoverStyle },
@@ -516,19 +652,15 @@ hemma_popup_energy:
                   const costStr = costV != null ? costCurrency + costV.toFixed(2) : '';
                   const pct = Math.max(0, Math.min(100, (v || 0) / 1500 * 100));
                   const color = pct >= 85 ? 'var(--hemma-popup-red-color, #ff453a)' : pct >= 45 ? 'var(--hemma-popup-orange-color, #ff9230)' : 'var(--hemma-popup-green-color, #67f5a0)';
-                  const gradient = pct >= 85
-                    ? 'linear-gradient(90deg,#FF7A59 0%,#FF4D6D 100%)'
-                    : pct >= 45
-                    ? 'linear-gradient(90deg,#FFD166 0%,#FFB347 100%)'
-                    : 'linear-gradient(90deg,#57FFFC 0%,#54F2A0 35%,#65F785 70%,#4CFA57 100%)';
+                  const gradient = color;
                   return '<div style="margin-top:1px;min-width:0;overflow:hidden;">'
                     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">'
-                      + '<span style="font-size:13px;color:var(--hemma-popup-tile-text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;">Month</span>'
+                      + '<span style="font-size:13px;color:var(--hemma-popup-tiles-text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;">Month</span>'
                       + (costStr ? '<span style="font-size:13px;color:' + color + ';white-space:nowrap;font-weight:600;letter-spacing:.01em;flex-shrink:0;">' + costStr + '</span>' : '')
                     + '</div>'
                     + '<div style="display:flex;align-items:baseline;gap:3px;">'
-                      + '<span style="font-size:20px;font-weight:400;color:var(--hemma-popup-tile-text-primary);line-height:1;white-space:nowrap;">' + fmtEnergy(v) + '</span>'
-                      + '<span style="font-size:12px;color:var(--hemma-popup-tile-text-muted);white-space:nowrap;">kWh</span>'
+                      + '<span style="font-size:20px;font-weight:400;color:var(--hemma-popup-tiles-text-primary);line-height:1;white-space:nowrap;">' + fmtEnergy(v) + '</span>'
+                      + '<span style="font-size:12px;color:var(--hemma-popup-tiles-text-muted);white-space:nowrap;">kWh</span>'
                     + '</div>'
                     + '<div style="position:relative;height:8px;width:100%;background:var(--hemma-popup-progress-track, rgba(255,255,255,0.09));border-radius:999px;overflow:hidden;margin-top:10px;">'
                       + '<div style="position:absolute;inset:0 auto 0 0;width:' + pct.toFixed(1) + '%;border-radius:999px;background:' + gradient + ';transition:width .35s ease;"></div>'
@@ -538,9 +670,7 @@ hemma_popup_energy:
               },
             };
 
-            /* -------------------------------------------------------
-             * Stats Grid Card
-             * ------------------------------------------------------- */
+            /* Stats Grid Card */
             const isMobile = typeof window !== 'undefined' && window.innerWidth <= 600;
 
             const statsCard = {
@@ -580,6 +710,8 @@ hemma_popup_energy:
           ]]]
 
 
+
+  hold_action: *energy_popup_action
   icon_tap_action:
     haptic: light
     action: more-info

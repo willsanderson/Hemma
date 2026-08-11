@@ -1,14 +1,9 @@
 # Weather Widget
-# ============================================================================
-# MODES:
-#   hero_mode: false (default) — compact, right-aligned, used in the mobile
-#              portrait 'weather' area
-#   hero_mode: true            — large, left-aligned, used as the desktop/tablet
-#              temperature widget (Home dashboard only)
 #
-# CONFIGURABLE VARIABLES:
-#   weather_temp_sensor:    entity_id of current temp sensor override
-# ============================================================================
+# hero_mode: false (default) — compact, right-aligned, mobile portrait weather area
+# hero_mode: true            — large, left-aligned, desktop/tablet temperature widget
+#
+# weather_temp_sensor — entity_id of current temp sensor override
 hemma_weather:
   variables:
     show_icon: true
@@ -35,10 +30,6 @@ hemma_weather:
 
   tap_action:
     action: more-info
-
-  triggers_update:
-    - '[[[ return entity?.entity_id ]]]'
-    - '[[[ return variables?.weather_temp_sensor ]]]'
 
   styles:
     card:
@@ -105,7 +96,7 @@ hemma_weather:
           ]]]
       - font-size: |
           [[[
-            if (variables.hero_mode) return 'var(--hero-weather-hero-temp-size, 28px)';
+            if (variables.hero_mode) return 'calc(var(--weather-icon-size, 34px) * 1.1)';
             const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
             return isMobile ? 'var(--hero-weather-title-size-mobile, 15px)' : 'var(--hero-weather-title-size, 15px)';
           ]]]
@@ -116,7 +107,7 @@ hemma_weather:
       - overflow: hidden
       - text-overflow: ellipsis
       - max-width: 100%
-      - opacity: 0.95
+      - opacity: 1
 
     icon:
       - width: var(--weather-icon-size, 34px)
@@ -124,17 +115,13 @@ hemma_weather:
       - align-self: center
 
     img_cell:
-      - width: var(--weather-icon-size, 34px)
+      - width: max-content
       - overflow: visible
       - align-self: center
-      - position: relative
 
     entity_picture:
       - grid-area: i
-      - position: absolute
-      - top: 50%
-      - left: 50%
-      - transform: translate(-50%, -50%)
+      - display: block
       - width: auto
       - height: var(--weather-icon-size, 34px)
       - object-fit: contain
@@ -156,7 +143,7 @@ hemma_weather:
       - overflow: visible
       - text-overflow: ellipsis
       - max-width: 100%
-      - opacity: 0.76
+      - opacity: 0.9
 
   name: >
     [[[
@@ -194,7 +181,7 @@ hemma_weather:
             'pouring':         'rain-heavy',
             'snowy':           'snow',
             'snow':            'snow',
-            'snowy-rainy':     'eather-mixed',
+            'snowy-rainy':     'weather-mixed',
             'hail':            'rain-heavy',
             'lightning':       'thunder',
             'lightning-rainy': 'lightning-rainy',
@@ -209,7 +196,7 @@ hemma_weather:
           }
         }
 
-        return `<span style="display:inline-flex;align-items:center;gap:4px;">${tempVal}°${iconHtml}</span>`;
+        return `<span style="display:inline-flex;align-items:center;gap:4px;"><span style="position:relative;top:var(--weather-hero-digit-align, 3px);">${tempVal}°</span>${iconHtml}</span>`;
       }
 
       return (tempVal === null) ? '' : `${tempVal}°`;

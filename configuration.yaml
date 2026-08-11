@@ -12,21 +12,10 @@ script: !include scripts.yaml
 scene: !include scenes.yaml
 template: !include sensors.yaml
 
+# Lovelace resources (smart-row.js, filter-overlay.js, etc.) are added via
+# Settings → Dashboards → Resources — see the README installation steps.
 lovelace:
-  mode: "storage"
-  resources:
-    - type: "module"
-      url: "/hacsfiles/button-card/button-card.js"
-    - type: "module"
-      url: "/hacsfiles/kiosk-mode/kiosk-mode.js"
-    - type: "module"
-      url: "/local/layout-card-modified/layout-card-modified.js"
-    - type: "module"
-      url: "/local/navbar-popup-caret/navbar-popup-caret.js"
-    - type: "module"
-      url: "/local/navbar-sidebar-offset/navbar-sidebar-offset.js"
-    - type: "css"
-      url: "/local/hemma/fonts/hanken-grotesk.css"
+  mode: storage
   dashboards:
     dashboard-hemma:
       mode: yaml
@@ -34,3 +23,9 @@ lovelace:
       icon: mdi:home
       show_in_sidebar: true
       filename: dashboards/hemma/hemma.yaml
+    dashboard-hemma-mobile:
+      mode: yaml
+      title: "Hemma Mobile"
+      icon: mdi:cellphone
+      show_in_sidebar: false
+      filename: dashboards/hemma/hemma_mobile.yaml

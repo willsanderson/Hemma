@@ -7,8 +7,13 @@
 # Variables:
 #   enabled             - show/hide this badge (default: true)
 #   entity_1 – entity_8 - entity IDs of light entities to track
+#   light_group_entity  - explicit group entity for the popup (optional; falls
+#                         back to entity_1, then the badge's own entity)
 hemma_badge_light_group:
-  template: [hemma_badge_base]
+  template: [hemma_badge_base, hemma_popup_light]
+
+  icon_tap_action:
+    action: none
 
   entity: input_select.hemma_expanded_row
 
@@ -31,186 +36,117 @@ hemma_badge_light_group:
 
   hold_action:
     haptic: medium
-    action: |
+    action: >
       [[[
-        const isMobile = window.matchMedia('(max-width: 767px)').matches;
-        const hasBrowserMod = typeof window.browser_mod !== 'undefined';
-        return (isMobile || !hasBrowserMod) ? 'more-info' : 'fire-dom-event';
-      ]]]
-    entity: >
-      [[[
-        return variables?.light_group_entity || variables?.entity_1 || null;
+        return typeof window.browser_mod !== 'undefined' ? 'fire-dom-event' : 'more-info';
       ]]]
     browser_mod:
       service: browser_mod.popup
       data:
+        tag: |
+          [[[
+            let eid = variables?.light_group_entity || variables?.entity_1 || entity?.entity_id;
+            if (!eid) return 'hemma_light_group_popup';
+            const mems0 = states[eid]?.attributes?.entity_id;
+            const isFlat = !Array.isArray(mems0) || !Array.isArray(states[mems0[0]]?.attributes?.entity_id);
+            if (isFlat) {
+              for (const sid of Object.keys(states)) {
+                if (!sid.startsWith('light.') || sid === eid) continue;
+                // Keys-then-lookup: Object.keys hits the Proxy's ownKeys trap (no
+                // registration); reading states[sid] here subscribes to lights only,
+                // not to all ~1500 entities the way Object.entries(states) did.
+                const st = states[sid];
+                const mems = st.attributes?.entity_id;
+                if (Array.isArray(mems) && mems.includes(eid) && mems.length > 1
+                    && Array.isArray(states[mems[0]]?.attributes?.entity_id)) {
+                  eid = sid; break;
+                }
+              }
+            }
+            return eid.replace(/\./g, '_') + '_popup';
+          ]]]
         title: ""
-        style: |
-          --popup-min-width: 800px;
+        dismissable: true
+        adaptive: true
+        size: auto
+        style: "--popup-width: 880px; --popup-max-width: 880px;"
         popup_styles:
           - style: all
             styles: |
-              ha-dialog .content .container,
-              ha-dialog .container {
-                padding: 28px 10px 16px 10px !important;
+              :host {
+                --dialog-surface-margin-top: 100px;
+                --ha-ripple-hover-opacity: 0;
+                --ha-ripple-pressed-opacity: 0.04;
+                opacity: 0;
+                animation: hemma-popup-reveal 0s 0.8s ease forwards;
               }
-        content:
-          type: custom:layout-card
-          layout_type: custom:grid-layout
-          card_mod:
-            style: |
-              ha-card,
-              ha-card:hover,
-              ha-card:focus-within,
-              ha-card:active {
-                background: transparent !important;
-                border: none !important;
-                box-shadow: none !important;
-                backdrop-filter: none !important;
-                -webkit-backdrop-filter: none !important;
-                filter: none !important;
+              @keyframes hemma-popup-reveal { to { opacity: 1; } }
+              .content .container > * {
+                width: 100% !important;
+                max-width: none !important;
+                box-sizing: border-box !important;
               }
-          layout:
-            grid-template-columns: minmax(320px, 0.95fr) minmax(420px, 1.05fr)
-            grid-template-rows: auto
-            grid-template-areas: |
-              "main list"
-            column-gap: 18px
-            row-gap: 18px
-          cards:
-            - type: custom:more-info-card
-              view_layout:
-                grid-area: main
-              entity: >
-                [[[
-                  return variables?.light_group_entity || variables?.entity_1 || null;
-                ]]]
-              card_mod:
-                style:
-                  $: |
-                    h1.card-header {
-                      display: block !important;
-                      margin: 0 !important;
-                      padding: 8px 0 24px 0 !important;
-                      width: 100% !important;
-                      text-align: center !important;
-                      font-size: 32px !important;
-                      font-weight: 600 !important;
-                      line-height: 1.2 !important;
-                      color: var(--primary-text-color) !important;
-                    }
-
-                  .: |
-                    ha-card,
-                    ha-card:hover,
-                    ha-card:focus-within,
-                    ha-card:active {
-                      background: transparent !important;
-                      border: none !important;
-                      box-shadow: none !important;
-                      filter: none !important;
-                      backdrop-filter: none !important;
-                      -webkit-backdrop-filter: none !important;
-                      transform: none !important;
-                    }
-
-                    state-card-content,
-                    div.action {
-                      display: none !important;
-                    }
-
-                    more-info-content {
-                      opacity: 0;
-                      animation: revealMoreInfo 0s linear 0.5s forwards;
-                    }
-
-                    @keyframes revealMoreInfo {
-                      to { opacity: 1; }
-                    }
-
-                  more-info-content:
-                    $: |
-                      hui-section,
-                      hui-grid-section {
-                        display: none !important;
-                      }
-
-            - type: vertical-stack
-              view_layout:
-                grid-area: list
-              card_mod:
-                style: |
-                  ha-card,
-                  ha-card:hover,
-                  ha-card:focus-within,
-                  ha-card:active {
-                    background: transparent !important;
-                    border: none !important;
-                    box-shadow: none !important;
-                    backdrop-filter: none !important;
-                    -webkit-backdrop-filter: none !important;
-                    overflow-y: auto !important;
-                    filter: none !important;
+              .content .container {
+                scrollbar-width: none;
+                overscroll-behavior: contain;
+                touch-action: pan-y;
+                padding-bottom: 24px !important;
+              }
+              .content .container::-webkit-scrollbar {
+                display: none;
+              }
+              wa-dialog {
+                --width: min(880px, 92vw);
+              }
+              @media (max-width: 768px) {
+                :host {
+                  --dialog-surface-margin-top: 0px;
+                }
+                wa-drawer {
+                  --size: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                  height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                }
+                .content .container {
+                  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                }
+              }
+        content: |
+          [[[
+            let groupId = variables?.light_group_entity || variables?.entity_1 || entity?.entity_id || null;
+            let initialFilter = -1;
+            if (groupId) {
+              const originalId = groupId;
+              const mems0 = states[groupId]?.attributes?.entity_id;
+              const isFlat = !Array.isArray(mems0) || !Array.isArray(states[mems0[0]]?.attributes?.entity_id);
+              if (isFlat) {
+                for (const sid of Object.keys(states)) {
+                  if (!sid.startsWith('light.') || sid === originalId) continue;
+                  const st = states[sid];
+                  const mems = st.attributes?.entity_id;
+                  if (Array.isArray(mems) && mems.includes(originalId) && mems.length > 1
+                      && Array.isArray(states[mems[0]]?.attributes?.entity_id)) {
+                    groupId = sid;
+                    initialFilter = mems.indexOf(originalId);
+                    break;
                   }
-              cards: |
-                [[[
-                  const root = variables?.light_group_entity || variables?.entity_1;
-                  if (!root) return [];
-
-                  const expand = (eid, seen = new Set()) => {
-                    if (!eid || seen.has(eid)) return [];
-                    seen.add(eid);
-
-                    const s = states[eid];
-                    if (!s) return [];
-
-                    const members = s.attributes?.entity_id;
-                    return Array.isArray(members)
-                      ? members.flatMap(m => expand(m, seen))
-                      : [eid];
-                  };
-
-                  const lights = [...new Set(expand(root))]
-                    .filter((eid) => eid.startsWith('light.') && eid !== root);
-
-                  return lights.map((eid) => ({
-                    type: 'custom:mushroom-light-card',
-                    entity: eid,
-                    fill_container: false,
-                    primary_info: 'name',
-                    secondary_info: 'state',
-                    icon_type: 'icon',
-                    show_brightness_control: true,
-                    show_color_temp_control: true,
-                    show_color_control: true,
-                    collapsible_controls: false,
-                    layout: 'horizontal',
-                    tap_action: { action: 'toggle' },
-                    hold_action: { action: 'more-info' },
-                    double_tap_action: { action: 'none' },
-                    card_mod: {
-                      style: `
-                        ha-card {
-                          background: var(--hemma-popup-entity-background, rgba(0, 0, 0, 0.4)) !important;
-                          box-shadow: none !important;
-                          border-radius: 9999px !important;
-                          margin-bottom: 8px !important;
-                          transition:
-                            background 0.18s ease,
-                            border-color 0.18s ease !important;
-                        }
-
-                        ha-card:hover,
-                        ha-card:focus-within,
-                        ha-card:active {
-                          background: var(--hemma-popup-entity-hover, rgba(0, 0, 0, 0.5)) !important;
-                          border-color: rgba(255, 255, 255, 0.08) !important;
-                          box-shadow: none !important;
-                        }
-                      `
-                    }
-                  }));
-                ]]]
+                }
+              }
+            }
+            const _h = typeof hass !== 'undefined' ? hass : null;
+            // Group entities are often renamed to a bare "Lights" per area, so the area wins over friendly_name.
+            const _areaName = _h?.areas?.[_h?.entities?.[groupId]?.area_id]?.name || null;
+            if (typeof window._hemmaLPC === 'function') {
+              return window._hemmaLPC(entity, states, _h, {
+                group_entity: groupId,
+                room_name: _areaName || states[groupId]?.attributes?.friendly_name || 'Lighting',
+                lights: [],
+                group_rooms: true,
+                initial_filter: initialFilter,
+              });
+            }
+            return null;
+          ]]]
 
   tap_action:
     action: call-service
@@ -225,17 +161,25 @@ hemma_badge_light_group:
   double_tap_action:
     action: none
 
-  triggers_update:
-    - '[[[ return variables?.entity_1 ]]]'
-    - '[[[ return variables?.entity_2 ]]]'
-    - '[[[ return variables?.entity_3 ]]]'
-    - '[[[ return variables?.entity_4 ]]]'
-    - '[[[ return variables?.entity_5 ]]]'
-    - '[[[ return variables?.entity_6 ]]]'
-    - '[[[ return variables?.entity_7 ]]]'
-    - '[[[ return variables?.entity_8 ]]]'
-
-  extra_styles: |
+  extra_styles: >
+    [[[
+      const _d = (() => {
+        const v = variables?.enabled;
+        const enabled = (v === undefined || v === null) ? true :
+          (typeof v === 'boolean') ? v :
+          (typeof v === 'number') ? v !== 0 :
+          !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
+        if (!enabled) return 'none';
+        const eids = [
+          variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4,
+          variables?.entity_5, variables?.entity_6, variables?.entity_7, variables?.entity_8
+        ].filter(Boolean);
+        return eids.length > 0 ? 'inline-grid' : 'none';
+      })();
+      const _hide = String(_d).trim() === 'none';
+      return `:host{display:${_hide ? 'none' : 'inline-block'} !important;}` + `
+    /* The overflow clip is removed in styles.img_cell below, not here — see
+       the writeup in hemma_badge_light.yaml. */
     #img-cell, .img-cell{ position: relative; }
 
     #img-cell #icon, .img-cell #icon{
@@ -251,13 +195,19 @@ hemma_badge_light_group:
       z-index: 5;
       background-color: var(--hemma-icon-color, var(--primary-text-color)) !important;
 
-      -webkit-mask: url('/local/hemma/icons/light.svg') no-repeat center / 78% 78%;
-      mask: url('/local/hemma/icons/light.svg') no-repeat center / 78% 78%;
+      -webkit-mask: url('data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%20%20%20%20%20%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20viewBox%3D%220%200%2016.0312%2027.9961%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2227.9961%22%20opacity%3D%220%22%20width%3D%2216.0312%22%20x%3D%220%22%20y%3D%220%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M4.13672%2023.8711L11.5547%2023.8711C11.9414%2023.8711%2012.2344%2023.5664%2012.2344%2023.1797C12.2344%2022.8047%2011.9414%2022.5%2011.5547%2022.5L4.13672%2022.5C3.75%2022.5%203.44531%2022.8047%203.44531%2023.1797C3.44531%2023.5664%203.75%2023.8711%204.13672%2023.8711ZM7.83984%2027.2695C9.65625%2027.2695%2011.168%2026.3789%2011.2852%2025.0312L4.40625%2025.0312C4.48828%2026.3789%206.01172%2027.2695%207.83984%2027.2695Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.5%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M0%207.21875C0%2011.7188%202.96484%2012.832%203.44531%2020.6484C3.46875%2021.0703%203.72656%2021.3398%204.17188%2021.3398L11.5078%2021.3398C11.9648%2021.3398%2012.2109%2021.0703%2012.2461%2020.6484C12.7266%2012.832%2015.6797%2011.7188%2015.6797%207.21875C15.6797%203.17578%2012.2227%200%207.83984%200C3.45703%200%200%203.17578%200%207.21875Z%22%20fill%3D%22white%22%2F%3E%0A%20%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A') no-repeat center / auto 78%;
+      mask: url('data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%20%20%20%20%20%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20viewBox%3D%220%200%2016.0312%2027.9961%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2227.9961%22%20opacity%3D%220%22%20width%3D%2216.0312%22%20x%3D%220%22%20y%3D%220%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M4.13672%2023.8711L11.5547%2023.8711C11.9414%2023.8711%2012.2344%2023.5664%2012.2344%2023.1797C12.2344%2022.8047%2011.9414%2022.5%2011.5547%2022.5L4.13672%2022.5C3.75%2022.5%203.44531%2022.8047%203.44531%2023.1797C3.44531%2023.5664%203.75%2023.8711%204.13672%2023.8711ZM7.83984%2027.2695C9.65625%2027.2695%2011.168%2026.3789%2011.2852%2025.0312L4.40625%2025.0312C4.48828%2026.3789%206.01172%2027.2695%207.83984%2027.2695Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.5%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M0%207.21875C0%2011.7188%202.96484%2012.832%203.44531%2020.6484C3.46875%2021.0703%203.72656%2021.3398%204.17188%2021.3398L11.5078%2021.3398C11.9648%2021.3398%2012.2109%2021.0703%2012.2461%2020.6484C12.7266%2012.832%2015.6797%2011.7188%2015.6797%207.21875C15.6797%203.17578%2012.2227%200%207.83984%200C3.45703%200%200%203.17578%200%207.21875Z%22%20fill%3D%22white%22%2F%3E%0A%20%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A') no-repeat center / auto 78%;
 
+      /* Load-bearing — see hemma_badge_light.yaml. */
       transform: translateZ(0);
     }
+      `;
+    ]]]
 
   styles:
+    img_cell:
+      - overflow: visible !important
+
 
     card:
       - background: >
@@ -291,16 +241,7 @@ hemma_badge_light_group:
       - --hemma-icon-color: >
           [[[
             if (entity?.state === 'lights') return 'rgba(0,0,0,0.75)';
-            const cfgEids = [
-              variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4,
-              variables?.entity_5, variables?.entity_6, variables?.entity_7, variables?.entity_8
-            ].filter(Boolean);
-            const eids = cfgEids.flatMap(eid => {
-              const m = hass.states[eid]?.attributes?.entity_id;
-              return (Array.isArray(m) && m.length > 0) ? m : [eid];
-            });
-            const onCount = eids.filter(eid => hass.states[eid]?.state === 'on').length;
-            return onCount > 0 ? 'var(--hemma-badge-light-color)' : 'var(--badge-title-inactive)';
+            return 'var(--hemma-badge-light-color)';
           ]]]
 
   name: >
@@ -309,15 +250,27 @@ hemma_badge_light_group:
         variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4,
         variables?.entity_5, variables?.entity_6, variables?.entity_7, variables?.entity_8
       ].filter(Boolean);
-      const eids = cfgEids.flatMap(eid => {
+
+      const memsOf = (eid) => {
         const m = hass.states[eid]?.attributes?.entity_id;
-        return (Array.isArray(m) && m.length > 0) ? m : [eid];
-      });
+        return Array.isArray(m) ? m.filter(x => typeof x === 'string' && x.startsWith('light.')) : [];
+      };
+      
+      const units = (eid, seen) => {
+        if (!eid || seen.has(eid)) return [];
+        const mems = memsOf(eid);
+        // No members, or no member is itself a group -> one physical light.
+        if (!mems.length || !mems.some(m => memsOf(m).length)) return [eid];
+        seen.add(eid);
+        return mems.flatMap(m => units(m, seen));
+      };
+
+      const seen = new Set();
+      const eids = [...new Set(cfgEids.flatMap(eid => units(eid, seen)))];
 
       const onCount = eids.filter(eid => hass.states[eid]?.state === 'on').length;
       const sub = onCount === 0 ? 'All Off'
                 : onCount === eids.length ? 'All On'
-                : onCount === 1 ? '1 On'
                 : `${onCount} On`;
 
       return `

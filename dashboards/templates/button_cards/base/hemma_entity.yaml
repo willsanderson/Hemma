@@ -1,3 +1,51 @@
+# Base Entity Card
+# Foundation template for every non-badge entity card (thermostat, light,
+# media, lock, etc. all build on this). Provides:
+#   - Active-state detection and styling (icon tint/circle color by domain,
+#     name/state color, active box-shadow) — extend via variables.active_states
+#   - Icon color system: byIcon/byDomain color maps keyed on variables.icon /
+#     entity domain, applied as a CSS mask so a single SVG can be recolored
+#     without separate active/inactive art
+#   - Optional toggle switch, battery-low indicator, and progress ring
+#     custom fields (see variables below)
+#   - Page-load entry animation, staggered off --hemma-position-index (set by
+#     hemma-smart-row on each card's wrapper from its cards: list order)
+#
+# Variables:
+#   size                    - 'small' (default) or 'large'. Phones only: small is the
+#                             compact tile (icon left, name/state right, one grid
+#                             row), large is the stacked card spanning two rows.
+#   icon                   - icon name, resolved via window.hemmaIconUrl() from the
+#                            inline map in hemma-icons.js. Source SVGs live at
+#                            /local/hemma/icons/<icon>.svg and are only fetched for
+#                            icons missing from the map; see that file to add one.
+#   active_states           - extra entity states (beyond the built-in defaults)
+#                            that should count as "active"
+#   icon_never_masked       - skip the CSS mask-tint (default: false); always render
+#                            the raw entity_picture <img> instead. Use for icon art
+#                            that needs crisp per-state renders (e.g. a colored "on"
+#                            SVG and a separate plain "off" SVG) rather than relying
+#                            on the mask to recolor a single shape — CSS masking a
+#                            shape with fine diagonal edges can look jagged/aliased.
+#   battery_entity          - battery sensor shown as a low-battery icon
+#   battery_low_threshold   - % at/below which the battery icon appears (default: 20)
+#   show_toggle             - show a toggle switch custom field
+#   toggle_entity            - entity to toggle (defaults to the card's own entity)
+#   toggle_service           - override service (defaults to homeassistant.toggle,
+#                              or lock.lock/unlock for lock entities)
+#   toggle_service_data      - override service_data for the toggle
+#   show_progress            - show a circular progress ring custom field
+#   progress_entity          - entity whose state/attributes drive the ring
+#   progress_value           - explicit 0-100 value (skips auto-detection)
+#   progress_active_states   - states where the ring is shown (default: playing,
+#                              cleaning, running, etc. — see below)
+#   mobile_filter_category   - which mobile filter chip this card belongs to
+#                              (lights/climate/media/energy/security, or
+#                              'unfiltered' to always show). Read in JS by
+#                              hemma-smart-row and filter-overlay.js, which fall
+#                              back to their own template-name → category maps
+#                              when it is null. Set it on the card template
+#                              (hemma_light, hemma_cover, …), not per card.
 hemma_entity:
   template:
     - hemma_default
@@ -6,12 +54,12 @@ hemma_entity:
   show_entity_picture: true
   show_icon: false
 
-  triggers_update:
-    - '[[[ return variables.battery_entity || "" ]]]'
-    - '[[[ return variables.progress_entity || "" ]]]'
-
   variables:
-    position: 1  # position of this card in the layout (1 = first, 2 = second, etc). Drives animation stagger.
+    size: small  # small | large — phones only, see header
+    icon_never_masked: false  # skip the CSS mask-tint entirely; always show the raw entity_picture <img> (icon file must supply its own inactive-state art)
+    active_entities: null  # optional entity (or list) that can drive this card's active state in addition to its own `entity:`
+    active_entities_mode: any  # any (default) = active if ANY of active_entities is active; all = only when every one of them is
+    mobile_filter_category: null
     battery_entity: null
     battery_low_threshold: 20
     show_toggle: false
@@ -19,6 +67,7 @@ hemma_entity:
     toggle_service: null
     toggle_service_data: null
     show_progress: false
+    progress_transport: true  # centre a play/pause glyph in the ring when the entity supports it
     progress_entity: null
     progress_value: null
     progress_active_states:
@@ -33,6 +82,7 @@ hemma_entity:
       - active
 
   extra_styles: |
+    /* Diagonal specular hairline */
     ha-card::before{
       content: "";
       position: absolute;
@@ -41,6 +91,7 @@ hemma_entity:
       border-radius: inherit;
       padding: 1px;
       box-sizing: border-box;
+      opacity: var(--hemma-active-overlay-opacity, 0);
       background: linear-gradient(
         to bottom right,
         var(--hemma-card-specular-start, rgba(255,255,255,0.35)) 0%,
@@ -78,21 +129,22 @@ hemma_entity:
     }
 
     /* ── Page load animation ── */
+    /* No filter here on purpose: one non-compositable property forces the whole
+       animation onto the main thread, where the cold-load template compile
+       stalls it. transform+opacity only keeps it on the compositor. */
     @keyframes hemmaFadeIn {
-      from { opacity: 0; transform: translateY(100px) scale(0.95); filter: blur(4px); }
-      50%  {                                                        filter: blur(0);   }
-      to   { opacity: 1; transform: translateY(0)     scale(1);    filter: blur(0);   }
+      from { opacity: 0; transform: translateY(100px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0)     scale(1);    }
     }
 
     @keyframes hemmaFadeInRight {
-      from { opacity: 0; transform: translateX(80px); filter: blur(3px); }
-      50%  {                                           filter: blur(0);   }
-      to   { opacity: 1; transform: translateX(0);    filter: blur(0);   }
+      from { opacity: 0; transform: translateX(80px); }
+      to   { opacity: 1; transform: translateX(0);    }
     }
 
     /* Desktop + tablet: slide in from right */
     ha-card {
-      animation: hemmaFadeInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation: var(--hemma-anim-name, hemmaFadeInRight) var(--hemma-anim-duration, 0.4s) cubic-bezier(0.16, 1, 0.3, 1) both;
       animation-delay: var(--hemma-anim-delay, var(--delay-d, 0s));
       animation-play-state: var(--hemma-init-play, running);
       will-change: opacity, transform;
@@ -101,43 +153,162 @@ hemma_entity:
     /* Mobile portrait: slide up from bottom */
     @media (max-width: 767px) and (orientation: portrait) {
       ha-card {
-        animation: hemmaFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: var(--hemma-anim-name, hemmaFadeIn) var(--hemma-anim-duration, 0.45s) cubic-bezier(0.16, 1, 0.3, 1) both;
         animation-delay: var(--hemma-anim-delay, var(--delay, 0s));
         animation-play-state: var(--hemma-init-play, running);
       }
     }
 
+    /* Progress */
     #progress {
       background: none !important;
       mask: none !important;
       -webkit-mask: none !important;
-      border-radius: 0;
+      overflow: visible;
+    }
+
+    #progress svg {
+      position: relative;
+      z-index: 1;
+    }
+
+    #progress svg .hemma-progress-glyph {
+      fill: var(--hemma-progress-arc-color, var(--hemma-color-teal, #00c3d0));
+      stroke: var(--hemma-progress-arc-color, var(--hemma-color-teal, #00c3d0));
+    }
+
+    #progress svg .hemma-progress-track {
+      stroke: var(--hemma-progress-track-color, rgba(255,255,255,0.2));
     }
 
     #progress svg .hemma-progress-arc {
+      stroke: var(--hemma-progress-arc-color, rgba(255,255,255,0.5));
+      stroke-opacity: var(--hemma-progress-arc-opacity, 1);
       stroke-dashoffset: calc(87.965px - var(--hemma-progress-pct, 0) * 0.87965px);
       transition: stroke-dashoffset 0.8s linear;
     }
 
+    /* Toggle tracks the tile unit, like the icon circle, so it stays proportional to the
+       card. Unitless: a wrapper span scales, the SVG keeps its natural box. On :host so it
+       also reaches cards whose root element the ha-card selector does not match. */
+    :host {
+      --hemma-toggle-scale: calc(var(--hemma-u, 10px) / 10px);
+    }
+
+    ha-card {
+      --hemma-height-mq: var(--hemma-entity-height-current, var(--hemma-entity-height-desktop, 200px));
+      --hemma-box-shadow-mq: var(--hemma-tile-glass-rim, inset 0 1px 0 -0.5px rgba(255,255,255,0.10), 0 2px 8px rgba(0,0,0,0.10));
+      /* Sized off the icon circle: two balanced circles in opposite corners. Ratio, not a
+         literal, so it tracks the card automatically. Visible ring is 32/36 of this (r14 +
+         stroke 4 in a 36 viewBox), i.e. ~0.8x the icon circle. */
+      --hemma-progress-size-mq: calc(var(--hemma-icon-circle-size, 44px) * var(--hemma-progress-icon-ratio, 0.9));
+      --hemma-icon-circle-size: calc(var(--hemma-u, 10px) * 4.4);  /* hemma_thermostat's temp puck reads this too */
+      --hemma-entity-active-tint-current: var(--hemma-entity-active-tint, rgba(255,255,255,0.94));
+      --hemma-icon-fallback-color: rgba(50,50,50,0.85);
+      --hemma-toggle-off-color-active: var(--hemma-toggle-off-fill-active, rgba(0,0,0,0.55));
+      --hemma-progress-arc-color: var(--hemma-progress-color, var(--hemma-color-teal, #00c3d0));
+      --hemma-progress-arc-opacity: 1;
+
+      /* Tile geometry. Only -mq is rewritten by the breakpoint; -lg never is.
+         styles.card picks between them off variables.size. */
+      --hemma-tile-areas-mq: "i" "n" "s";
+      --hemma-tile-cols-mq: 1fr;
+      --hemma-tile-rows-mq: 1fr min-content min-content;
+      --hemma-tile-gap-mq: 4px 0;
+      --hemma-tile-name-mb-mq: -2px;
+      --hemma-tile-align-content-mq: start;
+      --hemma-tile-icon-align-mq: start;
+      --hemma-tile-icon-mt-mq: -2px;
+      --hemma-tile-extras-mq: block;
+      --hemma-tile-radius-mq: var(--ha-card-border-radius, 28px);
+      --hemma-tile-state-inset-mq: 0px;
+
+      --hemma-tile-areas-lg: "i" "n" "s";
+      --hemma-tile-cols-lg: 1fr;
+      --hemma-tile-rows-lg: 1fr min-content min-content;
+      --hemma-tile-gap-lg: 4px 0;
+      --hemma-tile-name-mb-lg: -2px;
+      --hemma-tile-align-content-lg: start;
+      --hemma-tile-icon-align-lg: start;
+      --hemma-tile-icon-mt-lg: -2px;
+      --hemma-tile-extras-lg: block;
+      --hemma-tile-radius-lg: var(--ha-card-border-radius, 28px);
+      --hemma-tile-state-inset-lg: 0px;
+
+      /* Defaults, so first paint is correct before styles.card stamps these
+         inline a frame later. */
+      --hemma-tile-areas: var(--hemma-tile-areas-mq);
+      --hemma-tile-cols: var(--hemma-tile-cols-mq);
+      --hemma-tile-rows: var(--hemma-tile-rows-mq);
+      --hemma-tile-gap: var(--hemma-tile-gap-mq);
+      --hemma-tile-name-mb: var(--hemma-tile-name-mb-mq);
+      --hemma-tile-align-content: var(--hemma-tile-align-content-mq);
+      --hemma-tile-icon-align: var(--hemma-tile-icon-align-mq);
+      --hemma-tile-icon-mt: var(--hemma-tile-icon-mt-mq);
+      --hemma-tile-extras: var(--hemma-tile-extras-mq);
+      --hemma-tile-radius: var(--hemma-tile-radius-mq);
+      --hemma-tile-state-inset: var(--hemma-tile-state-inset-mq);
+    }
+
+    /* 100cqi for the auto-fitting state text = the card's content box. */
+    ha-card { container-type: inline-size; }
+
+    /* Media list must match the one hemma-smart-row switches its grid on. */
+    @media (max-width: 767px) and (orientation: portrait),
+           (max-height: 500px) and (orientation: portrait),
+           (max-height: 600px) and (orientation: landscape) {
+      ha-card {
+        --hemma-height-mq: 100%;  /* the grid track owns the height */
+        --hemma-icon-circle-size: 42px;
+        --hemma-tile-areas-mq: "i n" "i s";
+        --hemma-tile-cols-mq: auto minmax(0, 1fr);
+        --hemma-tile-rows-mq: auto auto;
+        --hemma-tile-gap-mq: 1px 10px;
+        --hemma-tile-name-mb-mq: 0px;  /* -2px is tuned for the 4px stacked gap */
+        --hemma-tile-align-content-mq: center;
+        --hemma-tile-icon-align-mq: center;
+        --hemma-tile-icon-mt-mq: 0px;
+        --hemma-tile-icon-mt-lg: 0px;  /* or a large tile's icon sits 2px above its small neighbour */
+        --hemma-tile-extras-mq: none;  /* no corners; icon_tap_action toggles instead */
+        --hemma-tile-radius-mq: var(--hemma-tile-radius-phone, 26px);
+        --hemma-tile-radius-lg: var(--hemma-tile-radius-phone, 26px);
+        --hemma-tile-state-inset-mq: calc(42px + 10px);
+      }
+
+      /* Keeps nested custom-field cards on the tile radius too. */
+      :host {
+        --ha-card-border-radius: var(--hemma-tile-radius-phone, 26px);
+      }
+    }
+
     @media (max-width: 767px), (max-height: 600px) {
       ha-card {
-        --hemma-entity-background: var(--hemma-entity-background-mobile, rgba(0,0,0,0.18));
-        --hemma-entity-background-active: var(--hemma-entity-background-active-mobile, rgba(200,200,200,0.45));
-        --hemma-icon-fallback-color: rgba(50,50,50,0.85);
-        --hemma-entity-name-active: var(--hemma-entity-name-active-mobile, rgba(0,0,0,0.88));
-        --hemma-entity-state-active-color: var(--hemma-entity-state-active-color-mobile, rgba(0,0,0,0.55));
-        --hemma-entity-state-active: var(--hemma-entity-state-active-mobile, rgba(0,0,0,0.55));
+        --hemma-progress-icon-ratio: 0.8;
+        --hemma-entity-active-tint-current: var(--hemma-entity-active-tint-mobile, var(--hemma-entity-active-tint, rgba(255,255,255,1)));
       }
     }
 
     #toggle {
       opacity: var(--hemma-toggle-opacity, 0.65);
       transition: opacity 0.18s ease;
+      /* Default until the JS-templated inline display lands, or it flashes in. */
+      display: var(--hemma-tile-extras, block);
+      /* button-card gives every custom field class="ellipsis" (overflow:hidden) on the
+         same div it stamps the inline style onto; !important here beats both. */
+      overflow: visible !important;
+    }
+
+    #progress {
+      display: var(--hemma-progress-display, none);
     }
 
     #state {
       opacity: var(--hemma-state-opacity, 0.75);
     }
+
+    /* button-card's .no-icon rules set end/start here, which closes the gap on
+       hemma_thermostat only. */
+    #name, #state { align-self: center !important; }
 
     @keyframes hemmaEntityFanSpin {
       from { transform: rotate(0deg); }
@@ -145,25 +316,49 @@ hemma_entity:
     }
 
     /* Icon circles */
-    #img-cell {
+    #img-cell, .hemma-icon-circle {
       position: relative;
       border-radius: 50% !important;
       background: var(--hemma-icon-circle-bg, rgba(255,255,255,0.10)) !important;
-      width: 44px !important;
-      height: 44px !important;
+      width: var(--hemma-icon-circle-size, 44px) !important;
+      height: var(--hemma-icon-circle-size, 44px) !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
       overflow: hidden !important;
+      box-shadow: var(--hemma-icon-circle-shadow, 0 2px 6px rgba(0,0,0,0.04)) !important;
+      transition: background-color 0.3s ease;
     }
-    #img-cell::before { opacity: 0 !important; }
+    /* Inactive-icon tint */
+    #img-cell::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: var(--hemma-icon-mask-scale, 60%);
+      height: var(--hemma-icon-mask-scale, 60%);
+      background-color: var(--hemma-icon-inactive-color, rgba(255,255,255,0.95));
+      -webkit-mask-image: var(--hemma-icon-mask-image, none);
+      mask-image: var(--hemma-icon-mask-image, none);
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      opacity: var(--hemma-icon-mask-active, 0);
+      pointer-events: none;
+      transition: background-color 0.3s ease, opacity 0.3s ease;
+    }
     #img-cell img {
-      width: 68% !important;
-      height: 68% !important;
-      max-width: 68% !important;
-      max-height: 68% !important;
+      width: var(--hemma-icon-mask-scale, 60%) !important;
+      height: var(--hemma-icon-mask-scale, 60%) !important;
+      max-width: var(--hemma-icon-mask-scale, 60%) !important;
+      max-height: var(--hemma-icon-mask-scale, 60%) !important;
       object-fit: contain !important;
       flex: none !important;
+      opacity: calc(1 - var(--hemma-icon-mask-active, 1)) !important;
+      transition: opacity 0.3s ease !important;
     }
     #img-cell ha-icon {
       --mdc-icon-size: 25px !important;
@@ -172,17 +367,16 @@ hemma_entity:
     }
     #icon { color: rgba(255,255,255,1.0) !important; }
 
-    /* Mobile portrait */
-    @media (max-width: 767px) and (orientation: portrait) {
-      #img-cell { width: 38px !important; height: 38px !important; }
-      #img-cell ha-icon { --mdc-icon-size: 22px !important; }
-      #toggle { filter: invert(var(--hemma-toggle-invert, 0)); }
+    @media (max-width: 767px) and (orientation: portrait),
+           (max-height: 500px) and (orientation: portrait),
+           (max-height: 600px) and (orientation: landscape) {
+      #img-cell ha-icon { --mdc-icon-size: 24px !important; }
     }
     @media (hover: hover) {
-      #img-cell:hover { filter: brightness(1.15); transform: scale(1.03); transition: filter 0.15s ease, transform 0.15s ease; }
+      #img-cell:hover, .hemma-icon-circle:hover { transform: scale(1.03); transition: transform 0.15s ease; }
     }
     @media (hover: none) {
-      #img-cell:active { filter: brightness(1.15); transform: scale(1.03); }
+      #img-cell:active, .hemma-icon-circle:active { filter: brightness(1.15); transform: scale(1.03); }
     }
 
     ha-card { isolation: isolate; }
@@ -194,15 +388,24 @@ hemma_entity:
       border-radius: inherit;
       pointer-events: none;
       z-index: -1;
-      background: var(--hemma-entity-active-gradient, rgba(255,255,255,0.25));
+      background: var(--hemma-entity-overlay-tint, var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94)));
       opacity: var(--hemma-active-overlay-opacity, 0);
-      transition: opacity var(--hemma-active-overlay-dur, .5s) ease;
+      transition: opacity var(--hemma-active-overlay-dur, .5s) ease, background-color .35s ease;
     }
 
-    @media (max-width: 767px), (max-height: 600px) {
-      ha-card::after {
-        background: var(--hemma-entity-active-gradient-mobile, var(--hemma-entity-active-gradient, rgba(255,255,255,0.25)));
-      }
+    /* Steady top/bottom glow (active state) */
+    #container::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: var(--hemma-tile-radius, var(--ha-card-border-radius, 28px));
+      pointer-events: none;
+      z-index: -1;
+      opacity: var(--hemma-entity-glow-opacity, 0);
+      transition: opacity var(--hemma-active-overlay-dur, .5s) ease;
+      background:
+        radial-gradient(60% 24px at 50% 0%,   rgba(255,255,255,0.20) 0%, transparent 100%),
+        radial-gradient(60% 24px at 50% 100%, rgba(255,255,255,0.15) 0%, transparent 100%);
     }
 
     :host { scroll-snap-align: start; }
@@ -210,14 +413,15 @@ hemma_entity:
   card_mod:
     style: |
       ha-card::after {
-        transition: opacity var(--hemma-active-overlay-dur, .40s) ease !important;
+        transition: opacity var(--hemma-active-overlay-dur, .40s) ease, background-color .35s ease !important;
       }
       @media (hover: hover) {
         :host(:hover) ha-card::after {
-          transition: opacity .18s ease !important;
+          transition: opacity .18s ease, background-color .18s ease !important;
         }
         :host(:hover) ha-card {
           --hemma-active-overlay-opacity: var(--hemma-hover-overlay-opacity, 0.10);
+          --hemma-entity-overlay-tint: var(--hemma-entity-hover-tint, rgba(255,255,255,0.55));
         }
       }
 
@@ -269,8 +473,11 @@ hemma_entity:
                 ].join('');
                 document.head.appendChild(s);
               }
+              const toggleTarget = variables.toggle_entity || entity.entity_id;
+              const toggleState = (states[toggleTarget]?.state || entity?.state || "").toLowerCase();
               const activeStates = ["on","open","opening","playing","unlocked","unlocking","cleaning","returning","cool","heat"];
-              const isOn = activeStates.includes((entity?.state || "").toLowerCase());
+              const extraStates = Array.isArray(variables.active_states) ? variables.active_states.map(v => String(v).toLowerCase()) : [];
+              const isOn = [...activeStates, ...extraStates].includes(toggleState);
               const mob = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
               const W = mob ? 38 : 44, H = mob ? 26 : 26, r = mob ? 8 : 9, cx0 = mob ? 14 : 14;
               const SW = W + 2;
@@ -283,12 +490,14 @@ hemma_entity:
               const circleCx = (!shouldAnimate && isOn) ? cx0 + travel : cx0;
               const mid = 'htm-' + entity.entity_id.replace(/[^a-z0-9]/gi, '-');
               const trackFillVar = getComputedStyle(document.documentElement).getPropertyValue('--hemma-toggle-track-fill').trim();
-              const trackFill = mob ? (trackFillVar || 'rgba(255,255,255,0.85)') : 'rgba(255,255,255,0.85)';
-              const offColor = 'rgba(255,255,255,0.8)';
+              const trackFill = trackFillVar || 'rgba(255,255,255,0.85)';
+              // Var, not a literal: an active card's surface goes white on desktop/tablet too, not just mobile,
+              // so this always defers to the theme's dark-ink token (see --hemma-toggle-off-color).
+              const offColor = 'var(--hemma-toggle-off-color, rgba(255,255,255,0.8))';
               if (isOn) {
-                return `<svg width="${SW}" height="${H}" viewBox="0 0 ${SW} ${H}" style="display:block;overflow:visible;"><defs><mask id="${mid}"><rect x="2" y="1" width="${W-2}" height="${H-2}" rx="${(H-2)/2}" fill="white"/><circle cx="${circleCx}" cy="${H/2}" r="${r}" fill="black" style="${animStyle}"/></mask></defs><rect x="2" y="1" width="${W-2}" height="${H-2}" rx="${(H-2)/2}" fill="${trackFill}" mask="url(#${mid})"/></svg>`;
+                return `<svg viewBox="0 0 ${SW} ${H}" style="display:block;width:100%;height:100%;overflow:visible;"><defs><mask id="${mid}"><rect x="2" y="1" width="${W-2}" height="${H-2}" rx="${(H-2)/2}" fill="white"/><circle cx="${circleCx}" cy="${H/2}" r="${r}" fill="black" style="${animStyle}"/></mask></defs><rect x="2" y="1" width="${W-2}" height="${H-2}" rx="${(H-2)/2}" fill="${trackFill}" mask="url(#${mid})"/></svg>`;
               } else {
-                return `<svg width="${SW}" height="${H}" viewBox="0 0 ${SW} ${H}" style="display:block;overflow:visible;"><rect x="2" y="1" width="${W-2}" height="${H-2}" rx="${(H-2)/2}" fill="none" stroke="${offColor}" stroke-width="2"/><circle cx="${circleCx}" cy="${H/2}" r="${r}" fill="${offColor}" style="${animStyle}"/></svg>`;
+                return `<svg viewBox="0 0 ${SW} ${H}" style="display:block;width:100%;height:100%;overflow:visible;"><rect x="2" y="1" width="${W-2}" height="${H-2}" rx="${(H-2)/2}" fill="none" stroke-width="2" style="stroke:${offColor};"/><circle cx="${circleCx}" cy="${H/2}" r="${r}" style="${animStyle}fill:${offColor};"/></svg>`;
               }
             ]]]
         styles:
@@ -311,6 +520,7 @@ hemma_entity:
           custom_fields:
             svg:
               - line-height: 0
+              - overflow: visible
         extra_styles: |
           @keyframes hemma-thumb-on-d{from{transform:translateX(0)}to{transform:translateX(18px)}}
           @keyframes hemma-thumb-off-d{from{transform:translateX(18px)}to{transform:translateX(0)}}
@@ -318,13 +528,23 @@ hemma_entity:
           @keyframes hemma-thumb-off-m{from{transform:translateX(12px)}to{transform:translateX(0)}}
           :host {
             display: block !important;
-            width: 46px !important;
-            height: 26px !important;
+            width: calc(46px * var(--hemma-toggle-scale, 1)) !important;
+            height: calc(26px * var(--hemma-toggle-scale, 1)) !important;
             overflow: visible !important;
             cursor: pointer;
           }
+          /* .ellipsis puts overflow:hidden on this field div, in THIS card's shadow root —
+             the outer card's #toggle rule cannot reach it. */
+          #svg, #container {
+            overflow: visible !important;
+            width: 100% !important;
+            height: 100% !important;
+          }
           @media (max-width: 767px), (max-height: 600px) {
-            :host { width: 40px !important; height: 26px !important; }
+            :host {
+              width: calc(40px * var(--hemma-toggle-scale, 1)) !important;
+              height: calc(26px * var(--hemma-toggle-scale, 1)) !important;
+            }
           }
           ha-card, #container {
             overflow: visible !important;
@@ -372,53 +592,135 @@ hemma_entity:
           document.head.appendChild(s);
         }
 
-        const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-        const size = isMobile ? 28 : 36;
+        const dom = (entity?.entity_id || '').split('.')[0];
+        const st = (entity?.state || '').toLowerCase();
+        const feats = Number(entity?.attributes?.supported_features || 0);
 
-        return `<svg width="${size}" height="${size}" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" style="transform:rotate(-90deg);display:block;">
-          <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="7" stroke-linecap="round"/>
-          <circle class="hemma-progress-arc" cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="7" stroke-linecap="round" stroke-dasharray="87.965"/>
+        let glyph = '', svc = '';
+        if (variables.progress_transport) {
+          if (dom === 'media_player' && (feats & 16385)) {
+            glyph = st === 'paused' ? 'play' : 'pause';
+            svc = 'media_player.media_play_pause';
+          } else if (dom === 'vacuum' && (feats & 4)) {
+            glyph = st === 'paused' ? 'play' : 'pause';
+            svc = st === 'paused' ? 'vacuum.start' : 'vacuum.pause';
+          }
+        }
+
+        // Two rounded bars / a rounded triangle, both inside r12 (the stroke's inner edge)
+        // and about a third of the ring's diameter, matching Apple's glyph-to-ring ratio.
+        const GLYPHS = {
+          pause: '<rect class="hemma-progress-glyph" x="14" y="13" width="2.6" height="10" rx="1.3"/>'
+               + '<rect class="hemma-progress-glyph" x="19.4" y="13" width="2.6" height="10" rx="1.3"/>',
+          play:  '<path class="hemma-progress-glyph" d="M15.4 12.9 L23.8 18 L15.4 23.1 Z"'
+               + ' stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>',
+        };
+
+        let inner = '';
+        if (glyph && svc) {
+          const [d, sv] = svc.split('.');
+          const stop = 'event.stopPropagation();event.stopImmediatePropagation();';
+          // onclick only for the action: click fires after touchend, so binding both would
+          // toggle twice and cancel itself out. pointerdown/touchstart only stop the card tap.
+          const act = stop + "document.querySelector('home-assistant').hass.callService('"
+                    + d + "','" + sv + "',{entity_id:'" + entity.entity_id + "'});";
+          inner = `<g style="cursor:pointer;pointer-events:auto;" onpointerdown="${stop}" ontouchstart="${stop}" onclick="${act}">`
+                + `<circle cx="18" cy="18" r="12" fill="transparent"/>${GLYPHS[glyph]}</g>`;
+        }
+
+        return `<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;overflow:visible;">
+          <g transform="rotate(-90 18 18)">
+            <circle class="hemma-progress-track" cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="4" stroke-linecap="round"/>
+            <circle class="hemma-progress-arc" cx="18" cy="18" r="14" fill="none" stroke="var(--hemma-color-teal, #00c3d0)" stroke-width="4" stroke-linecap="round" stroke-dasharray="87.965"/>
+          </g>
+          ${inner}
         </svg>`;
+      ]]]
+
+  # 'none' binds no icon handler at all, so the tap falls through to the card
+  # and the popup still opens.
+  icon_tap_action:
+    action: |
+      [[[ return variables.show_toggle ? 'call-service' : 'none'; ]]]
+    service: |
+      [[[
+        if (variables.toggle_service) return variables.toggle_service;
+
+        const target = variables.toggle_entity || entity.entity_id;
+        const state = (states[target]?.state || entity.state || '').toLowerCase();
+
+        if (target.startsWith('lock.')) {
+          if (state === 'locked') return 'lock.unlock';
+          if (state === 'unlocked') return 'lock.lock';
+          return 'none';
+        }
+
+        return 'homeassistant.toggle';
+      ]]]
+    service_data: |
+      [[[
+        if (variables.toggle_service_data) return variables.toggle_service_data;
+
+        return {
+          entity_id: variables.toggle_entity || entity.entity_id
+        };
       ]]]
 
   entity_picture: |
     [[[
       const icon = variables.icon || "default";
-      return `/local/hemma/icons/${icon}.svg`;
+      return window.hemmaIconUrl(icon);
     ]]]
 
   state_display: |
     [[[
-      if (!entity.state) return "";
+      if (!entity?.state) return "";
       if (entity.state === "ok") return "Healthy";
-      return entity.state.charAt(0).toUpperCase() + entity.state.slice(1);
+      return hass.formatEntityState(entity) || entity.state;
     ]]]
 
   state:
     - operator: template
       value: |
         [[[
-          const s = (entity?.state || "").toLowerCase();
           const defaults = ["on","open","opening","unlocked","unlocking","playing","cleaning","returning","cool","heat","washing","rinsing","spinning","drying","running","active","problem"];
           const extra = Array.isArray(variables.active_states) ? variables.active_states.map(v => String(v).toLowerCase()) : [];
-          return [...defaults, ...extra].includes(s);
+          const activeStates = [...defaults, ...extra];
+
+          if (activeStates.includes((entity?.state || "").toLowerCase())) return true;
+
+          const list = Array.isArray(variables.active_entities)
+            ? variables.active_entities.filter(Boolean)
+            : (variables.active_entities ? [variables.active_entities] : []);
+          if (!list.length) return false;
+
+          const isOn = (eid) => activeStates.includes(String(states[eid]?.state || "").toLowerCase());
+
+          return String(variables.active_entities_mode || "any").toLowerCase() === "all"
+            ? list.every(isOn)
+            : list.some(isOn);
         ]]]
       styles:
         card:
           - box-shadow: var(--hemma-button-card-box-shadow-active-current, var(--button-card-box-shadow-active, var(--button-card-box-shadow))) !important
           - "--hemma-active-overlay-opacity": "1"
           - "--hemma-active-overlay-dur": "0s"
+          # Inline so it outranks the hover rule's stylesheet-level value.
+          - --hemma-entity-overlay-tint: var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))
           - --hemma-entity-top-gradient: none
           - --hemma-toggle-opacity: var(--hemma-toggle-active-opacity, 0.70)
+          - --hemma-toggle-off-color: var(--hemma-toggle-off-color-active, rgba(255,255,255,0.8))
           - --hemma-icon-color-current: |
               [[[
                 const icon   = variables.icon || '';
                 const domain = entity.entity_id.split('.')[0];
                 const byIcon = {
-                  energy:  'var(--hemma-color-yellow, #ffd600)',
-                  power:   'var(--hemma-color-yellow, #ffd600)',
-                  plant:   'var(--hemma-color-green-plant, #34C759)',
-                  network: 'rgba(120,120,180,0.9)',
+                  energy:   'var(--hemma-color-yellow, #ffd600)',
+                  power:    'var(--hemma-color-yellow, #ffd600)',
+                  plant:    'var(--hemma-color-yellow, #ffd600)',
+                  updates:  'var(--hemma-color-teal, #00c3d0)',
+                  wifi:     'var(--hemma-popup-primary-color, #00c3d0)',
+                  doorbell: 'var(--hemma-color-teal, #00c3d0)',
                 };
                 const byDomain = {
                   light:        'var(--hemma-color-yellow, #ffd600)',
@@ -429,24 +731,16 @@ hemma_entity:
                   cover:        'var(--hemma-color-teal, #00c3d0)',
                   media_player: 'var(--hemma-color-teal, #00c3d0)',
                   lock:         entity.state === 'unlocking' ? 'var(--hemma-color-yellow, #ffd600)' : 'var(--hemma-color-teal, #00c3d0)',
-                  plant:        'var(--hemma-color-green-plant, #34C759)',
+                  plant:        'var(--hemma-color-yellow, #ffd600)',
                 };
                 return byIcon[icon] || byDomain[domain] || 'var(--hemma-icon-fallback-color, rgba(255,255,255,0.95))';
-              ]]]
-          - --hemma-entity-icon-animation: |
-              [[[
-                const icon = variables.icon || '';
-                if (icon === 'fan' || icon === 'vacuum') {
-                  return 'hemmaEntityFanSpin 1.5s ease-in 1, hemmaEntityFanSpin 0.9s linear 1.5s infinite';
-                }
-                return 'none';
               ]]]
           - --hemma-icon-svg-url: |
               [[[
                 const pic = entity.attributes.entity_picture || '';
                 if (pic && pic.startsWith('/local/')) return `url('${pic}')`;
                 const icon = variables.icon || 'default';
-                return `url('/local/hemma/icons/${icon}.svg')`;
+                return `url('${window.hemmaIconUrl(icon)}')`;
               ]]]
           - --hemma-icon-use-mask: |
               [[[
@@ -455,10 +749,12 @@ hemma_entity:
                 return '1';
               ]]]
           - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
+          - --hemma-icon-mask-active: "0"
+          - --hemma-entity-glow-opacity: var(--hemma-entity-glow-opacity-active, 0)
         name:
-          - color: var(--hemma-entity-name-active, var(--primary-text-color))
+          - color: var(--hemma-entity-ink-name, var(--hemma-entity-name-active, var(--primary-text-color)))
         state:
-          - color: var(--hemma-entity-state-active-color, var(--hemma-entity-state-active, var(--secondary-text-color)))
+          - color: var(--hemma-entity-ink-state, var(--hemma-entity-state-active-color, var(--hemma-entity-state-active, var(--secondary-text-color))))
         icon:
           - color: var(--hemma-icon-color-current) !important
         img_cell:
@@ -469,16 +765,30 @@ hemma_entity:
           - filter: none !important
   styles:
     card:
-      - --delay: >
-          [[[
-            const i = (variables.position || 1) - 1;
-            return (Math.floor(i / 2) * 0.06).toFixed(2) + 's';
-          ]]]
-      - --delay-d: >
-          [[[
-            const i = (variables.position || 1) - 1;
-            return (i * 0.04).toFixed(2) + 's';
-          ]]]
+      - --hemma-tile-areas: |
+          [[[ return variables.size === 'large' ? 'var(--hemma-tile-areas-lg)' : 'var(--hemma-tile-areas-mq)'; ]]]
+      - --hemma-tile-cols: |
+          [[[ return variables.size === 'large' ? 'var(--hemma-tile-cols-lg)' : 'var(--hemma-tile-cols-mq)'; ]]]
+      - --hemma-tile-rows: |
+          [[[ return variables.size === 'large' ? 'var(--hemma-tile-rows-lg)' : 'var(--hemma-tile-rows-mq)'; ]]]
+      - --hemma-tile-gap: |
+          [[[ return variables.size === 'large' ? 'var(--hemma-tile-gap-lg)' : 'var(--hemma-tile-gap-mq)'; ]]]
+      - --hemma-tile-name-mb: |
+          [[[ return variables.size === 'large' ? 'var(--hemma-tile-name-mb-lg)' : 'var(--hemma-tile-name-mb-mq)'; ]]]
+      - --hemma-tile-align-content: |
+          [[[ return variables.size === 'large' ? 'var(--hemma-tile-align-content-lg)' : 'var(--hemma-tile-align-content-mq)'; ]]]
+      - --hemma-tile-icon-align: |
+          [[[ return variables.size === 'large' ? 'var(--hemma-tile-icon-align-lg)' : 'var(--hemma-tile-icon-align-mq)'; ]]]
+      - --hemma-tile-icon-mt: |
+          [[[ return variables.size === 'large' ? 'var(--hemma-tile-icon-mt-lg)' : 'var(--hemma-tile-icon-mt-mq)'; ]]]
+      - --hemma-tile-extras: |
+          [[[ return variables.size === 'large' ? 'var(--hemma-tile-extras-lg)' : 'var(--hemma-tile-extras-mq)'; ]]]
+      - --hemma-tile-radius: |
+          [[[ return variables.size === 'large' ? 'var(--hemma-tile-radius-lg)' : 'var(--hemma-tile-radius-mq)'; ]]]
+      - --hemma-tile-state-inset: |
+          [[[ return variables.size === 'large' ? 'var(--hemma-tile-state-inset-lg)' : 'var(--hemma-tile-state-inset-mq)'; ]]]
+      - --delay: calc(round(down, var(--hemma-position-index, 0), 2) / 2 * 0.06s)
+      - --delay-d: calc(var(--hemma-position-index, 0) * 0.04s)
       - --hemma-entity-anim-name: |
           [[[
             if (!window._hemmaAnimSetup) {
@@ -498,22 +808,46 @@ hemma_entity:
             }
             return window._hemmaFromBg ? 'none' : 'hemmaFadeIn';
           ]]]
-      - --hemma-toggle-w: |
-          [[[
-            const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-            return isMobile ? '34px' : '46px';
-          ]]]
       - --hemma-toggle-opacity: var(--hemma-toggle-inactive-opacity, 0.65)
       - --hemma-state-opacity: var(--hemma-entity-state-opacity, 0.75)
-      - background-color: var(--hemma-entity-background)
-      - border-radius: var(--ha-card-border-radius, 28px)
-      - box-shadow: var(--hemma-button-card-box-shadow-current, var(--button-card-box-shadow))
-      - height: |
+      - --hemma-entity-glow-opacity: var(--hemma-entity-glow-opacity-inactive, 0.08)
+      - --hemma-icon-inactive-color: |
           [[[
-            return window.matchMedia('(max-width: 767px) and (orientation: portrait)').matches
-              ? 'var(--hemma-entity-height-current, 108px)'
-              : 'var(--hemma-entity-height-current, var(--hemma-entity-height-desktop, 200px))';
+            const icon   = variables.icon || '';
+            const domain = entity.entity_id.split('.')[0];
+            if (domain === 'media_player') return 'var(--hemma-icon-inactive-fallback-color, rgba(255,255,255,0.95))';
+            const byIcon = {
+              energy:   'var(--hemma-color-yellow, #ffd600)',
+              power:    'var(--hemma-color-yellow, #ffd600)',
+              plant:    'var(--hemma-color-green-plant, #34C759)',
+              wifi:     'var(--hemma-popup-primary-color, #00c3d0)',
+              doorbell: 'var(--hemma-color-teal, #00c3d0)',
+            };
+            const byDomain = {
+              light:        'var(--hemma-color-yellow, #ffd600)',
+              fan:          'var(--hemma-color-teal, #00d2e0)',
+              humidifier:   'var(--hemma-color-teal, #00d2e0)',
+              climate:      'var(--hemma-color-teal, #00d2e0)',
+              vacuum:       'var(--hemma-color-teal, #00d2e0)',
+              cover:        'var(--hemma-color-teal, #00c3d0)',
+              lock:         'var(--hemma-color-teal, #00c3d0)',
+              plant:        'var(--hemma-color-green-plant, #34C759)',
+            };
+            return byIcon[icon] || byDomain[domain] || 'var(--hemma-icon-inactive-fallback-color, rgba(255,255,255,0.95))';
           ]]]
+      - --hemma-icon-mask-image: |
+          [[[
+            return `url('${window.hemmaIconUrl(variables.icon || 'default')}')`;
+          ]]]
+      - --hemma-icon-mask-active: |
+          [[[
+            return variables.icon_never_masked ? '0' : '1';
+          ]]]
+      - background-color: var(--hemma-entity-background)
+      - border-radius: var(--hemma-tile-radius, var(--ha-card-border-radius, 28px))
+      - box-shadow: var(--hemma-box-shadow-mq) !important
+      - --hemma-card-hover-shadow: var(--hemma-box-shadow-mq)
+      - height: var(--hemma-height-mq)
       - padding: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
       - position: relative
       - display: |
@@ -588,7 +922,7 @@ hemma_entity:
             if (!variables.show_progress) return 'none';
             const activeStates = variables.progress_active_states || [];
             const s = (entity?.state || '').toLowerCase();
-            return activeStates.includes(s) ? 'block' : 'none';
+            return activeStates.includes(s) ? 'var(--hemma-tile-extras, block)' : 'none';
           ]]]
 
     custom_fields:
@@ -606,13 +940,14 @@ hemma_entity:
                 const s = (entity?.state || '').toLowerCase();
                 if (activeStates.includes(s)) return 'none';
               }
-              return 'block';
+              return 'var(--hemma-tile-extras, block)';
             ]]]
 
       battery:
         - position: absolute
         - bottom: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
         - right: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
+        - display: var(--hemma-tile-extras, block)
         - line-height: 0
         - z-index: 3
         - pointer-events: none
@@ -622,28 +957,20 @@ hemma_entity:
         - position: absolute
         - top: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
         - right: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
-        - width: |
-            [[[
-              const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-              return isMobile ? '28px' : '36px';
-            ]]]
-        - height: |
-            [[[
-              const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-              return isMobile ? '28px' : '36px';
-            ]]]
+        - width: var(--hemma-progress-size-mq)
+        - height: var(--hemma-progress-size-mq)
         - display: var(--hemma-progress-display, none)
         - z-index: 2
         - pointer-events: none
+        - overflow: visible
         - line-height: 0
-        - filter: drop-shadow(0 2px 8px rgba(0,0,0,.3))
 
     name:
       - color: var(--hemma-entity-name, rgba(255,255,255,0.9)) !important
       - font-weight: 600
       - text-shadow: var(--hemma-entity-text-shadow, 0 1px 4px rgba(0,0,0,0.35))
       - justify-self: start
-      - margin-bottom: -2px
+      - margin-bottom: var(--hemma-tile-name-mb, -2px)
       - font-size: var(--hemma-entity-name-font-current, var(--hemma-entity-name-font-desktop, 18px))
       - line-height: 1.15
       - white-space: nowrap
@@ -662,20 +989,18 @@ hemma_entity:
       - transition: color .18s ease, opacity .18s ease
 
     grid:
-      - grid-template-columns: 1fr
-      - grid-template-rows: 1fr min-content min-content
-      - grid-template-areas: |
-          "i"
-          "n"
-          "s"
-      - row-gap: 4px
+      - grid-template-columns: var(--hemma-tile-cols, 1fr)
+      - grid-template-rows: var(--hemma-tile-rows, 1fr min-content min-content)
+      - grid-template-areas: 'var(--hemma-tile-areas, "i" "n" "s")'
+      - gap: var(--hemma-tile-gap, 4px 0)
+      - align-content: var(--hemma-tile-align-content, start)
       - justify-items: start
       - align-items: start
 
     img_cell:
       - justify-self: start
-      - align-self: start
-      - margin-top: -2px
+      - align-self: var(--hemma-tile-icon-align, start)
+      - margin-top: var(--hemma-tile-icon-mt, -2px)
       - color: var(--hemma-entity-state, var(--secondary-text-color)) !important
       - width: var(--hemma-entity-icon-size-current, var(--hemma-entity-icon-size-desktop, 34px))
       - height: var(--hemma-entity-icon-size-current, var(--hemma-entity-icon-size-desktop, 34px))
@@ -683,7 +1008,10 @@ hemma_entity:
       - transition: opacity .18s ease, filter .18s ease
 
     entity_picture:
-      - opacity: var(--hemma-entity-picture-inactive-opacity, .9)
+      - opacity: |
+          [[[
+            return variables.icon_never_masked ? 'var(--hemma-entity-picture-inactive-opacity, .9)' : '0';
+          ]]]
       - filter: var(--hemma-entity-picture-inactive-filter, brightness(0.85) saturate(0.9))
       - transition: opacity .18s ease, filter .18s ease
 

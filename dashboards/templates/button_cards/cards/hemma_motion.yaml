@@ -1,3 +1,13 @@
+# Motion Card
+# Single-sensor mode: set entity: normally, card shows that sensor directly.
+# Multi-sensor mode: omit entity: and provide sensor_1..sensor_6 (+ matching
+# label_1..label_6) — the card shows whichever sensor is currently active
+# (falling back to the most recently changed one), and taps target it directly.
+#
+# Variables:
+#   default_name        - name shown when no sensor is active (default: 'Motion')
+#   sensor_1 – sensor_6 - binary_sensor entity_ids to track (multi-sensor mode)
+#   label_1 – label_6   - display name shown when the matching sensor is active
 hemma_motion:
   template:
     - hemma_entity
@@ -33,14 +43,6 @@ hemma_motion:
     label_5: null
     sensor_6: null
     label_6: null
-
-  triggers_update:
-    - '[[[ return variables.sensor_1 || "" ]]]'
-    - '[[[ return variables.sensor_2 || "" ]]]'
-    - '[[[ return variables.sensor_3 || "" ]]]'
-    - '[[[ return variables.sensor_4 || "" ]]]'
-    - '[[[ return variables.sensor_5 || "" ]]]'
-    - '[[[ return variables.sensor_6 || "" ]]]'
 
   tap_action:
     action: more-info
@@ -92,7 +94,7 @@ hemma_motion:
 
   entity_picture: |
     [[[
-      return '/local/hemma/icons/motion.svg';
+      return window.hemmaIconUrl('motion');
     ]]]
 
   # In multi-sensor mode (no entity), shows active room label or default_name.
@@ -140,6 +142,7 @@ hemma_motion:
       styles:
         card:
           - "--hemma-active-overlay-opacity": "1"
+          - --hemma-entity-overlay-tint: var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))
           - "--hemma-active-overlay-dur": "0s"
           - --hemma-entity-top-gradient: none
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
@@ -159,6 +162,8 @@ hemma_motion:
           - filter: none !important
 
   styles:
+    card:
+      - --hemma-icon-mask-image: "[[[ return `url('${window.hemmaIconUrl('motion')}')`; ]]]"
     state:
       - color: |
           [[[
@@ -184,42 +189,3 @@ hemma_motion:
               : entity?.state === 'on';
             return active ? '1' : '0.55';
           ]]]
-
-  extra_styles: |
-    #img-cell {
-      position: relative;
-      border-radius: 50% !important;
-      background: var(--hemma-icon-circle-bg, rgba(255,255,255,0.10)) !important;
-      width: 44px !important;
-      height: 44px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      overflow: hidden !important;
-    }
-    #img-cell::before { opacity: 0 !important; }
-    #img-cell img {
-      width: 68% !important;
-      height: 68% !important;
-      max-width: 68% !important;
-      max-height: 68% !important;
-      object-fit: contain !important;
-      flex: none !important;
-    }
-    #img-cell ha-icon {
-      --mdc-icon-size: 26px !important;
-      flex: none !important;
-      color: rgba(255,255,255,1.0) !important;
-    }
-    #icon { color: rgba(255,255,255,1.0) !important; }
-    @media (max-width: 767px) and (orientation: portrait) {
-      #img-cell { width: 38px !important; height: 38px !important; }
-      #img-cell ha-icon { --mdc-icon-size: 23px !important; }
-      #toggle { filter: invert(var(--hemma-toggle-invert, 0)); }
-    }
-    @media (hover: hover) {
-      #img-cell:hover { filter: brightness(1.15); transform: scale(1.03); transition: filter 0.15s ease, transform 0.15s ease; }
-    }
-    @media (hover: none) {
-      #img-cell:active { filter: brightness(1.15); transform: scale(1.03); }
-    }

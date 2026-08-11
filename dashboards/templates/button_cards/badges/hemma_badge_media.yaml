@@ -1,0 +1,320 @@
+# Shared Media Badge Design
+hemma_badge_media:
+  styles:
+    card:
+      - --hemma-badge-has-art: >
+          [[[
+            const url = this._hemmaMpBgUrl || this._hemmaPlexBgUrl || this._hemmaMediaBgUrl;
+            return (url && url !== 'none') ? 1 : 0;
+          ]]]
+      - background: >
+          color-mix(in srgb,
+            rgba(0,0,0,var(--hemma-badge-body-tint, 0.25)) calc(var(--hemma-badge-has-art, 1) * 100%),
+            var(--badge-background, rgba(150,150,150,0.18))) !important
+      - -webkit-backdrop-filter: blur(14px) saturate(calc(1 + 0.2 * var(--hemma-badge-has-art, 1))) !important
+      - backdrop-filter: blur(14px) saturate(calc(1 + 0.2 * var(--hemma-badge-has-art, 1))) !important
+      - border-radius: var(--hemma-media-badge-br, 9999px) !important
+      - overflow: hidden !important
+      - border: none !important
+      - width: var(--hemma-badge-width, fit-content) !important
+      - align-items: center !important
+      - justify-content: flex-start !important
+      - text-align: left !important
+      - gap: 6px !important
+      - isolation: isolate
+      - margin: 0 !important
+      - display: inline-grid
+      - justify-self: start !important
+      - align-self: start !important
+      - place-self: start !important
+      - --badge-icon-size-current: var(--badge-media-icon-size-current, var(--badge-media-icon-size, 44px))
+      - --hemma-media-art-size: calc(var(--badge-media-icon-size-current, var(--badge-media-icon-size, 44px)) * 0.9)
+
+    icon:
+      - display: none
+
+    img_cell:
+      - position: relative
+      - width: var(--hemma-media-art-size, 40px) !important
+      - height: var(--hemma-media-art-size, 40px) !important
+      - border-radius: 24% !important
+      - overflow: hidden !important
+      - display: block !important
+      - box-shadow: "0 0 0 0.5px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.12) !important"
+
+    entity_picture:
+      - grid-area: i
+      - width: var(--hemma-media-art-size, 40px) !important
+      - height: var(--hemma-media-art-size, 40px) !important
+      - min-width: var(--hemma-media-art-size, 40px) !important
+      - min-height: var(--hemma-media-art-size, 40px) !important
+      - border-radius: 24% !important
+      - object-fit: cover !important
+      - display: block !important
+      - z-index: 6
+
+  extra_styles: |
+    ha-ripple,
+    mwc-ripple {
+      display: none !important;
+    }
+
+    /* Entity artwork rim */
+    #img-cell::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:24%;
+      pointer-events:none;
+      z-index:7;
+      box-shadow:
+        inset 0 0 0 var(--hemma-badge-art-ring-width, 0.5px) rgba(255,255,255,var(--hemma-badge-art-ring-line, 0.12));
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    /* Rim */
+    :host{
+      position: relative !important;
+      --hemma-badge-hold: calc((1 - var(--hemma-badge-opacity, 1)) * 0.75s);
+      --hemma-media-badge-pad-v: 0px;
+    }
+
+    /* Tablet (touch, 768-1400px) — matches the group badges' vertical padding
+       (see --badge-padding-current in hemma_badge_base.yaml). */
+    @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (pointer: coarse),
+           (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (hover: none) {
+      :host{
+        --hemma-media-badge-pad-v: 7px;
+      }
+    }
+
+    :host::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      border-radius: var(--hemma-media-badge-br, 9999px);
+
+      --hemma-rim-side:      var(--hemma-badge-rim-side-blur, 2px) var(--hemma-badge-rim-side-spread, -1px) rgba(0,0,0,var(--hemma-badge-rim-side, 0.98));
+      --hemma-rim-bottom:    0 1px 1px -1px rgba(0,0,0,var(--hemma-badge-rim-bottom, 0.14));
+      --hemma-rim-top:       0 -1px 1px -1px rgba(0,0,0,var(--hemma-badge-rim-top, 0.12));
+      --hemma-rim-elevation: 0 2px 8px rgba(0,0,0,var(--hemma-badge-elevation, 0.22));
+
+      box-shadow:
+        var(--hemma-badge-rim-side-offset, 1px) 0 var(--hemma-rim-side),
+        calc(-1 * var(--hemma-badge-rim-side-offset, 1px)) 0 var(--hemma-rim-side),
+        var(--hemma-rim-bottom),
+        var(--hemma-rim-top),
+        var(--hemma-rim-elevation);
+
+      --hemma-rim-delay: calc(var(--hemma-badge-enter-delay, 0ms) * var(--hemma-badge-enter-t));
+
+      opacity: calc(var(--hemma-badge-has-art, 1) * (1 - var(--hemma-badge-enter-p))
+               * var(--hemma-row-fade, 1));
+
+      transform-origin: var(--hemma-badge-enter-origin);
+      transform: var(--hemma-badge-enter-transform);
+      -webkit-transform: var(--hemma-badge-enter-transform);
+      translate: var(--hemma-badge-flip-x, 0px);
+      transition: transform var(--hemma-badge-enter-dur) var(--hemma-badge-enter-ease, cubic-bezier(0.34, 1.26, 0.44, 1)) var(--hemma-rim-delay),
+                  translate var(--hemma-badge-flip-dur, 0.42s)
+                            var(--hemma-badge-flip-ease, cubic-bezier(0.32, 0.72, 0, 1)),
+                  opacity var(--hemma-badge-enter-fade) ease var(--hemma-rim-delay);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    /* Mobile rim */
+    @media (max-width: 767px) and (orientation: portrait),
+           (max-height: 600px) and (orientation: landscape) {
+      :host::after{
+        --hemma-badge-rim-side: 0.95;
+        --hemma-badge-rim-side-offset: 1px;
+        --hemma-badge-rim-side-blur: 0px;
+        --hemma-badge-rim-side-spread: -.3px;
+        --hemma-badge-rim-top: 0;
+        --hemma-badge-rim-bottom: 0;
+        --hemma-badge-elevation: 0;
+      }
+    }
+
+    /* Hover Override */
+    :host ha-card{
+      box-shadow: none !important;
+      transform-origin: var(--hemma-badge-enter-origin) !important;
+      transform: var(--hemma-badge-enter-transform) !important;
+      --hemma-badge-enter-delay: inherit !important;
+      --button-card-box-shadow-hover: none;
+      --button-card-box-shadow-active: none;
+    }
+
+    /* Hover */
+    :host ha-card:not(#hemma-badge-shadow-suppress):hover #container::after{
+      opacity: 0.03;
+    }
+
+    :host ha-card:not(#hemma-badge-shadow-suppress):active #container::after{
+      opacity: 0.12;
+    }
+
+    /* Background Image */
+    :host ha-card::after{
+      content:"";
+      position:absolute;
+      inset: -30px;
+      pointer-events:none;
+      background:
+        linear-gradient(rgba(0,0,0,0.20), rgba(0,0,0,0.20)),
+        var(--bg-url),
+        linear-gradient(var(--hemma-badge-art-floor, rgba(160,160,160,0.28)) 0 0);
+      background-blend-mode: normal, lighten;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      filter: blur(24px) saturate(1.6);
+      opacity: var(--hemma-badge-has-art, 1);
+      transform: scale(1.25);
+    }
+
+    /* Specular ring */
+    :host ha-card::before{
+      content:"";
+      position:absolute;
+      inset: 0px;
+      pointer-events:none;
+      border-radius: inherit;
+      padding: var(--hemma-badge-ring-thickness, 1.3px);
+      backdrop-filter: brightness(var(--hemma-badge-ring-boost, 1.5)) saturate(var(--hemma-badge-ring-sat, 1.8));
+      -webkit-backdrop-filter: brightness(var(--hemma-badge-ring-boost, 1.5)) saturate(var(--hemma-badge-ring-sat, 1.8));
+      mix-blend-mode: screen;
+      -webkit-mask:
+        linear-gradient(to bottom,
+          rgba(0,0,0,.5) 0%,
+          rgba(0,0,0,0.15) 32%,
+          rgba(0,0,0,0) 45%,
+          rgba(0,0,0,0) 55%,
+          rgba(0,0,0,0.07) 68%,
+          rgba(0,0,0,0.05) 100%),
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: source-in, xor;
+              mask-composite: intersect, exclude;
+      opacity: var(--hemma-badge-has-art, 1) !important;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    #container{
+      position: relative !important;
+      align-self: stretch !important;
+      height: auto !important;
+      min-height: 0 !important;
+      align-items: center !important;
+      align-content: center !important;
+    }
+
+    /* Inner glow */
+    #container::before{
+      content:"";
+      position:absolute;
+      inset: calc(-1 * var(--hemma-media-badge-pad-v, 0px)) 0;
+      pointer-events:none;
+      z-index: 4;
+      opacity: var(--hemma-badge-has-art, 1);
+      background:
+        linear-gradient(to bottom, rgba(255,255,255,var(--hemma-badge-glow-top-tight, 0.80)) 0, transparent var(--hemma-badge-glow-size-tight, 2px)),
+        linear-gradient(to bottom, rgba(255,255,255,var(--hemma-badge-glow-top-soft, 0.20)) 0, transparent var(--hemma-badge-glow-size-soft, 13px)),
+        linear-gradient(to top,    rgba(255,255,255,var(--hemma-badge-glow-bottom-tight, 0.02)) 0, transparent var(--hemma-badge-glow-size-tight, 2px)),
+        /* Bottom */
+        linear-gradient(to top,    rgba(255,255,255,var(--hemma-badge-glow-bottom-soft, 0.14)) 0, transparent var(--hemma-badge-glow-size-soft-bottom, 18px)),
+
+        /* Lens gradient */
+        linear-gradient(to bottom,
+          rgba(255,255,255,var(--hemma-badge-body-top, 0.07)) 0%,
+          rgba(255,255,255,var(--hemma-badge-body-mid, 0.015)) 38%,
+          rgba(0,0,0,var(--hemma-badge-body-bottom, 0.05)) 100%);
+
+      /* Taper over the rounded caps only */
+      -webkit-mask: linear-gradient(to right,
+        transparent 0,
+        #000 var(--hemma-badge-glow-taper, 27px),
+        #000 calc(100% - var(--hemma-badge-glow-taper, 27px)),
+        transparent 100%);
+      mask: linear-gradient(to right,
+        transparent 0,
+        #000 var(--hemma-badge-glow-taper, 27px),
+        #000 calc(100% - var(--hemma-badge-glow-taper, 27px)),
+        transparent 100%);
+    }
+
+    /* Hover veil */
+    #container::after{
+      content:"";
+      position:absolute;
+      inset: 0 -20px;
+      pointer-events:none;
+      z-index: 5;
+      background: #fff;
+      opacity: 0;
+      transition: opacity .15s ease;
+    }
+
+    .badge-wrap{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      gap:2px;
+      min-width:0;
+      max-width:100%;
+      overflow:hidden;
+      padding-top: var(--hemma-badge-wrap-pad-top, 0) !important;
+      padding-bottom: var(--hemma-badge-wrap-pad-bottom, 2px) !important;
+      line-height: normal !important;
+    }
+
+    /* Tablet */
+    @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (pointer: coarse),
+           (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (hover: none) {
+      :host{
+        --hemma-badge-wrap-pad-top: 3px;
+        --hemma-badge-wrap-pad-bottom: 3px;
+      }
+    }
+
+    .badge-title{
+      font-size: var(--hemma-badge-title, var(--badge-font-size-current, var(--badge-font-size, 13px)));
+      font-weight: 600;
+      line-height: 1.1;
+      color: rgba(255,255,255,0.98);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.22);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:100%;
+      text-align:left;
+    }
+
+    .badge-sub{
+      font-size: var(--hemma-badge-sub, calc(var(--hemma-badge-title, var(--badge-font-size-current, var(--badge-font-size, 13px))) - 2px));
+      font-weight: 400;
+      line-height: 1.14;
+      color: rgba(255,255,255,0.85);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.18);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:100%;
+      text-align:left;
+    }
+
+    #container > #aspect-ratio,
+    #img-cell,
+    #name,
+    #custom_fields{
+      position: relative !important;
+      z-index: 6 !important;
+      opacity: 1 !important;
+    }

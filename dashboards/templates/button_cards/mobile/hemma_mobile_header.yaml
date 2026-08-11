@@ -1,0 +1,141 @@
+hemma_mobile_header:
+  variables:
+    # window.hemmaIconUrl load-race guard — see hemma_default.yaml for why.
+    hemma_icon_url_guard:
+      force_eval: true
+      value: |
+        [[[
+          if (typeof window.hemmaIconUrl !== 'function') {
+            window.hemmaIconUrl = (name) =>
+              (window.HEMMA_ICONS && window.HEMMA_ICONS[name]) ||
+              `/local/hemma/icons/${name}.svg`;
+          }
+          return true;
+        ]]]
+    mobile_filter_categories: null
+    room_key: null
+    # Favorites auto-hides its own caret by name (see tap_action/arrow below)
+    # — this is a manual override for any OTHER non-tappable section.
+    hide_caret: false
+    motion_helper_entity: null
+
+  extra_styles: >
+    [[[
+      const f = states['input_select.hemma_mobile_filter']?.state;
+      const cats = variables?.mobile_filter_categories;
+      let hostRule;
+      if (!cats || !f || f === 'all') hostRule = ':host{display:block!important}';
+      else {
+        const arr = Array.isArray(cats) ? cats : [cats];
+        hostRule = arr.includes(f) ? ':host{display:block!important}' : ':host{display:none!important}';
+      }
+      return hostRule;
+    ]]]
+
+  tap_action:
+    action: |
+      [[[
+        // Favorites has no matching popup — never tappable, no hide_caret
+        // variable needed to say so.
+        if (this._config?.name === 'Favorites') return 'none';
+        const slug = String(this._config?.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const roomKey = variables.room_key || (!variables.hide_caret && slug ? 'room_' + slug : null);
+        return roomKey ? 'call-service' : 'none';
+      ]]]
+    service: input_select.select_option
+    service_data:
+      entity_id: input_select.hemma_mobile_filter
+      option: |
+        [[[
+          const slug = String(this._config?.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+          const roomKey = variables.room_key || (!variables.hide_caret && slug ? 'room_' + slug : null);
+          return roomKey || 'all';
+        ]]]
+    haptic: light
+
+  show_icon: false
+  show_name: true
+  show_label: false
+  show_state: false
+  show_entity_picture: false
+
+  custom_fields:
+    arrow: >
+      [[[
+        return `<ha-icon icon="mdi:chevron-right" style="--mdc-icon-size:24px;color:rgba(255,255,255,0.42);display:flex;align-items:center;"></ha-icon>`
+      ]]]
+    presence: >
+      [[[
+        const slug = String(this._config?.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const motionEntity = variables.motion_helper_entity || (slug ? 'input_text.hemma_motion_' + slug : null);
+        if (!motionEntity) return '';
+        return `
+          <div style="
+            width:26px;height:26px;border-radius:9999px;
+            display:flex;align-items:center;justify-content:center;
+            background:rgba(0,0,0,0.35);
+            border:1px solid rgba(255,255,255,0.14);
+            box-sizing:border-box;
+          ">
+            <img src="${window.hemmaIconUrl('motion')}" alt="" style="height:14px;width:auto;display:block;" />
+          </div>
+        `;
+      ]]]
+
+  styles:
+    card:
+      - background: transparent
+      - backdrop-filter: "none !important"
+      - -webkit-backdrop-filter: "none !important"
+      - box-shadow: none
+      - border-radius: 0
+      - border: none
+      - padding: "24px var(--hemma-rail-left, 11px) 10px max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))"
+      - margin: 0
+      - "--button-card-ripple-color": transparent
+      - "-webkit-tap-highlight-color": transparent
+    grid:
+      - display: flex
+      - flex-direction: row
+      - align-items: center
+      - justify-content: flex-start
+      - gap: "4px"
+      - height: "24px"
+      - overflow: visible
+    name:
+      - font-size: "18px"
+      - font-weight: "700"
+      - color: "#ffffff"
+      - text-align: left
+      - letter-spacing: "-0.3px"
+      - align-self: center
+      - line-height: "1.3"
+      - padding: 0
+      - margin: 0
+    custom_fields:
+      arrow:
+        - display: >
+            [[[ return (variables?.hide_caret || this._config?.name === 'Favorites') ? 'none' : 'flex' ]]]
+        - align-items: center
+        - justify-content: flex-start
+        - padding: 0
+      presence:
+        - display: flex
+        - align-items: center
+        - justify-content: center
+        - margin-left: auto
+        - padding: 0
+        - pointer-events: none
+        - opacity: "var(--hemma-presence-fade, 0)"
+        - transform: "scale(calc(0.5 + var(--hemma-presence-fade, 0) * 0.5))"
+        - transition: "opacity 0.4s cubic-bezier(.34,1.56,.64,1), transform 0.4s cubic-bezier(.34,1.56,.64,1)"
+        - "--hemma-presence-fade": >
+            [[[
+              const slug = String(this._config?.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+              const motionEntity = variables.motion_helper_entity || (slug ? 'input_text.hemma_motion_' + slug : null);
+              if (!motionEntity) return 0;
+              const badgesOn = states['input_boolean.hemma_motion_badges']?.state === 'on';
+              const sensorId = states[motionEntity]?.state?.trim();
+              const active = badgesOn && !!sensorId && states[sensorId]?.state === 'on';
+              return active ? 1 : 0;
+            ]]]

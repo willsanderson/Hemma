@@ -13,6 +13,17 @@ hemma_climate_popup:
   tap_action:
     browser_mod:
       data:
+        popup_styles:
+          - style: all
+            styles: |
+              ha-adaptive-dialog, ha-dialog, wa-drawer {
+                --dialog-surface-margin-top: 90px;
+                --ha-card-backdrop-filter: none;
+                --ha-card-background: transparent;
+                --card-background-color: transparent;
+                --ha-card-box-shadow: none;
+                --ha-card-border-width: 0px;
+              }
         content: |
           [[[
             const sensors  = Array.isArray(variables.sensors) ? variables.sensors.filter(Boolean) : [];
@@ -51,31 +62,33 @@ hemma_climate_popup:
               return { good: null, moderate: null, high: null, unit };
             };
 
-            // Safe JSON literals for baking into inner [[[...]]] templates
             const _qid  = JSON.stringify(qualId  || '');
             const _tid  = JSON.stringify(tempId  || '');
             const _hid  = JSON.stringify(humidId || '');
             const _sns  = JSON.stringify(sensors);
             const _room = JSON.stringify(roomName);
 
-            // Entity list for triggers_update (baked at tap time)
             const allEntities = [qualId, tempId, humidId, ...sensors].filter(Boolean);
 
-            // graphTempColor baked for mini-graph-card color property
             const temp      = safeNum(tempId);
             const tempUnit  = states[tempId]?.attributes?.unit_of_measurement || '°';
             const isFahrenheit = tempUnit === '°F';
             const graphTempColor =
-              temp == null ? 'var(--hemma-badge-temp-comfortable-color, #67F5A0)' :
+              temp == null ? '#67F5A0' :
               isFahrenheit ? (
-                temp < 76 ? 'var(--hemma-badge-temp-comfortable-color, #67F5A0)' :
+                temp < 76 ? '#67F5A0' :
                 temp < 82 ? '#FF9230' : '#FF453A'
               ) : (
-                temp < 24 ? 'var(--hemma-badge-temp-comfortable-color, #67F5A0)' :
+                temp < 24 ? '#67F5A0' :
                 temp < 28 ? '#FF9230' : '#FF453A'
               );
 
-            /* ------- Styles (static strings) ------- */
+            // Tooltip time format
+            const _tf = hass?.locale?.time_format;
+            const _use12hr = _tf === '12' || (_tf !== '24' && new Intl.DateTimeFormat(hass?.locale?.language || 'en', { hour: 'numeric' }).resolvedOptions().hour12);
+            const tooltipTimeFormat = _use12hr ? 'h:mm tt' : 'HH:mm';
+
+            /* Styles */
 
             const noHoverStyle = [
               ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
@@ -103,14 +116,74 @@ hemma_climate_popup:
             ].join('\n');
 
             const tileTapStyle = [
-              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
-              'ha-card { background: var(--hemma-popup-tile-background, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease !important; }',
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: inset 0 1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-tight,0.20) * 1.5)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-tight,0.15) * 1.5)), inset 0 3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-soft,0.08) * 1.5)), inset 0 -3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-soft,0.05) * 1.5)) !important; }',
+              'ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }',
               'ha-card:hover { background: var(--hemma-popup-tile-hover, rgba(255,255,255,0.09)) !important; transform: scale(var(--hemma-popup-tile-hover-scale, 1.01)) !important; }',
               'ha-ripple { display: none !important; }',
             ].join('\n');
 
+            /* card_mod lands too late to hide the empty chart shell, so the
+               entrance animation runs from apex_config instead. EVAL: is
+               apexcharts-card's hook for a function in a serialised config. */
+            const chartEnter = 'EVAL:' + [
+              'function (ctx) {',
+              '  try {',
+              '    var graph = ctx && ctx.el;',
+              '    if (!graph || (ctx.w && ctx.w.globals && ctx.w.globals.noData)) return;',
+              '    var wrap = graph.closest("#graph-wrapper") || graph.parentElement;',
+              '    if (!wrap || !graph.animate || wrap.dataset.hemmaChartEntered) return;',
+              '    wrap.dataset.hemmaChartEntered = "1";',
+              '    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {',
+              '      graph.animate([{ opacity: 0 }, { opacity: 1 }],',
+              '        { duration: 200, easing: "ease-out", fill: "backwards" });',
+              '      return;',
+              '    }',
+              '    /* squash, not lift, drives the apparent rise; raise it for less. */',
+              '    var D = { persp: 640, z: -130, lift: 8, squash: 0.34, blur: 9, floor: 10 };',
+              '    /* Clip goes on the stationary wrapper; on #graph it would travel along. */',
+              '    var n = graph.getRootNode().host, guard = 0, edge = null;',
+              '    while (n && guard++ < 6 && edge === null) {',
+              '      var sib = n.nextElementSibling;',
+              '      if (sib) { var sr = sib.getBoundingClientRect(); if (sr.height) edge = sr.top; }',
+              '      n = n.parentElement || (n.getRootNode() && n.getRootNode().host);',
+              '    }',
+              '    if (edge !== null) {',
+              '      var gap = Math.round(edge - wrap.getBoundingClientRect().bottom);',
+              '      if (gap > -40 && gap < 80) D.floor = gap;',
+              '    }',
+              '    var fy = D.floor < 0 ? "calc(100% - " + Math.abs(D.floor) + "px)"',
+              '                         : "calc(100% + " + D.floor + "px)";',
+              '    wrap.style.clipPath =',
+              '      "polygon(-100% -200%, 200% -200%, 200% " + fy + ", -100% " + fy + ")";',
+              '    graph.style.transformOrigin = "50% 90%";',
+              '    var from = "perspective(" + D.persp + "px) translateZ(" + D.z + "px)"',
+              '             + " translateY(" + D.lift + "px) scaleY(" + D.squash + ")";',
+              '    var to = "perspective(" + D.persp + "px) translateZ(0px)"',
+              '           + " translateY(0px) scaleY(1)";',
+              '    graph.animate([{ opacity: 0 }, { opacity: 1 }],',
+              '      { duration: 600, easing: "ease-out", fill: "backwards" });',
+              '    graph.animate([{ filter: "blur(" + D.blur + "px)" }, { filter: "blur(0px)" }],',
+              '      { duration: 600, easing: "ease-out", fill: "backwards" });',
+              '    var rise = graph.animate([{ transform: from }, { transform: to }],',
+              '      { duration: 700, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "backwards" });',
+              '    /* Clear the clip or it can trap a tooltip later. */',
+              '    var unclip = function () { wrap.style.clipPath = ""; };',
+              '    if (rise.finished) rise.finished.then(unclip).catch(unclip);',
+              '    else rise.onfinish = unclip;',
+              '  } catch (e) {}',
+              '}',
+            ].join('\n');
+
             const graphStyle = `
-              :host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }
+              :host {
+                position: relative !important;
+                z-index: 1 !important;
+                margin-top: -25px !important;
+                --ha-card-box-shadow: none !important;
+                --button-card-box-shadow: none !important;
+                --button-card-box-shadow-hover: none !important;
+              }
+
               ha-card {
                 background: transparent !important;
                 border: none !important;
@@ -118,67 +191,111 @@ hemma_climate_popup:
                 box-shadow: none !important;
                 backdrop-filter: none !important;
                 -webkit-backdrop-filter: none !important;
-                padding: 0px 0px 10px 0px !important;
-                margin-top: -25px !important;
-                --mgc-legend-alignment: flex-start;
+                overflow: visible !important;
+                padding-bottom: 10px !important;
                 --primary-color: transparent !important;
               }
+
               ha-card:hover { box-shadow: none !important; border-color: transparent !important; }
+              #spinner-wrapper { display: none !important; }
 
-              .graph__legend { display: flex !important; justify-content: flex-start !important; align-items: center !important; margin-left: 6px !important; }
-              .graph__legend__item:nth-child(1) { margin-right: 27px !important; }
-              .graph__legend__item { position: relative !important; display: flex !important; align-items: center !important; min-width: 0 !important; line-height: 1.1 !important; overflow: visible !important; padding-left: 8px !important; margin-bottom: 10px !important; }
-              .graph__legend__item > svg { display: none !important; }
-              .graph__legend__item::before { content: ""; position: absolute; left: 0; top: 50%; width: 8px; height: 8px; transform: translateY(-50%); border-radius: 4px; flex: 0 0 auto; }
-              .graph__legend__item:nth-child(1)::before { background: ${graphTempColor} !important; }
-              .graph__legend__item:nth-child(2)::before { background: var(--hemma-badge-climate-color, #C7CED6) !important; }
-
-              .graph { position: relative !important; overflow: visible !important; }
-              .graph__container { overflow: visible !important; }
-
-              .graph__container svg {
-                width: calc(100% + 60px) !important;
-                margin-left: -30px !important;
-                display: block !important;
+              #graph {
+                margin: 0 !important;
+                padding: 8px 0 !important;
                 overflow: visible !important;
-
-                -webkit-mask-image:
-                  linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 7%, rgba(0,0,0,0.1) 13%, rgba(0,0,0,0.5) 23%, black 35%, black 65%, rgba(0,0,0,0.5) 77%, rgba(0,0,0,0.1) 87%, rgba(0,0,0,0) 93%, rgba(0,0,0,0) 100%),
-                  linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%);
-
-                mask-image:
-                  linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 7%, rgba(0,0,0,0.1) 13%, rgba(0,0,0,0.5) 23%, black 35%, black 65%, rgba(0,0,0,0.5) 77%, rgba(0,0,0,0.1) 87%, rgba(0,0,0,0) 93%, rgba(0,0,0,0) 100%),
-                  linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%);
-
-                -webkit-mask-composite: destination-in;
-                mask-composite: intersect;
-                -webkit-mask-repeat: no-repeat;
-                mask-repeat: no-repeat;
-                -webkit-mask-size: 100% 100%;
-                mask-size: 100% 100%;
+                background: transparent !important;
               }
 
-              .graph__line { opacity: 0.95; filter: drop-shadow(0 0 3px rgba(255,255,255,0.06)); }
-              .graph__fill { opacity: 0.36; }
-              .graph.flex { margin-left: 0px !important; margin-right: 0px !important; padding-bottom: 0px !important; }
-              .graph__hover { overflow: visible !important; }
+              .apexcharts-canvas { overflow: visible !important; background: transparent !important; }
 
-              .graph__labels,
-              .graph__labels--secondary { overflow: visible !important; opacity: 0 !important; transition: opacity 0.15s ease !important; }
-              ha-card:hover .graph__labels,
-              ha-card:hover .graph__labels--secondary { opacity: 1 !important; }
-              .graph__label { font-size: 11px !important; font-weight: 500 !important; }
-              .graph__labels--secondary .graph__label { left: auto !important; right: 0 !important; }
+              .apexcharts-canvas > svg {
+                -webkit-mask-image:
+                  linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 4%, rgba(0,0,0,0.4) 12%, black 22%, black 78%, rgba(0,0,0,0.4) 88%, rgba(0,0,0,0) 96%, rgba(0,0,0,0) 100%),
+                  linear-gradient(to bottom, transparent 0%, black 10%, black 82%, transparent 100%);
+                mask-image:
+                  linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 4%, rgba(0,0,0,0.4) 12%, black 22%, black 78%, rgba(0,0,0,0.4) 88%, rgba(0,0,0,0) 96%, rgba(0,0,0,0) 100%),
+                  linear-gradient(to bottom, transparent 0%, black 10%, black 82%, transparent 100%);
+                -webkit-mask-composite: destination-in;
+                mask-composite: intersect;
+                -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+                -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+              }
+
+              .apexcharts-tooltip {
+                transition: opacity 0.12s ease !important;
+                display: inline-block !important;
+                width: max-content !important;
+                max-width: 200px !important;
+                min-width: 80px !important;
+                white-space: nowrap !important;
+                --hemma-chart-tooltip-fill: rgba(22,22,24,0.78);
+                background:
+                  linear-gradient(var(--hemma-glass-background, rgba(255,255,255,0.10)),
+                                  var(--hemma-glass-background, rgba(255,255,255,0.10))),
+                  var(--hemma-chart-tooltip-fill) !important;
+                border: none !important;
+                border-radius: 14px !important;
+                box-shadow: var(--hemma-glass-rim,
+                  inset 0 1px .5px -0.5px rgba(255,255,255,0.55),
+                  inset 0 -1px .5px -0.5px rgba(255,255,255,0.48),
+                  inset 0 3px 6px -3px rgba(255,255,255,0.20),
+                  inset 0 -3px 6px -3px rgba(255,255,255,0.12),
+                  2px 0 3px -2px rgba(0,0,0,0.45),
+                  -2px 0 3px -2px rgba(0,0,0,0.45),
+                  0 2px 8px rgba(0,0,0,0.18)) !important;
+                overflow: hidden !important;
+              }
+
+              .apexcharts-tooltip-title,
+              .apexcharts-tooltip-series-group { width: auto !important; max-width: 200px !important; }
+
+              .apexcharts-tooltip-title {
+                background: transparent !important;
+                border-bottom: none !important;
+                font-size: 10px !important;
+                color: rgba(255,255,255,0.58) !important;
+                font-weight: 600 !important;
+                padding: 9px 12px 2px !important;
+                margin: 0 !important;
+                letter-spacing: 0.07em !important;
+                text-transform: uppercase !important;
+              }
+
+              .apexcharts-tooltip-series-group {
+                background: transparent !important;
+                padding: 0 12px 6px !important;
+                align-items: center !important;
+              }
+
+              .apexcharts-tooltip-series-group:last-child { padding-bottom: 9px !important; }
+              .apexcharts-tooltip-series-group.apexcharts-active { background: transparent !important; }
+              .apexcharts-tooltip-marker { display: none !important; }
+
+              .apexcharts-tooltip-text-y-label {
+                color: rgba(255,255,255,0.64) !important;
+                font-size: 12px !important;
+                font-weight: 500 !important;
+                margin-right: 6px !important;
+              }
+
+              .apexcharts-tooltip-text-y-value {
+                color: rgba(255,255,255,0.98) !important;
+                font-weight: 700 !important;
+                font-size: 14px !important;
+                margin-left: 0 !important;
+              }
+
+              .apexcharts-xcrosshairs {
+                stroke: rgba(255,255,255,0.14) !important;
+                stroke-dasharray: 3 3 !important;
+                stroke-width: 1 !important;
+              }
+
+              .apexcharts-xaxistooltip { display: none !important; }
+              .apexcharts-ycrosshairs { display: none !important; }
             `;
-
-            // Shared compact sensorThresh snippet (no unit needed) for inner templates
             const _thresh = "const sensorThresh=(eid)=>{const id=(eid||'').toLowerCase();const dc=(states[eid]?.attributes?.device_class||'').toLowerCase();const isIdx=id.endsWith('_index')||(states[eid]?.attributes?.unit_of_measurement||'').toLowerCase()==='index';if(id.includes('pm25')||id.includes('pm2_5')||dc==='pm25')return{good:12,moderate:35.4,high:55.4};if(id.includes('pm10')||dc==='pm10')return{good:54,moderate:154,high:254};if(id.includes('voc')||id.includes('volatile_organic')||dc.includes('volatile_organic'))return isIdx?{good:6,moderate:8,high:9}:{good:100,moderate:200,high:300};if(id.includes('no2')||id.includes('nitrogen_dioxide')||dc==='nitrogen_dioxide')return isIdx?{good:6,moderate:8,high:9}:{good:53,moderate:100,high:360};if(id.includes('co2')||id.includes('carbon')||dc==='carbon_dioxide')return{good:1000,moderate:1500,high:2000};return{good:null,moderate:null,high:null};};";
-
-            // Shared safeNum snippet for inner templates
             const _safe = "const safeNum=(id)=>{if(!id)return null;const s=states[id]?.state;if(!s||s==='unavailable'||s==='unknown')return null;const n=parseFloat(s);return isNaN(n)?null:n;};";
-
-            // Shared score computation for inner templates (reads qualId, sensors, safeNum, sensorThresh from scope)
-            // After this block: scoreLabel, scoreColor, advice are defined
             const _scoreBlock = `
               const aqState = (qualId ? states[qualId]?.state : '').toLowerCase() || '';
               let scoreLabel = 'Unknown', scoreColor = 'var(--primary-text-color)', advice = 'Air quality unavailable', score = 3;
@@ -205,49 +322,17 @@ hemma_climate_popup:
                   const id=eid.toLowerCase(); const v=safeNum(eid); const t=sensorThresh(eid);
                   if (v==null||t.good==null||v<=t.good) return;
                   if (id.includes('pm25')||id.includes('pm2_5')) advice='Particles elevated';
-                  if (id.includes('voc')) advice='VOCs detected — Ventilate';
-                  if (id.includes('no2')||id.includes('nitrogen_dioxide')) advice='NO₂ detected — Ventilate';
-                  if (id.includes('co2')||id.includes('carbon')) advice = v > t.high ? 'CO₂ high — Open windows' : 'CO₂ elevated — Ventilate';
+                  if (id.includes('voc')) advice='VOCs detected - Ventilate';
+                  if (id.includes('no2')||id.includes('nitrogen_dioxide')) advice='NO₂ detected - Ventilate';
+                  if (id.includes('co2')||id.includes('carbon')) advice = v > t.high ? 'CO₂ high - Open windows' : 'CO₂ elevated - Ventilate';
                 });
               }
             `;
 
-            /* -------------------------------------------------------
-             * Badge Pill — LIVE [[[...]]]
-             * ------------------------------------------------------- */
-            const badgePillCard = {
-              type: 'custom:button-card',
-              entity: qualId,
-              triggers_update: allEntities,
-              tap_action: qualId ? { action: 'more-info' } : { action: 'none' },
-              show_icon: false, show_name: false, show_label: false, show_state: false,
-              card_mod: { style: tapStyle },
-              styles: {
-                card: [{ background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' }, { padding: '0' }],
-                grid: [{ 'grid-template-areas': '"c"' }, { 'grid-template-columns': '1fr' }],
-                custom_fields: { c: [{ 'justify-self': 'stretch' }] },
-              },
-              custom_fields: {
-                c: `[[[
-                  const qualId = ${_qid};
-                  const sensors = ${_sns};
-                  ${_safe}
-                  ${_thresh}
-                  ${_scoreBlock}
-                  return '<div style="background:color-mix(in srgb,' + scoreColor + ' 12%,transparent);border:1px solid color-mix(in srgb,' + scoreColor + ' 35%,transparent);border-radius:999px;padding:8px 15px;white-space:nowrap;">'
-                    + '<span style="font-size:15px;font-weight:500;color:' + scoreColor + ';font-family:var(--primary-font-family,system-ui);">' + scoreLabel + '</span>'
-                    + '</div>';
-                ]]]`,
-              },
-            };
-
-            /* -------------------------------------------------------
-             * AQI Gauge — LIVE [[[...]]]
-             * ------------------------------------------------------- */
+            /* AQI Gauge */
             const gaugeCard = {
               type: 'custom:button-card',
               entity: qualId,
-              triggers_update: allEntities,
               tap_action: qualId ? { action: 'more-info' } : { action: 'none' },
               show_icon: false, show_name: false, show_label: false, show_state: false,
               card_mod: { style: tapStyle },
@@ -282,7 +367,7 @@ hemma_climate_popup:
                     + '</svg>'
                     + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">'
                       + '<div style="position:relative;display:flex;align-items:center;justify-content:center;margin-top:6px;">'
-                        + '<div style="position:absolute;bottom:100%;left:0;right:0;text-align:center;font-size:11px;color:var(--hemma-popup-tile-text-muted);letter-spacing:.06em;font-weight:500;padding-bottom:2px;">AQI</div>'
+                        + '<div style="position:absolute;bottom:100%;left:0;right:0;text-align:center;font-size:11px;color:var(--hemma-popup-tiles-text-muted);letter-spacing:.06em;font-weight:500;padding-bottom:2px;">AQI</div>'
                         + '<div style="font-size:24px;color:' + scoreColor + ';font-weight:600;line-height:1;">' + aqiNum + '/' + aqiDen + '</div>'
                       + '</div>'
                     + '</div>'
@@ -291,9 +376,7 @@ hemma_climate_popup:
               },
             };
 
-            /* -------------------------------------------------------
-             * Right Column — wrapper only, no changes needed
-             * ------------------------------------------------------- */
+            /* Right Column */
             const rightColCard = {
               type: 'custom:button-card',
               entity: qualId,
@@ -306,19 +389,15 @@ hemma_climate_popup:
                   { display: 'flex' }, { 'flex-direction': 'column' }, { 'align-items': 'flex-end' }, { gap: '28px' },
                 ],
                 custom_fields: {
-                  pill: [{ flex: '0 0 auto' }],
-                  ring: [{ flex: '0 0 auto' }],
+                  ring: [{ flex: '0 0 auto' }, { 'margin-top': '66px' }],
                 },
               },
               custom_fields: {
-                pill: { card: badgePillCard },
                 ring: { card: gaugeCard },
               },
             };
 
-            /* -------------------------------------------------------
-             * Temp Stat Card — LIVE [[[...]]]
-             * ------------------------------------------------------- */
+            /* Temp Stat Card */
             const tempStatCard = {
               type: 'custom:button-card',
               entity: tempId || qualId,
@@ -350,21 +429,19 @@ hemma_climate_popup:
                     );
                   return '<div>'
                     + '<div style="display:flex;align-items:baseline;gap:3px;padding-right:6px;">'
-                      + '<span style="font-size:26px;font-weight:400;color:var(--hemma-popup-tile-text-primary);">' + tempStr + '</span>'
-                      + '<span style="font-size:13px;color:var(--hemma-popup-tile-text-secondary);">' + tempUnit + '</span>'
+                      + '<span style="font-size:26px;font-weight:400;color:var(--hemma-popup-tiles-text-primary);">' + tempStr + '</span>'
+                      + '<span style="font-size:13px;color:var(--hemma-popup-tiles-text-secondary);">' + tempUnit + '</span>'
                     + '</div>'
                     + '<div style="display:flex;align-items:center;gap:6px;margin-top:7px;">'
                       + '<span style="width:8px;height:8px;background:' + graphTempColor + ';border-radius:50%;display:inline-block;flex-shrink:0;"></span>'
-                      + '<span style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);">Temp</span>'
+                      + '<span style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary);">Temp</span>'
                     + '</div>'
                   + '</div>';
                 ]]]`,
               },
             };
 
-            /* -------------------------------------------------------
-             * Humid Stat Card — LIVE [[[...]]]
-             * ------------------------------------------------------- */
+            /* Humid Stat Card */
             const humidStatCard = {
               type: 'custom:button-card',
               entity: humidId || qualId,
@@ -391,21 +468,19 @@ hemma_climate_popup:
                     'var(--hemma-badge-climate-color, #C7CED6)';
                   return '<div>'
                     + '<div style="display:flex;align-items:baseline;gap:3px;padding-left:6px;">'
-                      + '<span style="font-size:26px;font-weight:400;color:var(--hemma-popup-tile-text-primary);">' + humidStr + '</span>'
-                      + '<span style="font-size:13px;color:var(--hemma-popup-tile-text-secondary);">%</span>'
+                      + '<span style="font-size:26px;font-weight:400;color:var(--hemma-popup-tiles-text-primary);">' + humidStr + '</span>'
+                      + '<span style="font-size:13px;color:var(--hemma-popup-tiles-text-secondary);">%</span>'
                     + '</div>'
                     + '<div style="display:flex;align-items:center;gap:6px;margin-top:7px;margin-left:6px;">'
                       + '<span style="width:8px;height:8px;background:' + humidColor + ';border-radius:50%;display:inline-block;flex-shrink:0;transition:background .4s ease;"></span>'
-                      + '<span style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);">Humidity</span>'
+                      + '<span style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary);">Humidity</span>'
                     + '</div>'
                   + '</div>';
                 ]]]`,
               },
             };
 
-            /* -------------------------------------------------------
-             * Stats Row — wrapper, no changes needed
-             * ------------------------------------------------------- */
+            /* Stats Row */
             const statsRowCard = {
               type: 'custom:button-card',
               entity: tempId || qualId,
@@ -431,13 +506,10 @@ hemma_climate_popup:
               },
             };
 
-            /* -------------------------------------------------------
-             * Header Card — LIVE title [[[...]]]
-             * ------------------------------------------------------- */
+            /* Header Card */
             const headerCard = {
               type: 'custom:button-card',
               entity: qualId,
-              triggers_update: allEntities,
               tap_action: { action: 'none' },
               show_icon: false, show_name: false, show_label: false, show_state: false,
               card_mod: { style: contentCardStyle },
@@ -466,10 +538,10 @@ hemma_climate_popup:
                   ${_safe}
                   ${_thresh}
                   ${_scoreBlock}
-                  return '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tile-text-primary);text-align:left;">'
+                  return '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tiles-text-primary);text-align:left;">'
                     + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;">' + roomName + '</div>'
-                    + '<div style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);margin-top:2px;">Climate · Air Quality</div>'
-                    + '<div style="font-size:22px;font-weight:400;letter-spacing:-.5px;margin-top:20px;">' + advice + '</div>'
+                    + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary);margin-top:2px;">Climate · Air Quality</div>'
+                    + '<div style="font-size:22px;font-weight:400;letter-spacing:-.5px;margin-top:20px;margin-bottom:16px;line-height:1.4;overflow:visible;">' + advice + '</div>'
                   + '</div>';
                 ]]]`,
                 stats: { card: statsRowCard },
@@ -477,34 +549,88 @@ hemma_climate_popup:
               },
             };
 
-            /* -------------------------------------------------------
-             * Graph Card — mini-graph-card manages its own reactivity
-             * ------------------------------------------------------- */
+            /* Graph Card */
+            const humidV = safeNum(humidId);
+            const humidGraphColor =
+              humidV == null ? '#00c3d0' :
+              (humidV < 20 || humidV > 75) ? '#FF453A' :
+              (humidV < 30 || humidV > 65) ? '#FF9230' :
+              (humidV < 35 || humidV > 60) ? '#FFD600' :
+              '#00c3d0';
+
+            const climateYAxis = [];
+            const climateSeries = [];
+            if (tempId) {
+              climateYAxis.push({ id: 'temp', show: false });
+              climateSeries.push({
+                entity: tempId,
+                name: 'Temp',
+                color: graphTempColor,
+                type: 'area',
+                curve: 'smooth',
+                stroke_width: 2.5,
+                float_precision: 1,
+                extend_to: 'now',
+                yaxis_id: 'temp',
+                group_by: { func: 'avg', duration: '1h', fill: 'last' },
+              });
+            }
+            if (humidId) {
+              climateYAxis.push({ id: 'humid', show: false });
+              climateSeries.push({
+                entity: humidId,
+                name: 'Humidity',
+                color: humidGraphColor,
+                type: 'area',
+                curve: 'smooth',
+                stroke_width: 2.5,
+                float_precision: 0,
+                extend_to: 'now',
+                yaxis_id: 'humid',
+                group_by: { func: 'avg', duration: '1h', fill: 'last' },
+              });
+            }
+
             const graphCard = {
-              type: 'custom:mini-graph-card',
-              entities: [
-                ...(tempId  ? [{ entity: tempId,  name: 'Temp',     color: graphTempColor }] : []),
-                ...(humidId ? [{ entity: humidId, name: 'Humidity', color: 'var(--hemma-badge-climate-color, #C7CED6)', y_axis: 'secondary' }] : []),
-              ],
-              hours_to_show: 12,
-              points_per_hour: 1,
-              line_width: 3,
-              animate: true,
-              smoothing: true,
-              hour24: false,
-              height: 70,
-              decimals: 0,
-              show: {
-                name: false, icon: false, state: false,
-                legend: false, labels: true, labels_secondary: true,
-                fill: 'fade', points: false,
+              type: 'custom:apexcharts-card',
+              graph_span: '6h',
+              header: { show: false },
+              yaxis: climateYAxis.length ? climateYAxis : [{ min: 0, max: 100, show: false }],
+              series: climateSeries,
+              apex_config: {
+                noData: { text: '' },
+                chart: {
+                  events: { mounted: chartEnter, updated: chartEnter },
+                  height: 88,
+                  background: 'transparent',
+                  toolbar: { show: false },
+                  zoom: { enabled: false },
+                  animations: { enabled: true, speed: 300, animateGradually: { enabled: false }, dynamicAnimation: { speed: 300 } },
+                },
+                theme: { mode: 'dark' },
+                stroke: { curve: 'smooth', width: 2.5, lineCap: 'round' },
+                grid: { show: false, padding: { left: 0, right: 0, top: -8, bottom: -12 } },
+                xaxis: { labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false } },
+                dataLabels: { enabled: false },
+                legend: { show: false },
+                tooltip: {
+                  enabled: true,
+                  shared: true,
+                  intersect: false,
+                  theme: 'dark',
+                  x: { show: true, format: tooltipTimeFormat },
+                  fixed: { enabled: false },
+                },
+                fill: {
+                  type: 'gradient',
+                  gradient: { type: 'vertical', shadeIntensity: 0, opacityFrom: 0.50, opacityTo: 0.0, stops: [0, 100] },
+                },
+                markers: { size: 0, hover: { size: 5 } },
               },
               card_mod: { style: graphStyle },
             };
 
-            /* -------------------------------------------------------
-             * Sensor Tile Helpers — name and thresholds baked at tap time
-             * ------------------------------------------------------- */
+            /* Sensor Tile Helpers */
             const cleanSensorName = (eid) => {
               const fn = states[eid]?.attributes?.friendly_name || eid.split('.').pop() || eid;
               const pName = (variables.room_name || '').trim();
@@ -563,22 +689,18 @@ hemma_climate_popup:
                       else                    pct = Math.min(100, 90 + ((v - high) / Math.max(high, 1)) * 10);
                     }
 
-                    let gradient;
-                    if      (label === 'Bad')      gradient = 'linear-gradient(90deg,#FF7A59 0%,#FF4D6D 100%)';
-                    else if (label === 'Poor')     gradient = 'linear-gradient(90deg,#FFB347 0%,#FFD166 100%)';
-                    else if (label === 'Moderate') gradient = 'linear-gradient(90deg,#FFD166 0%,#D6FF47 50%,#B8FF47 100%)';
-                    else                           gradient = 'linear-gradient(90deg,#57FFFC 0%,#54F2A0 35%,#65F785 70%,#4CFA57 100%)';
+                    const gradient = color;
 
                     const valStr = v != null ? v.toLocaleString() : '—';
 
                     return '<div style="margin-top:1px;min-width:0;overflow:hidden;">'
                       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">'
-                        + '<span style="font-size:13px;color:var(--hemma-popup-tile-text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;">' + name + '</span>'
+                        + '<span style="font-size:13px;color:var(--hemma-popup-tiles-text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;">' + name + '</span>'
                         + '<span style="font-size:13px;color:' + color + ';white-space:nowrap;font-weight:600;letter-spacing:.01em;flex-shrink:0;">' + label + '</span>'
                       + '</div>'
                       + '<div style="display:flex;align-items:baseline;gap:3px;">'
-                        + '<span style="font-size:20px;font-weight:400;color:var(--hemma-popup-tile-text-primary);line-height:1;white-space:nowrap;">' + valStr + '</span>'
-                        + '<span style="font-size:12px;color:var(--hemma-popup-tile-text-muted);white-space:nowrap;">' + unit + '</span>'
+                        + '<span style="font-size:20px;font-weight:400;color:var(--hemma-popup-tiles-text-primary);line-height:1;white-space:nowrap;">' + valStr + '</span>'
+                        + '<span style="font-size:12px;color:var(--hemma-popup-tiles-text-muted);white-space:nowrap;">' + unit + '</span>'
                       + '</div>'
                       + '<div style="position:relative;height:8px;width:100%;background:var(--hemma-popup-progress-track, rgba(255,255,255,0.09));border-radius:999px;overflow:hidden;margin-top:10px;">'
                         + '<div style="position:absolute;inset:0 auto 0 0;width:' + pct.toFixed(1) + '%;border-radius:999px;background:' + gradient + ';transition:width .35s ease;"></div>'
@@ -589,9 +711,7 @@ hemma_climate_popup:
               };
             };
 
-            /* -------------------------------------------------------
-             * Sensor Tiles Grid
-             * ------------------------------------------------------- */
+            /* Sensor Tiles Grid */
             const cnt    = sensors.length;
             const cols   = 2;
             const sKeys  = sensors.map((_, i) => 's' + i);

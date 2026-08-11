@@ -1,0 +1,575 @@
+# Cover Group Popup
+# Variables: room_name, cover_entity, covers (entity_id list), smart_automation_entity/smart_automation_today_entity (optional shade-automation switch, shown as its own toggle card)
+hemma_popup_cover:
+  template:
+    - hemma_popup_base
+
+  variables:
+    room_name: "Covers"
+    cover_entity: null
+    covers: []
+    smart_automation_entity: null
+    smart_automation_today_entity: null
+
+  tap_action:
+    haptic: light
+    action: >
+      [[[
+        return typeof window.browser_mod !== 'undefined' ? 'fire-dom-event' : 'more-info';
+      ]]]
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        tag: '[[[ return (entity?.entity_id || "hemma_cover").replace(/\./g, "_") + "_popup"; ]]]'
+        title: ""
+        dismissable: true
+        adaptive: true
+        size: auto
+        content: |
+          [[[
+            /* Variables */
+            const groupId  = variables.cover_entity || entity?.entity_id || null;
+            const coverIds = Array.isArray(variables.covers) && variables.covers.length > 0
+                           ? variables.covers
+                           : (groupId ? [groupId] : []);
+            const roomName = variables.room_name || 'Covers';
+            const HZ_SYS   = variables.smart_automation_entity || null;       // shade-automation switch
+            const HZ_HEUTE = variables.smart_automation_today_entity || null; // today's automation override
+            const _hzSys   = JSON.stringify(HZ_SYS);
+            const _gid      = JSON.stringify(groupId);
+            const _coverIds = JSON.stringify(coverIds);
+            const _countSnip = `
+              const coverIds = ${_coverIds};
+              const openIds = coverIds.filter(id => ['open','opening','stopping'].includes(states[id]?.state));
+              const oc = openIds.length, tot = coverIds.length;
+              const allClosed = oc === 0 && tot > 0;
+              const allOpen   = oc === tot && tot > 0;
+              const badgeColor = allClosed ? 'var(--hemma-popup-green-color,#67f5a0)' : '#0A84FF';
+            `;
+
+            /* Styles */
+            const wrapperStyle = [
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
+              'ha-card { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: default !important; }',
+              'ha-card:hover { box-shadow: none !important; }',
+              'ha-ripple { display: none !important; }',
+            ].join('\n');
+
+            const contentCardStyle = wrapperStyle + '\n@media (max-width: 600px) { ha-card { padding-left: 14px !important; padding-right: 14px !important; } }';
+
+            const tapStyle = [
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; pointer-events: auto !important; }',
+              'ha-card { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; overflow: visible !important; }',
+              'ha-card #container { transition: opacity 0.18s ease, filter 0.18s ease !important; }',
+              'ha-card:hover #container { filter: brightness(1.12) saturate(1.08) drop-shadow(0 0 10px rgba(255,255,255,0.05)); }',
+              'ha-ripple { display: none !important; }',
+            ].join('\n');
+
+            const tileTapStyle = [
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: inset 0 1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-tight,0.20) * 1.5)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-tight,0.15) * 1.5)), inset 0 3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-soft,0.08) * 1.5)), inset 0 -3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-soft,0.05) * 1.5)) !important; }',
+              'ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }',
+              'ha-card:hover { background: var(--hemma-popup-tile-hover, rgba(255,255,255,0.09)) !important; transform: scale(var(--hemma-popup-tile-hover-scale, 1.004)) !important; }',
+              'ha-ripple { display: none !important; }',
+            ].join('\n');
+
+            /* Hover overlay */
+            const hoverOverlay = [
+              'ha-card { position: relative !important; overflow: hidden !important; }',
+              'ha-card::after { content: "" !important; position: absolute !important; inset: 0 !important; border-radius: inherit !important; background: transparent !important; transition: background 0.15s ease !important; pointer-events: none !important; }',
+              'ha-card:hover::after { background: rgba(255,255,255,0.1) !important; }',
+            ].join('\n');
+
+            const pillTapStyle = [
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
+              'ha-card { border: none !important; border-radius: 999px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer !important; transition: background 0.2s ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease !important; }',
+              'ha-card:hover { transform: scale(var(--hemma-popup-tile-hover-scale, 1.004)) !important; }',
+              'ha-card:active { transform: scale(0.97) !important; }',
+              'ha-ripple { display: none !important; }',
+              hoverOverlay,
+            ].join('\n');
+
+            /* Transparent wrapper */
+            const segmentTrackStyle = [
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
+              'ha-card { border: none !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: transparent !important; cursor: default !important; }',
+              'ha-card:hover { box-shadow: none !important; }',
+              'ha-ripple { display: none !important; }',
+            ].join('\n');
+
+            const iconBtnStyle = [
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
+              'ha-card { border: none !important; border-radius: 999px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: background 0.15s ease !important; }',
+              '#container { display: flex !important; align-items: center !important; justify-content: center !important; }',
+              '#icon { display: flex !important; align-items: center !important; justify-content: center !important; }',
+              'ha-icon { --mdc-icon-size: 18px !important; display: flex !important; align-items: center !important; justify-content: center !important; }',
+              'ha-ripple { display: none !important; }',
+              hoverOverlay,
+            ].join('\n');
+
+            /* Header card */
+            const headerCard = {
+              type: 'custom:button-card',
+              entity: groupId,
+              tap_action: { action: 'none' },
+              show_icon: false, show_name: false, show_label: false, show_state: false,
+              card_mod: { style: contentCardStyle },
+              styles: {
+                card: [
+                  { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                  { padding: '28px 28px 20px 28px' },
+                ],
+                grid: [
+                  { 'grid-template-areas': '"title"' },
+                  { 'grid-template-columns': '1fr auto' },
+                  { 'align-items': 'flex-start' },
+                  { 'row-gap': '16px' },
+                ],
+                custom_fields: {
+                  title: [{ 'justify-self': 'start' }, { 'text-align': 'left' }],
+                  right: [{ 'justify-self': 'end' }, { 'align-self': 'flex-start' }],
+                },
+              },
+              custom_fields: {
+                title: '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tiles-text-primary,#ffffff);text-align:left;">'
+                  + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;">' + roomName + '</div>'
+                  + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary,rgba(255,255,255,0.6));margin-top:2px;">Climate · Covers</div>'
+                  + '</div>',
+              },
+            };
+
+            /* Smart automation toggle */
+            let hitzeschutzCard = null;
+            if (HZ_SYS) {
+              const hzToggle = {
+                type: 'custom:button-card',
+                entity: HZ_SYS,
+                show_name: false, show_state: false, show_icon: false,
+                tap_action: { action: 'call-service', service: 'switch.toggle', service_data: { entity_id: HZ_SYS } },
+                haptic: 'medium',
+                custom_fields: {
+                  svg: `[[[
+                    const isOn = states[${_hzSys}]?.state === 'on';
+                    const KF_ID = 'hemma-toggle-kf-v1';
+                    if (!document.getElementById(KF_ID)) {
+                      const kf = document.createElement('style');
+                      kf.id = KF_ID;
+                      kf.textContent = [
+                        '@keyframes hemma-thumb-on-d{from{transform:translateX(0)}to{transform:translateX(18px)}}',
+                        '@keyframes hemma-thumb-off-d{from{transform:translateX(18px)}to{transform:translateX(0)}}',
+                        '@keyframes hemma-thumb-on-m{from{transform:translateX(0)}to{transform:translateX(12px)}}',
+                        '@keyframes hemma-thumb-off-m{from{transform:translateX(12px)}to{transform:translateX(0)}}'
+                      ].join('');
+                      document.head.appendChild(kf);
+                    }
+                    const mob = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
+                    const W = mob ? 38 : 44, H = 26, r = mob ? 8 : 9, cx0 = 14;
+                    const SW = W + 2;
+                    const travel = mob ? 12 : 18;
+                    const stateKey = '_hemma_toggle_cover_automation_' + ${_hzSys};
+                    const shouldAnimate = window[stateKey] !== undefined && window[stateKey] !== isOn;
+                    window[stateKey] = isOn;
+                    const anim = isOn ? (mob ? 'hemma-thumb-on-m' : 'hemma-thumb-on-d') : (mob ? 'hemma-thumb-off-m' : 'hemma-thumb-off-d');
+                    const animStyle = shouldAnimate ? ('animation:' + anim + ' 0.2s ease forwards;') : '';
+                    const circleCx = (!shouldAnimate && isOn) ? cx0 + travel : cx0;
+                    const trackFill = 'var(--hemma-popup-orange-color,#ff9230)';
+                    const offColor  = 'rgba(255,255,255,0.8)';
+                    if (isOn) {
+                      return '<svg width="' + SW + '" height="' + H + '" viewBox="0 0 ' + SW + ' ' + H + '" style="display:block;">'
+                        + '<rect x="2" y="1" width="' + (W-2) + '" height="' + (H-2) + '" rx="' + ((H-2)/2) + '" fill="' + trackFill + '"/>'
+                        + '<circle cx="' + circleCx + '" cy="' + (H/2) + '" r="' + r + '" fill="rgba(255,255,255,0.92)" style="' + animStyle + '"/>'
+                        + '</svg>';
+                    } else {
+                      return '<svg width="' + SW + '" height="' + H + '" viewBox="0 0 ' + SW + ' ' + H + '" style="display:block;">'
+                        + '<rect x="2" y="1" width="' + (W-2) + '" height="' + (H-2) + '" rx="' + ((H-2)/2) + '" fill="none" stroke="' + offColor + '" stroke-width="2"/>'
+                        + '<circle cx="' + circleCx + '" cy="' + (H/2) + '" r="' + r + '" fill="' + offColor + '" style="' + animStyle + '"/>'
+                        + '</svg>';
+                    }
+                  ]]]`,
+                },
+                styles: {
+                  card: [
+                    { background: 'transparent !important' }, { 'background-color': 'transparent !important' },
+                    { '--ha-card-background': 'transparent' }, { 'box-shadow': 'none !important' },
+                    { border: 'none !important' }, { 'backdrop-filter': 'none !important' },
+                    { '-webkit-backdrop-filter': 'none !important' }, { padding: '0 !important' },
+                    { overflow: 'visible !important' }, { '--button-card-ripple-color': 'transparent !important' },
+                    { 'border-radius': '0 !important' },
+                  ],
+                  grid: [{ padding: '0 !important' }, { overflow: 'visible !important' }],
+                  custom_fields: { svg: [{ 'line-height': '0' }] },
+                },
+                extra_styles: [
+                  ':host { display: block !important; width: 46px !important; height: 26px !important; overflow: visible !important; cursor: pointer; }',
+                  '@media (max-width: 767px), (max-height: 600px) { :host { width: 40px !important; height: 26px !important; } }',
+                  'ha-card, #container { overflow: visible !important; background: transparent !important; --ha-card-background: transparent !important; }',
+                  '@media (hover: hover) { :host { transition: filter 0.2s ease; } :host(:hover) { filter: brightness(1.5) !important; } }',
+                ].join('\n'),
+              };
+
+              const hzTileInner = {
+                type: 'custom:button-card',
+                entity: HZ_HEUTE || HZ_SYS,
+                tap_action: { action: 'none' },
+                show_icon: false, show_name: false, show_label: false, show_state: false,
+                card_mod: { style: tileTapStyle },
+                styles: {
+                  card: [{ 'box-shadow': 'none' }, { padding: '16px 18px 14px 18px' }],
+                  grid: [
+                    { 'grid-template-areas': '"head action"' },
+                    { 'grid-template-columns': '1fr auto' },
+                    { 'align-items': 'center' },
+                  ],
+                  custom_fields: {
+                    head:   [{ 'justify-self': 'start' }],
+                    action: [{ 'justify-self': 'end' }, { 'align-self': 'center' }],
+                  },
+                },
+                custom_fields: {
+                  head: `[[[
+                    const autoName = (states[${_hzSys}]?.attributes?.friendly_name) || 'Cover Automation';
+                    return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+                      + '<span style="font-size:14px;color:var(--hemma-popup-tiles-text-primary,#ffffff);font-weight:500;">' + autoName + '</span>'
+                    + '</div>';
+                  ]]]`,
+                  action: { card: hzToggle },
+                },
+              };
+
+              hitzeschutzCard = {
+                type: 'custom:button-card',
+                entity: HZ_HEUTE || HZ_SYS,
+                tap_action: { action: 'none' },
+                show_icon: false, show_name: false, show_label: false, show_state: false,
+                card_mod: { style: contentCardStyle },
+                styles: {
+                  card: [
+                    { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                    { padding: '4px 28px 0 28px' },
+                  ],
+                  grid: [{ 'grid-template-areas': '"c"' }, { 'grid-template-columns': '1fr' }],
+                  custom_fields: { c: [{ 'justify-self': 'stretch' }] },
+                },
+                custom_fields: { c: { card: hzTileInner } },
+              };
+            }
+
+            /* Action row */
+            const _allEdgeSnip = `
+              const coverIds = ${_coverIds};
+              const allFullyOpen = coverIds.length > 0 && coverIds.every(id => {
+                const p = states[id]?.attributes?.current_position;
+                return p != null && Math.round(Number(p)) === 100;
+              });
+              const allFullyClosed = coverIds.length > 0 && coverIds.every(id => {
+                const p = states[id]?.attributes?.current_position;
+                return p != null && Math.round(Number(p)) === 0;
+              });
+            `;
+
+            const makeEdgePill = (label, service, matchExpr) => ({
+              type: 'custom:button-card',
+              entity: groupId,
+              name: label,
+              tap_action: { action: 'call-service', service: service, service_data: { entity_id: coverIds } },
+              haptic: 'medium',
+              show_icon: false, show_name: true, show_label: false, show_state: false,
+              card_mod: { style: pillTapStyle },
+              styles: {
+                card: [
+                  { background: `[[[
+                    ${_allEdgeSnip}
+                    if (!(${matchExpr})) return 'rgba(255,255,255,0.10)';
+                    return 'rgba(255,255,255,0.88)';
+                  ]]]` },
+                  // 13px vertical matches the light popup's filter pills. Sides
+                  // stay at 6px since a repeat(5,1fr) grid stretches these pills -
+                  // more side padding and "Close" won't fit a fifth of the row.
+                  { 'box-shadow': 'none' }, { padding: '13px 6px' },
+                ],
+                name: [
+                  { 'font-size': '14px' }, { 'font-weight': '500' },
+                  { color: `[[[
+                    ${_allEdgeSnip}
+                    return (${matchExpr}) ? 'rgba(0,0,0,0.80)' : 'rgba(255,255,255,0.65)';
+                  ]]]` },
+                  { 'white-space': 'nowrap' }, { 'letter-spacing': '0.01em' },
+                ],
+              },
+            });
+
+            const makePresetPill = (label, pos) => {
+              const _pos = JSON.stringify(pos);
+              return {
+                type: 'custom:button-card',
+                entity: groupId,
+                name: label,
+                tap_action: { action: 'call-service', service: 'cover.set_cover_position', service_data: { entity_id: coverIds, position: pos } },
+                haptic: 'light',
+                show_icon: false, show_name: true, show_label: false, show_state: false,
+                card_mod: { style: pillTapStyle },
+                styles: {
+                  card: [
+                    { background: `[[[
+                      const coverIds = ${_coverIds};
+                      const pos = ${_pos};
+                      const allMatch = coverIds.length > 0 && coverIds.every(id => {
+                        const p = states[id]?.attributes?.current_position;
+                        return p != null && Math.round(Number(p)) === pos;
+                      });
+                      if (!allMatch) return 'rgba(255,255,255,0.10)';
+                      return 'rgba(255,255,255,0.88)';
+                    ]]]` },
+                  { 'box-shadow': 'none' }, { padding: '13px 6px' },
+                  ],
+                  name: [
+                    { 'font-size': '14px' }, { 'font-weight': '500' },
+                    { color: `[[[
+                      const coverIds = ${_coverIds};
+                      const pos = ${_pos};
+                      const allMatch = coverIds.length > 0 && coverIds.every(id => {
+                        const p = states[id]?.attributes?.current_position;
+                        return p != null && Math.round(Number(p)) === pos;
+                      });
+                      return allMatch ? 'rgba(0,0,0,0.80)' : 'rgba(255,255,255,0.65)';
+                    ]]]` },
+                    { 'white-space': 'nowrap' }, { 'letter-spacing': '0.01em' },
+                  ],
+                },
+              };
+            };
+
+            const actionRow = {
+              type: 'custom:button-card',
+              entity: groupId,
+              tap_action: { action: 'none' },
+              show_icon: false, show_name: false, show_label: false, show_state: false,
+              card_mod: { style: segmentTrackStyle },
+              styles: {
+                card: [{ background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' }, { padding: '2px 0' }],
+                grid: [
+                  { 'grid-template-areas': '"close p25 p50 p75 open"' },
+                  { 'grid-template-columns': 'repeat(5, 1fr)' },
+                  { gap: '6px' },
+                ],
+                custom_fields: {
+                  close: [{ 'justify-self': 'stretch' }],
+                  p25:   [{ 'justify-self': 'stretch' }],
+                  p50:   [{ 'justify-self': 'stretch' }],
+                  p75:   [{ 'justify-self': 'stretch' }],
+                  open:  [{ 'justify-self': 'stretch' }],
+                },
+              },
+              custom_fields: {
+                close: { card: makeEdgePill('Close', 'cover.close_cover', 'allFullyClosed') },
+                p25:   { card: makePresetPill('25%', 25) },
+                p50:   { card: makePresetPill('50%', 50) },
+                p75:   { card: makePresetPill('75%', 75) },
+                open:  { card: makeEdgePill('Open',  'cover.open_cover',  'allFullyOpen') },
+              },
+            };
+
+            const controlsCard = {
+              type: 'custom:button-card',
+              entity: groupId,
+              tap_action: { action: 'none' },
+              show_icon: false, show_name: false, show_label: false, show_state: false,
+              card_mod: { style: contentCardStyle },
+              styles: {
+                card: [
+                  { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                  { padding: '16px 28px 0 28px' },
+                ],
+                grid: [{ 'grid-template-areas': '"a"' }, { 'grid-template-columns': '1fr' }],
+                custom_fields: { a: [{ 'justify-self': 'stretch' }] },
+              },
+              custom_fields: {
+                a: { card: actionRow },
+              },
+            };
+
+            /* Cover tiles */
+            const makeIconBtn = (coverId, icon, service, activeFn) => {
+              const _cid = JSON.stringify(coverId);
+              return {
+                type: 'custom:button-card',
+                entity: coverId,
+                icon: icon,
+                tap_action: { action: 'call-service', service: service, service_data: { entity_id: coverId } },
+                haptic: 'medium',
+                show_icon: true, show_name: false, show_label: false, show_state: false,
+                card_mod: { style: iconBtnStyle },
+                styles: {
+                  card: [
+                    { background: `[[[
+                      const coverId = ${_cid};
+                      const s = states[coverId]?.state || 'unavailable';
+                      ${activeFn}
+                    ]]]` },
+                    { 'border-radius': '999px' }, { padding: '10px' }, { 'box-shadow': 'none' },
+                  ],
+                  grid: [{ display: 'flex' }, { 'align-items': 'center' }, { 'justify-content': 'center' }, { width: '100%' }, { height: '100%' }],
+                  icon: [{ color: '#ffffff' }, { width: '18px' }, { height: '18px' }, { display: 'flex' }, { 'align-items': 'center' }, { 'justify-content': 'center' }],
+                },
+              };
+            };
+
+            /* Curtain SVGs */
+            const CURTAIN_OPEN_URI = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCEtLUdlbmVyYXRvcjogQXBwbGUgTmF0aXZlIENvcmVTVkcgMzQxLS0+CjwhRE9DVFlQRSBzdmcKUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIKICAgICAgICJodHRwOi8vd3d3LnczLm9yZy9HcmFwaGljcy9TVkcvMS4xL0RURC9zdmcxMS5kdGQiPgo8c3ZnIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmlld0JveD0iMCAwIDI5Ljg5NDUgMjUuNjk5MiI+CiA8Zz4KICA8cmVjdCBoZWlnaHQ9IjI1LjY5OTIiIG9wYWNpdHk9IjAiIHdpZHRoPSIyOS44OTQ1IiB4PSIwIiB5PSIwIi8+CiAgPHBhdGggZD0iTTMuMzUxNTYgMS4wNjY0MUw0LjMzNTk0IDEuMDY2NDFMNC4zMzU5NCAyLjk1MzEzTDMuMzUxNTYgMi45NTMxMkMzLjA0Njg4IDMuNDgwNDcgMi40NjA5NCAzLjgzMjAzIDEuODE2NDEgMy44MzIwM0MwLjgyMDMxMiAzLjgzMjAzIDAgMy4wMTE3MiAwIDIuMDAzOTFDMCAxLjAwNzgxIDAuODIwMzEyIDAuMTg3NSAxLjgxNjQxIDAuMTg3NUMyLjQ2MDk0IDAuMTg3NSAzLjA0Njg4IDAuNTUwNzgxIDMuMzUxNTYgMS4wNjY0MVpNMjkuNTQzIDIuMDAzOTFDMjkuNTQzIDMuMDExNzIgMjguNzIyNyAzLjgzMjAzIDI3LjcyNjYgMy44MzIwM0MyNy4wODIgMy44MzIwMyAyNi40OTYxIDMuNDgwNDcgMjYuMTkxNCAyLjk1MzEyTDI1LjIwNyAyLjk1MzEzTDI1LjIwNyAxLjA2NjQxTDI2LjE5MTQgMS4wNjY0MUMyNi40OTYxIDAuNTUwNzgxIDI3LjA4MiAwLjE4NzUgMjcuNzI2NiAwLjE4NzVDMjguNzIyNyAwLjE4NzUgMjkuNTQzIDEuMDA3ODEgMjkuNTQzIDIuMDAzOTFaTTIxLjUwMzkgMi45NTMxM0w4LjAzOTA2IDIuOTUzMTNMOC4wMzkwNiAxLjA2NjQxTDIxLjUwMzkgMS4wNjY0MVoiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuNDI1Ii8+CiAgPHBhdGggZD0iTTUuMTY3OTcgMjQuODA4Nkw3LjIwNzAzIDI0LjgwODZDNy42ODc1IDI0LjgwODYgOC4wMzkwNiAyNC40NTcgOC4wMzkwNiAyMy45NjQ4TDguMDM5MDYgMC44NTU0NjlDOC4wMzkwNiAwLjM2MzI4MSA3LjY4NzUgMCA3LjIwNzAzIDBMNS4xNjc5NyAwQzQuNjg3NSAwIDQuMzM1OTQgMC4zNjMyODEgNC4zMzU5NCAwLjg1NTQ2OUw0LjMzNTk0IDIzLjk2NDhDNC4zMzU5NCAyNC40NTcgNC42ODc1IDI0LjgwODYgNS4xNjc5NyAyNC44MDg2Wk0yMi4zMzU5IDI0LjgwODZMMjQuMzc1IDI0LjgwODZDMjQuODU1NSAyNC44MDg2IDI1LjIwNyAyNC40NTcgMjUuMjA3IDIzLjk2NDhMMjUuMjA3IDAuODU1NDY5QzI1LjIwNyAwLjM2MzI4MSAyNC44NTU1IDAgMjQuMzc1IDBMMjIuMzM1OSAwQzIxLjg1NTUgMCAyMS41MDM5IDAuMzYzMjgxIDIxLjUwMzkgMC44NTU0NjlMMjEuNTAzOSAyMy45NjQ4QzIxLjUwMzkgMjQuNDU3IDIxLjg1NTUgMjQuODA4NiAyMi4zMzU5IDI0LjgwODZaIiBmaWxsPSJ3aGl0ZSIgZmlsbC1vcGFjaXR5PSIwLjg1Ii8+CiA8L2c+Cjwvc3ZnPgo=';
+            const CURTAIN_CLOSED_URI = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCEtLUdlbmVyYXRvcjogQXBwbGUgTmF0aXZlIENvcmVTVkcgMzQxLS0+CjwhRE9DVFlQRSBzdmcKUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIKICAgICAgICJodHRwOi8vd3d3LnczLm9yZy9HcmFwaGljcy9TVkcvMS4xL0RURC9zdmcxMS5kdGQiPgo8c3ZnIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmlld0JveD0iMCAwIDI5Ljg5NDUgMjUuNjk5MiI+CiA8Zz4KICA8cmVjdCBoZWlnaHQ9IjI1LjY5OTIiIG9wYWNpdHk9IjAiIHdpZHRoPSIyOS44OTQ1IiB4PSIwIiB5PSIwIi8+CiAgPHBhdGggZD0iTTMuMzUxNTYgMS4wNjY0MUw0LjMzNTk0IDEuMDY2NDFMNC4zMzU5NCAyLjk1MzEzTDMuMzUxNTYgMi45NTMxMkMzLjA0Njg4IDMuNDgwNDcgMi40NjA5NCAzLjgzMjAzIDEuODE2NDEgMy44MzIwM0MwLjgyMDMxMiAzLjgzMjAzIDAgMy4wMTE3MiAwIDIuMDAzOTFDMCAxLjAwNzgxIDAuODIwMzEyIDAuMTg3NSAxLjgxNjQxIDAuMTg3NUMyLjQ2MDk0IDAuMTg3NSAzLjA0Njg4IDAuNTUwNzgxIDMuMzUxNTYgMS4wNjY0MVpNMjkuNTQzIDIuMDAzOTFDMjkuNTQzIDMuMDExNzIgMjguNzIyNyAzLjgzMjAzIDI3LjcyNjYgMy44MzIwM0MyNy4wODIgMy44MzIwMyAyNi40OTYxIDMuNDgwNDcgMjYuMTkxNCAyLjk1MzEyTDI1LjIwNyAyLjk1MzEzTDI1LjIwNyAxLjA2NjQxTDI2LjE5MTQgMS4wNjY0MUMyNi40OTYxIDAuNTUwNzgxIDI3LjA4MiAwLjE4NzUgMjcuNzI2NiAwLjE4NzVDMjguNzIyNyAwLjE4NzUgMjkuNTQzIDEuMDA3ODEgMjkuNTQzIDIuMDAzOTFaTTE1LjU3NDIgMi45NTMxM0wxMy45Njg4IDIuOTUzMTNMMTMuOTY4OCAxLjA2NjQxTDE1LjU3NDIgMS4wNjY0MVoiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuNDI1Ii8+CiAgPHBhdGggZD0iTTUuMTY3OTcgMjQuODA4NkwxMy4xMzY3IDI0LjgwODZDMTMuNjE3MiAyNC44MDg2IDEzLjk2ODggMjQuNDU3IDEzLjk2ODggMjMuOTY0OEwxMy45Njg4IDAuODU1NDY5QzEzLjk2ODggMC4zNjMyODEgMTMuNjE3MiAwIDEzLjEzNjcgMEw1LjE2Nzk3IDBDNC42ODc1IDAgNC4zMzU5NCAwLjM2MzI4MSA0LjMzNTk0IDAuODU1NDY5TDQuMzM1OTQgMjMuOTY0OEM0LjMzNTk0IDI0LjQ1NyA0LjY4NzUgMjQuODA4NiA1LjE2Nzk3IDI0LjgwODZaTTE2LjQwNjIgMjQuODA4NkwyNC4zNzUgMjQuODA4NkMyNC44NTU1IDI0LjgwODYgMjUuMjA3IDI0LjQ1NyAyNS4yMDcgMjMuOTY0OEwyNS4yMDcgMC44NTU0NjlDMjUuMjA3IDAuMzYzMjgxIDI0Ljg1NTUgMCAyNC4zNzUgMEwxNi40MDYyIDBDMTUuOTI1OCAwIDE1LjU3NDIgMC4zNjMyODEgMTUuNTc0MiAwLjg1NTQ2OUwxNS41NzQyIDIzLjk2NDhDMTUuNTc0MiAyNC40NTcgMTUuOTI1OCAyNC44MDg2IDE2LjQwNjIgMjQuODA4NloiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuODUiLz4KIDwvZz4KPC9zdmc+Cg==';
+
+            /* Palette matches hemma_popup_light's makeLightCard, teal instead of yellow. */
+            const _cc = {
+              onBg:    'rgba(255,255,255,0.94)',
+              onName:  'rgba(0,0,0,0.85)',
+              onLabel: 'rgba(0,0,0,0.50)',
+              offBg:   'rgba(255,255,255,0.11)',
+              offName: 'rgba(255,255,255,0.90)',
+              offLabel:'rgba(255,255,255,0.50)',
+            };
+
+            const makeCoverCard = (coverId) => {
+              const _cid = JSON.stringify(coverId);
+              return {
+                type: 'custom:button-card',
+                entity: coverId,
+                show_icon: false,
+                show_entity_picture: true,
+                entity_picture: window.hemmaIconUrl('curtain-open'),
+                tap_action: { action: 'more-info' },
+                hold_action: { action: 'more-info' },
+                double_tap_action: { action: 'none' },
+                icon_tap_action: { action: 'toggle' },
+                show_name: true,
+                show_state: false,
+                show_label: true,
+                label: `[[[
+                  const e = states[${_cid}];
+                  const s = e?.state || 'unknown';
+                  const lbl = s.charAt(0).toUpperCase() + s.slice(1);
+                  const pos = e?.attributes?.current_position;
+                  return (pos != null) ? lbl + ' · ' + Math.round(Number(pos)) + '%' : lbl;
+                ]]]`,
+                extra_styles: ':host{--hemma-card-hover-filter:brightness(1.10);width:100%!important;max-width:none!important;display:block!important;box-sizing:border-box!important;--button-card-ripple-color:transparent!important;--button-card-ripple-hover-color:transparent!important;--ha-ripple-color:transparent!important;--ha-ripple-hover-color:transparent!important;}ha-card{transition:background 0.45s ease,transform var(--hemma-popup-tile-hover-duration,0.2s) ease,filter var(--hemma-popup-tile-hover-duration,0.2s) ease!important;transform:scale(1)!important;}ha-card:hover{transform:scale(var(--hemma-popup-tile-hover-scale,1.004))!important;}ha-card:active{transform:scale(1)!important;}@media (hover:hover){ha-card:hover{filter:var(--hemma-card-hover-filter,brightness(1.06))!important;}ha-card:hover::after{background:var(--lc-hover-tint,rgba(255,255,255,0.06))!important;}}ha-card::before{display:none!important;}ha-card::after{content:""!important;position:absolute!important;inset:0!important;border-radius:inherit!important;background:transparent!important;transition:background var(--hemma-popup-tile-hover-duration,0.2s) ease!important;pointer-events:none!important;}ha-ripple{display:none!important;}div#img-cell{position:relative!important;overflow:hidden!important;transition:transform var(--hemma-popup-tile-hover-duration,0.2s) ease!important;}div#img-cell::before{display:none!important;}div#img-cell::after{content:""!important;display:block!important;position:absolute!important;inset:0!important;margin:auto!important;width:60%!important;height:60%!important;background-color:var(--cc-clr,#ffffff)!important;-webkit-mask-image:var(--cc-mask)!important;-webkit-mask-repeat:no-repeat!important;-webkit-mask-position:center!important;-webkit-mask-size:contain!important;mask-image:var(--cc-mask)!important;mask-repeat:no-repeat!important;mask-position:center!important;mask-size:contain!important;opacity:var(--cc-io,0.9)!important;pointer-events:none!important;transform:translateZ(0)!important;will-change:transform!important;}div#img-cell:hover,div#img-cell:active{transform:scale(1.03)!important;}#img-cell img{opacity:0!important;}',
+                styles: {
+                  card: [
+                    { background: `[[[ const s=(states[${_cid}]?.state||'').toLowerCase(); return ['open','opening'].includes(s)?"${_cc.onBg}":"${_cc.offBg}";]]]` },
+                    { '--cc-nc': `[[[ const s=(states[${_cid}]?.state||'').toLowerCase(); return ['open','opening'].includes(s)?"${_cc.onName}":"${_cc.offName}";]]]` },
+                    { '--cc-lc': `[[[ const s=(states[${_cid}]?.state||'').toLowerCase(); return ['open','opening'].includes(s)?"${_cc.onLabel}":"${_cc.offLabel}";]]]` },
+                    { '--cc-io': `[[[ return "1";]]]` },
+                    { '--cc-clr': `[[[ const s=(states[${_cid}]?.state||'').toLowerCase(); return ['open','opening'].includes(s)?"#ffffff":"var(--hemma-color-teal, #00c3d0)";]]]` },
+                    { '--cc-mask': `[[[
+                        const s = (states[${_cid}]?.state||'').toLowerCase();
+                        const open = ['open','opening'].includes(s);
+                        return "url('" + (open ? ${JSON.stringify(CURTAIN_OPEN_URI)} : ${JSON.stringify(CURTAIN_CLOSED_URI)}) + "')";
+                      ]]]` },
+                    { '--hemma-card-hover-filter': `[[[ const s=(states[${_cid}]?.state||'').toLowerCase(); return ['open','opening'].includes(s)?"none":"brightness(1.10)";]]]` },
+                    { '--lc-hover-tint': `[[[ const s=(states[${_cid}]?.state||'').toLowerCase(); return ['open','opening'].includes(s)?"transparent":"rgba(255,255,255,0.06)";]]]` },
+                    { border: 'none' },
+                    { 'box-shadow': 'none' },
+                    { 'border-radius': '20px' },
+                    { cursor: 'pointer' },
+                    { padding: '12px 12px' },
+                    { width: '100%' },
+                  ],
+                  grid: [
+                    { 'grid-template-areas': '"i n" "i l"' },
+                    { 'grid-template-columns': 'auto 1fr' },
+                    { 'grid-template-rows': 'auto auto' },
+                    { 'column-gap': '10px' },
+                    { 'row-gap': '1px' },
+                    { 'align-items': 'start' },
+                  ],
+                  img_cell: [
+                    { background: `[[[ const s=(states[${_cid}]?.state||'').toLowerCase(); return ['open','opening'].includes(s)?"var(--hemma-color-teal, #00c3d0)":"rgba(255,255,255,0.10)";]]]` },
+                    { 'border-radius': '50%' },
+                    { width: '38px' },
+                    { height: '38px' },
+                    { 'min-width': '38px' },
+                    { display: 'flex' },
+                    { 'align-items': 'center' },
+                    { 'justify-content': 'center' },
+                    { 'align-self': 'center' },
+                  ],
+                  entity_picture: [
+                    { width: '100%' },
+                    { height: '100%' },
+                    { 'object-fit': 'contain' },
+                  ],
+                  name: [
+                    { 'font-size': '14px' },
+                    { 'font-weight': '500' },
+                    { color: 'var(--cc-nc)' },
+                    { 'text-align': 'left' },
+                    { 'justify-self': 'start' },
+                    { 'align-self': 'end' },
+                    { 'line-height': '1.2' },
+                    { overflow: 'hidden' },
+                    { 'text-overflow': 'ellipsis' },
+                    { 'white-space': 'nowrap' },
+                  ],
+                  label: [
+                    { 'font-size': '12px' },
+                    { color: 'var(--cc-lc)' },
+                    { 'text-align': 'left' },
+                    { 'justify-self': 'start' },
+                    { 'align-self': 'start' },
+                    { 'line-height': '1.2' },
+                  ],
+                },
+              };
+            };
+
+            /* Dynamic grid */
+            const colCount = coverIds.length > 1 ? 2 : 1;
+            let tileAreas;
+            if (colCount === 1) {
+              tileAreas = coverIds.map((_, i) => '"t' + i + '"').join(' ');
+            } else {
+              const rows = [];
+              for (let i = 0; i < coverIds.length; i += 2) {
+                if (i + 1 < coverIds.length) {
+                  rows.push('"t' + i + ' t' + (i + 1) + '"');
+                } else {
+                  rows.push('"t' + i + ' t' + i + '"');
+                }
+              }
+              tileAreas = rows.join(' ');
+            }
+            const tileColDef = colCount === 1 ? '1fr' : '1fr 1fr';
+
+            const tileCF = {}, tileFS = {};
+            coverIds.forEach((id, i) => {
+              tileCF['t' + i] = { card: makeCoverCard(id) };
+              tileFS['t' + i] = [{ 'justify-self': 'stretch' }, { 'text-align': 'left' }];
+            });
+
+            const tilesCard = {
+              type: 'custom:button-card',
+              entity: groupId,
+              tap_action: { action: 'none' },
+              show_icon: false, show_name: false, show_label: false, show_state: false,
+              card_mod: { style: contentCardStyle },
+              styles: {
+                card: [
+                  { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                  { padding: '16px 28px 20px 28px' },
+                ],
+                grid: [
+                  { 'grid-template-areas': tileAreas },
+                  { 'grid-template-columns': tileColDef },
+                  { gap: '10px' },
+                  { 'align-items': 'start' },
+                ],
+                custom_fields: tileFS,
+              },
+              custom_fields: tileCF,
+            };
+
+            const stackCards = [headerCard, controlsCard, tilesCard];
+            if (hitzeschutzCard) stackCards.splice(1, 0, hitzeschutzCard);
+            return { type: 'vertical-stack', cards: stackCards };
+          ]]]
+
+  icon_tap_action:
+    haptic: light
+    action: more-info

@@ -4,82 +4,125 @@ hemma_popup_updates:
     - hemma_popup_base
 
   tap_action:
+    haptic: light
+    action: >
+      [[[
+        return typeof window.browser_mod !== 'undefined' ? 'fire-dom-event' : 'more-info';
+      ]]]
     browser_mod:
+      service: browser_mod.popup
       data:
+        tag: '[[[ return (entity?.entity_id || "hemma_update").replace(/\./g, "_") + "_popup"; ]]]'
+        title: ""
+        dismissable: true
+        adaptive: true
+        size: auto
         content: |
           [[[
-            const updates = Object.values(states)
-              .filter(e => e.entity_id.startsWith('update.') && e.state === 'on')
+            const allUpdateIds = Object.keys(states).filter(id => id.startsWith('update.'));
+            const _allIds = JSON.stringify(allUpdateIds);
+
+            const _aggSnip = `
+              const _ids = ${_allIds};
+              const _updates = _ids.map(id => states[id]).filter(e => e && e.state === 'on')
+                .sort((a, b) => (a.attributes.friendly_name || a.entity_id).localeCompare(b.attributes.friendly_name || b.entity_id));
+              const _restart = _ids.map(id => states[id]).filter(e => {
+                if (!e) return false;
+                const rs = (e.attributes.release_summary || '').toLowerCase();
+                return rs.includes('restart') && e.state === 'off' && e.attributes.installed_version === e.attributes.latest_version;
+              });
+              const count = _updates.length;
+              const hasUpdates = count > 0;
+              const hasRestart = _restart.length > 0;
+              const hasAny = hasUpdates || hasRestart;
+            `;
+
+            // Object.keys() (not Object.values()) avoids subscribing this card to
+            // every entity in HA - only to the update.* ids it maps over.
+            const updateIds = Object.keys(states).filter(id => id.startsWith('update.'));
+            const updates = updateIds.map(id => states[id])
+              .filter(e => e.state === 'on')
               .sort((a, b) =>
                 (a.attributes.friendly_name || a.entity_id)
                   .localeCompare(b.attributes.friendly_name || b.entity_id)
               );
 
-            const count      = updates.length;
-            const hasUpdates = count > 0;
-            const statusColor  = hasUpdates ? 'var(--hemma-popup-primary-color, #00c3d0)' : 'var(--hemma-popup-green-color, #67f5a0)';
-            const statusGrad1  = hasUpdates ? '#00c3d0' : '#57FFFC';
-            const statusGrad2  = hasUpdates ? '#0099D8' : '#67F5A0';
-            const statusGlow   = hasUpdates ? 'rgba(0,195,208,0.25)' : 'rgba(87,255,252,0.22)';
-            const statusLabel = hasUpdates ? count + ' available' : 'Up to date';
-            const advice      = hasUpdates ? 'Available Updates' : 'Everything is up to date';
+            const restartEntities = updateIds.map(id => states[id])
+              .filter(e => {
+                const rs = (e.attributes.release_summary || '').toLowerCase();
+                return rs.includes('restart') && e.state === 'off' && e.attributes.installed_version === e.attributes.latest_version;
+              })
+              .sort((a, b) =>
+                (a.attributes.friendly_name || a.entity_id)
+                  .localeCompare(b.attributes.friendly_name || b.entity_id)
+              );
 
+            const hasAny = updates.length > 0 || restartEntities.length > 0;
+
+            /* Styles */
             const noHoverStyle = [
-              ':host {',
-              '  --ha-card-box-shadow: none !important;',
-              '  --button-card-box-shadow: none !important;',
-              '  --button-card-box-shadow-hover: none !important;',
-              '}',
-              'ha-card {',
-              '  background: transparent !important;',
-              '  border: none !important;',
-              '  box-shadow: none !important;',
-              '  backdrop-filter: none !important;',
-              '  -webkit-backdrop-filter: none !important;',
-              '}',
-              'ha-card:hover {',
-              '  box-shadow: none !important;',
-              '  border-color: transparent !important;',
-              '}',
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
+              'ha-card { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: default !important; }',
+              'ha-card:hover { box-shadow: none !important; border-color: transparent !important; }',
               'ha-ripple { display: none !important; }',
-            ].join('\n');
+            ].join('\n') + '\n@media (max-width: 600px) { ha-card { padding-left: 14px !important; padding-right: 14px !important; } }';
 
             const tileTapStyle = [
-              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
-              'ha-card { background: var(--hemma-popup-tile-background, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease !important; }',
-              'ha-card:hover { background: var(--hemma-popup-tile-hover, rgba(255,255,255,0.09)) !important; transform: scale(var(--hemma-popup-tile-hover-scale, 1.02)) !important; }',
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: inset 0 1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-tight,0.20) * 1.5)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-tight,0.15) * 1.5)), inset 0 3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-soft,0.08) * 1.5)), inset 0 -3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-soft,0.05) * 1.5)) !important; }',
+              'ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }',
+              'ha-card:hover { background: var(--hemma-popup-tile-hover, rgba(255,255,255,0.09)) !important; transform: scale(var(--hemma-popup-tile-hover-scale, 1.008)) !important; }',
               'ha-ripple { display: none !important; }',
             ].join('\n');
 
-            // Badge Pill
+            /* Badge pill (tracks all update.* entities) */
             const badgePillCard = {
               type: 'custom:button-card',
               entity: entity?.entity_id,
-              name: statusLabel,
-              tap_action: hasUpdates ? { action: 'navigate', navigation_path: '/config/updates' } : { action: 'none' },
-              show_icon: false, show_name: true, show_label: false, show_state: false,
+              tap_action: `[[[
+                ${_aggSnip}
+                if (count > 1) return { action: 'call-service', service: 'update.install', target: { entity_id: _updates.map(e => e.entity_id) }, service_data: {}, confirmation: { text: 'Install all ' + count + ' updates now?' } };
+                if (count === 1) return { action: 'call-service', service: 'browser_mod.more_info', service_data: { entity: _updates[0].entity_id } };
+                if (hasRestart) return { action: 'call-service', service: 'homeassistant.restart', service_data: {}, confirmation: { text: 'Restart Home Assistant now?' } };
+                return { action: 'none' };
+              ]]]`,
+              show_icon: false, show_name: false, show_label: false, show_state: false,
               card_mod: {
                 style: [
-                  ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
-                  'ha-card { background: linear-gradient(135deg, color-mix(in srgb,' + statusGrad1 + ' 18%,transparent) 0%, color-mix(in srgb,' + statusGrad2 + ' 13%,transparent) 100%) !important; border: 1px solid color-mix(in srgb,' + statusGrad1 + ' 40%,transparent) !important; border-radius: 999px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; transition: background 0.2s ease, filter 0.2s ease !important; }',
-                  'ha-card:hover { box-shadow: none !important; background: linear-gradient(135deg, color-mix(in srgb,' + statusGrad1 + ' 26%,transparent) 0%, color-mix(in srgb,' + statusGrad2 + ' 20%,transparent) 100%) !important;' + (hasUpdates ? ' filter: brightness(1.12) saturate(1.06);' : '') + ' }',
+                  `:host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: ${hasAny ? 'inset 0 1px 0.5px -0.5px color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint-tight,65%), white) calc(var(--hemma-glass-pill-glow-top-tight,0.30) * 150%), transparent), inset 0 -1px 0.5px -0.5px color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint-tight,65%), white) calc(var(--hemma-glass-pill-glow-bottom-tight,0.20) * 150%), transparent), inset 0 3px 6px -3px color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint,40%), white) calc(var(--hemma-glass-pill-glow-top-soft,0.10) * 150%), transparent), inset 0 -3px 6px -3px color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint,40%), white) calc(var(--hemma-glass-pill-glow-bottom-soft,0.06) * 150%), transparent)' : 'none'} !important; }`,
+                  `ha-card { background: linear-gradient(135deg, var(--pill-sheen) 0%, transparent 58%), var(--pill-bloom), linear-gradient(var(--pill-fill-tinted), var(--pill-fill-tinted)), var(--hemma-glass-pill-fill,rgba(255,255,255,0.07)) !important; border: none !important; border-radius: var(--hemma-pill-radius,999px) !important; padding: var(--hemma-pill-padding,11px 16px) !important; backdrop-filter: var(--hemma-glass-pill-backdrop, none) !important; -webkit-backdrop-filter: var(--hemma-glass-pill-backdrop, none) !important; box-shadow: inset 0 1px 0.5px -0.5px var(--pill-glow-top-tight), inset 0 -1px 0.5px -0.5px var(--pill-glow-bottom-tight), inset 0 3px 6px -3px var(--pill-glow-top-soft), inset 0 -3px 6px -3px var(--pill-glow-bottom-soft) !important; cursor: ${hasAny ? 'pointer' : 'default'} !important; position: relative !important; overflow: visible !important; transition: transform 0.15s ease, box-shadow 0.2s ease !important; --pca: var(--hemma-glass-pill-corner-angle,126deg); --pcp: calc(var(--pca) - 90deg); --pct: calc(180deg - var(--pca)); --pill-glow-top-tight: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint-tight,65%), white) calc(var(--hemma-glass-pill-glow-top-tight,0.30) * 100%), transparent) !important; --pill-glow-top-soft: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint,65%), white) calc(var(--hemma-glass-pill-glow-top-soft,0.10) * 100%), transparent) !important; --pill-glow-bottom-tight: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint-tight,65%), white) calc(var(--hemma-glass-pill-glow-bottom-tight,0.20) * 100%), transparent) !important; --pill-glow-bottom-soft: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-ring-tint,65%), white) calc(var(--hemma-glass-pill-glow-bottom-soft,0.06) * 100%), transparent) !important; --pill-corner-hue-cool: var(--pill-accent,#ffffff); --pill-corner-hue-warm: var(--pill-accent,#ffffff); --pill-corner-cool: color-mix(in srgb, color-mix(in srgb, var(--pill-corner-hue-cool) var(--hemma-glass-pill-corner-tint,100%), white) calc(var(--hemma-glass-pill-corner-alpha,0.95) * 100%), transparent); --pill-corner-warm: color-mix(in srgb, color-mix(in srgb, var(--pill-corner-hue-warm) var(--hemma-glass-pill-corner-tint,100%), white) calc(var(--hemma-glass-pill-corner-alpha,0.95) * 100%), transparent); --pill-corner-core: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) 22%, white) calc(var(--hemma-glass-pill-corner-alpha,0.95) * 100%), transparent); --pill-corner-cool-lo: color-mix(in srgb, color-mix(in srgb, var(--pill-corner-hue-cool) var(--hemma-glass-pill-corner-tint,100%), white) calc(var(--hemma-glass-pill-corner-alpha,0.95) * var(--hemma-glass-pill-corner-falloff,0.72) * 100%), transparent); --pill-corner-warm-lo: color-mix(in srgb, color-mix(in srgb, var(--pill-corner-hue-warm) var(--hemma-glass-pill-corner-tint,100%), white) calc(var(--hemma-glass-pill-corner-alpha,0.95) * var(--hemma-glass-pill-corner-falloff,0.72) * 100%), transparent); --pill-corner-core-lo: color-mix(in srgb, color-mix(in srgb, var(--pill-accent,#ffffff) 22%, white) calc(var(--hemma-glass-pill-corner-alpha,0.95) * var(--hemma-glass-pill-corner-falloff,0.72) * 100%), transparent); --pill-fill-tinted: color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-accent-fill,30%), transparent); --pill-sheen: color-mix(in srgb, var(--pill-accent,#ffffff) var(--hemma-glass-pill-accent-sheen,14%), transparent); --pill-bloom: radial-gradient(ellipse 32% 64% at 18% 0%, color-mix(in srgb, color-mix(in srgb, var(--pill-corner-hue-cool) var(--hemma-glass-pill-corner-tint,100%), white) calc(var(--hemma-glass-pill-corner-bloom-alpha,0.3) * 100%), transparent), transparent 70%), radial-gradient(ellipse 32% 64% at 82% 100%, color-mix(in srgb, color-mix(in srgb, var(--pill-corner-hue-warm) var(--hemma-glass-pill-corner-tint,100%), white) calc(var(--hemma-glass-pill-corner-bloom-alpha,0.3) * var(--hemma-glass-pill-corner-falloff,0.72) * 100%), transparent), transparent 70%); }`,
+                  '@supports (color: oklch(from white l c h)) { ha-card { --pill-corner-hue-cool: oklch(from var(--pill-accent,#ffffff) l calc(c * 0.92) calc(h + var(--hemma-glass-pill-dispersion-deg,10))) !important; --pill-corner-hue-warm: oklch(from var(--pill-accent,#ffffff) l calc(c * 0.92) calc(h - var(--hemma-glass-pill-dispersion-deg,10))) !important; --pill-fill-tinted: oklch(from var(--pill-accent,#ffffff) min(l, var(--hemma-glass-pill-fill-l,0.82)) max(c, var(--hemma-glass-pill-fill-c,0.18)) h / var(--hemma-glass-pill-accent-fill,30%)) !important; } }',
+                  'ha-card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 2px; background: conic-gradient(from 0deg, transparent 0deg calc(90deg - 1.16 * var(--pcp)), rgba(0,0,0,calc(var(--hemma-glass-pill-cap-shade,0.18) * var(--hemma-glass-pill-corner-falloff,0.72))) calc(90deg - 0.77 * var(--pcp)) calc(90deg - 0.33 * var(--pcp)), transparent calc(90deg - 0.05 * var(--pcp)), color-mix(in srgb, var(--pill-corner-cool-lo) 16%, transparent) calc(var(--pca) - 0.78 * var(--pcp)), color-mix(in srgb, var(--pill-corner-cool-lo) 48%, transparent) calc(var(--pca) - 0.5 * var(--pcp)), var(--pill-corner-cool-lo) calc(var(--pca) - 0.22 * var(--pcp)), var(--pill-corner-core-lo) var(--pca), var(--pill-corner-warm-lo) calc(var(--pca) + 0.15 * var(--pct)), color-mix(in srgb, var(--pill-corner-warm-lo) 52%, transparent) calc(var(--pca) + 0.37 * var(--pct)), color-mix(in srgb, var(--pill-corner-warm-lo) 26%, transparent) calc(var(--pca) + 0.59 * var(--pct)), color-mix(in srgb, var(--pill-corner-warm-lo) 10%, transparent) calc(var(--pca) + 0.81 * var(--pct)), transparent 180deg, transparent calc(270deg - 1.16 * var(--pcp)), rgba(0,0,0,var(--hemma-glass-pill-cap-shade,0.18)) calc(270deg - 0.77 * var(--pcp)) calc(270deg - 0.33 * var(--pcp)), transparent calc(270deg - 0.05 * var(--pcp)), color-mix(in srgb, var(--pill-corner-cool) 16%, transparent) calc(var(--pca) + 180deg - 0.78 * var(--pcp)), color-mix(in srgb, var(--pill-corner-cool) 48%, transparent) calc(var(--pca) + 180deg - 0.5 * var(--pcp)), var(--pill-corner-cool) calc(var(--pca) + 180deg - 0.22 * var(--pcp)), var(--pill-corner-core) calc(var(--pca) + 180deg), var(--pill-corner-warm) calc(var(--pca) + 180deg + 0.15 * var(--pct)), color-mix(in srgb, var(--pill-corner-warm) 52%, transparent) calc(var(--pca) + 180deg + 0.37 * var(--pct)), color-mix(in srgb, var(--pill-corner-warm) 26%, transparent) calc(var(--pca) + 180deg + 0.59 * var(--pct)), color-mix(in srgb, var(--pill-corner-warm) 10%, transparent) calc(var(--pca) + 180deg + 0.81 * var(--pct)), transparent 360deg); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; pointer-events: none; }',
+                  'ha-card::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: transparent; transition: background 0.15s ease; pointer-events: none; }',
+                  hasAny ? '@media (hover: hover) { :host(:hover) ha-card::before { background: var(--hemma-pill-hover-overlay, rgba(255,255,255,0.10)); } }' : '',
+                  'ha-card:active { transform: scale(0.96) !important; }',
                   'ha-ripple { display: none !important; }',
                 ].join('\n'),
               },
               styles: {
                 card: [
-                  { background: 'linear-gradient(135deg, color-mix(in srgb,' + statusGrad1 + ' 18%,transparent) 0%, color-mix(in srgb,' + statusGrad2 + ' 13%,transparent) 100%)' },
-                  { border: '1px solid color-mix(in srgb,' + statusGrad1 + ' 40%,transparent)' },
-                  { 'border-radius': '999px' }, { 'box-shadow': 'none' }, { padding: '8px 15px' },
+                  { '--pill-accent': `[[[
+                    ${_aggSnip}
+                    return hasUpdates ? 'var(--hemma-popup-primary-color, #00c3d0)' : hasRestart ? 'var(--hemma-popup-yellow-color, #ffd600)' : 'var(--hemma-popup-green-color, #67f5a0)';
+                  ]]]` },
+                  /* Corner-angle default (126deg) is tuned for a ~90x38 pill; this
+                   * label's ~120x38 box needs ~114deg or the highlight core lands
+                   * past the corner, on the flat bottom edge. */
+                  { '--hemma-glass-pill-corner-angle': '114deg' },
+                  { border: 'none' },
                 ],
-                name: [
-                  { 'font-size': '15px' }, { 'font-weight': '500' }, { color: statusColor },
-                  { 'white-space': 'nowrap' }, { 'font-family': 'var(--primary-font-family,system-ui)' },
-                ],
+                grid: [{ 'grid-template-areas': '"c"' }, { 'grid-template-columns': '1fr' }],
+                custom_fields: { c: [{ 'justify-self': 'center' }] },
+              },
+              custom_fields: {
+                c: `[[[
+                  ${_aggSnip}
+                  const label = count > 1 ? 'Update All' : hasUpdates ? count + ' available' : hasRestart ? 'Restart pending' : 'Up to date';
+                  return '<span style="font-size:13px;font-weight:600;letter-spacing:0.01em;color:#ffffff;font-family:var(--primary-font-family,system-ui);white-space:nowrap;">' + label + '</span>';
+                ]]]`,
               },
             };
 
-            // Header
+            /* Header */
             const headerCard = {
               type: 'custom:button-card',
               entity: entity?.entity_id,
@@ -102,15 +145,15 @@ hemma_popup_updates:
                 },
               },
               custom_fields: {
-                title: '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tile-text-primary);">'
+                title: '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tiles-text-primary, #ffffff);">'
                   + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;">System</div>'
-                  + '<div style="font-size:14px;color:var(--hemma-popup-tile-text-secondary);font-weight:400;">Updates · Software</div>'
+                  + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary, rgba(255,255,255,0.6));font-weight:400;">Updates · Software</div>'
                 + '</div>',
                 badge: { card: badgePillCard },
               },
             };
 
-            // Advice Text
+            /* Advice text */
             const adviceCard = {
               type: 'custom:button-card',
               entity: entity?.entity_id,
@@ -126,61 +169,99 @@ hemma_popup_updates:
                 custom_fields: { body: [{ 'justify-self': 'stretch' }, { width: '100%' }, { 'text-align': 'left' }] },
               },
               custom_fields: {
-                body: '<div style="font-family:var(--primary-font-family,system-ui);">'
-                  + '<div style="font-size:22px;color:var(--primary-text-color,#e4e7eb);font-weight:400;letter-spacing:-.5px;">' + advice + '</div>'
-                + '</div>',
+                body: `[[[
+                  ${_aggSnip}
+                  const advice = hasRestart && hasUpdates ? 'Restart + ' + count + ' update' + (count > 1 ? 's' : '')
+                               : hasRestart ? 'Restart required'
+                               : hasUpdates ? 'Available Updates'
+                               : 'Everything is up to date';
+                  return '<div style="font-family:var(--primary-font-family,system-ui);">'
+                    + '<div style="font-size:22px;color:var(--primary-text-color,#e4e7eb);font-weight:400;letter-spacing:-.5px;">' + advice + '</div>'
+                  + '</div>';
+                ]]]`,
               },
             };
 
-            // Update Tile Factory
-            const makeUpdateTileCard = (e) => {
-              const name      = (e.attributes.friendly_name || e.entity_id)
-                .replace(/ Update$/i, '')
-                .replace(/ Firmware$/i, '');
-              const installed = e.attributes.installed_version || '—';
-              const latest    = e.attributes.latest_version    || '—';
-              const inProg    = e.attributes.in_progress === true;
-              const nameColor   = inProg ? 'rgba(255,255,255,0.4)' : '#ffffff';
-              const latestColor = inProg ? 'rgba(68,152,195,0.4)'  : 'var(--hemma-popup-primary-color, #00c3d0)';
-              const pillBg      = inProg ? 'rgba(68,152,195,0.35)' : 'var(--hemma-popup-primary-color, #00c3d0)';
-              const pillColor   = inProg ? 'rgba(255,255,255,0.55)': '#ffffff';
-              const pillLabel   = inProg ? 'Updating…'             : 'Details';
+            /* Tile factory */
+            const makeTileCard = (entityId) => {
+              const _eid = JSON.stringify(entityId);
+
+              const _kindSnip = `
+                const eid = ${_eid};
+                const e = states[eid];
+                const rs = (e?.attributes?.release_summary || '').toLowerCase();
+                const needsRestart = rs.includes('restart') && e?.state === 'off' && e?.attributes?.installed_version === e?.attributes?.latest_version;
+                const hasUpdate = e?.state === 'on';
+                const inProg = e?.attributes?.in_progress === true;
+              `;
 
               const pillCard = {
                 type: 'custom:button-card',
-                entity: e.entity_id,
-                name: pillLabel,
-                tap_action: inProg ? { action: 'none' } : { action: 'more-info' },
-                show_icon: false, show_name: true, show_label: false, show_state: false,
+                entity: entityId,
+                tap_action: `[[[
+                  ${_kindSnip}
+                  if (needsRestart) return { action: 'call-service', service: 'homeassistant.restart', service_data: {}, confirmation: { text: 'Restart Home Assistant now?' } };
+                  if (hasUpdate && inProg) return { action: 'none' };
+                  return { action: 'more-info' };
+                ]]]`,
+                show_icon: false, show_name: false, show_label: false, show_state: false,
                 card_mod: {
                   style: [
-                    ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }',
-                    'ha-card { background: ' + pillBg + ' !important; border: none !important; border-radius: 999px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; transition: background 0.2s ease, opacity 0.2s ease !important; }',
-                    'ha-card:hover { box-shadow: none !important; background: ' + (inProg ? 'rgba(68,152,195,0.35)' : 'color-mix(in srgb, var(--hemma-popup-primary-color, #00c3d0) 75%, #000000)') + ' !important; }',
+                    ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; opacity: 0; animation: hemmaPillReveal 0s linear 0.2s forwards; }',
+                    '@keyframes hemmaPillReveal { to { opacity: 1; } }',
+                    'ha-card { border: none !important; border-radius: 999px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: pointer !important; transition: background 0.2s ease, opacity 0.2s ease, filter 0.15s ease, transform 0.15s ease !important; }',
+                    'ha-card:hover { filter: brightness(1.18) !important; transform: scale(1.008) !important; }',
                     'ha-ripple { display: none !important; }',
                   ].join('\n'),
                 },
                 styles: {
                   card: [
-                    { background: pillBg }, { 'border-radius': '999px' }, { 'box-shadow': 'none' }, { padding: '12px 20px' },
+                    { background: `[[[
+                      ${_kindSnip}
+                      if (needsRestart) return 'rgba(255,214,0,0.2)';
+                      if (hasUpdate) return inProg ? 'rgba(68,152,195,0.35)' : 'var(--hemma-popup-primary-color, #00c3d0)';
+                      return 'rgba(103,245,160,0.18)';
+                    ]]]` },
+                    { 'border-radius': '999px' }, { 'box-shadow': 'none' },
+                    { padding: `[[[ return window.matchMedia('(max-width:600px)').matches ? '9px 14px' : '12px 20px'; ]]]` },
                   ],
-                  name: [
-                    { 'font-size': '14px' }, { 'font-weight': '600' }, { color: pillColor },
-                    { 'white-space': 'nowrap' }, { 'letter-spacing': '0.01em' },
-                  ],
+                  grid: [{ 'grid-template-areas': '"label"' }, { 'grid-template-columns': '1fr' }],
+                  custom_fields: { label: [{ 'justify-self': 'center' }] },
+                },
+                custom_fields: {
+                  label: `[[[
+                    ${_kindSnip}
+                    const isMobile = window.matchMedia('(max-width:600px)').matches;
+                    const fontSize = isMobile ? '13px' : '14px';
+                    let text, color;
+                    if (needsRestart) { text = 'Restart'; color = 'var(--hemma-popup-yellow-color, #ffd600)'; }
+                    else if (hasUpdate) {
+                      text = inProg ? 'Updating...' : 'Details';
+                      color = inProg ? 'rgba(255,255,255,0.55)' : '#ffffff';
+                    } else {
+                      text = 'Details';
+                      color = 'var(--hemma-popup-green-color, #67f5a0)';
+                    }
+                    return '<span style="font-size:' + fontSize + ';font-weight:600;color:' + color + ';white-space:nowrap;letter-spacing:0.01em;">' + text + '</span>';
+                  ]]]`,
                 },
               };
 
               return {
                 type: 'custom:button-card',
-                entity: e.entity_id,
-                tap_action: inProg ? { action: 'none' } : { action: 'more-info' },
+                entity: entityId,
+                tap_action: `[[[
+                  ${_kindSnip}
+                  if (hasUpdate && inProg) return { action: 'none' };
+                  return { action: 'more-info' };
+                ]]]`,
                 show_icon: false, show_name: false, show_label: false, show_state: false,
-                card_mod: { style: inProg ? noHoverStyle : tileTapStyle },
+                card_mod: { style: tileTapStyle },
                 styles: {
                   card: [
-                    { background: 'var(--hemma-popup-tile-background, rgba(255,255,255,0.07))' }, { border: 'none' }, { 'border-radius': '24px' },
-                    { 'box-shadow': 'none' }, { padding: '16px 16px 16px 20px' },
+                    { background: 'var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07))' }, { border: 'none' }, { 'border-radius': '24px' },
+                    { 'box-shadow': 'none' },
+                    { padding: `[[[ return window.matchMedia('(max-width:600px)').matches ? '14px 12px 14px 14px' : '16px 16px 16px 20px'; ]]]` },
                   ],
                   grid: [
                     { 'grid-template-areas': '"body update"' },
@@ -193,24 +274,70 @@ hemma_popup_updates:
                   },
                 },
                 custom_fields: {
-                  body: '<div style="font-size:14px;color:' + nameColor + ';font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
-                    + '<div style="font-size:12px;color:var(--hemma-popup-tile-text-muted);margin-top:3px;">'
-                      + installed + ' → <span style="color:' + latestColor + ';">' + latest + '</span>'
-                    + '</div>',
+                  body: `[[[
+                    ${_kindSnip}
+                    const name = (e?.attributes?.friendly_name || eid).replace(/ Update$/i, '').replace(/ Firmware$/i, '');
+                    let picture = e?.attributes?.entity_picture;
+                    if (picture && picture.startsWith('/api/brands/')) {
+                      const p = picture.split('/');
+                      picture = 'https://brands.home-assistant.io/_/' + p[p.length - 2] + '/' + p[p.length - 1];
+                    }
+                    const isMobile = window.matchMedia('(max-width:600px)').matches;
+                    const iconPx   = isMobile ? 24 : 28;
+                    const gapPx    = isMobile ? 8  : 12;
+                    const nameFont = isMobile ? 13 : 14;
+                    const subFont  = isMobile ? 11 : 12;
+                    const iconHtml = picture
+                      ? '<img src="' + picture + '" style="width:' + iconPx + 'px;height:' + iconPx + 'px;border-radius:8px;object-fit:contain;flex-shrink:0;" />'
+                      : '<div style="width:' + iconPx + 'px;height:' + iconPx + 'px;border-radius:8px;background:rgba(255,255,255,0.08);flex-shrink:0;display:flex;align-items:center;justify-content:center;">'
+                        + '<ha-icon icon="mdi:package-variant" style="--mdc-icon-size:16px;width:16px;height:16px;color:rgba(255,255,255,0.35);"></ha-icon></div>';
+
+                    let textHtml;
+                    if (needsRestart) {
+                      const version = e?.attributes?.installed_version || '—';
+                      textHtml = '<div style="font-size:' + nameFont + 'px;color:var(--hemma-popup-tiles-text-primary,#ffffff);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
+                        + '<div style="font-size:' + subFont + 'px;color:var(--hemma-popup-yellow-color,#ffd600);margin-top:3px;">' + version + ' · Restart pending</div>';
+                    } else if (hasUpdate) {
+                      const installed = e?.attributes?.installed_version || '—';
+                      const latest = e?.attributes?.latest_version || '—';
+                      const nameColor = inProg ? 'rgba(255,255,255,0.4)' : 'var(--hemma-popup-tiles-text-primary, #ffffff)';
+                      const latestColor = inProg ? 'rgba(68,152,195,0.4)' : 'var(--hemma-popup-primary-color, #00c3d0)';
+                      textHtml = '<div style="font-size:' + nameFont + 'px;color:' + nameColor + ';font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
+                        + '<div style="font-size:' + subFont + 'px;color:var(--hemma-popup-tiles-text-muted, rgba(255,255,255,0.4));margin-top:3px;">'
+                          + installed + ' → <span style="color:' + latestColor + ';">' + latest + '</span>'
+                        + '</div>';
+                    } else {
+                      const version = e?.attributes?.installed_version || '—';
+                      textHtml = '<div style="font-size:' + nameFont + 'px;color:var(--hemma-popup-tiles-text-primary,#ffffff);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
+                        + '<div style="font-size:' + subFont + 'px;color:var(--hemma-popup-green-color,#67f5a0);margin-top:3px;">' + version + ' · Up to date</div>';
+                    }
+
+                    return '<div style="display:flex;align-items:center;gap:' + gapPx + 'px;min-width:0;">'
+                      + iconHtml
+                      + '<div style="min-width:0;overflow:hidden;">' + textHtml + '</div>'
+                      + '</div>';
+                  ]]]`,
                   update: { card: pillCard },
                 },
               };
             };
 
-            const tileAreas = updates.map((_, i) => '"u' + i + '"').join(' ');
+            const allTileAreas = [
+              ...restartEntities.map((_, i) => '"r' + i + '"'),
+              ...updates.map((_, i) => '"u' + i + '"'),
+            ].join(' ');
             const tileCustomFields = {};
             const tileFieldStyles  = {};
+            restartEntities.forEach((e, i) => {
+              tileCustomFields['r' + i] = { card: makeTileCard(e.entity_id) };
+              tileFieldStyles['r'  + i] = [{ 'justify-self': 'stretch' }];
+            });
             updates.forEach((e, i) => {
-              tileCustomFields['u' + i] = { card: makeUpdateTileCard(e) };
+              tileCustomFields['u' + i] = { card: makeTileCard(e.entity_id) };
               tileFieldStyles['u'  + i] = [{ 'justify-self': 'stretch' }];
             });
 
-            const updateListCard = hasUpdates ? {
+            const listCard = hasAny ? {
               type: 'custom:button-card',
               entity: entity?.entity_id,
               tap_action: { action: 'none' },
@@ -222,7 +349,7 @@ hemma_popup_updates:
                   { padding: '4px 28px 20px 28px' },
                 ],
                 grid: [
-                  { 'grid-template-areas': tileAreas },
+                  { 'grid-template-areas': allTileAreas },
                   { 'grid-template-columns': '1fr' },
                   { gap: '8px' },
                   { 'align-items': 'start' },
@@ -232,13 +359,10 @@ hemma_popup_updates:
               custom_fields: tileCustomFields,
             } : null;
 
-            const cards = hasUpdates
-              ? [headerCard, adviceCard, updateListCard]
-              : [headerCard, adviceCard];
+            const cards = hasAny ? [headerCard, adviceCard, listCard] : [headerCard, adviceCard];
 
             return { type: 'vertical-stack', cards };
           ]]]
-
 
   icon_tap_action:
     haptic: light

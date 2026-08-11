@@ -1,0 +1,105 @@
+# Lock Group Sub-Badge  (Home dashboard)
+# Aggregates every lock into one "Locks" badge and opens the shared lock group
+# popup, the way the Lights badge aggregates lights. Rooms keep using
+# hemma_badge_security with their own single lock — this is for the Home view,
+# which covers the whole house.
+#
+# Variables:
+#   enabled          - show/hide (default: true)
+#   label            - title override (default: "Locks")
+#   locks            - list of lock entity_ids (also drives the popup)
+#   battery_entities - lock_id -> battery entity_id  (popup)
+#   door_sensors     - lock_id -> contact sensor entity_id (popup)
+#   room_name        - popup heading
+hemma_badge_lock_group:
+  template: [hemma_badge_base, hemma_popup_lock]
+
+  show_state: false
+  show_label: false
+  show_icon: true
+  icon: mdi:lock
+
+  variables:
+    enabled: true
+    label: null
+    icon_size: null
+
+  styles:
+    card:
+      - display: >
+          [[[
+            const v = variables?.enabled;
+            const enabled = (v === undefined || v === null) ? true :
+              (typeof v === 'boolean') ? v :
+              (typeof v === 'number') ? v !== 0 :
+              !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
+            const locks = Array.isArray(variables?.locks) ? variables.locks.filter(Boolean) : [];
+            return (enabled && locks.length) ? 'inline-grid' : 'none';
+          ]]]
+      - --hemma-badge-icon-color: >
+          [[[
+            const locks = Array.isArray(variables?.locks) ? variables.locks.filter(Boolean) : [];
+            const open = locks.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
+            return open === 0
+              ? 'var(--hemma-badge-security-color, #00c3d0)'
+              : 'var(--hemma-badge-security-alert-color, #ff9f0a)';
+          ]]]
+      - --icon-primary-color: var(--hemma-badge-icon-color)
+      - --paper-item-icon-color: var(--hemma-badge-icon-color)
+      - --state-icon-color: var(--hemma-badge-icon-color)
+
+    icon:
+      - color: var(--hemma-badge-icon-color)
+
+  name: >
+    [[[
+      const esc = (t) => String(t ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const locks = Array.isArray(variables?.locks) ? variables.locks.filter(Boolean) : [];
+      const total = locks.length;
+      const open = locks.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
+      const sub = total === 0 ? ''
+                : open === 0 ? (total === 1 ? 'Locked' : 'All Locked')
+                : open === total ? (total === 1 ? 'Unlocked' : 'All Unlocked')
+                : open + ' Unlocked';
+
+      return `
+        <div class="badge-wrap">
+          <div class="badge-title">${esc(variables?.label || 'Doors')}</div>
+          ${sub ? `<div class="badge-sub">${esc(sub)}</div>` : ''}
+        </div>
+      `;
+    ]]]
+
+  extra_styles: >
+    [[[
+      const v = variables?.enabled;
+      const enabled = (v === undefined || v === null) ? true :
+        (typeof v === 'boolean') ? v :
+        (typeof v === 'number') ? v !== 0 :
+        !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
+      const locks = Array.isArray(variables?.locks) ? variables.locks.filter(Boolean) : [];
+      const hide = !enabled || !locks.length;
+
+      const open = locks.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
+      const URL = window.hemmaIconUrl(open === 0 ? 'lock-fill' : 'lock-open-fill');
+      const SIZE = variables?.icon_size || '72%';
+
+      return `:host{display:${hide ? 'none' : 'inline-block'} !important;}
+        #img-cell, .img-cell{ position: relative; }
+
+        #img-cell #icon, .img-cell #icon{
+          color: transparent !important;
+          opacity: 0 !important;
+        }
+
+        #img-cell::before,
+        .img-cell::before{
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-color: var(--hemma-badge-icon-color, var(--hemma-badge-security-color, #00c3d0)) !important;
+          -webkit-mask: url('${URL}') no-repeat center / auto ${SIZE};
+          mask: url('${URL}') no-repeat center / auto ${SIZE};
+          transform: translateZ(0);
+        }`;
+    ]]]

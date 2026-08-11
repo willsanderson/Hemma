@@ -61,15 +61,12 @@ views:
             - livingroom-demo
             - kitchen-demo
             - bedroom-demo
-          image_position: center center
-          # mobile_background: true # Enable this if you add mobile backgrounds to /local/hemma/mobile/
 
           # Climate (shows group badge + expandable sub-badges for temp/humidity/quality)
-          show_climate: false
           # climate_entity_1: climate.YOUR_THERMOSTAT
           # climate_entity_2: climate.YOUR_THERMOSTAT_2   # optional, up to 3
 
-          # Sensors (used by the climate sub-badges when show_climate is true)
+          # Sensors — setting any one of these makes the climate badge appear
           # temp_sensor_1: sensor.YOUR_HOME_TEMPERATURE
           # temp_sensor_2: sensor.YOUR_TEMPERATURE_2      # optional additional temp sensors
           # temp_sensor_3: sensor.YOUR_TEMPERATURE_3
@@ -79,7 +76,7 @@ views:
           # quality_sensor: sensor.YOUR_AIR_QUALITY
 
           # Air Quality Popup (optional - shown when tapping the air quality badge)
-          # Requires show_climate: true and quality_sensor above
+          # Requires quality_sensor above
           # aqi_room_name: Home
           # aqi_entity_pm25: sensor.YOUR_PM25
           # aqi_entity_pm10: sensor.YOUR_PM10
@@ -89,7 +86,6 @@ views:
           # aqi_entity_humidity: sensor.YOUR_AQI_HUMIDITY
 
           # Lights Badge (optional - shows a light group badge)
-          show_lights: false
           light_group_entity: light.YOUR_HOME_LIGHT_GROUP
           # light_entity_1: light.YOUR_ROOM_LIGHT_GROUP_1
           # light_entity_2: light.YOUR_ROOM_LIGHT_GROUP_2
@@ -97,42 +93,82 @@ views:
           # light_entity_4: light.YOUR_ROOM_LIGHT_GROUP_4
 
           # Weather Widget
-          show_weather: true
           weather_entity: weather.YOUR_WEATHER            # e.g., weather.home, weather.pirateweather
           weather_temp_sensor: sensor.YOUR_OUTDOOR_TEMP   # e.g., sensor.outdoor_temperature
 
-          # Temperature Unit (affects comfort labels like "Cool", "Warm", etc.)
-          temp_unit: 'F'                                  # 'F' for Fahrenheit, 'C' for Celsius
+          # temp_unit: 'C'   # only needed for Celsius; comfort thresholds default to 'F'
 
           # Presence Badges (optional - requires person/status sensors)
           # Shows a group badge on the hero card; tap to expand individual badges
-          show_presence: false
           # presence_entity_1: sensor.YOUR_PERSON_1_STATUS  # optional, up to 4
           # presence_entity_2: sensor.YOUR_PERSON_2_STATUS
           # presence_entity_3: sensor.YOUR_PERSON_3_STATUS
           # presence_entity_4: sensor.YOUR_PERSON_4_STATUS
 
           # Media Player Badges (shows what's playing across rooms)
-          show_media: true
-          show_media_player_1: true
           media_player_1: media_player.YOUR_ENTITY        # e.g., media_player.spotify
-          show_media_player_2: true
           media_player_2: media_player.YOUR_ENTITY        # e.g., media_player.living_room_apple_tv
-          show_media_player_3: true
           media_player_3: media_player.YOUR_ENTITY        # e.g., media_player.bedroom_apple_tv
-          show_media_player_4: true
           media_player_4: media_player.YOUR_ENTITY        # e.g., media_player.kitchen
-          # show_media_player_5: true
           # media_player_5: media_player.YOUR_ENTITY      # optional fifth player
 
+          # Now Playing Panel (optional alternative to the media badge row)
+          # Set show_now_playing: true to use the panel instead of the media
+          # badge row above — hemma_room suppresses the badges automatically,
+          # so the same session never appears twice.
+          # It reuses the media_player_N entities above.
+          # show_now_playing: true
+          # now_playing_panel: '0'   # '0' = free-floating tiles, '1' = glass panel with header
+          #
+          # Extra source types the panel understands beyond media_player:
+          # plex_stream_1: sensor.YOUR_PLEX_STREAM_INFO   # Tautulli/Plex session sensor
+          # psn_1: sensor.YOUR_PSN_SESSION                # PlayStation / game activity sensor
+
+          # Energy Badges (optional - adds an Energy group badge; tap to expand)
+          # Whole-home totals shown in the room's energy popup:
+          # energy_power_entity: sensor.YOUR_HOME_CURRENT_CONSUMPTION
+          # energy_usage_today: sensor.YOUR_HOME_DAILY_CONSUMPTION
+          # energy_usage_month: sensor.YOUR_HOME_MONTHLY_CONSUMPTION
+          # energy_cost_today: sensor.YOUR_HOME_DAILY_COST      # optional
+          # energy_cost_month: sensor.YOUR_HOME_MONTHLY_COST    # optional
+          #
+          # One sub-badge per energy_entity_N (up to 6). On Home these are
+          # typically per-room totals; the energy_popup_*_N keys point each
+          # badge at that room's popup instead of the whole-house one.
+          # energy_entity_1: sensor.YOUR_ROOM_1_CURRENT_CONSUMPTION
+          # energy_label_1: Bedroom
+          # energy_unit_1: auto                                 # auto (W/kW) | kwh | cost
+          # energy_popup_name_1: Bedroom
+          # energy_popup_power_1: sensor.YOUR_ROOM_1_CURRENT_CONSUMPTION
+          # energy_popup_today_1: sensor.YOUR_ROOM_1_DAILY_CONSUMPTION
+          # energy_popup_month_1: sensor.YOUR_ROOM_1_MONTHLY_CONSUMPTION
+          # energy_popup_cost_today_1: sensor.YOUR_ROOM_1_DAILY_COST
+          # energy_popup_cost_month_1: sensor.YOUR_ROOM_1_MONTHLY_COST
+
+          # Security Badges (optional - adds a Security group badge; tap to expand)
+          # On Home, security_locks aggregates every lock into one "Locks" badge
+          # that opens the shared lock group popup. Rooms below instead use a
+          # single security_entity_N per lock.
+          # security_lock_entity: lock.YOUR_FRONT_DOOR
+          # security_locks:
+          #   - lock.YOUR_FRONT_DOOR
+          #   - lock.YOUR_BACK_DOOR
+          # security_lock_batteries:
+          #   lock.YOUR_FRONT_DOOR: sensor.YOUR_LOCK_BATTERY          # optional
+          # security_door_sensors:
+          #   lock.YOUR_FRONT_DOOR: binary_sensor.YOUR_DOOR_CONTACT   # optional
+          #
+          # Any mix of lock / binary_sensor / camera / alarm_control_panel /
+          # cover (up to 8) — the badge picks its icon and wording from the
+          # entity's domain.
+          # security_entity_1: camera.YOUR_DOORBELL
+          # security_label_1: Doorbell
+
       # MOBILE NAVBAR
-      - !include /config/dashboards/templates/includes/hemma_navbar_mobile.yaml
+      - !include /config/dashboards/templates/includes/hemma_navbar_tablet.yaml
 
       # ENTITY CARDS
-      - type: custom:layout-card
-        class: hemma-entities
-        layout_type: custom:grid-layout
-        layout: !include /config/dashboards/templates/includes/hemma_entity_layout.yaml
+      - type: custom:hemma-smart-row
         cards:
           # Thermostat
           - type: custom:button-card
@@ -140,19 +176,38 @@ views:
             entity: climate.YOUR_HOME_THERMOSTAT          # e.g., climate.home
             name: Thermostat
             variables:
-              position: 1
               temp_sensor: sensor.YOUR_HOME_TEMPERATURE
 
-          # Front Door Lock
+          # Front Door Lock (tap opens the Lock/Security popup)
           - type: custom:button-card
-            template: hemma_lock
-            entity: lock.YOUR_FRONT_DOOR                  # e.g., lock.front_door
-            name: Front Door
+            template:
+              - hemma_lock
+              - hemma_popup_lock
+            entity: lock.YOUR_LOCK_1                      # e.g., lock.front_door
+            name: Doors
             variables:
-              position: 2
-              icon: door
-              show_toggle: true
-              battery_entity: sensor.YOUR_LOCK_BATTERY    # optional
+              room_name: Home
+              locks:
+                - lock.YOUR_LOCK_1
+                - lock.YOUR_LOCK_2
+              # battery_entities:
+              #   lock.YOUR_LOCK_1: sensor.YOUR_LOCK_1_BATTERY    # optional
+              #   lock.YOUR_LOCK_2: sensor.YOUR_LOCK_2_BATTERY    # optional
+              # door_sensors:
+              #   lock.YOUR_LOCK_1: binary_sensor.YOUR_DOOR_1_SENSOR    # optional
+              #   lock.YOUR_LOCK_2: binary_sensor.YOUR_DOOR_2_SENSOR    # optional
+
+          # All Lights (whole-home light group; tap opens the Light popup with
+          # per-room filtering and scenes)
+          - type: custom:button-card
+            template: hemma_light
+            entity: light.YOUR_HOME_LIGHT_GROUP            # e.g., light.all
+            name: All Lights
+            variables:
+              # Optional: order your scenes in the popup's scene row
+              # scene_order:
+              #   - scene.YOUR_SCENE_1
+              #   - scene.YOUR_SCENE_2
 
           # Doorbell Camera
           - type: custom:button-card
@@ -160,7 +215,6 @@ views:
             entity: camera.YOUR_DOORBELL                  # e.g., camera.front_door
             name: Doorbell
             variables:
-              position: 3
               icon: doorbell
               battery_entity: sensor.YOUR_DOORBELL_BATTERY  # optional
 
@@ -170,12 +224,21 @@ views:
             name: Battery Status
             entity: sensor.YOUR_PRIMARY_BATTERY           # any battery entity to display on the card
             variables:
-              position: 4
-              entity_filter:
+              room_name: Home                             # popup header label
+              batteries:
                 - sensor.YOUR_LOCK_BATTERY
                 - sensor.YOUR_DOORBELL_BATTERY
                 - sensor.YOUR_MOTION_SENSOR_BATTERY
                 # Add any additional battery sensors here
+              # Each battery's ring icon and label are read from its device in
+              # the registry, so nothing else is normally needed. Override any
+              # that come out wrong:
+              # device_icons:
+              #   sensor.YOUR_DOORBELL_BATTERY: doorbell  # /local/hemma/icons name, or mdi:cctv
+              # device_names:
+              #   sensor.YOUR_DOORBELL_BATTERY: Doorbell
+              # battery_entities:                         # force the icon/name source entity
+              #   lock.YOUR_LOCK: sensor.YOUR_LOCK_BATTERY
 
           # Network Speed (shows WAN download/upload, ping, and sub-interface stats)
           - type: custom:button-card
@@ -183,7 +246,6 @@ views:
             template: hemma_network
             name: Network
             variables:
-              position: 5
               room_name: Home
               entity_upload: sensor.YOUR_WAN_UPLOAD_SPEED
               entity_status: binary_sensor.YOUR_INTERNET_STATUS  # e.g., binary_sensor.router_internet
@@ -199,7 +261,6 @@ views:
             template: hemma_energy
             name: Energy Usage
             variables:
-              position: 6
               room_name: Home
               entity_power: sensor.YOUR_HOME_POWER
               entity_usage_today: sensor.YOUR_ENERGY_TODAY          # optional kWh today
@@ -212,8 +273,6 @@ views:
             template: hemma_updates
             entity: sensor.YOUR_UPDATES                   # e.g., sensor.pending_updates
             name: Available Updates
-            variables:
-              position: 7
 
           # Plex Recently Added (optional)
           # Requires the plex_recently_added HACS integration and hemma_helpers.yaml sensor.
@@ -222,15 +281,25 @@ views:
           #   template: hemma_plex_recently_added
           #   entity: sensor.plex_recently_added_count
           #   name: Plex
-          #   variables:
-          #     position: 8
+
+          # Curtains (whole-home cover group; tap opens the Cover/Shades popup)
+          - type: custom:button-card
+            template:
+              - hemma_cover
+              - hemma_popup_cover
+            entity: cover.YOUR_LIVING_ROOM_CURTAIN
+            name: Curtains
+            variables:
+              room_name: Home
+              covers:
+                - cover.YOUR_LIVING_ROOM_CURTAIN
+                - cover.YOUR_BEDROOM_CURTAIN
 
           # Motion Overview Card (optional)
           # Shows active room name when motion is detected, "Clear" when none.
           # - type: custom:button-card
           #   template: hemma_motion
           #   variables:
-          #     position: 9
           #     default_name: Home
           #     sensor_1: binary_sensor.YOUR_LIVING_ROOM_MOTION
           #     label_1: Living Room
@@ -254,11 +323,8 @@ views:
         variables:
           image: livingroom-demo
           preload_rooms: *room_images
-          image_position: center center
-          # mobile_background: true
 
           # Climate (optional)
-          show_climate: false
           # climate_entity_1: climate.YOUR_LIVING_ROOM_CLIMATE
 
           # Sensors
@@ -277,35 +343,45 @@ views:
           # aqi_entity_humidity: sensor.YOUR_AQI_HUMIDITY
 
           # Light Badge (optional)
-          show_lights: false
           # light_entity_1: light.YOUR_LIVING_ROOM_LIGHTS
 
           # Weather Widget (optional)
-          show_weather: false
           # weather_entity: weather.YOUR_WEATHER
           # weather_temp_sensor: sensor.YOUR_OUTDOOR_TEMP
-          temp_unit: 'F'
 
           # Media Player Badges (optional)
-          show_media: false
-          # show_media_player_1: true
           # media_player_1: media_player.YOUR_LIVING_ROOM_PLAYER
 
+          # Energy Badges (optional) — on a room these are usually the room's
+          # own Today / This Month figures rather than per-room totals.
+          # energy_power_entity: sensor.YOUR_LIVING_ROOM_CURRENT_CONSUMPTION
+          # energy_usage_today: sensor.YOUR_LIVING_ROOM_DAILY_CONSUMPTION
+          # energy_usage_month: sensor.YOUR_LIVING_ROOM_MONTHLY_CONSUMPTION
+          # energy_entity_1: sensor.YOUR_LIVING_ROOM_DAILY_CONSUMPTION
+          # energy_label_1: Today
+          # energy_unit_1: kwh
+          # energy_entity_2: sensor.YOUR_LIVING_ROOM_MONTHLY_CONSUMPTION
+          # energy_label_2: This Month
+          # energy_unit_2: kwh
+
+          # Security Badges (optional) — a room lists its own entities directly
+          # instead of the aggregated Locks badge used on Home.
+          # security_entity_1: lock.YOUR_FRONT_DOOR
+          # security_label_1: Front Door
+          # security_entity_2: camera.YOUR_DOORBELL
+          # security_label_2: Doorbell
+
       # MOBILE NAVBAR
-      - !include /config/dashboards/templates/includes/hemma_navbar_mobile.yaml
+      - !include /config/dashboards/templates/includes/hemma_navbar_tablet.yaml
 
       # ENTITY CARDS
-      - type: custom:layout-card
-        class: hemma-entities
-        layout_type: custom:grid-layout
-        layout: !include /config/dashboards/templates/includes/hemma_entity_layout.yaml
+      - type: custom:hemma-smart-row
         cards:
           - type: custom:button-card
             template: hemma_thermostat
             entity: climate.YOUR_LIVING_ROOM_CLIMATE
             name: Thermostat
             variables:
-              position: 1
               temp_sensor: sensor.YOUR_LIVING_ROOM_TEMP
 
           - type: custom:button-card
@@ -313,16 +389,13 @@ views:
             entity: light.YOUR_LIVING_ROOM_LIGHTS
             name: Lights
             variables:
-              position: 2
               icon: light
-              show_toggle: true
 
           - type: custom:button-card
             template: hemma_media
             entity: media_player.YOUR_LIVING_ROOM_APPLE_TV
             name: Apple TV
             variables:
-              position: 3
               icon: apple_tv
               show_progress: true
               progress_entity: media_player.YOUR_LIVING_ROOM_APPLE_TV
@@ -332,7 +405,6 @@ views:
             entity: media_player.YOUR_LIVING_ROOM_TV
             name: TV
             variables:
-              position: 4
               icon: tv
               show_toggle: true
 
@@ -341,7 +413,6 @@ views:
             entity: media_player.YOUR_LIVING_ROOM_SPEAKER
             name: Sonos
             variables:
-              position: 5
               icon: speaker
 
           # Active Energy (room-level power monitoring)
@@ -350,7 +421,6 @@ views:
             template: hemma_energy
             name: Active Energy
             variables:
-              position: 6
               room_name: Living Room
               entity_power: sensor.YOUR_LIVING_ROOM_POWER
               entity_usage_today: sensor.YOUR_LIVING_ROOM_ENERGY_TODAY    # optional
@@ -359,22 +429,18 @@ views:
               entity_cost_month: sensor.YOUR_LIVING_ROOM_COST_MONTH       # optional
 
           - type: custom:button-card
-            template: hemma_curtain
+            template: hemma_cover
             entity: cover.YOUR_LIVING_ROOM_CURTAIN
             name: Curtain
             variables:
-              position: 7
               icon: curtain
-              show_toggle: true
 
           - type: custom:button-card
             template: hemma_fan
             entity: fan.YOUR_LIVING_ROOM_FAN
             name: Fan
             variables:
-              position: 8
               icon: fan
-              show_toggle: true
 
           # Plant Monitor (optional - requires plant integration + sensors)
           - type: custom:button-card
@@ -382,7 +448,6 @@ views:
             entity: plant.YOUR_PLANT                      # e.g., plant.rubber_tree
             name: Rubber Tree
             variables:
-              position: 9
               sensors:
                 - sensor.YOUR_PLANT_MOISTURE
                 - sensor.YOUR_PLANT_ILLUMINANCE
@@ -405,11 +470,8 @@ views:
         variables:
           image: kitchen-demo
           preload_rooms: *room_images
-          image_position: center center
-          # mobile_background: true
 
           # Climate (optional)
-          show_climate: false
           # climate_entity_1: climate.YOUR_KITCHEN_CLIMATE
 
           # Sensors
@@ -426,35 +488,26 @@ views:
           # aqi_entity_temp: sensor.YOUR_AQI_TEMP
           # aqi_entity_humidity: sensor.YOUR_AQI_HUMIDITY
 
-          show_weather: false
           # weather_entity: weather.YOUR_WEATHER
           # weather_temp_sensor: sensor.YOUR_OUTDOOR_TEMP
-          temp_unit: 'F'
 
           # Light Badge (optional)
-          show_lights: false
           # light_entity_1: light.YOUR_KITCHEN_LIGHTS
 
           # Media Player Badges (optional)
-          show_media: false
-          # show_media_player_1: true
           # media_player_1: media_player.YOUR_KITCHEN_PLAYER
 
       # MOBILE NAVBAR
-      - !include /config/dashboards/templates/includes/hemma_navbar_mobile.yaml
+      - !include /config/dashboards/templates/includes/hemma_navbar_tablet.yaml
 
       # ENTITY CARDS
-      - type: custom:layout-card
-        class: hemma-entities
-        layout_type: custom:grid-layout
-        layout: !include /config/dashboards/templates/includes/hemma_entity_layout.yaml
+      - type: custom:hemma-smart-row
         cards:
           - type: custom:button-card
             template: hemma_vacuum
             entity: vacuum.YOUR_VACUUM
             name: Robot Vacuum
             variables:
-              position: 1
               icon: vacuum
 
           - type: custom:button-card
@@ -462,25 +515,20 @@ views:
             entity: light.YOUR_KITCHEN_LIGHTS
             name: Lights
             variables:
-              position: 2
               icon: light
-              show_toggle: true
 
           - type: custom:button-card
             template: hemma_media
             entity: media_player.YOUR_KITCHEN_SPEAKER
             name: Speaker
             variables:
-              position: 3
               icon: speaker
-              show_progress: true
 
           - type: custom:button-card
             template: hemma_media
             entity: media_player.YOUR_KITCHEN_HOMEPOD     # optional second speaker
             name: HomePod
             variables:
-              position: 4
               icon: homepod
               show_progress: true
 
@@ -499,11 +547,8 @@ views:
         variables:
           image: bedroom-demo
           preload_rooms: *room_images
-          image_position: center center
-          # mobile_background: true
 
           # Climate (optional)
-          show_climate: false
           # climate_entity_1: climate.YOUR_BEDROOM_CLIMATE
 
           # Sensors
@@ -520,35 +565,26 @@ views:
           # aqi_entity_temp: sensor.YOUR_AQI_TEMP
           # aqi_entity_humidity: sensor.YOUR_AQI_HUMIDITY
 
-          show_weather: false
           # weather_entity: weather.YOUR_WEATHER
           # weather_temp_sensor: sensor.YOUR_OUTDOOR_TEMP
-          temp_unit: 'F'
 
           # Light Badge (optional)
-          show_lights: false
           # light_entity_1: light.YOUR_BEDROOM_LIGHTS
 
           # Media Player Badges (optional)
-          show_media: false
-          # show_media_player_1: true
           # media_player_1: media_player.YOUR_BEDROOM_PLAYER
 
       # MOBILE NAVBAR
-      - !include /config/dashboards/templates/includes/hemma_navbar_mobile.yaml
+      - !include /config/dashboards/templates/includes/hemma_navbar_tablet.yaml
 
       # ENTITY CARDS
-      - type: custom:layout-card
-        class: hemma-entities
-        layout_type: custom:grid-layout
-        layout: !include /config/dashboards/templates/includes/hemma_entity_layout.yaml
+      - type: custom:hemma-smart-row
         cards:
           - type: custom:button-card
             template: hemma_thermostat
             entity: climate.YOUR_BEDROOM_CLIMATE
             name: Thermostat
             variables:
-              position: 1
               temp_sensor: sensor.YOUR_BEDROOM_TEMP
 
           - type: custom:button-card
@@ -556,16 +592,13 @@ views:
             entity: light.YOUR_BEDROOM_LIGHTS
             name: Lights
             variables:
-              position: 2
               icon: light
-              show_toggle: true
 
           - type: custom:button-card
             template: hemma_media
             entity: media_player.YOUR_BEDROOM_APPLE_TV
             name: Apple TV
             variables:
-              position: 3
               icon: apple_tv
               show_progress: true
               progress_entity: media_player.YOUR_BEDROOM_APPLE_TV
@@ -575,7 +608,6 @@ views:
             entity: media_player.YOUR_BEDROOM_TV
             name: TV
             variables:
-              position: 4
               icon: tv
               show_toggle: true
 
@@ -584,7 +616,6 @@ views:
             entity: media_player.YOUR_BEDROOM_SPEAKER
             name: Speaker
             variables:
-              position: 5
               icon: speaker
 
           # Active Energy (room-level power monitoring)
@@ -593,7 +624,6 @@ views:
             template: hemma_energy
             name: Active Energy
             variables:
-              position: 6
               room_name: Bedroom
               entity_power: sensor.YOUR_BEDROOM_POWER
               entity_usage_today: sensor.YOUR_BEDROOM_ENERGY_TODAY    # optional
@@ -606,16 +636,13 @@ views:
             entity: fan.YOUR_BEDROOM_FAN
             name: Fan
             variables:
-              position: 7
               icon: fan
-              show_toggle: true
 
           - type: custom:button-card
-            template: hemma_curtain
+            template: hemma_cover
             entity: cover.YOUR_BEDROOM_CURTAIN
             name: Curtain
             variables:
-              position: 8
               icon: curtain
 
           - type: custom:button-card
@@ -623,18 +650,14 @@ views:
             entity: fan.YOUR_AIR_PURIFIER
             name: Air Purifier
             variables:
-              position: 9
               icon: purifier
-              show_toggle: true
 
           - type: custom:button-card
             template: hemma_humidifier
             entity: humidifier.YOUR_HUMIDIFIER
             name: Humidifier
             variables:
-              position: 10
               icon: humidifier
-              show_toggle: true
 
           # Plant Monitor (optional - requires plant integration + sensors)
           - type: custom:button-card
@@ -642,7 +665,6 @@ views:
             entity: plant.YOUR_PLANT                      # e.g., plant.monstera
             name: Monstera
             variables:
-              position: 11
               sensors:
                 - sensor.YOUR_PLANT_MOISTURE
                 - sensor.YOUR_PLANT_ILLUMINANCE

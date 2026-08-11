@@ -49,15 +49,6 @@ hemma_network:
     action_2_label: null
     action_2_status: null
 
-  triggers_update:
-    - '[[[ return variables.entity_upload || variables.upload_sensor || "" ]]]'
-    - '[[[ return variables.entity_stat_1 || "" ]]]'
-    - '[[[ return variables.entity_stat_2 || "" ]]]'
-    - '[[[ return variables.entity_stat_3 || "" ]]]'
-    - '[[[ return variables.entity_stat_4 || "" ]]]'
-    - '[[[ return variables.action_1_status || "" ]]]'
-    - '[[[ return variables.action_2_status || "" ]]]'
-
   icon_tap_action:
     action: more-info
     entity: >
@@ -94,8 +85,14 @@ hemma_network:
 
       const safe = (id) => { if (!id) return null; const n = parseFloat(states[id]?.state); return isNaN(n) ? null : n; };
 
-      // Tier and direction: WAN sensors only. LAN stat sensors (stat1–4) are
-      // informational (popup tiles) and must not drive the badge label or state.
+      // "Active Downloads" overflows a compact tile and gets ellipsised, so the
+      // text shrinks to fit its row instead. Optional-call guarded: hemma-core.js
+      // may not have loaded on the first render, and an unguarded throw here
+      // swaps in a button-card error card.
+      const fit = (t) => window.hemmaStateFit?.(t) ?? t;
+
+      // WAN sensors only — LAN stat sensors (stat1-4) are informational tiles
+      // and must not factor into the tier/direction here.
       const allVals = [safe(dlId), safe(ulId)].filter(v => v != null);
       const max = allVals.length > 0 ? Math.max(...allVals) : 0;
 
@@ -108,89 +105,15 @@ hemma_network:
       const light = Number(variables.light_threshold ?? 10);
       const heavy = Number(variables.heavy_threshold ?? 50);
 
-      if (max < idle) return 'Idle';
+      if (max < idle) return fit('Idle');
 
       const tier = max < light ? 'Light' : max < heavy ? 'Active' : 'Heavy';
       const dir  = (!dlOk || (ulOk && ul > dl)) ? 'Upload' : 'Download';
-      return `${tier} ${dir}`;
+      return fit(`${tier} ${dir}`);
     ]]]
 
-  extra_styles: |
-    #img-cell {
-      position: relative;
-      border-radius: 50% !important;
-      background: var(--hemma-icon-circle-bg, rgba(255,255,255,0.10)) !important;
-      width: 44px !important;
-      height: 44px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      overflow: hidden !important;
-    }
-    #img-cell::before { opacity: 0 !important; }
-    #img-cell img {
-      width: 68% !important;
-      height: 68% !important;
-      max-width: 68% !important;
-      max-height: 68% !important;
-      object-fit: contain !important;
-      flex: none !important;
-    }
-    #img-cell ha-icon {
-      --mdc-icon-size: 26px !important;
-      flex: none !important;
-      color: rgba(255,255,255,1.0) !important;
-    }
-    #icon { color: rgba(255,255,255,1.0) !important; }
-    @media (max-width: 767px) and (orientation: portrait) {
-      #img-cell { width: 38px !important; height: 38px !important; }
-      #img-cell ha-icon { --mdc-icon-size: 23px !important; }
-      #toggle { filter: invert(var(--hemma-toggle-invert, 0)); }
-    }
-    @media (hover: hover) {
-      #img-cell:hover { filter: brightness(1.15); transform: scale(1.03); transition: filter 0.15s ease, transform 0.15s ease; }
-    }
-    @media (hover: none) {
-      #img-cell:active { filter: brightness(1.15); transform: scale(1.03); }
-    }
-
-  # Heavy: glowing + yellow name color
-  # Active/Light: glowing only (name stays default color)
+  # Icon Activity
   state:
-    - operator: template
-      value: |
-        [[[
-          const safe = (id) => { if (!id) return null; const n = parseFloat(states[id]?.state); return isNaN(n) ? null : n; };
-          const vals = [
-            safe(variables.entity_download || entity?.entity_id),
-            safe(variables.entity_upload || variables.upload_sensor),
-          ].filter(v => v != null);
-          const max   = vals.length > 0 ? Math.max(...vals) : 0;
-          const heavy = Number(variables.heavy_threshold ?? 50);
-          return max >= heavy;
-        ]]]
-      styles:
-        card:
-          - "--hemma-active-overlay-opacity": "1"
-          - "--hemma-active-overlay-dur": "0s"
-          - --hemma-entity-top-gradient: none
-          - box-shadow: var(--hemma-button-card-box-shadow-active-current, var(--button-card-box-shadow-active, var(--button-card-box-shadow))) !important
-          - --hemma-icon-color-current: var(--hemma-popup-yellow-color, #ffd600)
-          - --hemma-icon-svg-url: "url('/local/hemma/icons/wifi.svg')"
-          - --hemma-icon-use-mask: "1"
-          - --hemma-entity-icon-animation: none
-          - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
-        name:
-          - color: var(--hemma-entity-name-active, var(--primary-text-color))
-        state:
-          - color: var(--hemma-entity-state-active-color)
-        img_cell:
-          - opacity: "1 !important"
-          - filter: none !important
-          - background: "var(--hemma-popup-yellow-color, #ffd600) !important"
-        entity_picture:
-          - opacity: "1 !important"
-          - filter: none !important
     - operator: template
       value: |
         [[[
@@ -206,14 +129,15 @@ hemma_network:
       styles:
         card:
           - "--hemma-active-overlay-opacity": "1"
+          - --hemma-entity-overlay-tint: var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))
           - "--hemma-active-overlay-dur": "0s"
           - --hemma-entity-top-gradient: none
           - box-shadow: var(--hemma-button-card-box-shadow-active-current, var(--button-card-box-shadow-active, var(--button-card-box-shadow))) !important
-          - --hemma-icon-color-current: var(--hemma-popup-primary-color, #00c3d0)
-          - --hemma-icon-svg-url: "url('/local/hemma/icons/wifi.svg')"
+          - --hemma-icon-color-current: "var(--hemma-popup-primary-color, #00c3d0)"
+          - --hemma-icon-svg-url: "[[[ return `url('${window.hemmaIconUrl('wifi')}')`; ]]]"
           - --hemma-icon-use-mask: "1"
-          - --hemma-entity-icon-animation: none
           - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
+          - --hemma-icon-mask-active: "0"
         name:
           - color: var(--hemma-entity-name-active, var(--primary-text-color))
         state:
@@ -225,3 +149,54 @@ hemma_network:
         entity_picture:
           - opacity: "1 !important"
           - filter: none !important
+    - operator: template
+      value: |
+        [[[
+          const safe = (id) => { if (!id) return null; const n = parseFloat(states[id]?.state); return isNaN(n) ? null : n; };
+          const vals = [
+            safe(variables.entity_download || entity?.entity_id),
+            safe(variables.entity_upload || variables.upload_sensor),
+          ].filter(v => v != null);
+          const max   = vals.length > 0 ? Math.max(...vals) : 0;
+          const heavy = Number(variables.heavy_threshold ?? 50);
+          return max >= heavy;
+        ]]]
+      styles:
+        card:
+          - "--hemma-active-overlay-opacity": "1"
+          - --hemma-entity-overlay-tint: var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))
+          - "--hemma-active-overlay-dur": "0s"
+          - --hemma-entity-top-gradient: none
+          - box-shadow: var(--hemma-button-card-box-shadow-active-current, var(--button-card-box-shadow-active, var(--button-card-box-shadow))) !important
+          - --hemma-icon-color-current: "var(--hemma-popup-yellow-color, #ffd600)"
+          - --hemma-icon-svg-url: "[[[ return `url('${window.hemmaIconUrl('wifi')}')`; ]]]"
+          - --hemma-icon-use-mask: "1"
+          - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
+          - --hemma-icon-mask-active: "0"
+        name:
+          - color: var(--hemma-entity-name-active, var(--primary-text-color))
+        state:
+          - color: var(--hemma-entity-state-active-color)
+        img_cell:
+          - opacity: "1 !important"
+          - filter: none !important
+          - background: "var(--hemma-popup-yellow-color, #ffd600) !important"
+        entity_picture:
+          - opacity: "1 !important"
+          - filter: none !important
+
+  styles:
+    card:
+      - --hemma-icon-inactive-color: |
+          [[[
+            const safe = (id) => { if (!id) return null; const n = parseFloat(states[id]?.state); return isNaN(n) ? null : n; };
+            const vals = [
+              safe(variables.entity_download || entity?.entity_id),
+              safe(variables.entity_upload || variables.upload_sensor),
+            ].filter(v => v != null);
+            const max  = vals.length > 0 ? Math.max(...vals) : 0;
+            const idle = Number(variables.idle_threshold ?? 1);
+            return max >= idle
+              ? 'var(--hemma-popup-primary-color, #00c3d0)'
+              : 'var(--hemma-icon-inactive-fallback-color, rgba(255,255,255,0.95))';
+          ]]]

@@ -1,4 +1,15 @@
 # Media Group Badge
+# Shows how many of several media players / game sessions are currently active.
+# Tap to expand/collapse the individual media sub-badges row
+# (driven by input_select.hemma_expanded_row).
+#
+# Variables:
+#   enabled                    - show/hide this badge (default: true)
+#   always_visible             - show even when nothing is active (default: false)
+#   pause_timeout_minutes      - minutes a paused player still counts as active (default: 10)
+#   entity_1 – entity_14       - media_player entity IDs to track
+#   steam_online_entity        - Discord/Steam online-status sensor (optional)
+#   steam_game_entity          - Discord/Steam current-game sensor (optional)
 hemma_badge_media_group:
   template: [hemma_badge_base]
 
@@ -6,7 +17,8 @@ hemma_badge_media_group:
 
   variables:
     enabled: true
-    pause_timeout_minutes: 5
+    always_visible: false
+    pause_timeout_minutes: 10
     entity_1: null
     entity_2: null
     entity_3: null
@@ -44,25 +56,63 @@ hemma_badge_media_group:
   double_tap_action:
     action: none
 
-  triggers_update:
-    - '[[[ return variables?.entity_1 ]]]'
-    - '[[[ return variables?.entity_2 ]]]'
-    - '[[[ return variables?.entity_3 ]]]'
-    - '[[[ return variables?.entity_4 ]]]'
-    - '[[[ return variables?.entity_5 ]]]'
-    - '[[[ return variables?.entity_6 ]]]'
-    - '[[[ return variables?.entity_7 ]]]'
-    - '[[[ return variables?.entity_8 ]]]'
-    - '[[[ return variables?.entity_9 ]]]'
-    - '[[[ return variables?.entity_10 ]]]'
-    - '[[[ return variables?.entity_11 ]]]'
-    - '[[[ return variables?.entity_12 ]]]'
-    - '[[[ return variables?.entity_13 ]]]'
-    - '[[[ return variables?.entity_14 ]]]'
-    - '[[[ return variables?.steam_online_entity ]]]'
-    - '[[[ return variables?.steam_game_entity ]]]'
-
-  extra_styles: |
+  extra_styles: >
+    [[[
+      const _d = (() => {
+        const enabled = (v) => {
+          if (v === undefined || v === null) return true;
+          if (typeof v === 'boolean') return v;
+          if (typeof v === 'number') return v !== 0;
+          return !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
+        };
+      
+        if (!enabled(variables?.enabled)) return 'none';
+        if (variables?.always_visible) return 'inline-grid';
+      
+        const isActive = (eid) => {
+          if (!eid) return false;
+          const s = hass.states[eid];
+          if (!s) return false;
+          const st = String(s.state || '').toLowerCase();
+          if (['unavailable','unknown','off','standby'].includes(st)) return false;
+          if (['playing','buffering','on'].includes(st)) return true;
+          const a = s.attributes || {};
+          const hasContent = !!(
+            String(a.media_title || '').trim() ||
+            String(a.media_artist || a.artist || a.media_album_artist || '').trim()
+          );
+          if (!hasContent) return false;
+          if (st === 'paused') {
+            const timeout = Number(variables?.pause_timeout_minutes ?? 10);
+            if (timeout <= 0) return true;
+            return ((new Date() - new Date(s.last_changed)) / 60000) <= timeout;
+          }
+          return st === 'idle';
+        };
+      
+        const isSteamActive = () => {
+          const onlineEntity = variables?.steam_online_entity;
+          const gameEntity = variables?.steam_game_entity;
+          if (!onlineEntity || !gameEntity) return false;
+      
+          const online = String(hass.states[onlineEntity]?.state || '').toLowerCase();
+          const game = String(hass.states[gameEntity]?.state || '').toLowerCase();
+      
+          return online === 'online' && !!game && game !== 'unknown' && game !== 'unavailable';
+        };
+      
+        const eids = [
+          variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4,
+          variables?.entity_5, variables?.entity_6, variables?.entity_7, variables?.entity_8,
+          variables?.entity_9, variables?.entity_10, variables?.entity_11, variables?.entity_12,
+          variables?.entity_13, variables?.entity_14
+        ].filter(Boolean);
+      
+        const activeCount = eids.filter(e => isActive(e)).length + (isSteamActive() ? 1 : 0);
+        return activeCount > 0 ? 'inline-grid' : 'none';
+      })();
+      const _hide = String(_d).trim() === 'none';
+      return `:host{display:${_hide ? 'none' : 'inline-block'} !important;}` + `
     #img-cell, .img-cell{ position: relative; }
 
     #img-cell #icon, .img-cell #icon{
@@ -82,11 +132,13 @@ hemma_badge_media_group:
       z-index: 5;
       background-color: var(--hemma-icon-color, var(--primary-text-color)) !important;
 
-      -webkit-mask: url('/local/hemma/icons/media.svg') no-repeat center / 100% 100%;
-      mask: url('/local/hemma/icons/media.svg') no-repeat center / 100% 100%;
+      -webkit-mask: url('data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%20%20%20%20%20%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20viewBox%3D%220%200%2036.1289%2029.6133%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2229.6133%22%20opacity%3D%220%22%20width%3D%2236.1289%22%20x%3D%220%22%20y%3D%220%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M20.3555%2025.5C20.3555%2025.8658%2020.3859%2026.2059%2020.4452%2026.5195L9.99609%2026.5195C9.48047%2026.5195%209.05859%2026.0977%209.05859%2025.5703C9.05859%2025.043%209.48047%2024.6211%209.99609%2024.6211L20.3555%2024.6211ZM30.5391%206.09375L30.5391%2010.0781L28.6523%2010.0781L28.6523%206.11719C28.6523%205.40234%2028.2188%204.96875%2027.5039%204.96875L4.28906%204.96875C3.5625%204.96875%203.12891%205.40234%203.12891%206.11719L3.12891%2019.5117C3.12891%2020.2266%203.5625%2020.6602%204.28906%2020.6602L20.3555%2020.6602L20.3555%2022.5469L4.25391%2022.5469C2.39062%2022.5469%201.24219%2021.3984%201.24219%2019.5352L1.24219%206.09375C1.24219%204.23047%202.39062%203.08203%204.25391%203.08203L27.5391%203.08203C29.4023%203.08203%2030.5391%204.23047%2030.5391%206.09375Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.5%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M24.4336%2028.0078L32.0508%2028.0078C33.6914%2028.0078%2034.5352%2027.1758%2034.5352%2025.5L34.5352%2014.1914C34.5352%2012.5156%2033.6914%2011.6719%2032.0508%2011.6719L24.4336%2011.6719C22.7695%2011.6719%2021.9492%2012.5156%2021.9492%2014.1914L21.9492%2025.5C21.9492%2027.1758%2022.7695%2028.0078%2024.4336%2028.0078ZM28.2539%2017.6484C27.1172%2017.6484%2026.2148%2016.7461%2026.2266%2015.6094C26.2383%2014.4844%2027.1172%2013.6055%2028.2539%2013.6055C29.3789%2013.6055%2030.2578%2014.4844%2030.2578%2015.6094C30.2578%2016.7461%2029.3789%2017.6484%2028.2539%2017.6484ZM28.2422%2025.9805C26.25%2025.9805%2024.6562%2024.375%2024.6562%2022.3828C24.6562%2020.3789%2026.25%2018.7852%2028.2422%2018.7734C30.2227%2018.7617%2031.8281%2020.3789%2031.8281%2022.3828C31.8281%2024.375%2030.2227%2025.9805%2028.2422%2025.9805ZM28.2422%2016.6172C28.793%2016.6172%2029.2266%2016.1719%2029.2266%2015.6094C29.2266%2015.0469%2028.793%2014.625%2028.2422%2014.625C27.6914%2014.625%2027.2461%2015.0703%2027.2461%2015.6094C27.2461%2016.1719%2027.6797%2016.6172%2028.2422%2016.6172ZM28.2422%2023.8828C29.0742%2023.8828%2029.7539%2023.2148%2029.7539%2022.3828C29.7539%2021.5039%2029.0977%2020.8477%2028.2422%2020.8477C27.4102%2020.8477%2026.7305%2021.5039%2026.7305%2022.3828C26.7305%2023.2148%2027.4102%2023.8828%2028.2422%2023.8828Z%22%20fill%3D%22white%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M28.2539%2017.6484C27.1172%2017.6484%2026.2148%2016.7461%2026.2266%2015.6094C26.2383%2014.4844%2027.1172%2013.6055%2028.2539%2013.6055C29.3789%2013.6055%2030.2578%2014.4844%2030.2578%2015.6094C30.2578%2016.7461%2029.3789%2017.6484%2028.2539%2017.6484ZM28.2422%2025.9805C26.25%2025.9805%2024.6562%2024.375%2024.6562%2022.3828C24.6562%2020.3789%2026.25%2018.7852%2028.2422%2018.7734C30.2227%2018.7617%2031.8281%2020.3789%2031.8281%2022.3828C31.8281%2024.375%2030.2227%2025.9805%2028.2422%2025.9805ZM28.2422%2016.6172C28.793%2016.6172%2029.2266%2016.1719%2029.2266%2015.6094C29.2266%2015.0469%2028.793%2014.625%2028.2422%2014.625C27.6914%2014.625%2027.2461%2015.0703%2027.2461%2015.6094C27.2461%2016.1719%2027.6797%2016.6172%2028.2422%2016.6172ZM28.2422%2023.8828C29.0742%2023.8828%2029.7539%2023.2148%2029.7539%2022.3828C29.7539%2021.5039%2029.0977%2020.8477%2028.2422%2020.8477C27.4102%2020.8477%2026.7305%2021.5039%2026.7305%2022.3828C26.7305%2023.2148%2027.4102%2023.8828%2028.2422%2023.8828Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.18%22%2F%3E%0A%20%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A') no-repeat center / 100% 100%;
+      mask: url('data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%20%20%20%20%20%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20viewBox%3D%220%200%2036.1289%2029.6133%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2229.6133%22%20opacity%3D%220%22%20width%3D%2236.1289%22%20x%3D%220%22%20y%3D%220%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M20.3555%2025.5C20.3555%2025.8658%2020.3859%2026.2059%2020.4452%2026.5195L9.99609%2026.5195C9.48047%2026.5195%209.05859%2026.0977%209.05859%2025.5703C9.05859%2025.043%209.48047%2024.6211%209.99609%2024.6211L20.3555%2024.6211ZM30.5391%206.09375L30.5391%2010.0781L28.6523%2010.0781L28.6523%206.11719C28.6523%205.40234%2028.2188%204.96875%2027.5039%204.96875L4.28906%204.96875C3.5625%204.96875%203.12891%205.40234%203.12891%206.11719L3.12891%2019.5117C3.12891%2020.2266%203.5625%2020.6602%204.28906%2020.6602L20.3555%2020.6602L20.3555%2022.5469L4.25391%2022.5469C2.39062%2022.5469%201.24219%2021.3984%201.24219%2019.5352L1.24219%206.09375C1.24219%204.23047%202.39062%203.08203%204.25391%203.08203L27.5391%203.08203C29.4023%203.08203%2030.5391%204.23047%2030.5391%206.09375Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.5%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M24.4336%2028.0078L32.0508%2028.0078C33.6914%2028.0078%2034.5352%2027.1758%2034.5352%2025.5L34.5352%2014.1914C34.5352%2012.5156%2033.6914%2011.6719%2032.0508%2011.6719L24.4336%2011.6719C22.7695%2011.6719%2021.9492%2012.5156%2021.9492%2014.1914L21.9492%2025.5C21.9492%2027.1758%2022.7695%2028.0078%2024.4336%2028.0078ZM28.2539%2017.6484C27.1172%2017.6484%2026.2148%2016.7461%2026.2266%2015.6094C26.2383%2014.4844%2027.1172%2013.6055%2028.2539%2013.6055C29.3789%2013.6055%2030.2578%2014.4844%2030.2578%2015.6094C30.2578%2016.7461%2029.3789%2017.6484%2028.2539%2017.6484ZM28.2422%2025.9805C26.25%2025.9805%2024.6562%2024.375%2024.6562%2022.3828C24.6562%2020.3789%2026.25%2018.7852%2028.2422%2018.7734C30.2227%2018.7617%2031.8281%2020.3789%2031.8281%2022.3828C31.8281%2024.375%2030.2227%2025.9805%2028.2422%2025.9805ZM28.2422%2016.6172C28.793%2016.6172%2029.2266%2016.1719%2029.2266%2015.6094C29.2266%2015.0469%2028.793%2014.625%2028.2422%2014.625C27.6914%2014.625%2027.2461%2015.0703%2027.2461%2015.6094C27.2461%2016.1719%2027.6797%2016.6172%2028.2422%2016.6172ZM28.2422%2023.8828C29.0742%2023.8828%2029.7539%2023.2148%2029.7539%2022.3828C29.7539%2021.5039%2029.0977%2020.8477%2028.2422%2020.8477C27.4102%2020.8477%2026.7305%2021.5039%2026.7305%2022.3828C26.7305%2023.2148%2027.4102%2023.8828%2028.2422%2023.8828Z%22%20fill%3D%22white%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M28.2539%2017.6484C27.1172%2017.6484%2026.2148%2016.7461%2026.2266%2015.6094C26.2383%2014.4844%2027.1172%2013.6055%2028.2539%2013.6055C29.3789%2013.6055%2030.2578%2014.4844%2030.2578%2015.6094C30.2578%2016.7461%2029.3789%2017.6484%2028.2539%2017.6484ZM28.2422%2025.9805C26.25%2025.9805%2024.6562%2024.375%2024.6562%2022.3828C24.6562%2020.3789%2026.25%2018.7852%2028.2422%2018.7734C30.2227%2018.7617%2031.8281%2020.3789%2031.8281%2022.3828C31.8281%2024.375%2030.2227%2025.9805%2028.2422%2025.9805ZM28.2422%2016.6172C28.793%2016.6172%2029.2266%2016.1719%2029.2266%2015.6094C29.2266%2015.0469%2028.793%2014.625%2028.2422%2014.625C27.6914%2014.625%2027.2461%2015.0703%2027.2461%2015.6094C27.2461%2016.1719%2027.6797%2016.6172%2028.2422%2016.6172ZM28.2422%2023.8828C29.0742%2023.8828%2029.7539%2023.2148%2029.7539%2022.3828C29.7539%2021.5039%2029.0977%2020.8477%2028.2422%2020.8477C27.4102%2020.8477%2026.7305%2021.5039%2026.7305%2022.3828C26.7305%2023.2148%2027.4102%2023.8828%2028.2422%2023.8828Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.18%22%2F%3E%0A%20%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A') no-repeat center / 100% 100%;
 
       transform: translateZ(0);
     }
+      `;
+    ]]]
 
   styles:
     icon:
@@ -100,6 +152,12 @@ hemma_badge_media_group:
               ? 'var(--badge-active-color, rgba(255,255,255,0.85))'
               : 'var(--badge-background, rgba(0,0,0,0.18))';
           ]]]
+      - transition: >
+          [[[
+            if (!this._hemmaMediaGroupMountTime) this._hemmaMediaGroupMountTime = Date.now();
+            if (Date.now() - this._hemmaMediaGroupMountTime < 400) return 'none';
+            return 'background-color .22s ease, box-shadow .24s ease, transform .24s ease, filter .18s ease, opacity .35s ease';
+          ]]]
       - display: >
           [[[
             const enabled = (v) => {
@@ -110,6 +168,7 @@ hemma_badge_media_group:
             };
 
             if (!enabled(variables?.enabled)) return 'none';
+            if (variables?.always_visible) return 'inline-grid';
 
             const isActive = (eid) => {
               if (!eid) return false;
@@ -125,7 +184,7 @@ hemma_badge_media_group:
               );
               if (!hasContent) return false;
               if (st === 'paused') {
-                const timeout = Number(variables?.pause_timeout_minutes ?? 5);
+                const timeout = Number(variables?.pause_timeout_minutes ?? 10);
                 if (timeout <= 0) return true;
                 return ((new Date() - new Date(s.last_changed)) / 60000) <= timeout;
               }
@@ -179,7 +238,7 @@ hemma_badge_media_group:
               );
               if (!hasContent) return false;
               if (st === 'paused') {
-                const timeout = Number(variables?.pause_timeout_minutes ?? 5);
+                const timeout = Number(variables?.pause_timeout_minutes ?? 10);
                 if (timeout <= 0) return true;
                 return ((new Date() - new Date(s.last_changed)) / 60000) <= timeout;
               }
@@ -205,6 +264,7 @@ hemma_badge_media_group:
             ];
 
             const anyActive = eids.some(e => isActive(e)) || isSteamActive();
+            if (variables?.always_visible) return 'var(--hemma-badge-media-color)';
             return anyActive ? 'var(--hemma-badge-media-color)' : 'var(--badge-title-inactive)';
           ]]]
       - --icon-primary-color: var(--hemma-icon-color)
@@ -228,7 +288,7 @@ hemma_badge_media_group:
         );
         if (!hasContent) return false;
         if (st === 'paused') {
-          const timeout = Number(variables?.pause_timeout_minutes ?? 5);
+          const timeout = Number(variables?.pause_timeout_minutes ?? 10);
           if (timeout <= 0) return true;
           return ((new Date() - new Date(s.last_changed)) / 60000) <= timeout;
         }
@@ -254,7 +314,7 @@ hemma_badge_media_group:
       ].filter(Boolean);
 
       const activeCount = eids.filter(e => isActive(e)).length + (isSteamActive() ? 1 : 0);
-      const sub = activeCount === 1 ? '1 Playing' : `${activeCount} Playing`;
+      const sub = activeCount === 0 ? 'None Playing' : activeCount === 1 ? '1 Playing' : `${activeCount} Playing`;
 
       return `
         <div class="badge-wrap">

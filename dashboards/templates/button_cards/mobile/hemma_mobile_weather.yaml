@@ -1,0 +1,91 @@
+# Mobile Dashboard Header
+hemma_mobile_weather:
+  show_icon: false
+  show_name: true
+  show_state: false
+  show_label: false
+  show_entity_picture: false
+  full_width: true
+  tap_action: {action: none}
+
+  hold_action: {action: none}
+  double_tap_action: {action: none}
+
+  variables:
+    weather_entity: null
+    weather_temp_sensor: null
+
+  name: >
+    [[[
+      const f = states['input_select.hemma_mobile_filter']?.state ?? 'all';
+      const labels = {all:'Home',climate:'Climate',lights:'Lights',presence:'People',media:'Media',security:'Security',energy:'Energy'};
+      return labels[f] || 'Home';
+    ]]]
+
+  extra_styles: |
+    @keyframes titleFadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 0.9; transform: translateY(0); }
+    }
+    #name { animation: titleFadeIn 0.3s ease-out both; }
+    ha-card.button-card-main {
+      align-items: stretch !important;
+      justify-content: flex-start !important;
+      text-align: left !important;
+    }
+    #container, .button-card-content { width: 100% !important; }
+    #name { justify-self: start !important; }
+
+
+  custom_fields:
+    weather:
+      card:
+        type: custom:button-card
+        template: hemma_weather
+        entity: '[[[ return variables.weather_entity ]]]'
+        variables:
+          weather_temp_sensor: '[[[ return variables.weather_temp_sensor ]]]'
+          hero_mode: false
+
+  styles:
+    card:
+      - background: transparent
+      - backdrop-filter: "none !important"
+      - -webkit-backdrop-filter: "none !important"
+      - box-shadow: none
+      - border: none
+      - border-radius: 0
+      - padding: "52px var(--hemma-rail-left, 11px) 12px max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))"
+      - margin: 0
+      - "--button-card-ripple-color": transparent
+      - "-webkit-tap-highlight-color": transparent
+      - overflow: visible
+      - position: relative
+    grid:
+      - display: block
+      - text-align: left
+      - justify-items: start
+    name:
+      - font-size: "var(--hero-room-name-size-current, clamp(38px, 4vw + 2px, 64px))"
+      - font-weight: "700"
+      - color: "#ffffff"
+      - opacity: "0.9"
+      - letter-spacing: "-2px"
+      - line-height: "1.2"
+      - text-align: left
+      - overflow: visible
+      - padding: 0
+      - margin: 0
+      - max-width: "calc(100% - 145px)"
+    custom_fields:
+      weather:
+        - display: >
+            [[[
+              const f = states['input_select.hemma_mobile_filter']?.state ?? 'all';
+              return f === 'all' ? 'block' : 'none';
+            ]]]
+        - position: absolute
+        - top: "calc(52px + var(--hero-room-name-size-current, 38px) * 0.6)"
+        - transform: translateY(-50%)
+        - right: "var(--hemma-rail-left, 11px)"
+        - z-index: 1

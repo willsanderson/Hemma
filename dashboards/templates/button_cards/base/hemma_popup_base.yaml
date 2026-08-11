@@ -1,4 +1,17 @@
 hemma_popup_base:
+  # window.hemmaIconUrl load-race guard — see hemma_default.yaml for why.
+  variables:
+    hemma_icon_url_guard:
+      force_eval: true
+      value: |
+        [[[
+          if (typeof window.hemmaIconUrl !== 'function') {
+            window.hemmaIconUrl = (name) =>
+              (window.HEMMA_ICONS && window.HEMMA_ICONS[name]) ||
+              `/local/hemma/icons/${name}.svg`;
+          }
+          return true;
+        ]]]
 
   tap_action:
     haptic: light
@@ -18,10 +31,7 @@ hemma_popup_base:
         popup_styles:
           - style: all
             styles: |
-              ha-adaptive-dialog, ha-dialog { --dialog-surface-margin-top: 100px; }
-              @media (min-width: 1250px) {
-                ha-adaptive-dialog, ha-dialog { --dialog-surface-margin-top: 150px; }
-              }
+              ha-adaptive-dialog, ha-dialog { --dialog-surface-margin-top: 90px; }
 
   icon_tap_action:
     haptic: light
@@ -41,7 +51,4 @@ hemma_popup_base:
         popup_styles:
           - style: all
             styles: |
-              ha-adaptive-dialog, ha-dialog { --dialog-surface-margin-top: 100px; }
-              @media (min-width: 1250px) {
-                ha-adaptive-dialog, ha-dialog { --dialog-surface-margin-top: 150px; }
-              }
+              ha-adaptive-dialog, ha-dialog { --dialog-surface-margin-top: 90px; }

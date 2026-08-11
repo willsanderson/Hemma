@@ -1,0 +1,129 @@
+# Security Badge
+# Shows consolidated lock status for up to two locks.
+#
+# Variables:
+#   enabled       - show/hide this badge (default: true)
+#   lock_entity   - primary lock entity_id
+#   lock_entity_2 - second lock entity_id (optional)
+hemma_badge_security_group:
+  template: [hemma_badge_base]
+
+  show_state: false
+  show_label: false
+  show_icon: true
+
+  variables:
+    enabled: true
+    lock_entity: null
+    lock_entity_2: null
+
+  entity: input_select.hemma_expanded_row
+
+  tap_action:
+    action: call-service
+    service: input_select.select_option
+    service_data:
+      entity_id: input_select.hemma_expanded_row
+      option: >
+        [[[
+          return states['input_select.hemma_expanded_row']?.state === 'security'
+            ? 'none' : 'security';
+        ]]]
+
+  hold_action:
+    action: none
+  double_tap_action:
+    action: none
+
+  icon: >
+    [[[
+      const locks = [variables.lock_entity, variables.lock_entity_2].filter(Boolean);
+      const anyUnlocked = locks.some(eid => states[eid]?.state === 'unlocked');
+      return anyUnlocked ? 'mdi:lock-open-variant' : 'mdi:lock';
+    ]]]
+
+  styles:
+    card:
+      - background: >
+          [[[
+            return entity?.state === 'security'
+              ? 'var(--badge-active-color, rgba(255,255,255,0.85))'
+              : 'var(--badge-background, rgba(0,0,0,0.18))';
+          ]]]
+      - display: >
+          [[[
+            const ev = variables?.enabled;
+            const enabled = (ev === undefined || ev === null) ? true :
+              (typeof ev === 'boolean') ? ev :
+              (typeof ev === 'number') ? ev !== 0 :
+              !['false','0','no','off','disabled'].includes(String(ev).trim().toLowerCase());
+            return enabled ? 'inline-grid' : 'none';
+          ]]]
+      - --badge-title-color: >
+          [[[
+            return entity?.state === 'security' ? 'rgba(0,0,0,0.85)' : 'var(--primary-text-color)';
+          ]]]
+      - --badge-sub-color: >
+          [[[
+            return entity?.state === 'security' ? 'rgba(0,0,0,0.6)' : 'var(--secondary-text-color)';
+          ]]]
+      - --hemma-badge-icon-color: >
+          [[[
+            if (entity?.state === 'security') return 'rgba(0,0,0,0.75)';
+            const locks = [variables.lock_entity, variables.lock_entity_2].filter(Boolean);
+            const anyUnlocked = locks.some(eid => states[eid]?.state === 'unlocked');
+            return anyUnlocked
+              ? 'var(--hemma-badge-alert-color, #ff9800)'
+              : 'var(--hemma-badge-security-color, #00c3d0)';
+          ]]]
+      - --icon-primary-color: var(--hemma-badge-icon-color)
+      - --paper-item-icon-color: var(--hemma-badge-icon-color)
+      - --state-icon-color: var(--hemma-badge-icon-color)
+
+    icon:
+      - color: var(--hemma-badge-icon-color)
+
+  name: >
+    [[[
+      const locks = [variables.lock_entity, variables.lock_entity_2].filter(Boolean);
+      const anyUnlocked = locks.some(eid => states[eid]?.state === 'unlocked');
+      const sub = anyUnlocked ? 'Unlocked' : 'Secured';
+      return `
+        <div class="badge-wrap">
+          <div class="badge-title">Security</div>
+          <div class="badge-sub">${sub}</div>
+        </div>
+      `;
+    ]]]
+
+  extra_styles: >
+    [[[
+      const ev = variables?.enabled;
+      const enabled = (ev === undefined || ev === null) ? true :
+        (typeof ev === 'boolean') ? ev :
+        (typeof ev === 'number') ? ev !== 0 :
+        !['false','0','no','off','disabled'].includes(String(ev).trim().toLowerCase());
+
+      const ids = [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean);
+      const open = ids.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
+      const URL = window.hemmaIconUrl(open === 0 ? 'lock-fill' : 'lock-open-fill');
+
+      return `:host{display:${enabled ? 'inline-block' : 'none'} !important;}
+        #img-cell, .img-cell{ position: relative; }
+
+        #img-cell #icon, .img-cell #icon{
+          color: transparent !important;
+          opacity: 0 !important;
+        }
+
+        #img-cell::before,
+        .img-cell::before{
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-color: var(--hemma-badge-icon-color, var(--hemma-badge-security-color, #00c3d0)) !important;
+          -webkit-mask: url('${URL}') no-repeat center / auto 72%;
+          mask: url('${URL}') no-repeat center / auto 72%;
+          transform: translateZ(0);
+        }`;
+    ]]]
