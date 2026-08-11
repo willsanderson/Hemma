@@ -69,6 +69,19 @@ Install via HACS (recommended) unless noted:
 
 ---
 
+### Desktop View
+<img width="1400" height="840" alt="home-day" src="https://github.com/user-attachments/assets/5f80dffb-455d-4773-bfc6-c0f43cf93f18" />
+
+### Light/Dark Mode
+<img width="1400" height="843" alt="bedroom-day" src="https://github.com/user-attachments/assets/e111998e-03e6-416d-9e43-d09049767046" />
+
+<img width="1400" height="842" alt="bedroom-night" src="https://github.com/user-attachments/assets/01d75265-ecca-4378-aaad-e4788010fa6e" />
+
+### Mobile View (Light/Dark)
+<img width="850" height="600" alt="mobile" src="https://github.com/user-attachments/assets/96b0a526-62aa-450b-b0a4-dd1cbf6ba4af" />
+
+---
+
 ### Popup Cards
 
 ##### Air Quality
@@ -93,19 +106,6 @@ Install via HACS (recommended) unless noted:
 <img width="615" height="475" alt="recently-added" src="https://github.com/user-attachments/assets/19b689f4-19e5-4538-b2e1-3bfd342fa3a2" />
 
 Also included (screenshots coming soon): **Light control** (multi-room filtering + scenes), **Lock/security group**, **Cover/shades group**, and **Plex now-playing stream**.
-
----
-
-### Desktop View
-<img width="1400" height="840" alt="home-day" src="https://github.com/user-attachments/assets/5f80dffb-455d-4773-bfc6-c0f43cf93f18" />
-
-### Light/Dark Mode
-<img width="1400" height="843" alt="bedroom-day" src="https://github.com/user-attachments/assets/e111998e-03e6-416d-9e43-d09049767046" />
-
-<img width="1400" height="842" alt="bedroom-night" src="https://github.com/user-attachments/assets/01d75265-ecca-4378-aaad-e4788010fa6e" />
-
-### Mobile View (Light/Dark)
-<img width="850" height="600" alt="mobile" src="https://github.com/user-attachments/assets/96b0a526-62aa-450b-b0a4-dd1cbf6ba4af" />
 
 ---
 
