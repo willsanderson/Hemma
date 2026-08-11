@@ -35,7 +35,7 @@ Hemma now ships as **two dashboards**: the desktop/tablet dashboard (`hemma.yaml
 - **Popups**
   - Climate/air quality, energy usage, network, light control (multi-room + scenes), lock/security group, cover/shades group, plant monitor, battery monitor, system updates, Plex stream, and Plex Recently Added.
 
-### :iphone: Mobile Dashboard (NEW)
+### :iphone: Mobile Dashboard
 A dedicated phone experience inspired on the Apple Home app:
 - **Filter badge pills** (Climate / Lights / People / Media / Security / Energy) — tap a pill and a full-screen popup slides up with every matching card from your rooms, auto-collected (no per-popup configuration)
 - **Room popups** — tap a room's section header for a popup with all of that room's cards, plus a room-scoped sensor chip row (temperature / humidity / air quality / lights / motion) that deep-links into the matching popups
