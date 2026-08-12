@@ -507,6 +507,8 @@ hemma_now_playing_primary:
               ? 'calc(var(--np-art-size, 100px) + (2 * var(--np-pad-tb, var(--np-pad-v, 12px))))'
               : 'auto';
           ]]]
+      - -webkit-text-size-adjust: "100%"
+      - text-size-adjust: "100%"
       - width: var(--np-tile-width, 100%) !important
       - min-width: 0
       # VALUE only, no !important: button-card's styles.card applies via style.setProperty(), which silently drops any value containing "!important" — real enforcement lives in extra_styles as genuine CSS (see ha-card max-width below).
@@ -983,6 +985,30 @@ hemma_now_playing_primary:
         --np-elev-blur: 6px;
         --np-elev-y: 1px;
         /* Phone slots are sized by the row itself, so the desktop cap and right-align both come off here. */
+        max-width: 100% !important;
+        margin-left: 0;
+      }
+    }
+
+    /* Phone landscape. Without this the tile fell through EVERY breakpoint — 932px wide fails the
+       mobile query's max-width:600px, and 430px tall fails the tablet query's min-height:501px — so
+       it silently used the desktop defaults (94px art, 16px padding, 15px title) on the shortest
+       viewport there is. Same condition the theme uses for phone landscape.
+       --np-pad-tb is restated deliberately: it is set unconditionally on :host, so it does NOT
+       inherit this block's --np-pad-v (see the note on the desktop declaration). */
+    @media (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-height: 600px) {
+      :host{
+        --np-art-size: 112px;
+        --np-title-size: 16px;
+        --np-sub-size: 14px;
+        --np-pad-v: 12px;
+        --np-pad-tb: 10px;
+        --np-row-gap: 5px;
+        --np-track-gap: 6px;
+        --np-elev-alpha: 0.10;
+        --np-elev-blur: 6px;
+        --np-elev-y: 1px;
+        /* Slot width is owned by the row, as on portrait mobile. */
         max-width: 100% !important;
         margin-left: 0;
       }

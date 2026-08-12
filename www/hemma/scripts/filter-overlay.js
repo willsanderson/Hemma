@@ -45,6 +45,13 @@
   }
   const LANDSCAPE_GUTTER_CALC = `calc(60px * var(${LANDSCAPE_PHONE_VAR}, 0))`;
 
+  const isLandscapePhone = () => {
+    try {
+      return (getComputedStyle(document.documentElement)
+        .getPropertyValue(LANDSCAPE_PHONE_VAR) || '').trim() === '1';
+    } catch (_) { return false; }
+  };
+
   // Scroll-header mode tunables.
   const COMPACT_BAR_HEIGHT = 44; // compact nav title content height, below the safe-area inset
   const BADGE_LOCK_GAP     = 6;  // gap between compact bar bottom and the pinned badge row
@@ -1450,6 +1457,7 @@
         if (w) {
           w.style.removeProperty('width');
           w.style.removeProperty('margin-top');
+          w.style.removeProperty('padding-left');
           if (parent) {
             if (sibling && sibling.parentNode === parent) parent.insertBefore(w, sibling);
             else parent.appendChild(w);
@@ -1847,19 +1855,22 @@
             sibling: this._npWrapper.nextSibling,
           };
           this._npWrapper.style.setProperty('width', '100%', 'important');
+          this._npWrapper.style.setProperty('padding-left', LANDSCAPE_GUTTER_CALC, 'important');
           this._contentEl.insertBefore(this._npWrapper, this._subBadgesWrapper.nextSibling);
-          const shift = npNaturalTop - this._npWrapper.getBoundingClientRect().top;
-          if (Math.abs(shift) > 0.1 && Math.abs(shift) <= 160) {
-            this._npWrapper.style.setProperty('margin-top', `${shift.toFixed(2)}px`, 'important');
-          }
-          requestAnimationFrame(() => {
-            if (!this._showing || this._npWrapper?.parentNode !== this._contentEl) return;
-            const resid = npNaturalTop - this._npWrapper.getBoundingClientRect().top;
-            if (Math.abs(resid) > 0.1 && Math.abs(resid) <= 12) {
-              const cur = parseFloat(this._npWrapper.style.getPropertyValue('margin-top')) || 0;
-              this._npWrapper.style.setProperty('margin-top', `${(cur + resid).toFixed(2)}px`, 'important');
+          if (!isLandscapePhone()) {
+            const shift = npNaturalTop - this._npWrapper.getBoundingClientRect().top;
+            if (Math.abs(shift) > 0.1 && Math.abs(shift) <= 160) {
+              this._npWrapper.style.setProperty('margin-top', `${shift.toFixed(2)}px`, 'important');
             }
-          });
+            requestAnimationFrame(() => {
+              if (!this._showing || this._npWrapper?.parentNode !== this._contentEl) return;
+              const resid = npNaturalTop - this._npWrapper.getBoundingClientRect().top;
+              if (Math.abs(resid) > 0.1 && Math.abs(resid) <= 12) {
+                const cur = parseFloat(this._npWrapper.style.getPropertyValue('margin-top')) || 0;
+                this._npWrapper.style.setProperty('margin-top', `${(cur + resid).toFixed(2)}px`, 'important');
+              }
+            });
+          }
         }
 
         for (const w of [this._subBadgesWrapper, this._npWrapper]) {
@@ -2167,6 +2178,7 @@
         const fixNp = () => {
           if (!this._showing || overlayEl.scrollTop > 1) return;
           if (this._npWrapper?.parentNode !== contentEl) return;
+          if (isLandscapePhone()) return;
           for (let i = 0; i < 2; i++) {
             const resid = this._npNaturalTop - this._npWrapper.getBoundingClientRect().top;
             if (Math.abs(resid) <= 0.1 || Math.abs(resid) > 12) break;

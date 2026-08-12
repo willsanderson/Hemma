@@ -588,6 +588,21 @@ hemma_mobile_now_playing:
           flex: 1 1 auto !important;
           --np-bloom-strength: 0.62;
         }
+
+        @media (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-height: 600px) {
+          #np_rail > * {
+            width: calc((100vw
+              - (max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))
+                 + max(env(safe-area-inset-right), var(--hemma-rail-left, 11px)))
+              - 60px - var(--np-gap, 10px)) / 2) !important;
+            max-width: calc((100vw
+              - (max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))
+                 + max(env(safe-area-inset-right), var(--hemma-rail-left, 11px)))
+              - 60px - var(--np-gap, 10px)) / 2) !important;
+          }
+        }
+
+
       `;
 
       const npList = (typeof window._hemmaNPView === 'function')
@@ -597,6 +612,7 @@ hemma_mobile_now_playing:
       const shown = anyActive;
       const ov = shown ? 'visible' : 'hidden';
       this.toggleAttribute('data-hemma-np-empty', !shown);
+
       return staticCSS + npCSS +
         `:host{display:grid!important;overflow:${ov}!important;grid-template-rows:${shown?'1fr':'0fr'}!important;grid-template-columns:minmax(0,1fr)!important;opacity:${shown?'1':'0'};pointer-events:${shown?'auto':'none'};transition:grid-template-rows .5s cubic-bezier(0.32,0.72,0,1),opacity ${shown?'.35s ease .12s':'.25s ease'}}` +
         `#aspect-ratio{overflow:${ov}!important}` +
@@ -647,7 +663,7 @@ hemma_mobile_now_playing:
         - scroll-snap-type: "x mandatory"
         - scroll-padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))"
         - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) !important"
-        - padding-right: "var(--hemma-rail-left, 11px) !important"
+        - padding-right: "max(env(safe-area-inset-right), var(--hemma-rail-left, 11px)) !important"
         - padding-top: "16px !important"
         - padding-bottom: "16px !important"
         - margin: "-16px 0 -16px 0 !important"
@@ -684,7 +700,7 @@ hemma_mobile_now_playing:
             opacity 0.26s ease,
             max-height 0.38s cubic-bezier(0.32, 0.72, 0, 1)
         - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) !important"
-        - padding-right: "var(--hemma-rail-left, 11px) !important"
+        - padding-right: "max(env(safe-area-inset-right), var(--hemma-rail-left, 11px)) !important"
         - margin: "calc(var(--npm-open, 0) * 10px) 0 0 0 !important"
         - width: "100%"
         - box-sizing: border-box
@@ -815,15 +831,29 @@ hemma_mobile_now_playing:
             planState.snapGen = planGen;
             const slotSnapped = snapOn ? (planState.changed || {}) : {};
             const usesPeek = !useColumn && liveList.filter(Boolean).length > 1;
-            const gutters = `(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + var(--hemma-rail-left, 11px))`;
-            const peekW = `calc(100vw - ${gutters} - var(--np-peek, 26px))`;
-            const activeW = usesPeek ? peekW : `calc(100vw - ${gutters})`;
+            /* --hemma-measured-safe-left is measured for the LEFT only (smart-row.js), and the
+               right gutter was a flat 11px — so in landscape, where the notch/inset sits on the
+               right, the tile ran underneath it and got clipped. env() covers the right directly;
+               no JS measurement needed. */
+            const gutters = `(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))`
+              + ` + max(env(safe-area-inset-right), var(--hemma-rail-left, 11px)))`;
+            const cap = 'var(--np-slot-cap, 100vw)';
+            const peekW = `min(calc(100vw - ${gutters} - var(--np-peek, 26px)), ${cap})`;
+            const fullW = `min(calc(100vw - ${gutters}), ${cap})`;
+            const activeW = usesPeek ? peekW : fullW;
             /* The gap must NOT animate. It is margin-right on every slot, and column mode used to
                drop it to 0 — so while a neighbour was still visibly collapsing, the head's right
                margin was closing at the same time and the two tiles met. Holding it constant
                whenever more than one slot is occupied means the separation is always there and
                the collapsing slot simply carries its own margin down to 0 with its width. */
             const activeGap = (usesPeek || useColumn) ? 'var(--np-gap, 10px)' : '0px';
+
+            const lsAvailExpr = `(100vw - ${gutters} - 60px)`;
+            const lsColW = `calc((${lsAvailExpr} - var(--np-gap, 10px)) / 2)`;
+            const lsQ = '@media (hover: none) and (pointer: coarse)'
+              + ' and (orientation: landscape) and (max-height: 600px)';
+            const lsSlots = '#media1, #media2, #media3, #media4, #media5,'
+              + ' #media6, #media7, #media8, #media9';
 
             const curKeys = settled.map(e => e?.key || null);
             const prevKeys = this._npSlotKeys || [];
@@ -1105,7 +1135,7 @@ hemma_mobile_now_playing:
                more than one slot was filled (counting the leaver itself), which is not the same
                as usesPeek — that already reflects the post-departure live count. */
             const occupied = plan.filter(Boolean).length;
-            const exitChildW = occupied > 1 ? peekW : `calc(100vw - ${gutters})`;
+            const exitChildW = occupied > 1 ? peekW : fullW;
 
             /* When the slot leaving is NOT the rightmost one, there is nothing to the right of the
                survivors to make room for — they should already BE full width as they slide across,
@@ -1205,7 +1235,8 @@ hemma_mobile_now_playing:
                  previous render's value, so a slot reading var(--np-active-w) applies a stale
                  width. Combined with a snap render that locked the stale peek value in, that is
                  what left the survivor narrow. */
-              :host { --np-active-w: ${activeW}; --np-active-gap: ${activeGap}; --np-bloom-strength: 0.62; }
+              :host { --np-active-w: ${activeW}; --np-active-gap: ${activeGap}; --np-bloom-strength: 0.62;
+                      --np-slot-cap: 100vw; }
               #media1, #media2, #media3, #media4, #media5,
               #media6, #media7, #media8, #media9 {
                 width: ${activeW} !important;
@@ -1228,6 +1259,15 @@ hemma_mobile_now_playing:
                 overflow: visible;
                 display: flex;
                 flex-direction: column;
+              }
+              ${lsQ} {
+                ${lsSlots} {
+                  width: ${lsColW} !important;
+                  min-width: ${lsColW} !important;
+                  max-width: ${lsColW} !important;
+                }
+                ${!useColumn && lastOcc >= 0
+                  ? `#${flipIds[lastOcc]} { margin-right: 0 !important; }` : ''}
               }
             ` + slotCSS;
           ]]]
