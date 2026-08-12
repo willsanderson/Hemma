@@ -999,6 +999,27 @@
   // portrait) OR short (phone landscape / very short windows).
   const MOBILE_MQ = window.matchMedia('(max-width: 767px), (max-height: 500px)');
   const MOBILE_RE = /^\/dashboard-hemma-mobile(\/|$)/;
+  // Build marker. Read --hemma-wallpaper-js in the console: if it is missing, an
+  // OLD cached script is serving this module and the theme's fallback literals
+  // are painting instead of sampled colours — silently, because the fallbacks are
+  // valid CSS. Lovelace resources are version-pinned per file (`?v=`), so moving
+  // code between files means BOTH files' pins have to be bumped. This module used
+  // to live in hemma-redirect.js; bumping only one of the two leaves either a
+  // stale copy running or no copy at all.
+  const WALLPAPER_JS = 3;
+  // Refuse to run twice. A stale hemma-redirect.js still ships its own copy of
+  // this module, and two of them would both publish variables and both paint
+  // <html>.
+  if ((window.__hemmaWallpaperJs || 0) >= WALLPAPER_JS) return;
+  window.__hemmaWallpaperJs = WALLPAPER_JS;
+  try {
+    document.documentElement.style.setProperty(
+      '--hemma-wallpaper-js', String(WALLPAPER_JS));
+  } catch (e) {}
+
+  // Phone landscape. MOBILE_MQ cannot stand in for this: 393x852 and 852x393
+  // both satisfy it, so it never fires on rotation.
+  const LANDSCAPE_MQ = window.matchMedia('(orientation: landscape) and (max-height: 500px)');
 
   // ── Background injection ─────────────────────────────────────────────────────
 
@@ -1012,6 +1033,20 @@
       + ' var(--hemma-mobile-hero-tint-bot, rgba(170,170,170,0.12))'
       + ` ${off('var(--hemma-mobile-hero-wash-mid, 34%)')},`
       + ` transparent ${off('var(--hemma-mobile-hero-wash-end, 70%)')}),`
+      // The mesh has to be here too, in the same order as the card's ::before.
+      // Without it <html> paints a clean wash+gradient and the card then adds the
+      // mesh on top a beat later, so the wallpaper visibly changes at the exact
+      // moment the cards appear.
+      + ' radial-gradient('
+      + ' var(--hemma-mobile-hero-mesh-a-size, 120% 46%) at'
+      + ' var(--hemma-mobile-hero-mesh-a-pos, 18% 58%),'
+      + ' var(--hemma-mobile-hero-mesh-a, transparent) 0%,'
+      + ' transparent 72%),'
+      + ' radial-gradient('
+      + ' var(--hemma-mobile-hero-mesh-b-size, 130% 50%) at'
+      + ' var(--hemma-mobile-hero-mesh-b-pos, 88% 92%),'
+      + ' var(--hemma-mobile-hero-mesh-b, transparent) 0%,'
+      + ' transparent 70%),'
       + ' linear-gradient(var(--hemma-mobile-hero-angle, 190deg),'
       + ` transparent ${off('var(--hemma-mobile-hero-fade-start, 0%)')},`
       + ' var(--hemma-mobile-hero-c-handoff, #967f67)'
@@ -1025,9 +1060,15 @@
       + ' var(--hemma-mobile-hero-c-base, #3b352e)'
       + ` ${off('var(--hemma-mobile-hero-p-base, 100%)')}),`
       + ' var(--hemma-mobile-hero-img, url("/local/hemma/rooms/home-demo.jpg"))',
-    size: '100% 100%, 100% 100%, auto '
+    // Portrait sizes the photo by HEIGHT so the join sits in the same place on
+    // every phone. Landscape cannot: 28% of a short viewport is a photo only a
+    // quarter of the screen wide, a strip down the middle. There it goes
+    // width-driven, matching the card's own landscape media query.
+    sizePortrait: '100% 100%, 100% 100%, 100% 100%, 100% 100%, auto '
       + off('var(--hemma-mobile-hero-height, 36.5%)'),
-    position: '0 0, 0 0, var(--hemma-mobile-hero-x, 50%) var(--hemma-mobile-hero-y, 0%)',
+    sizeLandscape: '100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% auto',
+    position: '0 0, 0 0, 0 0, 0 0, '
+      + 'var(--hemma-mobile-hero-x, 50%) var(--hemma-mobile-hero-y, 0%)',
     color: 'var(--hemma-mobile-hero-floor, #3b352e)',
   };
 
@@ -1040,7 +1081,10 @@
       return;
     }
     h.style.backgroundImage    = BG.image;
-    h.style.backgroundSize     = BG.size;
+    // Read at paint time, not captured once: applyHtmlBackground re-runs on the
+    // media query's own change event, so rotating the phone repaints rather than
+    // keeping a stale snapshot.
+    h.style.backgroundSize     = LANDSCAPE_MQ.matches ? BG.sizeLandscape : BG.sizePortrait;
     h.style.backgroundPosition = BG.position;
     h.style.backgroundRepeat   = 'no-repeat';
     h.style.backgroundColor    = BG.color;
@@ -1048,7 +1092,29 @@
 
   // ── Gradient sampling ────────────────────────────────────────────────────────
   const SAMPLE_KEYS = ['handoff', 'upper', 'mid', 'lower', 'base'];
-  const CACHE_PREFIX = 'hemma-hero-sample:';
+  // VERSIONED, and the version has to be bumped whenever the shape of what
+  // paletteFrom returns changes. Without that, a palette cached before a field
+  // existed is reused forever and the missing field silently falls through to the
+  // theme's literal fallback — which looks like the feature never shipped. That
+  // is exactly what happened when mesh colours were added: the key was unchanged,
+  // so every browser kept serving a pre-mesh palette and painted the hand-tuned
+  // fallbacks instead. localStorage also survives a hard refresh, so there is no
+  // way for a user to clear it themselves.
+  const CACHE_PREFIX = 'hemma-hero-sample:v2:';
+  const CACHE_ROOT = 'hemma-hero-sample:';
+
+  const CACHE_FIELDS = SAMPLE_KEYS.concat(['meshA', 'meshB']);
+
+  // Drop entries from earlier cache versions so localStorage does not accumulate
+  // a dead palette per version per photo.
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(CACHE_ROOT) && !k.startsWith(CACHE_PREFIX)) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch (e) {}
 
   const clamp8 = (v) => Math.max(0, Math.min(255, Math.round(v)));
   const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
@@ -1198,7 +1264,12 @@
     img.onload = () => {
       const key = `${CACHE_PREFIX}${url}|${slot}|${handoffRow().toFixed(2)}`;
       let pal = null;
-      try { pal = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
+      try {
+        const hit = JSON.parse(localStorage.getItem(key) || 'null');
+        // Shape-checked as well as versioned. Either guard alone is one thing to
+        // forget; together, a stale or partial entry just misses and recomputes.
+        if (hit && CACHE_FIELDS.every((f) => typeof hit[f] === 'string')) pal = hit;
+      } catch (e) {}
       if (!pal) {
         pal = paletteFrom(img, slot);
         try { if (pal) localStorage.setItem(key, JSON.stringify(pal)); } catch (e) {}
@@ -1248,7 +1319,11 @@
   window.addEventListener('location-changed', () => setTimeout(applyHtmlBackground, 50), true);
   window.addEventListener('popstate', () => setTimeout(applyHtmlBackground, 50), true);
   MOBILE_MQ.addEventListener('change', () => { applyHtmlBackground(); sampleWallpapers(); });
-  window.addEventListener('orientationchange', () => setTimeout(sampleWallpapers, 120));
+  window.addEventListener('orientationchange', () => setTimeout(() => {
+    applyHtmlBackground();
+    sampleWallpapers();
+  }, 120));
+  LANDSCAPE_MQ.addEventListener('change', applyHtmlBackground);
   // The wallpaper is keyed on dark mode, so repaint when the OS flips it.
   window.matchMedia('(prefers-color-scheme: dark)')
     .addEventListener('change', applyHtmlBackground);

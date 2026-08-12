@@ -26,8 +26,8 @@ Hemma:
       hemma-mobile-hero-photo-contrast: 0.75
       hemma-mobile-hero-photo-saturate: 0.90
       hemma-mobile-hero-photo-brightness: 1.00
-      hemma-mobile-hero-mesh-a: var(--hemma-sampled-day-mesh-a, rgba(234,218,171,0.46))
-      hemma-mobile-hero-mesh-b: var(--hemma-sampled-day-mesh-b, rgba(58,69,80,0.29))
+      hemma-mobile-hero-mesh-a: var(--hemma-sampled-day-mesh-a, transparent)
+      hemma-mobile-hero-mesh-b: var(--hemma-sampled-day-mesh-b, transparent)
       hemma-mobile-hero-tint-top: rgba(26,22,18,0)
       hemma-mobile-hero-tint-bot: rgba(26,22,18,0.07)
       hemma-mobile-hero-c-handoff: "var(--hemma-sampled-day-handoff, #90857b)"
@@ -165,8 +165,8 @@ Hemma:
       hemma-mobile-hero-photo-contrast: 0.75
       hemma-mobile-hero-photo-saturate: 0.90
       hemma-mobile-hero-photo-brightness: 1.00
-      hemma-mobile-hero-mesh-a: var(--hemma-sampled-night-mesh-a, rgba(78,104,150,0.18))
-      hemma-mobile-hero-mesh-b: var(--hemma-sampled-night-mesh-b, rgba(24,23,23,0.39))
+      hemma-mobile-hero-mesh-a: var(--hemma-sampled-night-mesh-a, transparent)
+      hemma-mobile-hero-mesh-b: var(--hemma-sampled-night-mesh-b, transparent)
       hemma-mobile-hero-tint-top: rgba(0,0,0,0.09)
       hemma-mobile-hero-tint-bot: rgba(0,0,0,0.15)
       hemma-mobile-hero-c-handoff: "var(--hemma-sampled-night-handoff, #595d68)"
@@ -463,7 +463,7 @@ Hemma:
   # Weather
   hemma-u-weather: clamp(10px, 0.575vw, 19px)
 
-  # Font
+  # Fonts
   hemma-chrome-font-size: calc(var(--hemma-u-badge, 10px) * 1.8)
   hemma-chrome-font-weight: 600
   hemma-chrome-letter-spacing: calc(0.2px - (var(--hemma-u-badge, 10px) - 10px) * 0.1333)
@@ -563,6 +563,23 @@ Hemma:
   hemma-mobile-hero-mesh-b-alpha-day: 0.29
   hemma-mobile-hero-mesh-a-alpha-night: 0.18
   hemma-mobile-hero-mesh-b-alpha-night: 0.39
+  # LANDSCAPE. The photo is width-driven there, so it fills the whole screen —
+  # which means the gradient has no job to do. Its purpose in portrait is to
+  # cover the area where the photo runs out; in landscape nothing runs out, so
+  # it is toned right back to a slight vignette at the very bottom edge and the
+  # mesh is switched off entirely (no flat area for it to enrich). Stops must
+  # stay ascending or the gradient is invalid and silently drops.
+  hemma-mobile-hero-fade-start-landscape: 76%
+  hemma-mobile-hero-p-handoff-landscape: 96%
+  hemma-mobile-hero-p-upper-landscape: 97%
+  hemma-mobile-hero-p-mid-landscape: 98%
+  hemma-mobile-hero-p-lower-landscape: 99%
+  hemma-mobile-hero-wash-mid-landscape: 30%
+  hemma-mobile-hero-wash-end-landscape: 58%
+  # `transparent` disables the mesh; set an rgba() here to bring it back.
+  hemma-mobile-hero-mesh-a-landscape: transparent
+  hemma-mobile-hero-mesh-b-landscape: transparent
+
 
   hemma-mobile-hero-fade-start: 43%
   hemma-mobile-hero-angle: 180deg

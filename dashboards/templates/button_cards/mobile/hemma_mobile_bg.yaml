@@ -89,6 +89,47 @@ hemma_mobile_bg:
       mask-image: none !important;
     }
 
+    /* LANDSCAPE.
+       Height-driven sizing is what keeps the join in the same place on every
+       phone in portrait, but it inverts when the viewport is short and wide:
+       28% of a 393px-tall landscape viewport is ~110px, and a 16:9 photo that
+       tall is only ~195px wide against an 852px screen — a strip down the
+       middle. Landscape has to be width-driven.
+       That makes the photo TALLER than the viewport (852px wide / 1.78 = ~479px
+       against 393px of height), so it fills the screen and the dissolve has to
+       move down to match — otherwise the gradient is fully opaque a third of the
+       way down and buries the photo it is supposed to be handing over from.
+       Every stop shifts, not just the handoff: they must stay in ascending
+       order or the gradient is invalid. */
+    @media (orientation: landscape) and (max-height: 500px) {
+      :host ha-card::after {
+        background-size: 100% auto !important;
+      }
+      :host ha-card {
+        --hemma-mobile-hero-fade-start:
+          var(--hemma-mobile-hero-fade-start-landscape, 76%);
+        --hemma-mobile-hero-p-handoff:
+          var(--hemma-mobile-hero-p-handoff-landscape, 96%);
+        --hemma-mobile-hero-p-upper:
+          var(--hemma-mobile-hero-p-upper-landscape, 97%);
+        --hemma-mobile-hero-p-mid:
+          var(--hemma-mobile-hero-p-mid-landscape, 98%);
+        --hemma-mobile-hero-p-lower:
+          var(--hemma-mobile-hero-p-lower-landscape, 99%);
+        --hemma-mobile-hero-wash-mid:
+          var(--hemma-mobile-hero-wash-mid-landscape, 30%);
+        --hemma-mobile-hero-wash-end:
+          var(--hemma-mobile-hero-wash-end-landscape, 58%);
+        /* The mesh exists to give the flat area below the photo something for the
+           translucent cards to tint from. In landscape the photo covers the whole
+           screen, so there is no flat area and the fields only muddy the image. */
+        --hemma-mobile-hero-mesh-a:
+          var(--hemma-mobile-hero-mesh-a-landscape, transparent);
+        --hemma-mobile-hero-mesh-b:
+          var(--hemma-mobile-hero-mesh-b-landscape, transparent);
+      }
+    }
+
     /* LAYER 3 — wash, mesh and the colour gradient. No mask and no filter, so
        the fade is completely independent of the blur beneath it. Layer order
        within background-image is first = topmost. */
@@ -107,16 +148,21 @@ hemma_mobile_bg:
             calc(var(--hemma-mobile-hero-wash-mid, 27%) + var(--hemma-safe-top)),
           transparent
             calc(var(--hemma-mobile-hero-wash-end, 70%) + var(--hemma-safe-top))),
-        /* Mesh Colors */
+        /* Mesh — derived from the photo by hemma-core.js. Falls back to
+           `transparent`, NOT to a colour: if the sampler has not published (old
+           cached resource, tainted canvas, script missing) the right outcome is
+           no mesh at all. A coloured fallback here is a dark field pinned at
+           bottom-centre that reads as damage, and it cannot be told apart from a
+           design choice because it is perfectly valid CSS. */
         radial-gradient(
           var(--hemma-mobile-hero-mesh-a-size, 120% 46%) at
             var(--hemma-mobile-hero-mesh-a-pos, 18% 58%),
-          var(--hemma-mobile-hero-mesh-a, rgba(226,206,176,0.34)) 0%,
+          var(--hemma-mobile-hero-mesh-a, transparent) 0%,
           transparent 72%),
         radial-gradient(
           var(--hemma-mobile-hero-mesh-b-size, 130% 50%) at
             var(--hemma-mobile-hero-mesh-b-pos, 88% 92%),
-          var(--hemma-mobile-hero-mesh-b, rgba(150,132,112,0.30)) 0%,
+          var(--hemma-mobile-hero-mesh-b, transparent) 0%,
           transparent 70%),
         /* The dissolve the photo hands over to. */
         linear-gradient(
