@@ -49,7 +49,7 @@ cards:
             box-shadow: none !important;
             overflow: visible !important;
             padding: 0 !important;
-            touch-action: none !important;
+            touch-action: pan-x !important;
           }
 
       styles: |
@@ -78,7 +78,8 @@ cards:
           --navbar-route-active-color: inherit !important;
         }
 
-        ha-card.navbar-card.desktop::-webkit-scrollbar{
+        ha-card.navbar-card.desktop::-webkit-scrollbar,
+        .navbar.desktop::-webkit-scrollbar{
           height: 0 !important;
           display: none !important;
         }
@@ -139,7 +140,11 @@ cards:
           -webkit-backdrop-filter: var(--hemma-nav-glass-backdrop, blur(24px) saturate(120%)) !important;
           backdrop-filter: var(--hemma-nav-glass-backdrop, blur(24px) saturate(120%)) !important;
           box-shadow: var(--hemma-nav-glass-rim, inset 0 1px .5px -0.5px rgba(255,255,255,0.55), inset 0 -1px .5px -0.5px rgba(255,255,255,0.48), inset 0 3px 6px -3px rgba(255,255,255,0.20), inset 0 -3px 6px -3px rgba(255,255,255,0.12), 2px 0 3px -2px rgba(0,0,0,0.45), -2px 0 3px -2px rgba(0,0,0,0.45), 0 4px 28px 2px rgba(0,0,0,0.07)) !important;
-          overflow: hidden !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          touch-action: pan-x !important;
+          -webkit-overflow-scrolling: touch !important;
+          scrollbar-width: none !important;
         }
 
         .icon, .image, ha-icon{ display:none !important; }
@@ -505,7 +510,7 @@ cards:
             box-shadow: none !important;
             overflow: visible !important;
             padding: 0 !important;
-            touch-action: none !important;
+            touch-action: pan-x !important;
           }
 
       styles: |
@@ -548,7 +553,8 @@ cards:
           animation: hemma-badge-pulse 3s ease-in-out infinite !important;
         }
 
-        ha-card.navbar-card.desktop::-webkit-scrollbar{
+        ha-card.navbar-card.desktop::-webkit-scrollbar,
+        .navbar.desktop::-webkit-scrollbar{
           height: 0 !important;
         }
 
@@ -594,7 +600,11 @@ cards:
           -webkit-backdrop-filter: var(--hemma-nav-glass-backdrop, blur(24px) saturate(120%)) !important;
           backdrop-filter: var(--hemma-nav-glass-backdrop, blur(24px) saturate(120%)) !important;
           box-shadow: var(--hemma-nav-glass-rim, inset 0 1px .5px -0.5px rgba(255,255,255,0.55), inset 0 -1px .5px -0.5px rgba(255,255,255,0.48), inset 0 3px 6px -3px rgba(255,255,255,0.20), inset 0 -3px 6px -3px rgba(255,255,255,0.12), 2px 0 3px -2px rgba(0,0,0,0.45), -2px 0 3px -2px rgba(0,0,0,0.45), 0 4px 28px 2px rgba(0,0,0,0.07)) !important;
-          overflow: hidden !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          touch-action: pan-x !important;
+          -webkit-overflow-scrolling: touch !important;
+          scrollbar-width: none !important;
         }
 
         .icon, .image{ display:none !important; }

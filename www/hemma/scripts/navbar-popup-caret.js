@@ -8,13 +8,18 @@
     "%3Cpath%20d%3D'M8.59%2C16.58L13.17%2C12L8.59%2C7.41L10%2C6L16%2C12L10%2C18L8.59%2C16.58Z'%2F%3E%3C%2Fsvg%3E";
 
   const CARET_CSS = `
+    .route[data-has-popup] .label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
     .route[data-has-popup] .label::after {
       content: "";
       display: inline-block;
+      flex: none;
       width: 20px;
       height: 20px;
       margin-left: 2px;
-      vertical-align: -5px;
       background-color: rgba(255,255,255,0.42);
       -webkit-mask: url("${CHEVRON}") no-repeat center / contain;
       mask: url("${CHEVRON}") no-repeat center / contain;
@@ -23,6 +28,9 @@
     }
     .route[data-has-popup][data-popup-open] .label::after {
       transform: rotate(90deg);
+    }
+    .navbar.mobile .route[data-has-popup] .label {
+      display: block;
     }
     .navbar.mobile .route[data-has-popup] .label::after {
       display: none;

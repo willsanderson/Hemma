@@ -183,9 +183,10 @@ hemma_popup_lock:
                 show_label: false,
                 show_entity_picture: false,
                 tap_action: `[[[
-                  const s = entity.state;
-                  if (s === 'locked') return { action: 'call-service', service: 'lock.unlock', service_data: { entity_id: entity.entity_id } };
-                  if (s === 'unlocked') return { action: 'call-service', service: 'lock.lock', service_data: { entity_id: entity.entity_id } };
+                  const lockId = ${_lid};
+                  const s = states[lockId]?.state;
+                  if (s === 'locked') return { action: 'call-service', service: 'lock.unlock', service_data: { entity_id: lockId } };
+                  if (s === 'unlocked') return { action: 'call-service', service: 'lock.lock', service_data: { entity_id: lockId } };
                   return { action: 'none' };
                 ]]]`,
                 haptic: 'medium',
@@ -223,10 +224,11 @@ hemma_popup_lock:
                     const W = mob ? 60 : 62, H = mob ? 40 : 42, r = mob ? 15 : 16, cx0 = mob ? 21 : 22;
                     const travel = 20;
                     const SW = W + 2;
-                    const s = entity.state;
+                    const lockId = ${_lid};
+                    const s = states[lockId]?.state;
                     const isTransitioning = s === 'locking' || s === 'unlocking';
                     const thumbRight = s === 'locked' || s === 'locking';
-                    const stateKey = '_hemma_lk_' + entity.entity_id.replace(/[^a-zA-Z0-9]/g, '_');
+                    const stateKey = '_hemma_lk_' + lockId.replace(/[^a-zA-Z0-9]/g, '_');
                     const prevState = window[stateKey];
                     const prevThumbRight = prevState === 'locked' || prevState === 'locking';
                     const shouldAnimate = prevState !== undefined && prevThumbRight !== thumbRight;

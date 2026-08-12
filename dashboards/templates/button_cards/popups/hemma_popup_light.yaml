@@ -326,7 +326,6 @@ hemma_popup_light:
   
               /* Scene card */
               const sceneIconMap = variables.scene_icons || {};
-              const _siMapJson = JSON.stringify(sceneIconMap);
   
               const makeSceneCard = (sceneId) => {
                 const _scGk = JSON.stringify(groupId);
@@ -360,7 +359,7 @@ hemma_popup_light:
                   haptic: 'medium',
                   show_icon: true,
                   show_entity_picture: true,
-                  entity_picture: `[[[ const _sim=${_siMapJson}; const _ep=_sim[entity.entity_id]||entity.attributes.entity_picture; return _ep||undefined; ]]]`,
+                  entity_picture: `[[[ return ${JSON.stringify(_scIcon)} || states[${_scId}]?.attributes?.entity_picture || undefined; ]]]`,
                   show_name: true,
                   show_state: false,
                   show_label: false,

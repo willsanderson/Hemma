@@ -85,10 +85,6 @@ hemma_network:
 
       const safe = (id) => { if (!id) return null; const n = parseFloat(states[id]?.state); return isNaN(n) ? null : n; };
 
-      // "Active Downloads" overflows a compact tile and gets ellipsised, so the
-      // text shrinks to fit its row instead. Optional-call guarded: hemma-core.js
-      // may not have loaded on the first render, and an unguarded throw here
-      // swaps in a button-card error card.
       const fit = (t) => window.hemmaStateFit?.(t) ?? t;
 
       // WAN sensors only — LAN stat sensors (stat1-4) are informational tiles
@@ -187,6 +183,9 @@ hemma_network:
 
   styles:
     card:
+      # wifi.svg's viewBox origin is negative — ~8% transparent padding baked
+      # into the artwork, so it needs 60% * 1.08 to match every other icon.
+      - --hemma-icon-mask-scale: 64.8%
       - --hemma-icon-inactive-color: |
           [[[
             const safe = (id) => { if (!id) return null; const n = parseFloat(states[id]?.state); return isNaN(n) ? null : n; };

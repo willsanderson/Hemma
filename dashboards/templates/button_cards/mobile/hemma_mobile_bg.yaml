@@ -18,50 +18,17 @@ hemma_mobile_bg:
     card:
       - box-shadow: "none !important"
       - border-radius: "0 !important"
-      #   :host { --hero-img-scale-current: var(--hero-img-scale-mobile, 1.04) }
       - "--hero-img-scale": "1.0"
       - "--hero-img-scale-mobile": "1.0"
       - "--hero-img-scale-current": "1.0"
       - "--hero-img-blur-current": "0px"
-
       - "--hemma-safe-top": "env(safe-area-inset-top, 0px)"
       - "--hemma-hero-overscan": "var(--hemma-mobile-hero-overscan, calc(3 * var(--hemma-mobile-hero-blur, 2px)))"
       - background-color: "var(--hemma-mobile-hero-floor, #524f4d) !important"
       - background-image: "none !important"
 
   extra_styles: |
-    /* The card is position:fixed to the viewport, so it starts at the physical
-       top of the screen. The dashboard's content does not: HA pads #view by
-       env(safe-area-inset-top), ~59px on a notch/Dynamic Island iPhone and
-       exactly 0 in Chrome's device emulation — which is why this looks correct
-       in DevTools and cropped on the phone. So the wallpaper's whole vertical
-       coordinate system absorbs the same inset: the photo grows by it (staying
-       full-bleed to the physical top, no dead strip under the status bar) and
-       every stop shifts down by it. Resolves to +0px where there is no safe
-       area, so desktop is unaffected. --hemma-safe-top is set in styles.card, on
-       ha-card, so both pseudo-elements inherit it. */
-
-    /* LAYER 2 — the photo, uniformly blurred.
-       A flat 2px, matching the desktop hero's --hero-img-blur, rather than a
-       blur that ramps down the image. A progressive blur needs a tall photo to
-       read: at hero-height 28% the ramp had ~1% of screen to happen in, and the
-       colour gradient was already ~94% opaque by the time it got there, so it
-       was invisible. The gradient does the dissolving; this just takes the
-       hard edge off the photo so it sits behind the title rather than fighting
-       it. Raise hero-height above ~55% and a ramped blur becomes worth having
-       again. */
-    /* The blur has to have image to sample at every edge of this box or it
-       averages against transparent and lays a dark rim over the wallpaper. The
-       sides are bought by growing the box past the card, which is
-       overflow:hidden, so the rim is clipped away off-screen. The top can't be
-       bought the same way on its own: the photo is top-anchored, so an
-       oversized box just puts empty space above the image and the rim comes
-       back at y=0. It needs the box AND the photo to overhang, which is what
-       the +overscan on background-size does — the photo grows upward out of
-       the viewport while its bottom edge stays exactly on the gradient
-       handoff. `bottom: overscan` keeps the box's height at 100dvh so the
-       percentage in background-size still resolves against the viewport;
-       without it the join would drift down by 0.62 × overscan. */
+    /* LAYER 2 — the photo, uniformly blurred */
     :host ha-card::after {
       content: "" !important;
       inset:
@@ -89,18 +56,7 @@ hemma_mobile_bg:
       mask-image: none !important;
     }
 
-    /* LANDSCAPE.
-       Height-driven sizing is what keeps the join in the same place on every
-       phone in portrait, but it inverts when the viewport is short and wide:
-       28% of a 393px-tall landscape viewport is ~110px, and a 16:9 photo that
-       tall is only ~195px wide against an 852px screen — a strip down the
-       middle. Landscape has to be width-driven.
-       That makes the photo TALLER than the viewport (852px wide / 1.78 = ~479px
-       against 393px of height), so it fills the screen and the dissolve has to
-       move down to match — otherwise the gradient is fully opaque a third of the
-       way down and buries the photo it is supposed to be handing over from.
-       Every stop shifts, not just the handoff: they must stay in ascending
-       order or the gradient is invalid. */
+    /* LANDSCAPE */
     @media (orientation: landscape) and (max-height: 500px) {
       :host ha-card::after {
         background-size: 100% auto !important;
@@ -120,9 +76,6 @@ hemma_mobile_bg:
           var(--hemma-mobile-hero-wash-mid-landscape, 30%);
         --hemma-mobile-hero-wash-end:
           var(--hemma-mobile-hero-wash-end-landscape, 58%);
-        /* The mesh exists to give the flat area below the photo something for the
-           translucent cards to tint from. In landscape the photo covers the whole
-           screen, so there is no flat area and the fields only muddy the image. */
         --hemma-mobile-hero-mesh-a:
           var(--hemma-mobile-hero-mesh-a-landscape, transparent);
         --hemma-mobile-hero-mesh-b:
@@ -130,9 +83,7 @@ hemma_mobile_bg:
       }
     }
 
-    /* LAYER 3 — wash, mesh and the colour gradient. No mask and no filter, so
-       the fade is completely independent of the blur beneath it. Layer order
-       within background-image is first = topmost. */
+    /* LAYER 3 — wash, mesh and the colour gradient */
     :host ha-card::before {
       content: "";
       position: absolute;
@@ -148,12 +99,7 @@ hemma_mobile_bg:
             calc(var(--hemma-mobile-hero-wash-mid, 27%) + var(--hemma-safe-top)),
           transparent
             calc(var(--hemma-mobile-hero-wash-end, 70%) + var(--hemma-safe-top))),
-        /* Mesh — derived from the photo by hemma-core.js. Falls back to
-           `transparent`, NOT to a colour: if the sampler has not published (old
-           cached resource, tainted canvas, script missing) the right outcome is
-           no mesh at all. A coloured fallback here is a dark field pinned at
-           bottom-centre that reads as damage, and it cannot be told apart from a
-           design choice because it is perfectly valid CSS. */
+        /* Mesh — derived from the photo by hemma-core.js */
         radial-gradient(
           var(--hemma-mobile-hero-mesh-a-size, 120% 46%) at
             var(--hemma-mobile-hero-mesh-a-pos, 18% 58%),

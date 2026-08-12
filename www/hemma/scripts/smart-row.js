@@ -30,14 +30,23 @@ const EASE_FORWARD  = 'cubic-bezier(0.4, 0, 0.2, 1)';
 const EASE_BACK     = 'cubic-bezier(0.4, 0, 0.2, 1)';
 const STAGGER_MS    = 0;    // all cards move together
 
+// A `type: conditional` wrapper carries no entity, template or variables of its
+// own — everything this file reads about a card lives under cfg.card.
+function resolveCardConfig(cfg) {
+  let c = cfg, depth = 0;
+  while (c?.type === 'conditional' && c.card && depth++ < 4) c = c.card;
+  return c;
+}
+
 // Returns the card's filter category, or null if it should always be shown.
 function getFilterCategory(card) {
-  if (!card || !card._config) return null;
+  const cfg = resolveCardConfig(card?._config);
+  if (!cfg) return null;
   // The resolved variable is only present once button-card has merged its
   // templates, so fall back to the raw template name.
-  const direct = card._config.variables?.mobile_filter_category;
+  const direct = cfg.variables?.mobile_filter_category;
   if (direct !== null && direct !== undefined) return direct;
-  const tmpl = card._config.template;
+  const tmpl = cfg.template;
   const list = Array.isArray(tmpl) ? tmpl : (tmpl ? [tmpl] : []);
   const cats = filterCategories();
   for (const t of list) {
@@ -58,15 +67,19 @@ const ROW_TEMPLATE_FLAGS = {
 
 // Lives in hemma-core.js so this file and filter-overlay.js agree. Read at call
 // time; the local variables.size read is a fail-safe against a stale copy.
-const getCardSize = (cfg) =>
-  window.hemmaCardSize?.(cfg) ||
-  (String(cfg?.variables?.size || '').toLowerCase() === 'large' ? 'large' : 'small');
+const getCardSize = (rawCfg) => {
+  const cfg = resolveCardConfig(rawCfg);
+  return window.hemmaCardSize?.(cfg) ||
+    (String(cfg?.variables?.size || '').toLowerCase() === 'large' ? 'large' : 'small');
+};
 
 // An explicit key on the card config wins; otherwise the flag is inferred from
 // the card type or its template names.
 function cardFlag(cfg, flag) {
   if (!cfg) return false;
   if (cfg[flag] !== undefined) return !!cfg[flag];
+  const inner = resolveCardConfig(cfg);
+  if (inner !== cfg) return cardFlag(inner, flag);
   if (flag === 'no_filter'  && cfg.type === 'custom:hemma-filter-overlay') return true;
   if (flag === 'full_width' && cfg.type === 'custom:hemma-smart-row') return true;
   const tmpl = cfg.template;
@@ -89,6 +102,8 @@ class HemmaSmartRow extends HTMLElement {
     this._helpers         = null;
     this._cards           = [];
     this._wrappers        = [];
+    this._haCards         = [];  // per-index ha-card cache for _isActiveByDom
+    this._hiddenState     = [];  // last observed per-index hidden state
     this._cardsCreated    = false;
     this._initialized     = false;
     this._initializing    = false;
@@ -162,16 +177,44 @@ class HemmaSmartRow extends HTMLElement {
     if (!this._rafId) {
       this._rafId = requestAnimationFrame(() => {
         this._rafId = null;
-        if (this._scrollMode) this._updateWrapperVisibility();
+        this._updateWrapperVisibility();
         this._updateSort();
       });
     }
   }
 
+  // WebKit's getComputedStyle reports display:none for EVERY element inside a
+  // display:none subtree, not just the hidden ancestor — so the moment a wrapper
+  // is hidden, the card inside it stops reporting its own display and can never
+  // be shown again. Blink returns the element's own value, which is why this
+  // only bites in Safari and the iOS app.
+  //
+  // hui-conditional-card states its intent explicitly (it sets both the hidden
+  // attribute and inline display), so trust that first — no layout needed. Cards
+  // that hide themselves through their own CSS give no such signal, so put the
+  // wrapper back in flow just long enough to read a truthful value, then restore
+  // it and let the caller decide.
+  _isCardHidden(card, wrapper) {
+    if (!card) return false;
+    if (card.hidden || card.style.display === 'none') return true;
+    if (!wrapper || wrapper.style.display !== 'none') {
+      return getComputedStyle(card).display === 'none';
+    }
+    wrapper.style.display = '';
+    const hidden = getComputedStyle(card).display === 'none';
+    wrapper.style.display = 'none';
+    return hidden;
+  }
+
   _updateWrapperVisibility() {
     if (!this._initialized) return;
 
-    const filter = this._hass?.states['input_select.hemma_mobile_filter']?.state;
+    // The filter entity is global, so a filter left set on the phone must not
+    // hide cards on a desktop row — only scroll_mode rows honour it. Desktop
+    // still runs this pass to collapse wrappers of hidden conditional cards.
+    const filter = this._scrollMode
+      ? this._hass?.states['input_select.hemma_mobile_filter']?.state
+      : undefined;
     const filterChanged = this._lastKnownFilter !== undefined && filter !== this._lastKnownFilter;
     this._lastKnownFilter = filter;
 
@@ -189,7 +232,7 @@ class HemmaSmartRow extends HTMLElement {
         this._wrappers.forEach((wrapper, i) => {
           const card = this._cards[i];
           if (!card) return;
-          const hide = isFilterHidden(card) || getComputedStyle(card).display === 'none';
+          const hide = isFilterHidden(card) || this._isCardHidden(card, wrapper);
           wrapper.style.display = hide ? 'none' : '';
         });
       };
@@ -202,11 +245,31 @@ class HemmaSmartRow extends HTMLElement {
     const DUR  = 220;
     const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
 
+    // Desktop lays the row out as a horizontal flex strip, so a collapse there
+    // animates width, not height — and has to eat the container's column gap on
+    // the way out, or the row keeps 8px of the departed card's slot. Mobile's
+    // two-column grid keeps the original height collapse.
+    const horizontal = isDesktop();
+    const gap = horizontal
+      ? (parseFloat(getComputedStyle(this._container).columnGap) || 0)
+      : 0;
+
     const clearAnimStyles = (wrapper) => {
-      wrapper.style.transition = '';
-      wrapper.style.height     = '';
-      wrapper.style.opacity    = '';
-      wrapper.style.overflow   = '';
+      wrapper.style.transition  = '';
+      wrapper.style.height      = '';
+      wrapper.style.width       = '';
+      wrapper.style.flex        = '';
+      wrapper.style.marginRight = '';
+      wrapper.style.opacity     = '';
+      wrapper.style.overflow    = '';
+      const card = wrapper.firstElementChild;
+      if (card) {
+        card.style.width = '';
+        // Only reclaim what we set. hui-conditional-card owns this property and
+        // may have written display:none in the meantime — clearing that blindly
+        // would flash the card back on screen.
+        if (card.style.display === 'block') card.style.display = '';
+      }
     };
 
     const hideWrapper = (wrapper, animate) => {
@@ -218,14 +281,30 @@ class HemmaSmartRow extends HTMLElement {
       }
       if (!animate) { wrapper.style.display = 'none'; return; }
       this._animHiding.add(wrapper);
-      const h = wrapper.offsetHeight;
+      const axis = horizontal ? 'width' : 'height';
+      const size = horizontal ? wrapper.offsetWidth : wrapper.offsetHeight;
+      // No need to pin the card on the way out — anything being collapsed is
+      // already invisible, so only the closing gap is on screen.
+      if (horizontal) {
+        wrapper.style.flex  = `0 0 ${size}px`;
+        wrapper.style.width = size + 'px';
+      } else {
+        wrapper.style.height = size + 'px';
+      }
       wrapper.style.overflow   = 'hidden';
-      wrapper.style.height     = h + 'px';
       wrapper.style.opacity    = '1';
-      wrapper.style.transition = `height ${DUR}ms ${EASE}, opacity ${DUR}ms ${EASE}`;
+      wrapper.style.transition =
+        `${axis} ${DUR}ms ${EASE}, flex-basis ${DUR}ms ${EASE}, ` +
+        `margin-right ${DUR}ms ${EASE}, opacity ${DUR}ms ${EASE}`;
       requestAnimationFrame(() => requestAnimationFrame(() => {
         if (!this._animHiding.has(wrapper)) return;
-        wrapper.style.height  = '0';
+        if (horizontal) {
+          wrapper.style.flex        = '0 0 0px';
+          wrapper.style.width       = '0px';
+          wrapper.style.marginRight = `-${gap}px`;
+        } else {
+          wrapper.style.height = '0';
+        }
         wrapper.style.opacity = '0';
       }));
       setTimeout(() => {
@@ -247,14 +326,37 @@ class HemmaSmartRow extends HTMLElement {
       wrapper.style.display = '';
       if (!animate) return;
       this._animShowing.add(wrapper);
-      const h = wrapper.offsetHeight;
+      const axis = horizontal ? 'width' : 'height';
+      const size = horizontal ? wrapper.offsetWidth : wrapper.offsetHeight;
+      const card = wrapper.firstElementChild;
+      if (horizontal && card) {
+        // hui-conditional-card carries no styles of its own, so it is display:
+        // inline and a width on it would be ignored — block it out, or the card
+        // reflows its text as the wrapper widens instead of wiping into view.
+        card.style.display = 'block';
+        card.style.width   = size + 'px';
+      }
+      if (horizontal) {
+        wrapper.style.flex        = '0 0 0px';
+        wrapper.style.width       = '0px';
+        wrapper.style.marginRight = `-${gap}px`;
+      } else {
+        wrapper.style.height = '0';
+      }
       wrapper.style.overflow   = 'hidden';
-      wrapper.style.height     = '0';
       wrapper.style.opacity    = '0';
-      wrapper.style.transition = `height ${DUR}ms ${EASE}, opacity ${DUR}ms ${EASE}`;
+      wrapper.style.transition =
+        `${axis} ${DUR}ms ${EASE}, flex-basis ${DUR}ms ${EASE}, ` +
+        `margin-right ${DUR}ms ${EASE}, opacity ${DUR}ms ${EASE}`;
       requestAnimationFrame(() => requestAnimationFrame(() => {
         if (!this._animShowing.has(wrapper)) return;
-        wrapper.style.height  = h + 'px';
+        if (horizontal) {
+          wrapper.style.flex        = `0 0 ${size}px`;
+          wrapper.style.width       = size + 'px';
+          wrapper.style.marginRight = '0px';
+        } else {
+          wrapper.style.height = size + 'px';
+        }
         wrapper.style.opacity = '1';
       }));
       setTimeout(() => {
@@ -263,19 +365,31 @@ class HemmaSmartRow extends HTMLElement {
       }, DUR + 50);
     };
 
+    // filter-overlay sets this flag while dismissing so wrappers snap into place
+    // behind the closing blur instead of animating in view.
+    const snap = !!window._hemmaNoFilterAnim;
+
     const show = (firstCall) => {
       this._wrappers.forEach((wrapper, i) => {
         const card = this._cards[i];
         if (!card) return;
         if (isFilterHidden(card)) {
-          hideWrapper(wrapper, firstCall && filterChanged);
+          hideWrapper(wrapper, firstCall && filterChanged && !snap);
+          this._hiddenState[i] = true;
           return;
         }
-        if (getComputedStyle(card).display !== 'none') {
-          // filter-overlay sets this flag while dismissing so wrappers snap
-          // visible instead of expanding behind the closing blur.
-          showWrapper(wrapper, firstCall && filterChanged && !window._hemmaNoFilterAnim);
+        const hidden = this._isCardHidden(card, wrapper);
+        const was    = this._hiddenState[i];
+        this._hiddenState[i] = hidden;
+
+        if (hidden) {
+          // Collapse only once this card has actually been seen visible. A card
+          // that is merely mid-render reads as hidden too, and snapping its
+          // wrapper shut on that would flicker — the 500ms sweep settles those.
+          if (was === false) hideWrapper(wrapper, !snap);
+          return;
         }
+        showWrapper(wrapper, !snap && (was === true || (firstCall && filterChanged)));
       });
       this.style.display = '';
     };
@@ -298,9 +412,11 @@ class HemmaSmartRow extends HTMLElement {
       this._wrappers.forEach((wrapper, i) => {
         const card = this._cards[i];
         if (!card) return;
-        if (isFilterHidden(card) || getComputedStyle(card).display === 'none') {
+        if (isFilterHidden(card) || this._isCardHidden(card, wrapper)) {
+          this._hiddenState[i] = true;
           if (!this._animHiding.has(wrapper)) hideWrapper(wrapper, false);
         } else {
+          this._hiddenState[i] = false;
           if (wrapper.style.display !== 'none' || this._animShowing.has(wrapper)) anyVisible = true;
         }
       });
@@ -392,8 +508,10 @@ class HemmaSmartRow extends HTMLElement {
 
     const yieldFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
 
-    this._cards    = [];
-    this._wrappers = [];
+    this._cards       = [];
+    this._wrappers    = [];
+    this._haCards     = [];
+    this._hiddenState = [];
     let budget = performance.now();
 
     for (let i = 0; i < this._config.cards.length; i++) {
@@ -435,6 +553,17 @@ class HemmaSmartRow extends HTMLElement {
     }, { passive: true });
 
     setTimeout(() => {
+      // Collapse already-hidden cards before the entrance animation is released.
+      // _updateWrapperVisibility can't do it — it's gated on _initialized, which
+      // isn't set until PAGE_ANIM_MS later, so a conditional card whose condition
+      // is unmet would hold an empty slot open for the first second of the load.
+      this._wrappers.forEach((wrapper, i) => {
+        if (!this._isCardHidden(this._cards[i], wrapper)) return;
+        wrapper.style.display = 'none';
+        // Seeded so the first reveal reads as a transition and animates open.
+        this._hiddenState[i] = true;
+      });
+
       const active = [], inactive = [];
       this._config.cards.forEach((_, i) => {
         (this._isActive(i) ? active : inactive).push(i);
@@ -473,10 +602,30 @@ class HemmaSmartRow extends HTMLElement {
 
   // ── Active detection ────────────────────────────────────────────────────────
 
+  // querySelector can't cross a shadow boundary it doesn't own, so descend
+  // manually: a conditional card's ha-card sits two roots deep
+  // (hui-conditional-card > custom:button-card > ha-card).
+  _findHaCard(el, depth = 0) {
+    if (!el || depth > 6) return null;
+    if (el.tagName === 'HA-CARD') return el;
+    const roots = el.shadowRoot ? [el.shadowRoot, el] : [el];
+    for (const root of roots) {
+      for (const kid of root.children || []) {
+        const found = this._findHaCard(kid, depth + 1);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
   _isActiveByDom(index) {
     const card = this._cards[index];
-    if (!card?.shadowRoot) return null;
-    const ha = card.shadowRoot.querySelector('ha-card');
+    if (!card) return null;
+    let ha = this._haCards[index];
+    if (!ha || !ha.isConnected) {
+      ha = this._findHaCard(card);
+      this._haCards[index] = ha;
+    }
     if (!ha) return null;
     let v = ha.style.getPropertyValue('--hemma-active-overlay-opacity').trim();
     if (!v) v = getComputedStyle(ha).getPropertyValue('--hemma-active-overlay-opacity').trim();
@@ -485,14 +634,17 @@ class HemmaSmartRow extends HTMLElement {
   }
 
   _isActiveByState(index) {
-    if (cardFlag(this._config.cards[index], 'full_width')) return false;
-    const cfg = this._config.cards[index];
+    const cfg = resolveCardConfig(this._config.cards[index]);
+    if (cardFlag(cfg, 'full_width')) return false;
     if (!cfg?.entity || !this._hass) return false;
     const st = this._hass.states[cfg.entity];
     return st ? activeStates().has((st.state || '').toLowerCase()) : false;
   }
 
   _isActive(index) {
+    // A conditional card whose condition is unmet still occupies its slot, so
+    // check the card's own visibility before trusting either detector.
+    if (this._isCardHidden(this._cards[index], this._wrappers[index])) return false;
     const dom = this._isActiveByDom(index);
     return dom !== null ? dom : this._isActiveByState(index);
   }
