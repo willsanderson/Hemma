@@ -1,0 +1,228 @@
+hemma_popup_scenes:
+  template:
+    - hemma_popup_base
+    - hemma_scene_core
+
+  variables:
+    room_name: Home
+    scenes: null
+    scene_exclude: null
+    scene_order: null
+    scene_icons: {}
+    scene_transition: 4
+
+  tap_action:
+    haptic: light
+    action: >
+      [[[
+        return typeof window.browser_mod !== 'undefined' ? 'fire-dom-event' : 'more-info';
+      ]]]
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        tag: '[[[ return (entity?.entity_id || "hemma_scenes").replace(/\./g, "_") + "_scenes_popup"; ]]]'
+        title: ""
+        dismissable: true
+        adaptive: true
+        size: auto
+        style: "--popup-min-width: min(880px, 92vw); --popup-max-width: min(880px, 92vw);"
+        popup_styles:
+          - style: all
+            styles: |
+              :host {
+                --dialog-surface-margin-top: 100px;
+                --ha-ripple-hover-opacity: 0;
+                --ha-ripple-pressed-opacity: 0.04;
+              }
+              .content .container > * {
+                width: 100% !important;
+                max-width: none !important;
+                box-sizing: border-box !important;
+              }
+              .content .container {
+                scrollbar-width: none;
+                overscroll-behavior: contain;
+                touch-action: pan-y;
+                padding-bottom: 24px !important;
+              }
+              .content .container::-webkit-scrollbar { display: none; }
+              wa-dialog { --width: min(880px, 92vw); }
+              @media (max-width: 768px) {
+                :host { --dialog-surface-margin-top: 0px; }
+              }
+        content: |
+          [[[
+            const _hassObj = typeof hass !== 'undefined' ? hass : null;
+            const _SC = window._hemmaSC;
+
+            const sceneIds = _SC ? _SC.list(states, _hassObj, variables) : [];
+            if (_SC) _SC.prefetch(sceneIds, states);
+
+            const roomName = variables.room_name || 'Home';
+            const trans    = Number(variables.scene_transition ?? 4);
+            const anchorId = entity?.entity_id || sceneIds[0] || null;
+            const _idsJson = JSON.stringify(sceneIds);
+
+            const _lastSnip = ''
+              + 'var _ids = ' + _idsJson + ';'
+              + 'var _act = window._hemmaSC ? window._hemmaSC.activeList(_ids, states) : [];'
+              + 'var _best = _act[0] || null;';
+
+            const _lc = {
+              onBg:    'rgba(255,255,255,0.94)',
+              onName:  'rgba(0,0,0,0.85)',
+              offBg:   'rgba(255,255,255,0.11)',
+              offName: 'rgba(255,255,255,0.90)',
+            };
+
+            const wrapperStyle = [
+              ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; overflow: visible !important; }',
+              'ha-card { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: default !important; overflow: visible !important; }',
+              'ha-card:hover { box-shadow: none !important; }',
+              'ha-ripple { display: none !important; }',
+            ].join('\n') + '\n@media (max-width: 600px) { ha-card { padding-left: 14px !important; padding-right: 14px !important; } }';
+
+            /* Header */
+            const headerCard = {
+              type: 'custom:button-card',
+              entity: anchorId,
+              tap_action: { action: 'none' },
+              show_icon: false, show_name: false, show_label: false, show_state: false,
+              card_mod: { style: wrapperStyle },
+              styles: {
+                card: [
+                  { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                  { padding: '28px 28px 0 28px' },
+                ],
+                grid: [
+                  { 'grid-template-areas': '"title"' },
+                  { 'grid-template-columns': '1fr' },
+                  { 'align-items': 'flex-start' },
+                ],
+                custom_fields: { title: [{ 'justify-self': 'start' }, { 'text-align': 'left' }] },
+              },
+              custom_fields: {
+                title: '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tiles-text-primary,#ffffff);text-align:left;">'
+                  + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;">' + roomName + '</div>'
+                  + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary,rgba(255,255,255,0.6));margin-top:2px;">Scenes · '
+                  + sceneIds.length + (sceneIds.length === 1 ? ' Scene' : ' Scenes') + '</div>'
+                  + '</div>',
+              },
+            };
+
+            /* Current scene line */
+            const adviceCard = {
+              type: 'custom:button-card',
+              entity: anchorId,
+              tap_action: { action: 'none' },
+              show_icon: false, show_name: false, show_label: false, show_state: false,
+              card_mod: { style: wrapperStyle },
+              styles: {
+                card: [
+                  { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                  { padding: '20px 28px 18px 28px' },
+                ],
+                grid: [{ 'grid-template-areas': '"body"' }, { 'grid-template-columns': '1fr' }],
+                custom_fields: { body: [{ 'justify-self': 'stretch' }, { width: '100%' }, { 'text-align': 'left' }] },
+              },
+              custom_fields: {
+                body: `[[[
+                  ${_lastSnip}
+                  var _label = _best
+                    ? (states[_best]?.attributes?.friendly_name || _best.replace('scene.', '').replace(/_/g, ' '))
+                    : 'No scene applied';
+                  if (_act.length > 1) _label += ' +' + (_act.length - 1);
+                  return '<div style="font-family:var(--primary-font-family,system-ui);">'
+                    + '<div style="font-size:22px;color:var(--primary-text-color,#e4e7eb);font-weight:400;letter-spacing:-.5px;">' + _label + '</div>'
+                    + '</div>';
+                ]]]`,
+              },
+            };
+
+            /* Scene tiles */
+            const sceneIconMap = variables.scene_icons || {};
+
+            const makeSceneCard = (sceneId) => _SC.chip(sceneId, {
+              icon: sceneIconMap[sceneId] || null,
+              transition: trans,
+            });
+
+            if (!sceneIds.length) {
+              const emptyCard = {
+                type: 'custom:button-card',
+                entity: anchorId,
+                tap_action: { action: 'none' },
+                show_icon: false, show_name: false, show_label: false, show_state: false,
+                card_mod: { style: wrapperStyle },
+                styles: {
+                  card: [
+                    { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                    { padding: '4px 28px 24px 28px' },
+                  ],
+                  grid: [{ 'grid-template-areas': '"body"' }, { 'grid-template-columns': '1fr' }],
+                  custom_fields: { body: [{ 'justify-self': 'stretch' }, { 'text-align': 'left' }] },
+                },
+                custom_fields: {
+                  body: '<div style="font-family:var(--primary-font-family,system-ui);font-size:14px;color:var(--hemma-popup-tiles-text-secondary,rgba(255,255,255,0.6));line-height:1.45;">'
+                    + 'No scenes found. Hemma lists every scene in the entity registry that is not hidden or disabled, so check Settings &rsaquo; Devices &amp; Services &rsaquo; Entities if you expected some here.'
+                    + '</div>',
+                },
+              };
+              return { type: 'vertical-stack', cards: [headerCard, emptyCard] };
+            }
+
+            const C = window.matchMedia('(max-width:767px),(max-height:600px)').matches ? 2 : 4;
+            const tileCF = {}, tileFS = {};
+            sceneIds.forEach((id, i) => {
+              tileCF['sc' + i] = { card: makeSceneCard(id) };
+              tileFS['sc' + i] = [{ 'justify-self': 'stretch' }, { 'text-align': 'left' }];
+            });
+
+            let phIdx = 0;
+            let areas = '';
+            const rowCount = Math.ceil(sceneIds.length / C);
+            for (let r = 0; r < rowCount; r++) {
+              let row = '';
+              for (let c = 0; c < C; c++) {
+                const idx = r * C + c;
+                if (c > 0) row += ' ';
+                if (idx < sceneIds.length) {
+                  row += 'sc' + idx;
+                } else {
+                  const ph = 'scph' + phIdx++;
+                  tileCF[ph] = '';
+                  tileFS[ph] = [{ height: '0' }, { padding: '0' }, { margin: '0' }];
+                  row += ph;
+                }
+              }
+              areas += '"' + row + '" ';
+            }
+
+            const tilesCard = {
+              type: 'custom:button-card',
+              entity: anchorId,
+              tap_action: { action: 'none' },
+              show_icon: false, show_name: false, show_label: false, show_state: false,
+              card_mod: { style: wrapperStyle },
+              styles: {
+                card: [
+                  { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
+                  { padding: '4px 28px 24px 28px' },
+                ],
+                grid: [
+                  { 'grid-template-areas': areas.trim() },
+                  { 'grid-template-columns': 'repeat(' + C + ', minmax(0,1fr))' },
+                  { gap: '10px' },
+                  { 'align-items': 'start' },
+                ],
+                custom_fields: tileFS,
+              },
+              custom_fields: tileCF,
+            };
+
+            return { type: 'vertical-stack', cards: [headerCard, adviceCard, tilesCard] };
+          ]]]
+
+  icon_tap_action:
+    haptic: light
+    action: more-info

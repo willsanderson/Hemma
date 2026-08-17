@@ -112,13 +112,15 @@ views:
               # media_entity_3: media_player.YOUR_MEDIA_PLAYER_3
               # media_entity_4: media_player.YOUR_MEDIA_PLAYER_4
               # media_entity_5: media_player.YOUR_MEDIA_PLAYER_5
-              # Optional Plex / PSN / Steam activity:
+              # Optional Plex / PSN / PC activity:
               # plex_stream_1: sensor.YOUR_PLEX_STREAM_1_INFO
               # plex_stream_2: sensor.YOUR_PLEX_STREAM_2_INFO
               # psn_entity_1: sensor.YOUR_PSN_SESSION
               # psn_entity_2: sensor.YOUR_PSN_SESSION_2
-              # steam_online_entity: sensor.YOUR_DISCORD_STATUS
-              # steam_game_entity: sensor.YOUR_DISCORD_GAME
+              # discord_online_entity: sensor.YOUR_DISCORD_STATUS
+              # discord_game_entity: sensor.YOUR_DISCORD_GAME
+              # steam_online_entity: sensor.YOUR_STEAM_ACCOUNT
+              # steam_game_entity: sensor.YOUR_STEAM_GAME
 
               # SECURITY (locks — the pill shows a combined locked/unlocked state)
               lock_entity: lock.YOUR_LOCK
@@ -216,6 +218,53 @@ views:
               # Game activity (e.g. PlayStation)
               # psn_1: sensor.YOUR_PSN_SESSION
               # psn_2: sensor.YOUR_PSN_SESSION_2
+              # PC gaming via Discord rich presence — the same two sensors the
+              # badge row above takes as discord_online_entity / discord_game_entity,
+              # under the names this row uses. The first two are required together.
+              # discord_online: sensor.YOUR_DISCORD_USER
+              # discord_game: sensor.YOUR_DISCORD_GAME
+              # discord_image: sensor.YOUR_DISCORD_GAME_IMAGE_LARGE
+              # discord_details: sensor.YOUR_DISCORD_GAME_DETAILS
+              # discord_label: PC
+              # PC gaming via Steam — steam_game is the gate; needs a Public
+              # game-details setting on your Steam profile.
+              # steam_game: sensor.YOUR_STEAM_GAME
+              # steam_online: sensor.YOUR_STEAM_ACCOUNT
+              # steam_image: sensor.YOUR_STEAM_GAME_IMAGE
+              # steam_label: Steam
+              # duplicate_game: discord   # discord | steam | both
+
+          # ── SCENES ── optional. A horizontally scrolling strip of scene chips
+          # above Favorites, with the header caret opening the full Scenes page.
+          # Chips highlight while their scene is actually applied, and the row
+          # hides whenever a category filter is active.
+          #
+          # Both cards list the same scenes. Omit `scenes:` on either to show
+          # every scene that is not hidden in your entity registry; keep it to
+          # pick an exact set and order. Uncomment to enable.
+          #
+          # Needs `room_scenes` added to input_select.hemma_mobile_filter in
+          # packages/hemma_helpers.yaml, plus a matching overlay alongside the
+          # room popups above:
+          #
+          #   - type: custom:hemma-filter-overlay
+          #     room: Scenes
+          #     sections:
+          #       - full_width: true
+          #         cards:
+          #           - type: custom:button-card
+          #             template: hemma_scene_row
+          #             variables:
+          #               layout: grid
+          #
+          # - type: custom:button-card
+          #   template: hemma_mobile_header
+          #   name: Scenes
+          #   variables:
+          #     mobile_filter_category: unfiltered
+          #
+          # - type: custom:button-card
+          #   template: hemma_scene_row
 
           # ── FAVORITES ── hand-picked cards, always the first section.
           - type: custom:button-card
@@ -278,7 +327,7 @@ views:
           # hemma_doorbell, hemma_vacuum, hemma_plant, hemma_air_purifier,
           # hemma_humidifier, hemma_battery, hemma_network, hemma_updates,
           # hemma_motion, hemma_presence, hemma_entity_actions,
-          # hemma_plex_recently_added.
+          # hemma_plex_recently_added, hemma_scenes.
           # ══════════════════════════════════════════════════════════════════
 
           # ── LIVING ROOM ──

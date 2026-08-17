@@ -45,7 +45,7 @@ hemma_badge_light:
         dismissable: true
         adaptive: true
         size: auto
-        style: "--popup-width: 880px; --popup-max-width: 880px;"
+        style: "--popup-min-width: min(880px, 92vw); --popup-max-width: min(880px, 92vw);"
         popup_styles:
           - style: all
             styles: |
@@ -70,9 +70,6 @@ hemma_badge_light:
               }
               .content .container::-webkit-scrollbar {
                 display: none;
-              }
-              wa-dialog {
-                --width: min(880px, 92vw);
               }
               @media (max-width: 768px) {
                 :host {

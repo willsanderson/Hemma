@@ -1,0 +1,63 @@
+hemma_scenes:
+  template:
+    - hemma_entity
+    - hemma_popup_scenes
+
+  variables:
+    icon: scenes
+    mobile_filter_category: unfiltered
+
+  hold_action:
+    action: more-info
+
+  state_display: |
+    [[[
+      const SC = window._hemmaSC;
+      if (!SC) return 'Scenes';
+      const ids = SC.list(states, typeof hass !== 'undefined' ? hass : null, variables);
+      if (!ids.length) return 'No Scenes';
+      SC.prefetch(ids, states);
+      const active = SC.activeList(ids, states);
+      if (active.length) {
+        const name = states[active[0]]?.attributes?.friendly_name
+          || active[0].replace('scene.', '').replace(/_/g, ' ');
+        return active.length > 1 ? name + ' +' + (active.length - 1) : name;
+      }
+      return ids.length + (ids.length === 1 ? ' Scene' : ' Scenes');
+    ]]]
+
+  state:
+    - operator: template
+      value: |
+        [[[
+          const SC = window._hemmaSC;
+          if (!SC) return false;
+          const ids = SC.list(states, typeof hass !== 'undefined' ? hass : null, variables);
+          SC.prefetch(ids, states);
+          return !!SC.activeOf(ids, states);
+        ]]]
+      styles:
+        card:
+          - "--hemma-active-overlay-opacity": "1"
+          - --hemma-entity-overlay-tint: var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))
+          - "--hemma-active-overlay-dur": "0s"
+          - --hemma-entity-top-gradient: none
+          - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
+          - --hemma-icon-color-current: "var(--hemma-color-yellow, #ffd600)"
+          - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
+          - --hemma-icon-mask-active: "0"
+        name:
+          - color: var(--hemma-entity-name-active, var(--primary-text-color))
+        state:
+          - color: var(--hemma-entity-state-active-color)
+        img_cell:
+          - opacity: "1 !important"
+          - filter: none !important
+          - background: "var(--hemma-icon-color-current) !important"
+        entity_picture:
+          - opacity: "1 !important"
+          - filter: none !important
+
+  styles:
+    card:
+      - --hemma-icon-inactive-color: "var(--hemma-color-yellow, #ffd600)"

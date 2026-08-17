@@ -123,6 +123,25 @@ views:
           # Extra source types the panel understands beyond media_player:
           # plex_stream_1: sensor.YOUR_PLEX_STREAM_INFO   # Tautulli/Plex session sensor
           # psn_1: sensor.YOUR_PSN_SESSION                # PlayStation / game activity sensor
+          #
+          # PC gaming via Discord rich presence (discord_game integration).
+          # The first two are required together; the tile shows "PC" beneath the game name.
+          # discord_online: sensor.YOUR_DISCORD_USER     # any presence but offline counts
+          # discord_game: sensor.YOUR_DISCORD_GAME       # state = game name
+          # discord_image: sensor.YOUR_DISCORD_GAME_IMAGE_LARGE
+          # discord_details: sensor.YOUR_DISCORD_GAME_DETAILS
+          # discord_label: PC                            # second row; default "PC"
+          #
+          # PC gaming via Steam (steam_online integration). steam_game is the gate;
+          # requires your Steam profile's game details to be Public.
+          # steam_game: sensor.YOUR_STEAM_GAME           # state = game name
+          # steam_online: sensor.YOUR_STEAM_ACCOUNT      # optional presence guard
+          # steam_image: sensor.YOUR_STEAM_GAME_IMAGE
+          # steam_label: Steam
+          #
+          # Discord reports Steam games too — this picks the survivor when both
+          # name the same game: discord (default) | steam | both.
+          # duplicate_game: discord
 
           # Energy Badges (optional - adds an Energy group badge; tap to expand)
           # Whole-home totals shown in the room's energy popup:
@@ -208,6 +227,26 @@ views:
               # scene_order:
               #   - scene.YOUR_SCENE_1
               #   - scene.YOUR_SCENE_2
+              # Scenes are hidden in the light popup by default; they have their
+              # own row, Scenes page and per-room sections now. Uncomment to
+              # bring them back inside this popup.
+              # show_scenes: true
+              # Only scenes touching this group's lights are listed.
+              # Set scene_scope: all for every scene, as it behaved before 2.0.2.
+              # scene_scope: all
+
+          # Scenes (optional; a launcher for every scene, including ones the
+          # light popup filters out because they touch no lights in the group.
+          # `entity:` only anchors the popup — the list is built from the
+          # entity registry. Trim it with `scenes:` or `scene_exclude:`.)
+          # - type: custom:button-card
+          #   template: hemma_scenes
+          #   entity: scene.YOUR_SCENE_1
+          #   name: Scenes
+          #   variables:
+          #     scene_order:
+          #       - scene.YOUR_SCENE_1
+          #       - scene.YOUR_SCENE_2
 
           # Doorbell Camera
           - type: custom:button-card

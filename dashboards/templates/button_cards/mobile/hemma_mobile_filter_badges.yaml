@@ -33,8 +33,11 @@ hemma_mobile_filter_badges:
     psn_entity_1: null
     psn_entity_2: null
     plex_stream_2: null
+    discord_online_entity: null
+    discord_game_entity: null
     steam_online_entity: null
     steam_game_entity: null
+    duplicate_game: discord
     lock_entity: null
     lock_entity_2: null
     power_entity: null
@@ -222,8 +225,18 @@ hemma_mobile_filter_badges:
               entity_7: '[[[ return variables.psn_entity_2 ]]]'
               entity_8: '[[[ return variables.media_entity_5 ]]]'
               entity_14: '[[[ return variables.plex_stream_2 ]]]'
-              steam_online_entity: '[[[ return variables.steam_online_entity ]]]'
-              steam_game_entity: '[[[ return variables.steam_game_entity ]]]'
+              pc_count: >
+                [[[
+                  const V = {
+                    discord_online: variables.discord_online_entity,
+                    discord_game: variables.discord_game_entity,
+                    steam_online: variables.steam_online_entity,
+                    steam_game: variables.steam_game_entity,
+                    duplicate_game: variables.duplicate_game,
+                  };
+                  const P = window._hemmaPCSources?.(states, V) || {};
+                  return (P.discord ? 1 : 0) + (P.steam ? 1 : 0);
+                ]]]
 
           # Security
           - type: custom:button-card

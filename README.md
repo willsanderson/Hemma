@@ -1,10 +1,10 @@
-<img width="1729" height="1383" alt="hemma" src="https://github.com/user-attachments/assets/66b364c9-1af1-4a7b-951a-9ba2b0d839e3" />
+<img width="1481" height="932" alt="home-light" src="https://github.com/user-attachments/assets/fc4759ee-616d-4691-bc88-cf06faca397d" />
 
-## Hemma
+# :house_with_garden: Hemma
 
-A modern mobile-friendly dashboard for Home Assistant.  Inspired by the [Homio](https://github.com/iamtherufus/Homio) dashboard by @iamtherufus, Hemma is rebuilt and extended with new layouts, cards, and a streamlined setup process.
+A modern, minimal, mobile-friendly dashboard for Home Assistant.  Inspired by the [Homio](https://github.com/iamtherufus/Homio) dashboard by @iamtherufus, Hemma is rebuilt and extended with new layouts, cards, and a streamlined setup process.
 
-The dashboard is fully YAML-based and designed for:
+Hemma is fully YAML-based and designed for:
 - Desktop, tablet, and mobile (portrait + landscape)
 - Light/Dark mode styling
 - Flat card design with Liquid Glass accents
@@ -35,7 +35,7 @@ Hemma now ships as **two dashboards**: the desktop/tablet dashboard (`hemma.yaml
 - **Popups**
   - Climate/air quality, energy usage, network, light control (multi-room + scenes), lock/security group, cover/shades group, plant monitor, battery monitor, system updates, Plex stream, and Plex Recently Added.
 
-### :iphone: Mobile Dashboard
+### :iphone: Mobile Dashboard (NEW)
 A dedicated phone experience inspired on the Apple Home app:
 - **Filter badge pills** (Climate / Lights / People / Media / Security / Energy) — tap a pill and a full-screen popup slides up with every matching card from your rooms, auto-collected (no per-popup configuration)
 - **Room popups** — tap a room's section header for a popup with all of that room's cards, plus a room-scoped sensor chip row (temperature / humidity / air quality / lights / motion) that deep-links into the matching popups
@@ -69,44 +69,47 @@ Install via HACS (recommended) unless noted:
 
 ---
 
-### Desktop View
-<img width="1400" height="840" alt="home-day" src="https://github.com/user-attachments/assets/5f80dffb-455d-4773-bfc6-c0f43cf93f18" />
+### Popup Cards
 
-### Light/Dark Mode
-<img width="1400" height="843" alt="bedroom-day" src="https://github.com/user-attachments/assets/e111998e-03e6-416d-9e43-d09049767046" />
+#### Air Quality
+<img width="615" height="630" alt="popup-aqi" src="https://github.com/user-attachments/assets/2f3e3b1d-5f37-47b3-a474-2b5b24da3a58" />
 
-<img width="1400" height="842" alt="bedroom-night" src="https://github.com/user-attachments/assets/01d75265-ecca-4378-aaad-e4788010fa6e" />
+#### Network
+<img width="615" height="708" alt="popup-network" src="https://github.com/user-attachments/assets/65d088fc-7834-4734-8fca-5ef20f843260" />
 
-### Mobile View (Light/Dark)
-<img width="850" height="600" alt="mobile" src="https://github.com/user-attachments/assets/96b0a526-62aa-450b-b0a4-dd1cbf6ba4af" />
+#### Energy Usage
+<img width="615" height="520" alt="popup-energy" src="https://github.com/user-attachments/assets/8e989b83-cfa0-4e14-923b-b82ea7549ebc" />
+
+#### Battery Monitor
+<img width="615" height="605" alt="popup-battery" src="https://github.com/user-attachments/assets/6c01d11a-c5a9-480c-95dd-d51027f0cbd0" />
+
+#### Plant Monitor
+<img width="615" height="629" alt="popup-plant" src="https://github.com/user-attachments/assets/528e90a4-c25f-49c5-9a7d-43d52ed5efeb" />
+
+#### System Updates
+<img width="615" height="305" alt="popup-updates" src="https://github.com/user-attachments/assets/f8178e5c-c239-477e-b8c9-8cfc865f969a" />
+
+#### Plex Recently Added
+<img width="615" height="452" alt="popup-recently-added" src="https://github.com/user-attachments/assets/f06bd93f-6e8e-46b0-a79c-21a9537dea1c" />
+
+Also included (screenshots coming soon): **Light control** (multi-room filtering + scenes), **Lock/security group**, **Cover/shades group**, and **Plex now-playing stream**.
 
 ---
 
-### Popup Cards
+### Desktop View
+<img width="1481" height="932" alt="living-room-light" src="https://github.com/user-attachments/assets/eee87339-1e23-4e9b-bf9d-4d04731f07dc" />
 
-##### Light Control
-<img width="615" height="361" alt="lights" src="https://github.com/user-attachments/assets/eda0853b-8e49-459a-a4d2-010ef335ec4d" />
+### Light/Dark Mode
+<img width="1481" height="932" alt="living-room-light" src="https://github.com/user-attachments/assets/125fab62-14b1-4b19-bdcc-c9f715ac46b4" />
+<img width="1481" height="932" alt="living-room-light" src="https://github.com/user-attachments/assets/8414710f-0a15-4551-95ae-324312f1c35f" />
 
-##### Air Quality
-<img width="615" height="668" alt="aqi" src="https://github.com/user-attachments/assets/2356570c-18be-4234-88f6-85d8d18dfb9e" />
+### Mobile View (Light/Dark)
+<img src="https://github.com/user-attachments/assets/7e173334-9898-4102-9c37-700f324e6fef" width="404">
+<img src="https://github.com/user-attachments/assets/921ea303-1e80-496f-b111-626f3b4d560c" width="404">
 
-##### Network
-<img width="615" height="702" alt="network" src="https://github.com/user-attachments/assets/923716b7-91a2-4df4-a5c9-c01763c34915" />
-
-##### Energy Usage
-<img width="615" height="513" alt="energy" src="https://github.com/user-attachments/assets/1e24e4ae-e8ed-4dfa-a6dc-10d05b27c2bc" />
-
-##### Battery Monitor
-<img width="615" height="567" alt="battery" src="https://github.com/user-attachments/assets/ad086dde-2b20-4d41-8d5c-017318c7b800" />
-
-##### Plant Monitor
-<img width="615" height="437" alt="plant" src="https://github.com/user-attachments/assets/0136bb91-851b-446b-bec3-114f045d68dc" />
-
-##### System Updates
-<img width="615" height="388" alt="updates" src="https://github.com/user-attachments/assets/2eb63736-c9de-4770-813a-c36f643153be" />
-
-##### Recently Added
-<img width="615" height="475" alt="recently-added" src="https://github.com/user-attachments/assets/19b689f4-19e5-4538-b2e1-3bfd342fa3a2" />
+### Tablet View (Light/Dark)
+<img width="1200" height="900" alt="living-room-light-tablet" src="https://github.com/user-attachments/assets/1fd685b0-6a9e-4087-a182-13c1f5567477" />
+<img width="1200" height="900" alt="living-room-dark-tablet" src="https://github.com/user-attachments/assets/c9a8dafb-4749-444a-93a7-0783502b98de" />
 
 ---
 
@@ -148,6 +151,7 @@ Example layout:
     └── hemma/
         ├── fonts/                      # UI fonts
         ├── icons/                      # UI icons
+        ├── mobile/                     # Mobile dynamic background images
         ├── rooms/                      # Room/background images (*-demo.jpg variants included)
         ├── weather/                    # Weather icons
         └── scripts/                    # JavaScript resources
@@ -240,7 +244,7 @@ Point the theme at your own pair of photos and everything below them follows aut
 `hemma-core.js` reads both images and derives the gradient and mesh colours the
 photo dissolves into, per mode, so the bottom of the screen blends with whatever
 house is at the top. The hex values in the theme are only fallbacks for the demo
-photos, and if that script is missing they paint instead, silently, and your
+photos — if that script is missing they paint instead, silently, and your
 wallpaper ends up carrying the demo house's colours. Serve the photos from
 `/local/` so the sampling stays same-origin.
 
@@ -357,6 +361,8 @@ They appear when `media_player_1` is set — *unless* `show_now_playing: true`, 
 | `media_player_1` – `media_player_10` | Media player entity IDs |
 | `pause_timeout_minutes` | Minutes before a paused player is considered inactive (default: `5`) |
 
+PC gaming appears here too: setting `discord_online` + `discord_game`, or `steam_game`, adds a badge for that source alongside the players. Each source stands on its own — Steam works with Discord absent, and the same `duplicate_game` rule from the Now Playing section decides which badge you get when both report the same game. The badge row and the panel are driven by one shared helper in `hemma-core.js`, so they can never disagree about what's live.
+
 Example home view with all badge types enabled:
 
 ```yaml
@@ -421,11 +427,29 @@ Set `show_now_playing: true` on a room card. `hemma_room` suppresses the media b
 | `media_player_1` – `media_player_10` | — | Standard media player entities |
 | `plex_stream_1` – `plex_stream_2` | — | Plex/Tautulli session sensors — these tiles open the Plex popup rather than more-info |
 | `psn_1` – `psn_2` | — | Game-activity sensors (e.g. PlayStation), shown as activity sources |
+| `discord_online` | — | Discord presence sensor. Any status but `offline` counts, so DND and idle still show |
+| `discord_game` | — | Sensor whose state is the game name. Shown as the tile title |
+| `discord_image` | — | Sensor carrying the game artwork on `entity_picture` / `image_url` |
+| `discord_details` | — | Optional detail sensor (e.g. game mode), appended to the second row |
+| `discord_label` | `PC` | Second row under the game name |
+| `steam_game` | — | Sensor whose state is the current Steam game. Required for the Steam source |
+| `steam_online` | — | Optional Steam presence sensor. When set, the tile hides while it reads `offline` |
+| `steam_image` | — | Sensor holding the game artwork, either on `entity_picture` or as the state itself |
+| `steam_label` | `Steam` | Second row under the game name |
+| `duplicate_game` | `discord` | Which tile survives when Discord and Steam name the same game: `discord`, `steam`, or `both` |
 | `pause_timeout_minutes` | `5` | Minutes before a paused source drops out of the panel |
+
+**PC gaming via Discord:** set `discord_online` **and** `discord_game` together — either one alone is ignored. With the [discord_game](https://github.com/LordBoos/discord_game) integration these are your user sensor and its `game` sensor. The tile shows the game name over `discord_label` (default `PC`), plus the `discord_details` state when that sensor has one.
+
+**PC gaming via Steam:** `steam_game` alone is enough — it's the gate, and `steam_online` is an optional guard for when you want the tile to disappear the moment you go offline. The stock [Steam](https://www.home-assistant.io/integrations/steam_online/) integration exposes the game name and artwork as attributes on your account sensor rather than as sensors, so template sensors that lift `game` and `game_image_main` into their own states work well here; `steam_image` accepts either shape. **Your Steam profile's game details must be set to Public** or the API never reports what you're playing and the tile stays hidden no matter how it's wired.
+
+**When both are set:** Discord reports rich presence for *every* launcher, so a Steam game shows up twice. Hemma compares the two titles after stripping trademark marks, punctuation, and case, and treats one as the same game when it's a whole-token prefix of the other with no digit in the remainder — so `Tomb Raider` folds into `Tomb Raider: Definitive Edition`, while `Portal` and `Portal 2` stay separate. The survivor is chosen by `duplicate_game` and inherits the dropped tile's artwork if it had none of its own, which is usually what you want: Discord keeps its `discord_details` subtitle while borrowing Steam's capsule art.
+
+> **Breaking change in 2.1:** these keys were `discord_steam_online` / `_game` / `_image` / `_details`, and the media badge row took `steam_online_entity` / `steam_game_entity`. The old names carried a Steam label for what has always been Discord data and are no longer read. Rename them in your dashboard YAML or the tile stops appearing.
 
 **Interaction:** tap a rail chip to promote it to the primary slot; hold to pin it there (stored in `input_text.hemma_now_playing_pinned`). With `now_playing_panel: '1'`, the header collapses the panel, tracked by `input_boolean.hemma_now_playing_minimized`.
 
-**Requires:** `hemma-core.js` registered as a Lovelace resource, which holds the source collector both dashboards read. The mobile dashboard's Now Playing row uses the same collector and the same tile templates.
+**Requires:** `hemma-core.js` registered as a Lovelace resource — it holds the source collector both dashboards read. The mobile dashboard's Now Playing row uses the same collector and the same tile templates.
 
 ---
 
@@ -638,7 +662,7 @@ Optionally add a `room_chips:` entry for its sensor chips, and set `mobile_filte
 
 `room_key:` on the header remains available as an override for the rare case where a display name shouldn't drive the key — two rooms whose names slug identically, or a name containing an emoji. Setting it also overrides the overlay if you pass `filter_category:` explicitly there.
 
-**Wallpaper:** nothing to configure here. The mobile background reuses the same room photo the desktop dashboard loads from `www/hemma/rooms/`, with the gradient beneath it coloured by sampling that photo — there is no separate set of mobile wallpapers. To point it at your own pair of images, see [Your own wallpaper](#your-own-wallpaper) above.
+**Wallpaper:** the mobile background changes with the sun. `sensor.hemma_dynamic_mobile_backgrounds` (in `packages/hemma_helpers.yaml`) reports a phase from the sun's elevation, and the dashboard loads `www/hemma/mobile/mobile-<phase>.jpg` — `morning`, `day`, `afternoon`, or `night`, each with an optional `-dark` variant for dark mode. Sample images are included; replace them with your own using the same filenames. You only need the phases you care about — anything missing falls back to the day image.
 
 ---
 

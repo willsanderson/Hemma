@@ -280,12 +280,10 @@ hemma_room:
                 !!variables.psn_1 && variables.psn_1,
                 !!variables.psn_2 && variables.psn_2,
               ].filter(Boolean);
-              const _steamOnline = (!!variables.discord_steam_online&&!!variables.discord_steam_game) && variables.discord_steam_online && variables.discord_steam_game &&
-                (hass.states[variables.discord_steam_online]?.state || '').toLowerCase() === 'online';
-              const _steamGame = String(hass.states[variables.discord_steam_game]?.state || '').toLowerCase();
-              const steamActive = _steamOnline && !!_steamGame && _steamGame !== 'unknown' && _steamGame !== 'unavailable';
+              const _pc = window._hemmaPCSources?.(hass.states, variables) || {};
+              const pcActive = !!(_pc.discord || _pc.steam);
               const opt = (!variables.show_now_playing &&
-                (mediaEids.some(isActive) || steamActive)) ? 'media' : 'none';
+                (mediaEids.some(isActive) || pcActive)) ? 'media' : 'none';
               hass.callService('input_select', 'select_option', {
                 entity_id: 'input_select.hemma_expanded_row',
                 option: opt
@@ -799,7 +797,7 @@ hemma_room:
                 const s = states[e];
                 sig += (s ? s.state + '~' + String(s.attributes?.media_title || '') : '') + '|';
               }
-              for (const k of ['plex_stream_1','plex_stream_2','psn_1','psn_2','discord_steam_game']) {
+              for (const k of ['plex_stream_1','plex_stream_2','psn_1','psn_2','discord_game','steam_game','steam_online']) {
                 const e = variables[k];
                 const s = e ? states[e] : null;
                 sig += (s ? s.state + '~' + String(s.attributes?.media_title || '') : '') + '|';
@@ -1296,11 +1294,19 @@ hemma_room:
           show_psn_2: '[[[ return !!variables.psn_2 ]]]'
           psn_2: '[[[ return variables.psn_2 ]]]'
 
-          show_discord_steam: '[[[ return (!!variables.discord_steam_online&&!!variables.discord_steam_game) ]]]'
-          discord_steam_image: '[[[ return variables.discord_steam_image ]]]'
-          discord_steam_game: '[[[ return variables.discord_steam_game ]]]'
-          discord_steam_online: '[[[ return variables.discord_steam_online ]]]'
-          discord_steam_details: '[[[ return variables.discord_steam_details ]]]'
+          show_discord: '[[[ return !!(variables.discord_online && variables.discord_game) ]]]'
+          discord_image: '[[[ return variables.discord_image ]]]'
+          discord_game: '[[[ return variables.discord_game ]]]'
+          discord_online: '[[[ return variables.discord_online ]]]'
+          discord_details: '[[[ return variables.discord_details ]]]'
+          discord_label: '[[[ return variables.discord_label ]]]'
+
+          show_steam: '[[[ return !!variables.steam_game ]]]'
+          steam_online: '[[[ return variables.steam_online ]]]'
+          steam_game: '[[[ return variables.steam_game ]]]'
+          steam_image: '[[[ return variables.steam_image ]]]'
+          steam_label: '[[[ return variables.steam_label ]]]'
+          duplicate_game: '[[[ return variables.duplicate_game ]]]'
 
     badges:
       card:
@@ -1431,8 +1437,7 @@ hemma_room:
               entity_12: '[[[ return !!variables.media_player_9 ? variables.media_player_9 : null ]]]'
               entity_13: '[[[ return !!variables.media_player_10 ? variables.media_player_10 : null ]]]'
               entity_14: '[[[ return !!variables.plex_stream_2 ? variables.plex_stream_2 : null ]]]'
-              steam_online_entity: '[[[ return (!!variables.discord_steam_online&&!!variables.discord_steam_game) ? variables.discord_steam_online : null ]]]'
-              steam_game_entity: '[[[ return (!!variables.discord_steam_online&&!!variables.discord_steam_game) ? variables.discord_steam_game : null ]]]'
+              pc_count: '[[[ const P = window._hemmaPCSources?.(states, variables) || {}; return (P.discord ? 1 : 0) + (P.steam ? 1 : 0) ]]]'
 
           - type: custom:button-card
             template: hemma_badge_security_group
@@ -1569,13 +1574,7 @@ hemma_room:
           [[[
             const step = 22;
 
-            const steamLive = () => {
-              if (!(!!variables.discord_steam_online&&!!variables.discord_steam_game)) return false;
-              const online = states[variables.discord_steam_online];
-              if (!online || String(online.state || '').toLowerCase() !== 'online') return false;
-              const g = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
-              return !!g && g !== 'unknown' && g !== 'unavailable';
-            };
+            const PC = window._hemmaPCSources?.(states, variables) || {};
 
             const fields = [
               ['mp1',  !!variables.media_player_1  && variables.media_player_1],
@@ -1592,7 +1591,8 @@ hemma_room:
               ['plex_2', !!variables.plex_stream_2 && variables.plex_stream_2],
               ['activity1', !!variables.psn_1],
               ['activity2', !!variables.psn_2],
-              ['activity_steam', steamLive()]
+              ['activity_discord', !!PC.discord],
+              ['activity_steam', !!PC.steam]
             ];
 
             let i = 0;
@@ -1615,7 +1615,7 @@ hemma_room:
               '}' +
               stagger +
               '#mp1, #mp2, #mp3, #mp4, #mp5, #mp6, #mp7, #mp8, #mp9, #mp10,' +
-              '#plex, #plex_2, #activity1, #activity2, #activity_steam{' +
+              '#plex, #plex_2, #activity1, #activity2, #activity_discord, #activity_steam{' +
                 'overflow: var(--hemma-field-ovf, visible) !important;' +
               '}'
             );
@@ -1967,19 +1967,31 @@ hemma_room:
                   [[[
                     return 'none';
                   ]]]
-            activity_steam:
+            activity_discord:
               - max-width: >
                   [[[
-                    if (!(!!variables.discord_steam_online&&!!variables.discord_steam_game) || !variables.discord_steam_online || !variables.discord_steam_game) return '0px';
+                    if (!variables.discord_online || !variables.discord_game) return '0px';
                     return '450px';
                   ]]]
               - margin-right: >
                   [[[
-                    if (!(!!variables.discord_steam_online&&!!variables.discord_steam_game) || !variables.discord_steam_online || !variables.discord_steam_game) return '0px';
-                    const online = states[variables.discord_steam_online]; if (!online) return '0px';
-                    if (String(online.state || '').toLowerCase() !== 'online') return '0px';
-                    const g = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
-                    return (g && g !== 'unknown' && g !== 'unavailable') ? 'var(--badge-gap-current, var(--badge-gap, 10px))' : '0px';
+                    const P = window._hemmaPCSources?.(states, variables);
+                    return P?.discord ? 'var(--badge-gap-current, var(--badge-gap, 10px))' : '0px';
+                  ]]]
+              - transition: >
+                  [[[
+                    return 'none';
+                  ]]]
+            activity_steam:
+              - max-width: >
+                  [[[
+                    if (!variables.steam_game) return '0px';
+                    return '450px';
+                  ]]]
+              - margin-right: >
+                  [[[
+                    const P = window._hemmaPCSources?.(states, variables);
+                    return P?.steam ? 'var(--badge-gap-current, var(--badge-gap, 10px))' : '0px';
                   ]]]
               - transition: >
                   [[[
@@ -2097,65 +2109,92 @@ hemma_room:
               entity: '[[[ return variables.psn_2 ]]]'
               variables:
                 enabled: '[[[ return !!variables.psn_2 ]]]'
-          activity_steam:
+          activity_discord:
             card:
               type: custom:button-card
               template: hemma_badge_activity
-              entity: '[[[ return variables.discord_steam_image ]]]'
+              entity: '[[[ return variables.discord_image ]]]'
               entity_picture: >
                 [[[
-                  const s = states[variables.discord_steam_image];
-                  const url = s?.attributes?.entity_picture || s?.state;
-                  const bad = !url || ['unknown','unavailable',''].includes(String(url).toLowerCase()) || !String(url).startsWith('http');
-                  if (!bad) this._discordImgUrl = url;
+                  const P = window._hemmaPCSources?.(states, variables);
+                  if (P?.discord?.img) this._discordImgUrl = P.discord.img;
                   return this._discordImgUrl || null;
                 ]]]
               variables:
                 enabled: >
                   [[[
-                    if (!(!!variables.discord_steam_online&&!!variables.discord_steam_game)) return false;
-                    const online = states[variables.discord_steam_online];
-                    if (!online || String(online.state || '').toLowerCase() !== 'online') return false;
-                    const g = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
-                    return !!(g && g !== 'unknown' && g !== 'unavailable');
+                    const P = window._hemmaPCSources?.(states, variables);
+                    return !!P?.discord;
                   ]]]
               styles:
                 card:
                   - --hemma-badge-opacity: >
                       [[[
-                        if (!(!!variables.discord_steam_online&&!!variables.discord_steam_game)) return '0';
-                        const online = states[variables.discord_steam_online];
-                        if (!online || String(online.state || '').toLowerCase() !== 'online') return '0';
-                        const g = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
-                        return (g && g !== 'unknown' && g !== 'unavailable') ? '1' : '0';
+                        const P = window._hemmaPCSources?.(states, variables);
+                        return P?.discord ? '1' : '0';
                       ]]]
                   - --hemma-badge-ptr: >
                       [[[
-                        if (!(!!variables.discord_steam_online&&!!variables.discord_steam_game)) return 'none';
-                        const online = states[variables.discord_steam_online];
-                        if (!online || String(online.state || '').toLowerCase() !== 'online') return 'none';
-                        const g = String(states[variables.discord_steam_game]?.state || '').toLowerCase();
-                        return (g && g !== 'unknown' && g !== 'unavailable') ? 'auto' : 'none';
+                        const P = window._hemmaPCSources?.(states, variables);
+                        return P?.discord ? 'auto' : 'none';
                       ]]]
                   - --bg-url: >
                       [[[
-                        const s = states[variables.discord_steam_image];
-                        const raw = s?.attributes?.entity_picture || s?.state;
-                        const bad = !raw || ['unknown','unavailable',''].includes(String(raw).toLowerCase()) || !String(raw).startsWith('http');
-                        if (!bad) {
-                          this._discordBgUrl = `url("${raw}")`;
-                        }
-                        return this._discordBgUrl || 'none';
+                        const P = window._hemmaPCSources?.(states, variables);
+                        if (P?.discord?.img) this._discordImgUrlBg = `url("${P.discord.img}")`;
+                        return this._discordImgUrlBg || 'none';
                       ]]]
               name: >
                 [[[
                   const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-                  const game = String(states[variables.discord_steam_game]?.state || '').trim();
-                  const details = String(states[variables.discord_steam_details]?.state || '').trim();
-                  const gameOk = game && !['unknown','unavailable'].includes(game.toLowerCase());
-                  const detailsOk = details && !['unknown','unavailable'].includes(details.toLowerCase());
-                  const title = 'PC';
-                  const sub = gameOk ? (detailsOk ? `${game} — ${details}` : game) : 'Online';
+                  const P = window._hemmaPCSources?.(states, variables);
+                  const row = P?.discord;
+                  const title = row ? row.label : 'Discord';
+                  const sub = row ? (row.details ? `${row.game} — ${row.details}` : row.game) : 'Online';
+                  return `<div class="badge-wrap"><div class="badge-title">${esc(title)}</div><div class="badge-sub">${esc(sub)}</div></div>`;
+                ]]]
+          activity_steam:
+            card:
+              type: custom:button-card
+              template: hemma_badge_activity
+              entity: '[[[ return variables.steam_image ]]]'
+              entity_picture: >
+                [[[
+                  const P = window._hemmaPCSources?.(states, variables);
+                  if (P?.steam?.img) this._steamImgUrl = P.steam.img;
+                  return this._steamImgUrl || null;
+                ]]]
+              variables:
+                enabled: >
+                  [[[
+                    const P = window._hemmaPCSources?.(states, variables);
+                    return !!P?.steam;
+                  ]]]
+              styles:
+                card:
+                  - --hemma-badge-opacity: >
+                      [[[
+                        const P = window._hemmaPCSources?.(states, variables);
+                        return P?.steam ? '1' : '0';
+                      ]]]
+                  - --hemma-badge-ptr: >
+                      [[[
+                        const P = window._hemmaPCSources?.(states, variables);
+                        return P?.steam ? 'auto' : 'none';
+                      ]]]
+                  - --bg-url: >
+                      [[[
+                        const P = window._hemmaPCSources?.(states, variables);
+                        if (P?.steam?.img) this._steamImgUrlBg = `url("${P.steam.img}")`;
+                        return this._steamImgUrlBg || 'none';
+                      ]]]
+              name: >
+                [[[
+                  const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+                  const P = window._hemmaPCSources?.(states, variables);
+                  const row = P?.steam;
+                  const title = row ? row.label : 'Steam';
+                  const sub = row ? (row.details ? `${row.game} — ${row.details}` : row.game) : 'Online';
                   return `<div class="badge-wrap"><div class="badge-title">${esc(title)}</div><div class="badge-sub">${esc(sub)}</div></div>`;
                 ]]]
     badges_lights:

@@ -8,8 +8,7 @@
 #   always_visible             - show even when nothing is active (default: false)
 #   pause_timeout_minutes      - minutes a paused player still counts as active (default: 10)
 #   entity_1 – entity_14       - media_player entity IDs to track
-#   steam_online_entity        - Discord/Steam online-status sensor (optional)
-#   steam_game_entity          - Discord/Steam current-game sensor (optional)
+#   pc_count                   - number of live PC sources (Discord/Steam); hemma_room computes it
 hemma_badge_media_group:
   template: [hemma_badge_base]
 
@@ -33,8 +32,8 @@ hemma_badge_media_group:
     entity_12: null
     entity_13: null
     entity_14: null
-    steam_online_entity: null
-    steam_game_entity: null
+    # Count of live PC sources (Discord / Steam), computed by hemma_room.
+    pc_count: 0
 
   show_state: false
   show_label: false
@@ -90,16 +89,6 @@ hemma_badge_media_group:
           return st === 'idle';
         };
       
-        const isSteamActive = () => {
-          const onlineEntity = variables?.steam_online_entity;
-          const gameEntity = variables?.steam_game_entity;
-          if (!onlineEntity || !gameEntity) return false;
-      
-          const online = String(hass.states[onlineEntity]?.state || '').toLowerCase();
-          const game = String(hass.states[gameEntity]?.state || '').toLowerCase();
-      
-          return online === 'online' && !!game && game !== 'unknown' && game !== 'unavailable';
-        };
       
         const eids = [
           variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4,
@@ -108,7 +97,7 @@ hemma_badge_media_group:
           variables?.entity_13, variables?.entity_14
         ].filter(Boolean);
       
-        const activeCount = eids.filter(e => isActive(e)).length + (isSteamActive() ? 1 : 0);
+        const activeCount = eids.filter(e => isActive(e)).length + Number(variables?.pc_count || 0);
         return activeCount > 0 ? 'inline-grid' : 'none';
       })();
       const _hide = String(_d).trim() === 'none';
@@ -191,16 +180,6 @@ hemma_badge_media_group:
               return st === 'idle';
             };
 
-            const isSteamActive = () => {
-              const onlineEntity = variables?.steam_online_entity;
-              const gameEntity = variables?.steam_game_entity;
-              if (!onlineEntity || !gameEntity) return false;
-
-              const online = String(hass.states[onlineEntity]?.state || '').toLowerCase();
-              const game = String(hass.states[gameEntity]?.state || '').toLowerCase();
-
-              return online === 'online' && !!game && game !== 'unknown' && game !== 'unavailable';
-            };
 
             const eids = [
               variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4,
@@ -209,7 +188,7 @@ hemma_badge_media_group:
               variables?.entity_13, variables?.entity_14
             ].filter(Boolean);
 
-            const activeCount = eids.filter(e => isActive(e)).length + (isSteamActive() ? 1 : 0);
+            const activeCount = eids.filter(e => isActive(e)).length + Number(variables?.pc_count || 0);
             return activeCount > 0 ? 'inline-grid' : 'none';
           ]]]
       - --badge-title-color: >
@@ -245,16 +224,6 @@ hemma_badge_media_group:
               return st === 'idle';
             };
 
-            const isSteamActive = () => {
-              const onlineEntity = variables?.steam_online_entity;
-              const gameEntity = variables?.steam_game_entity;
-              if (!onlineEntity || !gameEntity) return false;
-
-              const online = String(hass.states[onlineEntity]?.state || '').toLowerCase();
-              const game = String(hass.states[gameEntity]?.state || '').toLowerCase();
-
-              return online === 'online' && !!game && game !== 'unknown' && game !== 'unavailable';
-            };
 
             const eids = [
               variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4,
@@ -263,7 +232,7 @@ hemma_badge_media_group:
               variables?.entity_13, variables?.entity_14
             ];
 
-            const anyActive = eids.some(e => isActive(e)) || isSteamActive();
+            const anyActive = eids.some(e => isActive(e)) || Number(variables?.pc_count || 0) > 0;
             if (variables?.always_visible) return 'var(--hemma-badge-media-color)';
             return anyActive ? 'var(--hemma-badge-media-color)' : 'var(--badge-title-inactive)';
           ]]]
@@ -295,16 +264,6 @@ hemma_badge_media_group:
         return st === 'idle';
       };
 
-      const isSteamActive = () => {
-        const onlineEntity = variables?.steam_online_entity;
-        const gameEntity = variables?.steam_game_entity;
-        if (!onlineEntity || !gameEntity) return false;
-
-        const online = String(hass.states[onlineEntity]?.state || '').toLowerCase();
-        const game = String(hass.states[gameEntity]?.state || '').toLowerCase();
-
-        return online === 'online' && !!game && game !== 'unknown' && game !== 'unavailable';
-      };
 
       const eids = [
         variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4,
@@ -313,7 +272,7 @@ hemma_badge_media_group:
         variables?.entity_13, variables?.entity_14
       ].filter(Boolean);
 
-      const activeCount = eids.filter(e => isActive(e)).length + (isSteamActive() ? 1 : 0);
+      const activeCount = eids.filter(e => isActive(e)).length + Number(variables?.pc_count || 0);
       const sub = activeCount === 0 ? 'None Playing' : activeCount === 1 ? '1 Playing' : `${activeCount} Playing`;
 
       return `

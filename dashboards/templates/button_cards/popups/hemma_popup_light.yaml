@@ -8,12 +8,14 @@ hemma_popup_light:
     lights: []
     group_rooms: true
     initial_filter: -1
+    show_scenes: false
+    scene_scope: lights  # lights | all — 'all' restores the pre-2.0.2 full scene list
 
   custom_fields:
     lpc_init: |
       [[[
-        if (typeof window._hemmaLPC !== 'function' || window._hemmaLPCv !== 28) {
-              window._hemmaLPCv = 28;
+        if (typeof window._hemmaLPC !== 'function' || window._hemmaLPCv !== 31) {
+              window._hemmaLPCv = 31;
               window._hemmaLPC = function(__entity, __states, __hass, __vars) {
               const entity = __entity, states = __states, hass = __hass, variables = __vars;
               const groupId  = variables.group_entity || entity?.entity_id || null;
@@ -97,7 +99,20 @@ hemma_popup_light:
   
               // Scene detection
               // Keys-then-lookup: ownKeys doesn't register entities, get does.
-              const sceneIds = rooms ? Object.keys(states || {})
+              const _sceneScope  = variables.scene_scope || 'lights';
+              const _scopeLeaves = new Set(_expand(groupId));
+              const _touchesGroup = (s) => {
+                const targets = s.attributes?.entity_id;
+                if (!Array.isArray(targets)) return false;
+                return targets.some(id => {
+                  if (typeof id !== 'string' || !id.startsWith('light.')) return false;
+                  if (_scopeLeaves.has(id)) return true;
+                  return _expand(id).some(leaf => _scopeLeaves.has(leaf));
+                });
+              };
+
+              const _showScenes = variables.show_scenes === true;
+              const sceneIds = (rooms && _showScenes) ? Object.keys(states || {})
                 .filter(id => id.startsWith('scene.'))
                 .map(id => states[id])
                 .filter(s => !s.entity_id.startsWith('scene.hemma'))
@@ -105,6 +120,7 @@ hemma_popup_light:
                   const re = _getReg(s.entity_id);
                   return re && !(re.hidden || re.hidden_by || re.disabled || re.disabled_by);
                 })
+                .filter(s => _sceneScope === 'all' || _touchesGroup(s))
                 .sort((a, b) => (a.attributes?.friendly_name || a.entity_id)
                   .localeCompare(b.attributes?.friendly_name || b.entity_id))
                 .map(s => s.entity_id) : [];
@@ -1080,13 +1096,6 @@ hemma_popup_light:
                 }
   
                 const _getHad = () => this.getRootNode()?.host?.parentNode?.parentNode?.parentNode;
-                const _applyWidthFix = (_h) => {
-                  if (!_h) return;
-                  if (_h.style) _h.style.setProperty('--ha-dialog-width-md', '880px');
-                  const _wa = _h.shadowRoot?.querySelector('wa-dialog');
-                  if (_wa?.style) _wa.style.setProperty('--width', 'min(880px, 92vw)');
-                };
-  
                 const _applyHeightFix = (_h) => {
                   if (!_h) return;
                   const _wd = _h.shadowRoot?.querySelector('wa-drawer');
@@ -1098,8 +1107,7 @@ hemma_popup_light:
                 };
   
                 const _hadEarly = _getHad();
-                if (window.innerWidth >= 769) _applyWidthFix(_hadEarly);
-                else _applyHeightFix(_hadEarly);
+                if (window.innerWidth < 769) _applyHeightFix(_hadEarly);
   
                 function _sv(el, isSel) {
                   if (!el) return;
@@ -1264,7 +1272,6 @@ hemma_popup_light:
                       const willBeVisible = idx === i;
                       if (!wasVisible && willBeVisible) _hShow(rd);
                       else if (wasVisible && !willBeVisible) _hHide(rd);
-                      else if (wasVisible && willBeVisible && prevSel === -1) _hShow(rd);
                     }
                     if (prevSel === -1 && _hasScenes) {
                       const _scLblEl = window._hemmaLPRooms?.[_gid]?.[_n] || null;
@@ -1361,11 +1368,7 @@ hemma_popup_light:
                     }
                   }
   
-                  if (window.innerWidth >= 769) {
-                    _applyWidthFix(_had);
-                    setTimeout(() => _applyWidthFix(_had), 300);
-                    setTimeout(() => _applyWidthFix(_had), 800);
-                  } else {
+                  if (window.innerWidth < 769) {
                     _applyHeightFix(_had);
                     setTimeout(() => _applyHeightFix(_had), 300);
                     setTimeout(() => _applyHeightFix(_had), 800);
@@ -1416,7 +1419,7 @@ hemma_popup_light:
         dismissable: true
         adaptive: true
         size: auto
-        style: "--popup-width: 880px; --popup-max-width: 880px;"
+        style: "--popup-min-width: min(880px, 92vw); --popup-max-width: min(880px, 92vw);"
         popup_styles:
           - style: all
             styles: |
@@ -1441,9 +1444,6 @@ hemma_popup_light:
               }
               .content .container::-webkit-scrollbar {
                 display: none;
-              }
-              wa-dialog {
-                --width: min(880px, 92vw);
               }
               @media (max-width: 768px) {
                 :host {

@@ -168,6 +168,18 @@
     return null;
   }
 
+  const ROOM_SECTION_ORDER = ['climate', 'lights', 'media', 'security', 'energy', 'presence'];
+  const ROOM_SECTION_OTHER = 'other';
+  const ROOM_SECTION_LABEL = {
+    climate:  'Climate',
+    lights:   'Lights',
+    media:    'Media',
+    security: 'Security',
+    energy:   'Energy',
+    presence: 'People',
+    other:    'Other',
+  };
+
   const H_SCROLL_IDS = new Set(['media_row', 'climate_row', 'rooms_row']);
 
   const _blurLayers = new Set();
@@ -896,6 +908,35 @@
       this._autoSectionsDone = true;
       if (!rooms.length) return;
       let i = 0;
+
+      if (roomMode && this._config.scenes !== false && window._hemmaSC) {
+        let sceneCount = 0;
+        try {
+          sceneCount = window._hemmaSC.list(
+            this._hass?.states || {}, this._hass, { room: roomMode }).length;
+        } catch (_) { sceneCount = 0; }
+        if (sceneCount) {
+          this._appendRevealCard({
+            type:       'custom:button-card',
+            template:   'hemma_mobile_header',
+            full_width: true,
+            name:       'Scenes',
+            variables:  { hide_caret: true, mobile_filter_categories: null },
+            styles:     {
+              card:          [{ padding: `24px var(--hemma-rail-left, 11px) 10px calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + ${LANDSCAPE_GUTTER_CALC})` }],
+              custom_fields: { arrow: [{ display: 'none' }] },
+            },
+          }, this._contentEl, 0);
+          this._appendRevealCard({
+            type:       'custom:button-card',
+            template:   'hemma_scene_row',
+            full_width: true,
+            variables:  { layout: 'row', room: roomMode },
+            styles:     { card: [{ '--hemma-scene-row-gap': '18px' }] },
+          }, this._contentEl, 0);
+        }
+      }
+
       for (const room of rooms) {
         if (!roomMode) {
           this._appendRevealCard({
@@ -915,8 +956,39 @@
             },
           }, this._contentEl, i);
         }
-        this._appendEntityGrid(room.cards.map((c) => JSON.parse(JSON.stringify(c))), this._contentEl, i);
-        i++;
+        const roomCards = room.cards.map((c) => JSON.parse(JSON.stringify(c)));
+
+        if (roomMode && this._config.group_by_category !== false) {
+          const buckets = new Map();
+          for (const c of roomCards) {
+            const cat = _cardCategory(c);
+            const key = ROOM_SECTION_LABEL[cat] ? cat : ROOM_SECTION_OTHER;
+            if (!buckets.has(key)) buckets.set(key, []);
+            buckets.get(key).push(c);
+          }
+          const keys = ROOM_SECTION_ORDER.filter((k) => buckets.has(k));
+          if (buckets.has(ROOM_SECTION_OTHER)) keys.push(ROOM_SECTION_OTHER);
+          for (const key of keys) {
+            if (ROOM_SECTION_LABEL[key]) {
+              this._appendRevealCard({
+                type:       'custom:button-card',
+                template:   'hemma_mobile_header',
+                full_width: true,
+                name:       ROOM_SECTION_LABEL[key],
+                variables:  { hide_caret: true, mobile_filter_categories: null },
+                styles:     {
+                  card:          [{ padding: `18px var(--hemma-rail-left, 11px) 10px calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + ${LANDSCAPE_GUTTER_CALC})` }],
+                  custom_fields: { arrow: [{ display: 'none' }] },
+                },
+              }, this._contentEl, i);
+            }
+            this._appendEntityGrid(buckets.get(key), this._contentEl, i);
+            i++;
+          }
+        } else {
+          this._appendEntityGrid(roomCards, this._contentEl, i);
+          i++;
+        }
       }
       if (this._hass) {
         for (const el of this._cardEls) { try { el.hass = this._hass; } catch (_) {} }

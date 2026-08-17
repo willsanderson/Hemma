@@ -1,0 +1,113 @@
+hemma_scene_row:
+  template:
+    - hemma_default
+    - hemma_scene_core
+
+  variables:
+    mobile_filter_category: unfiltered
+    layout: row
+    room: null
+    scenes: null
+    scene_exclude: null
+    scene_order: null
+    scene_icons: {}
+    scene_transition: 4
+    chip_width: 44vw
+
+  show_icon: false
+  show_name: false
+  show_state: false
+  show_label: false
+  show_entity_picture: false
+
+  tap_action: {action: none}
+  hold_action: {action: none}
+  double_tap_action: {action: none}
+
+  extra_styles: |
+    /* max-width: overlay hosts are fit-content and collapse without this. */
+    :host {
+      display: block !important;
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+    }
+    /* Theme sets will-change on every ha-card; that kills descendant blur. */
+    ha-card {
+      will-change: auto !important;
+      transform: none !important;
+      filter: none !important;
+      isolation: auto !important;
+      contain: none !important;
+    }
+    #scenes_row::-webkit-scrollbar { display: none !important; }
+
+  custom_fields:
+    scenes_row: |
+      [[[
+        const SC = window._hemmaSC;
+        if (!SC) return '';
+        const ids = SC.list(states, typeof hass !== 'undefined' ? hass : null, variables);
+        if (!ids.length) return '';
+        SC.prefetch(ids, states);
+
+        const grid = variables.layout === 'grid';
+        const icons = variables.scene_icons || {};
+        const opts = {
+          transition: variables.scene_transition == null ? 4 : variables.scene_transition,
+          width: variables.chip_width || '44vw',
+          grid: grid,
+        };
+
+        const inner = grid
+          ? 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;pointer-events:auto;'
+          : 'display:flex;flex-direction:row;gap:8px;width:max-content;min-width:100%;pointer-events:auto;';
+
+        return '<div style="' + inner + '">'
+          + ids.map((id) => SC.chipHtml(id, states, Object.assign({ icon: icons[id] || null }, opts))).join('')
+          + '</div>';
+      ]]]
+
+  styles:
+    card:
+      - background: transparent !important
+      - backdrop-filter: none !important
+      - "-webkit-backdrop-filter": none !important
+      - box-shadow: none !important
+      - border: none !important
+      - border-radius: "0 !important"
+      - padding: "0 0 var(--hemma-scene-row-gap, 0px) 0 !important"
+      - margin: "0 !important"
+      - width: "100%"
+      - pointer-events: "auto !important"
+      - will-change: "auto !important"
+      - transform: "none !important"
+      - filter: "none !important"
+      - isolation: "auto !important"
+      - contain: "none !important"
+    grid:
+      # Not a grid: a grid area sizes to max-content and the strip stops scrolling.
+      - display: block !important
+      - padding: "0 !important"
+      - margin: "0 !important"
+    custom_fields:
+      scenes_row:
+        - overflow-x: |
+            [[[ return variables.layout === 'grid' ? 'visible' : 'auto'; ]]]
+        - overflow-y: |
+            [[[ return variables.layout === 'grid' ? 'visible' : 'hidden'; ]]]
+        - touch-action: |
+            [[[ return variables.layout === 'grid' ? 'auto' : 'pan-x'; ]]]
+        - overscroll-behavior-x: contain
+        - scrollbar-width: none
+        - "-ms-overflow-style": none
+        - "-webkit-overflow-scrolling": touch
+        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) !important"
+        - padding-right: "var(--hemma-rail-left, 11px) !important"
+        - margin: "0 !important"
+        - width: "100%"
+        - box-sizing: border-box
+        - display: block
+        # pointer-events is inherited as none from an ancestor; taps and pan both die without this.
+        - pointer-events: "auto !important"

@@ -127,6 +127,7 @@ input_select:
       - media
       - security
       - energy
+      - room_scenes
       - room_livingroom
       - room_kitchen
       - room_bedroom

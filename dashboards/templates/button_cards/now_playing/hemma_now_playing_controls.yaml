@@ -48,7 +48,7 @@ hemma_now_playing_controls:
           [[[
             return variables.icon_size || (variables.compact ? '24px' : 'calc(var(--hemma-u-np, 10px) * 2.2)');
           ]]]
-      # No transport (Plex/PSN/Steam): hide so the grid column collapses instead of leaving an empty box.
+      # No transport (Plex/PSN/Discord): hide so the grid column collapses instead of leaving an empty box.
       - display: >
           [[[
             const c = variables.src?.controls;
@@ -89,8 +89,13 @@ hemma_now_playing_controls:
         const R = 20 - (SW / 2) - 0.5;
         const C = 2 * Math.PI * R;
 
+        // Idle/on/standby players keep reporting a stale dur and pos, so the state has to gate the
+        // arc too — otherwise an app sitting on a loaded-but-unplayed item draws a bare track.
+        const st = String(s.state || '').toLowerCase();
+        const trackable = st === 'playing' || st === 'buffering' || st === 'paused';
+
         let arc = '';
-        if (Number.isFinite(s.dur) && s.dur > 0 && Number.isFinite(s.pos)) {
+        if (trackable && Number.isFinite(s.dur) && s.dur > 0 && Number.isFinite(s.pos)) {
           const elapsed = s.playing && s.posAt ? (Date.now() - s.posAt) / 1000 : 0;
           const now = Math.min(s.dur, Math.max(0, s.pos + elapsed));
           const frac = Math.max(0, Math.min(1, now / s.dur));
@@ -100,12 +105,15 @@ hemma_now_playing_controls:
           const anim = s.playing && remain > 0
             ? `animation: np-ring-advance ${remain.toFixed(1)}s linear forwards;`
             : '';
-          arc = `
-            <circle class="np-ring-track" cx="20" cy="20" r="${R.toFixed(3)}"></circle>
-            <circle class="np-ring-fill" cx="20" cy="20" r="${R.toFixed(3)}"
-              transform="rotate(-90 20 20)"
-              style="stroke-dasharray: ${C.toFixed(3)}; stroke-dashoffset: ${(C * (1 - frac)).toFixed(3)}; ${anim}"></circle>
-          `;
+          // Paused at the very top of an item hasn't got progress to show yet.
+          if (s.playing || now > 1) {
+            arc = `
+              <circle class="np-ring-track" cx="20" cy="20" r="${R.toFixed(3)}"></circle>
+              <circle class="np-ring-fill" cx="20" cy="20" r="${R.toFixed(3)}"
+                transform="rotate(-90 20 20)"
+                style="stroke-dasharray: ${C.toFixed(3)}; stroke-dashoffset: ${(C * (1 - frac)).toFixed(3)}; ${anim}"></circle>
+            `;
+          }
         }
 
         return `

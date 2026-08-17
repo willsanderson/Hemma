@@ -72,12 +72,23 @@ hemma_popup_plant:
               });
             }
 
+            /* A `problem` plant can arrive with no per-sensor detail at all -
+             * the integration returns {} for extra_state_attributes until
+             * plant_complete. We then know something is wrong but not what, so
+             * no tile may claim to be OK. */
+            const blind = !plantIsOk && !gradable.some(s => {
+              const t = getSensorType(s);
+              return badTypes[t] != null || Object.prototype.hasOwnProperty.call(plantAttrs, t + '_status');
+            });
+
             const C_HEALTHY    = 'var(--hemma-badge-plant-healthy-color, #44e371)';
             const C_STRUGGLING = 'var(--hemma-badge-plant-struggling-color, #ff9230)';
 
             let advice;
             if (plantIsOk) {
               advice = 'Plant is healthy';
+            } else if (plantIsBad && blind) {
+              advice = 'Needs attention';
             } else if (plantIsBad) {
               const maxScore = readable.length || gradable.length || 1;
               const badCount = Math.min(Object.keys(badTypes).length || 1, maxScore);
@@ -184,10 +195,14 @@ hemma_popup_plant:
               const name  = cleanName(eid);
               const isOk  = !type || !badTypes[type];
 
+              /* No reading, or a problem we cannot attribute to any one sensor:
+               * show the value without a verdict rather than a green OK. */
+              const noVerdict = val == null || (blind && type && type !== 'battery');
+
               /* One semantic ladder for every metric — moisture and humidity
                * used to read blue, which looked like a different kind of
                * measurement rather than the same ok/problem signal. */
-              const labelColor = val == null ? 'rgba(255,255,255,0.3)'
+              const labelColor = noVerdict ? 'rgba(255,255,255,0.3)'
                 : !isOk ? C_STRUGGLING
                 : C_HEALTHY;
 
@@ -251,7 +266,7 @@ hemma_popup_plant:
                   c: '<div style="padding:0 4px;">'
                     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
                       + '<span style="font-size:13px;color:var(--hemma-popup-tiles-text-primary);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</span>'
-                      + '<span style="font-size:13px;color:' + labelColor + ';white-space:nowrap;font-weight:600;flex-shrink:0;">' + (isOk ? 'OK' : 'Problem') + '</span>'
+                      + '<span style="font-size:13px;color:' + labelColor + ';white-space:nowrap;font-weight:600;flex-shrink:0;">' + (noVerdict ? '—' : isOk ? 'OK' : 'Problem') + '</span>'
                     + '</div>'
                     + '<div style="display:flex;align-items:baseline;gap:3px;margin-bottom:10px;">'
                       + '<span style="font-size:22px;font-weight:400;color:#fff;line-height:1;">' + valStr + '</span>'

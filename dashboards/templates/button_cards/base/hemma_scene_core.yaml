@@ -1,0 +1,443 @@
+hemma_scene_core:
+  variables:
+    hemma_scene_core_guard:
+      force_eval: true
+      value: |
+        [[[
+            if (typeof window._hemmaSC !== 'object' || window._hemmaSCv !== 13) {
+              window._hemmaSCv = 13;
+
+              const CFG_KEY = 'hemma_scene_cfg_v1';
+              const IGN_KEY = 'hemma_scene_ignore_v1';
+              const UD_KEY = 'hemma_scene_ignore';
+
+              const SETTLE_PAD_MS = 1500;
+              const settleMs = (t) => (Number(t) || 0) * 1000 + SETTLE_PAD_MS;
+
+              const load = (k) => { try { return JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (_) { return {}; } };
+              const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
+
+              const cfgCache = load(CFG_KEY);
+              const ignore   = load(IGN_KEY);
+              const noCfg    = new Set();
+              let apiDead    = false;
+              let optimistic = null;
+              const inFlight = new Set();
+              const refreshed = new Set();
+
+              const els = new Set();
+              window._hemmaSCReg = (el) => { if (el) els.add(el); };
+              const nudge = () => els.forEach((el) => {
+                try { if (el.isConnected === false) { els.delete(el); return; } el.requestUpdate && el.requestUpdate(); } catch (_) {}
+              });
+
+              const liveHass = () => document.querySelector('home-assistant')?.hass || null;
+
+              const eqArr = (a, b) => Array.isArray(a) && Array.isArray(b)
+                && a.length === b.length && a.every((v, i) => v === b[i]);
+
+              const SC_C = {
+                onBg: 'var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))',
+                offBg: 'var(--hemma-entity-background, rgba(0,0,0,0.40))',
+                onName: 'var(--hemma-entity-name-active, rgba(0,0,0,0.85))',
+                offName: 'rgba(255,255,255,0.90)',
+                rim: 'var(--hemma-tile-glass-rim, inset 0 1px 0 -0.5px rgba(255,255,255,0.10), 0 2px 8px rgba(0,0,0,0.10))',
+                backdrop: 'var(--hemma-scene-chip-backdrop, blur(22px) saturate(1.2))',
+              };
+
+              const EFFECT_OFF = new Set(['off', 'none', 'no effect', 'effect_stop', 'solid']);
+              const effectIsOff = (v) => v == null || EFFECT_OFF.has(String(v).toLowerCase());
+
+              const attrMatch = (t, live) => {
+                const la = live.attributes || {};
+
+                if (!effectIsOff(t.effect)) return String(la.effect) === String(t.effect);
+                if (t.effect != null && !effectIsOff(la.effect)) return false;
+
+                if (t.brightness != null && t.brightness !== la.brightness) return false;
+                const mode = t.color_mode;
+                if (mode != null && mode !== la.color_mode) return false;
+                if (mode === 'color_temp') {
+                  if (t.color_temp_kelvin != null && t.color_temp_kelvin !== la.color_temp_kelvin) return false;
+                } else if (mode != null) {
+                  if (t.rgb_color != null && !eqArr(t.rgb_color, la.rgb_color)) return false;
+                }
+                return true;
+              };
+
+              const roomEntityIds = (hass, roomName) => {
+                const areas = hass?.areas || {};
+                const devices = hass?.devices || {};
+                const ents = hass?.entities || {};
+                const want = String(roomName || '').trim().toLowerCase();
+                if (!want) return null;
+                const areaIds = new Set(Object.keys(areas)
+                  .filter((id) => String(areas[id]?.name || '').trim().toLowerCase() === want));
+                if (!areaIds.size) return null;
+                const out = new Set();
+                Object.keys(ents).forEach((eid) => {
+                  const e = ents[eid];
+                  const aid = e?.area_id || (e?.device_id ? devices[e.device_id]?.area_id : null);
+                  if (aid && areaIds.has(aid)) out.add(eid);
+                });
+                return out.size ? out : null;
+              };
+
+              const expandEntity = (eid, states, seen) => {
+                seen = seen || new Set();
+                if (!eid || seen.has(eid)) return [];
+                seen.add(eid);
+                const mems = states[eid]?.attributes?.entity_id;
+                if (Array.isArray(mems)) return mems.flatMap((m) => expandEntity(m, states, seen));
+                return [eid];
+              };
+
+              const sceneTouchesRoom = (sceneId, states, roomSet) => {
+                const targets = states[sceneId]?.attributes?.entity_id;
+                if (!Array.isArray(targets)) return false;
+                for (const t of targets) {
+                  if (typeof t !== 'string') continue;
+                  if (roomSet.has(t)) return true;
+                  const leaves = expandEntity(t, states);
+                  for (const l of leaves) if (roomSet.has(l)) return true;
+                }
+                return false;
+              };
+
+              const entityMatch = (eid, t, states) => {
+                const live = states[eid];
+                if (!live) return false;
+                if (String(t.state) !== String(live.state)) return false;
+                if (String(t.state) !== 'on') return true;
+                if (!eid.startsWith('light.')) return true;
+                return attrMatch(t, live);
+              };
+
+              const fetchCfg = (sceneId) => {
+                if (apiDead || noCfg.has(sceneId) || inFlight.has(sceneId)) return;
+                const h = liveHass();
+                if (!h) return;
+                const sid = h.states[sceneId]?.attributes?.id;
+                if (!sid) { noCfg.add(sceneId); return; }
+                inFlight.add(sceneId);
+                h.callApi('GET', 'config/scene/config/' + sid).then((c) => {
+                  inFlight.delete(sceneId);
+                  if (c && c.entities) {
+                    const changed = JSON.stringify(cfgCache[sceneId]) !== JSON.stringify(c);
+                    cfgCache[sceneId] = c;
+                    save(CFG_KEY, cfgCache);
+                    if (changed) nudge();
+                  }
+                }).catch((e) => {
+                  inFlight.delete(sceneId);
+                  const code = e?.status_code || e?.status;
+                  if (code === 401 || code === 403) apiDead = true;
+                  else noCfg.add(sceneId);
+                });
+              };
+
+              let udPulled = false;
+              let udPullAt = 0;
+
+              const pullShared = (force) => {
+                const h = liveHass();
+                if (!h || !h.callWS) return;
+                if (!force && udPulled) return;
+                if (Date.now() - udPullAt < 3000) return;
+                udPulled = true;
+                udPullAt = Date.now();
+                h.callWS({ type: 'frontend/get_user_data', key: UD_KEY }).then((r) => {
+                  const v = r && r.value;
+                  if (!v || typeof v !== 'object') return;
+                  if (JSON.stringify(v) === JSON.stringify(ignore)) return;
+                  Object.keys(ignore).forEach((k) => delete ignore[k]);
+                  Object.keys(v).forEach((k) => { ignore[k] = v[k]; });
+                  save(IGN_KEY, ignore);
+                  nudge();
+                }).catch(() => {});
+              };
+
+              const pushShared = () => {
+                const h = liveHass();
+                if (!h || !h.callWS) return;
+                udPullAt = Date.now();
+                h.callWS({ type: 'frontend/set_user_data', key: UD_KEY, value: ignore }).catch(() => {});
+              };
+
+              const seenTs = {};
+              const watchForRemoteApply = (ids, states) => {
+                let changed = false;
+                (ids || []).forEach((id) => {
+                  const t = states[id]?.state;
+                  if (seenTs[id] !== undefined && seenTs[id] !== t) changed = true;
+                  seenTs[id] = t;
+                });
+                if (changed) setTimeout(() => pullShared(true), 6000);
+              };
+
+              const learn = (sceneId) => {
+                const cfg = cfgCache[sceneId];
+                const h = liveHass();
+                if (!cfg || !h) return;
+                const ents = cfg.entities || {};
+                const ids = Object.keys(ents);
+                if (!ids.length) return;
+                const bad = ids.filter((eid) => !entityMatch(eid, ents[eid], h.states));
+                if (bad.length > ids.length / 2) return;
+                const set = new Set(ignore[sceneId] || []);
+                const badSet = new Set(bad);
+                ids.forEach((eid) => { if (badSet.has(eid)) set.add(eid); else set.delete(eid); });
+                const before = JSON.stringify(ignore[sceneId] || null);
+                if (set.size) ignore[sceneId] = Array.from(set); else delete ignore[sceneId];
+                save(IGN_KEY, ignore);
+                if (JSON.stringify(ignore[sceneId] || null) !== before) { pushShared(); nudge(); }
+              };
+
+              window._hemmaSC = {
+                list(states, hass, vars) {
+                  const v = vars || {};
+                  const reg = hass?.entities || {};
+                  const getReg = (id) => reg[id] || (reg.get && reg.get(id)) || null;
+                  const excl = new Set(Array.isArray(v.scene_exclude) ? v.scene_exclude : []);
+
+                  const explicit = Array.isArray(v.scenes) && v.scenes.length > 0;
+                  let ids = explicit
+                    ? v.scenes.filter((id) => states[id])
+                    : Object.keys(states || {})
+                        .filter((id) => id.startsWith('scene.') && !id.startsWith('scene.hemma'))
+                        .filter((id) => {
+                          const re = getReg(id);
+                          return re && !(re.hidden || re.hidden_by || re.disabled || re.disabled_by);
+                        });
+
+                  ids = ids.filter((id) => !excl.has(id));
+
+                  if (v.room) {
+                    const roomSet = roomEntityIds(hass, v.room);
+                    if (roomSet) ids = ids.filter((id) => sceneTouchesRoom(id, states, roomSet));
+                  }
+                  if (!explicit) {
+                    const nameOf = (id) => states[id]?.attributes?.friendly_name
+                      || id.replace('scene.', '').replace(/_/g, ' ');
+                    ids.sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
+                  }
+
+                  if (Array.isArray(v.scene_order)) {
+                    const so = v.scene_order;
+                    ids.sort((a, b) => {
+                      const ai = so.indexOf(a), bi = so.indexOf(b);
+                      if (ai !== -1 && bi !== -1) return ai - bi;
+                      if (ai !== -1) return -1;
+                      if (bi !== -1) return 1;
+                      return 0;
+                    });
+                  }
+                  return ids;
+                },
+
+                prefetch(ids, states) {
+                  pullShared(false);
+                  if (states) watchForRemoteApply(ids, states);
+                  (ids || []).forEach((id) => {
+                    if (!cfgCache[id]) { fetchCfg(id); return; }
+                    if (!refreshed.has(id)) { refreshed.add(id); fetchCfg(id); }
+                  });
+                },
+
+                isActive(sceneId, states) {
+                  if (optimistic && optimistic.id === sceneId && Date.now() < optimistic.until) return true;
+                  const cfg = cfgCache[sceneId];
+                  if (!cfg || !cfg.entities) return false;
+                  const ign = new Set(ignore[sceneId] || []);
+                  const ents = cfg.entities;
+                  let checked = 0;
+                  for (const eid of Object.keys(ents)) {
+                    if (ign.has(eid)) continue;
+                    if (!entityMatch(eid, ents[eid], states)) return false;
+                    checked++;
+                  }
+                  return checked > 0;
+                },
+
+                activeList(ids, states) {
+                  const ts = (id) => {
+                    const t = Date.parse(states[id]?.state);
+                    return isNaN(t) ? 0 : t;
+                  };
+                  return (ids || [])
+                    .filter((id) => this.isActive(id, states))
+                    .sort((a, b) => ts(b) - ts(a));
+                },
+
+                activeOf(ids, states) {
+                  return this.activeList(ids, states)[0] || null;
+                },
+
+                chipHtml(sceneId, states, opts) {
+                  const o = opts || {};
+                  const on = this.isActive(sceneId, states);
+                  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                  const st = states[sceneId];
+                  const name = esc(st?.attributes?.friendly_name
+                    || sceneId.replace('scene.', '').replace(/_/g, ' '));
+                  const trans = o.transition == null ? 4 : o.transition;
+                  const accent = 'var(--hemma-color-yellow, #ffd600)';
+
+                  const glyph = o.icon
+                    ? '<div style="width:22px;height:22px;background-color:' + (on ? '#ffffff' : accent)
+                      + ';-webkit-mask:url(' + esc(o.icon) + ') no-repeat center/contain;mask:url('
+                      + esc(o.icon) + ') no-repeat center/contain;"></div>'
+                    : '<ha-icon icon="' + esc(st?.attributes?.icon || 'mdi:palette')
+                      + '" style="--mdc-icon-size:22px;color:' + (on ? '#ffffff' : accent) + ';"></ha-icon>';
+
+                  const sizing = o.grid
+                    ? 'width:100%;'
+                    : 'flex:0 0 auto;width:' + (o.width || '44vw') + ';';
+
+                  const tap = ' onpointerdown="this.dataset.sx=event.clientX;this.dataset.sy=event.clientY"'
+                    + ' onpointerup="var dx=Math.abs(event.clientX-this.dataset.sx),'
+                    + 'dy=Math.abs(event.clientY-this.dataset.sy);if(dx>8||dy>8)return;'
+                    + 'event.stopPropagation();window._hemmaSC&amp;&amp;window._hemmaSC.apply(&#39;'
+                    + sceneId + '&#39;,' + trans + ')"';
+
+                  return '<div role="button" tabindex="0"' + tap
+                    + ' style="' + sizing
+                    + 'display:flex;align-items:center;gap:10px;padding:12px;border-radius:26px;box-sizing:border-box;'
+                    + 'cursor:pointer;pointer-events:auto;-webkit-tap-highlight-color:transparent;'
+                    + 'user-select:none;-webkit-user-select:none;'
+                    + 'transition:background 0.45s ease,transform 0.2s ease;'
+                    + 'box-shadow:' + SC_C.rim + ';'
+                    + '-webkit-backdrop-filter:' + SC_C.backdrop + ';backdrop-filter:' + SC_C.backdrop + ';'
+                    + 'background:' + (on ? SC_C.onBg : SC_C.offBg) + ';">'
+                      + '<div style="width:38px;height:38px;min-width:38px;border-radius:50%;display:flex;'
+                        + 'align-items:center;justify-content:center;transition:background 0.45s ease;'
+                        + 'background:' + (on ? accent : 'rgba(255,255,255,0.10)') + ';">' + glyph + '</div>'
+                      + '<div style="font-size:14px;font-weight:500;line-height:1.2;white-space:nowrap;'
+                        + 'overflow:hidden;text-overflow:ellipsis;font-family:var(--primary-font-family,system-ui);'
+                        + 'color:' + (on ? SC_C.onName : SC_C.offName) + ';">' + name + '</div>'
+                    + '</div>';
+                },
+
+                chip(sceneId, opts) {
+                  const o = opts || {};
+                  const sid = JSON.stringify(sceneId);
+                  const icon = o.icon || null;
+                  const trans = o.transition == null ? 4 : o.transition;
+                  const act = 'var _sca = window._hemmaSC ? window._hemmaSC.isActive(' + sid + ', states) : false;';
+                  const maskCss = icon
+                    ? '#img-cell img{opacity:0!important;}div#img-cell::after{content:""!important;display:block!important;position:absolute!important;inset:0!important;background-color:var(--sc-clr,#ffffff)!important;-webkit-mask-image:url(' + JSON.stringify(icon) + ')!important;-webkit-mask-repeat:no-repeat!important;-webkit-mask-position:center!important;-webkit-mask-size:auto 58%!important;mask-image:url(' + JSON.stringify(icon) + ')!important;mask-repeat:no-repeat!important;mask-position:center!important;mask-size:auto 58%!important;pointer-events:none!important;transform:translateZ(0)!important;}'
+                    : '';
+                  const card = [
+                    { background: '[[[ ' + act + ' return _sca?"' + SC_C.onBg + '":"' + SC_C.offBg + '"; ]]]' },
+                    { '--sc-nc': '[[[ ' + act + ' return _sca?"' + SC_C.onName + '":"' + SC_C.offName + '"; ]]]' },
+                    { '--sc-clr': '[[[ ' + act + ' return _sca?"#ffffff":"var(--hemma-color-yellow, #ffd600)"; ]]]' },
+                    { '--hemma-card-hover-filter': '[[[ ' + act + ' return _sca?"none":"brightness(1.10)"; ]]]' },
+                    { '--sc-hover-tint': '[[[ ' + act + ' return _sca?"transparent":"rgba(255,255,255,0.06)"; ]]]' },
+                    { border: 'none' },
+                    { 'box-shadow': 'none' },
+                    { 'border-radius': '26px' },
+                    { cursor: 'pointer' },
+                    { padding: '12px 12px' },
+                    { width: o.width || '100%' },
+                  ];
+                  if (o.width) card.push({ 'min-width': o.width });
+                  return {
+                    type: 'custom:button-card',
+                    entity: sceneId,
+                    tap_action: {
+                      action: 'fire-dom-event',
+                      event_data: { hemma_scene_tap: sceneId, hemma_scene_transition: trans },
+                    },
+                    haptic: 'medium',
+                    show_icon: true,
+                    show_entity_picture: true,
+                    entity_picture: '[[[ return ' + JSON.stringify(icon) + ' || states[' + sid + ']?.attributes?.entity_picture || undefined; ]]]',
+                    icon: '[[[ return states[' + sid + ']?.attributes?.icon || "mdi:palette"; ]]]',
+                    show_name: true,
+                    show_state: false,
+                    show_label: false,
+                    name: '[[[ return states[' + sid + ']?.attributes?.friendly_name || ' + sid + '.replace("scene.", "").replace(/_/g, " "); ]]]',
+                    extra_styles: ':host{--hemma-card-hover-filter:brightness(1.10);width:100%!important;max-width:none!important;display:block!important;box-sizing:border-box!important;--button-card-ripple-color:transparent!important;--button-card-ripple-hover-color:transparent!important;--ha-ripple-color:transparent!important;--ha-ripple-hover-color:transparent!important;}ha-card{transition:background 0.45s ease,transform var(--hemma-popup-tile-hover-duration,0.2s) ease,filter var(--hemma-popup-tile-hover-duration,0.2s) ease!important;transform:scale(1)!important;}ha-card:hover{transform:scale(var(--hemma-popup-tile-hover-scale,1.01))!important;}ha-card:active{transform:scale(0.97)!important;}@media (hover:hover){ha-card:hover{filter:var(--hemma-card-hover-filter,brightness(1.06))!important;}ha-card:hover::after{background:var(--sc-hover-tint,rgba(255,255,255,0.06))!important;}}ha-card::before{display:none!important;}ha-card::after{content:""!important;position:absolute!important;inset:0!important;border-radius:inherit!important;background:transparent!important;transition:background var(--hemma-popup-tile-hover-duration,0.2s) ease!important;pointer-events:none!important;}ha-ripple{display:none!important;}div#img-cell{position:relative!important;overflow:hidden!important;}div#img-cell::before{display:none!important;}ha-icon{--mdc-icon-size:22px!important;color:var(--sc-clr,#ffffff)!important;}#img-cell img{width:60%!important;height:60%!important;object-fit:contain!important;}' + maskCss,
+                    styles: {
+                      card: card,
+                      grid: [
+                        { 'grid-template-areas': '"i n"' },
+                        { 'grid-template-columns': 'auto minmax(0, 1fr)' },
+                        { 'column-gap': '10px' },
+                        { 'align-items': 'center' },
+                      ],
+                      img_cell: [
+                        { background: '[[[ ' + act + ' return _sca?"var(--hemma-color-yellow,#ffd600)":"rgba(255,255,255,0.10)"; ]]]' },
+                        { 'border-radius': '50%' },
+                        { width: '38px' },
+                        { height: '38px' },
+                        { 'min-width': '38px' },
+                        { display: 'flex' },
+                        { 'align-items': 'center' },
+                        { 'justify-content': 'center' },
+                        { 'align-self': 'center' },
+                      ],
+                      entity_picture: [{ width: '60%' }, { height: '60%' }, { 'object-fit': 'contain' }],
+                      name: [
+                        { 'font-size': '14px' },
+                        { 'font-weight': '500' },
+                        { color: 'var(--sc-nc)' },
+                        { 'text-align': 'left' },
+                        { 'justify-self': 'start' },
+                        { 'align-self': 'center' },
+                        { 'line-height': '1.2' },
+                        { overflow: 'hidden' },
+                        { 'text-overflow': 'ellipsis' },
+                        { 'white-space': 'nowrap' },
+                      ],
+                    },
+                  };
+                },
+
+                apply(sceneId, transition) {
+                  const h = liveHass();
+                  if (!h) return;
+                  const t = transition == null ? 4 : transition;
+                  const settle = settleMs(t);
+                  optimistic = { id: sceneId, until: Date.now() + settle + 750 };
+                  h.callService('scene', 'turn_on', { entity_id: sceneId, transition: t });
+                  setTimeout(() => learn(sceneId), settle);
+                },
+
+                debug() {
+                  return { apiDead, noCfg: Array.from(noCfg), cached: Object.keys(cfgCache), ignore };
+                },
+              };
+            }
+
+            if (!window._hemmaSCTap) {
+              window._hemmaSCTap = true;
+              document.addEventListener('ll-custom', (e) => {
+                const d = (e.detail && e.detail.event_data) ? e.detail.event_data : (e.detail || {});
+                if (!d.hemma_scene_tap) return;
+                window._hemmaSC.apply(d.hemma_scene_tap, d.hemma_scene_transition);
+              });
+            }
+            return true;
+          ]]]
+
+  custom_fields:
+    sc_init: |
+      [[[
+        try {
+          const host = this.getRootNode && this.getRootNode().host;
+          if (host && typeof window._hemmaSCReg === 'function') window._hemmaSCReg(host);
+        } catch (_) {}
+        return '';
+      ]]]
+
+  styles:
+    custom_fields:
+      sc_init:
+        - display: none
+        - position: absolute
+        - height: "0"
+        - width: "0"
+        - overflow: hidden
+        - pointer-events: none

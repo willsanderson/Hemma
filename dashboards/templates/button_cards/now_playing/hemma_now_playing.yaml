@@ -52,11 +52,24 @@ hemma_now_playing:
     # Collapsed to just the header row. Toggled by the caret.
     minimized_entity: input_boolean.hemma_now_playing_minimized
 
-    show_discord_steam: false
-    discord_steam_image: null
-    discord_steam_game: null
-    discord_steam_online: null
-    discord_steam_details: null
+    show_discord: false
+    discord_image: null
+    discord_game: null
+    discord_online: null
+    discord_details: null
+    # Second row under the game name.
+    discord_label: PC
+
+    show_steam: false
+    steam_online: null
+    steam_game: null
+    steam_image: null
+    steam_label: Steam
+
+    # Discord reports Steam games too. Which tile survives when both name the
+    # same game: discord | steam | both.
+    duplicate_game: discord
+
 
     # Shared source-normalizer, force_eval'd once (button-card can't share JS across templates); explicit entity lookups only — never Object.values(states), which would subscribe to all ~1500 entities.
     hemma_np_init:
@@ -79,6 +92,22 @@ hemma_now_playing:
                 } catch (e) { return full; }
               };
               const ms = (t) => { const n = t ? Date.parse(t) : NaN; return Number.isFinite(n) ? n : 0; };
+              // Discord's game-database name and Steam's store name rarely match exactly:
+              // trademark marks, punctuation, and edition suffixes differ. Treat a whole-token
+              // prefix as the same game, but only when the remainder carries no digit, so
+              // "Portal" and "Portal 2" stay separate while "… Definitive Edition" folds in.
+              const sameGame = (x, y) => {
+                const flat = (v) => String(v || '').toLowerCase()
+                  .replace(/[\u2122\u00ae\u00a9]/g, ' ')
+                  .replace(/[^a-z0-9]+/g, ' ')
+                  .trim();
+                const a = flat(x), b = flat(y);
+                if (!a || !b) return false;
+                if (a === b) return true;
+                const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+                if (!long.startsWith(short + ' ')) return false;
+                return !/[0-9]/.test(long.slice(short.length));
+              };
 
               const pauseTimeout = Number(V.pause_timeout_minutes ?? 10);
               const out = [];
@@ -211,26 +240,79 @@ hemma_now_playing:
                 });
               }
 
-              if (V.show_discord_steam && V.discord_steam_online && V.discord_steam_game) {
-                const online = low(states[V.discord_steam_online]?.state) === 'online';
-                const game = norm(states[V.discord_steam_game]?.state);
+              const dcOnline = V.discord_online;
+              const dcGame = V.discord_game;
+              const dcImage = V.discord_image;
+              const dcDetails = V.discord_details;
+              if (V.show_discord && dcOnline && dcGame) {
+                // Any presence but offline counts — DND and idle are normal while gaming.
+                const status = low(states[dcOnline]?.state);
+                const live = !!status && !['offline', 'unknown', 'unavailable', 'none'].includes(status);
+                const game = norm(states[dcGame]?.state);
                 const dead = !game || ['unknown', 'unavailable'].includes(game.toLowerCase());
-                if (online && !dead) {
-                  const imgS = V.discord_steam_image && states[V.discord_steam_image];
+                if (live && !dead) {
+                  const imgS = dcImage && states[dcImage];
                   const ia = (imgS && imgS.attributes) || {};
                   out.push({
-                    key: 'steam',
+                    key: 'discord',
                     kind: 'activity',
-                    entity: V.discord_steam_image || V.discord_steam_game,
+                    entity: dcImage || dcGame,
                     art: abs(ia.entity_picture_local || ia.entity_picture || ia.image_url),
                     title: game,
-                    subtitle: norm(states[V.discord_steam_details]?.state).replace(/^(unknown|unavailable)$/i, ''),
-                    source: 'Steam',
-                    started: ms(states[V.discord_steam_game]?.last_changed),
+                    subtitle: norm(states[dcDetails]?.state).replace(/^(unknown|unavailable)$/i, ''),
+                    source: norm(V.discord_label) || 'PC',
+                    started: ms(states[dcGame]?.last_changed),
                     state: 'playing',
                     playing: true,
                     controls: { toggle: false, next: false, prev: false },
                   });
+                }
+              }
+
+              // ── Steam ─────────────────────────────────────────────────────
+              // steam_game is the gate; steam_online is an optional presence guard. The
+              // Steam API only reports a game when the profile's game details are public.
+              if (V.show_steam && V.steam_game) {
+                const stStatus = low(states[V.steam_online]?.state);
+                const stLive = !V.steam_online ||
+                  (!!stStatus && !['offline', 'unknown', 'unavailable', 'none'].includes(stStatus));
+                const game = norm(states[V.steam_game]?.state);
+                const dead = !game || ['none', 'unknown', 'unavailable'].includes(game.toLowerCase());
+                if (stLive && !dead) {
+                  const imgS = V.steam_image && states[V.steam_image];
+                  const ia = (imgS && imgS.attributes) || {};
+                  // These are template sensors whose STATE is the artwork URL.
+                  const raw = ia.entity_picture_local || ia.entity_picture || ia.image_url ||
+                    (String(imgS?.state || '').startsWith('http') ? imgS.state : null);
+                  out.push({
+                    key: 'steam',
+                    kind: 'activity',
+                    entity: V.steam_image || V.steam_game,
+                    art: abs(raw),
+                    title: game,
+                    subtitle: '',
+                    source: norm(V.steam_label) || 'Steam',
+                    started: ms(states[V.steam_game]?.last_changed),
+                    state: 'playing',
+                    playing: true,
+                    controls: { toggle: false, next: false, prev: false },
+                  });
+                }
+              }
+
+              // ── One game, two reporters ───────────────────────────────────
+              // Discord reports every launcher, so a Steam game arrives twice when both are
+              // wired. Keep one tile and let it inherit whatever the dropped row had.
+              const dcRow = out.find((r) => r.key === 'discord');
+              const stRow = out.find((r) => r.key === 'steam');
+              if (dcRow && stRow && sameGame(dcRow.title, stRow.title)) {
+                const policy = low(V.duplicate_game) || 'discord';
+                if (policy !== 'both') {
+                  const win = policy === 'steam' ? stRow : dcRow;
+                  const lose = win === dcRow ? stRow : dcRow;
+                  if (!win.art) win.art = lose.art;
+                  if (!win.subtitle) win.subtitle = lose.subtitle;
+                  out.splice(out.indexOf(lose), 1);
                 }
               }
 
@@ -273,7 +355,7 @@ hemma_now_playing:
           // Memoised per render pass — avoids re-running the sweep for every consumer.
           if (typeof window._hemmaNP !== 'function') {
             window._hemmaNP = function (states, V) {
-              // Artwork must be part of the cache signature — Plex/PSN/Steam can publish title
+              // Artwork must be part of the cache signature — Plex/PSN/Discord can publish title
               // before image, so a title-only signature would freeze art:null in the cache; see hemma-core.js.
               const artSig = (u) => String(u || '').split('?')[0];
               const parts = [];
@@ -300,9 +382,15 @@ hemma_now_playing:
                     artSig(pa.entity_picture_local || pa.entity_picture || pa.image_url || pa.media_image_url));
                 }
               }
-              if (V.show_discord_steam) {
-                const ia = (V.discord_steam_image && states[V.discord_steam_image]?.attributes) || {};
-                parts.push(String(states[V.discord_steam_online]?.state) + String(states[V.discord_steam_game]?.state) +
+              if (V.show_steam) {
+                const si = states[V.steam_image];
+                parts.push(String(states[V.steam_online]?.state) + String(states[V.steam_game]?.state) +
+                  artSig(si?.attributes?.entity_picture || si?.state || ''));
+              }
+              if (V.show_discord) {
+                const ia = (V.discord_image && states[V.discord_image]?.attributes) || {};
+                parts.push(String(states[V.discord_online]?.state) +
+                  String(states[V.discord_game]?.state) +
                   artSig(ia.entity_picture_local || ia.entity_picture || ia.image_url));
               }
               parts.push('pin:' + String(V.pinned_key || ''));
@@ -347,11 +435,18 @@ hemma_now_playing:
             V['show_psn_' + i] = variables['show_psn_' + i];
             V['psn_' + i] = variables['psn_' + i];
           }
-          V.show_discord_steam = variables.show_discord_steam;
-          V.discord_steam_image = variables.discord_steam_image;
-          V.discord_steam_game = variables.discord_steam_game;
-          V.discord_steam_online = variables.discord_steam_online;
-          V.discord_steam_details = variables.discord_steam_details;
+          V.show_discord = variables.show_discord;
+          V.discord_image = variables.discord_image;
+          V.discord_game = variables.discord_game;
+          V.discord_online = variables.discord_online;
+          V.discord_details = variables.discord_details;
+          V.discord_label = variables.discord_label;
+          V.show_steam = variables.show_steam;
+          V.steam_online = variables.steam_online;
+          V.steam_game = variables.steam_game;
+          V.steam_image = variables.steam_image;
+          V.steam_label = variables.steam_label;
+          V.duplicate_game = variables.duplicate_game;
           V.pinned_key = states[variables.pin_entity]?.state || '';
 
           // Falls back to the ungraced view if hemma-core.js hasn't loaded yet.

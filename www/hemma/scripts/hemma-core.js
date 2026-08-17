@@ -84,6 +84,88 @@
     };
   }
 
+  // Discord's game-database name and Steam's store name rarely match exactly:
+  // trademark marks, punctuation, and edition suffixes differ. Treat a whole-token
+  // prefix as the same game, but only when the remainder carries no digit, so
+  // "Portal" and "Portal 2" stay separate while "… Definitive Edition" folds in.
+  if (typeof window._hemmaSameGame !== 'function') {
+    window._hemmaSameGame = function (x, y) {
+      const flat = (v) => String(v || '').toLowerCase()
+        .replace(/[™®©]/g, ' ')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+      const a = flat(x), b = flat(y);
+      if (!a || !b) return false;
+      if (a === b) return true;
+      const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+      if (!long.startsWith(short + ' ')) return false;
+      return !/[0-9]/.test(long.slice(short.length));
+    };
+  }
+
+  // Shared by the media badge row and the Now Playing panel so both agree on
+  // which PC sources are live and which duplicate is dropped. Returns at most
+  // one entry per source, already reconciled per V.duplicate_game.
+  if (typeof window._hemmaPCSources !== 'function') {
+    window._hemmaPCSources = function (states, V) {
+      const norm = (x) => String(x ?? '').trim();
+      const low = (x) => norm(x).toLowerCase();
+      const dead = (v, extra) => !v ||
+        ['unknown', 'unavailable', ''].concat(extra || []).includes(low(v));
+      const url = (key) => {
+        const s = key && states[key];
+        const raw = s?.attributes?.entity_picture || s?.state;
+        return (raw && String(raw).startsWith('http')) ? String(raw) : null;
+      };
+
+      // Discord: presence must not be offline (DND and idle are normal in-game).
+      let discord = null;
+      if (V.discord_online && V.discord_game) {
+        const status = low(states[V.discord_online]?.state);
+        const game = norm(states[V.discord_game]?.state);
+        if (!dead(status, ['offline', 'none']) && !dead(game)) {
+          const details = norm(states[V.discord_details]?.state);
+          discord = {
+            game: game,
+            details: dead(details) ? '' : details,
+            img: url(V.discord_image),
+            label: norm(V.discord_label) || 'PC',
+          };
+        }
+      }
+
+      // Steam: the game sensor is the gate; presence is an optional guard.
+      let steam = null;
+      if (V.steam_game) {
+        const status = low(states[V.steam_online]?.state);
+        const game = norm(states[V.steam_game]?.state);
+        const guard = !V.steam_online || !dead(status, ['offline', 'none']);
+        if (guard && !dead(game, ['none'])) {
+          steam = {
+            game: game,
+            details: '',
+            img: url(V.steam_image),
+            label: norm(V.steam_label) || 'Steam',
+          };
+        }
+      }
+
+      if (discord && steam && window._hemmaSameGame(discord.game, steam.game)) {
+        const policy = low(V.duplicate_game) || 'discord';
+        if (policy !== 'both') {
+          const keepSteam = policy === 'steam';
+          const win = keepSteam ? steam : discord;
+          const lose = keepSteam ? discord : steam;
+          if (!win.img) win.img = lose.img;
+          if (!win.details) win.details = lose.details;
+          if (keepSteam) discord = null; else steam = null;
+        }
+      }
+
+      return { discord: discord, steam: steam };
+    };
+  }
+
   if (typeof window._hemmaNPSources !== 'function') {
       window._hemmaNPSources = function (states, V) {
         const norm = (x) => String(x ?? '').trim();
@@ -101,6 +183,7 @@
           } catch (e) { return full; }
         };
         const ms = (t) => { const n = t ? Date.parse(t) : NaN; return Number.isFinite(n) ? n : 0; };
+        const sameGame = window._hemmaSameGame;
 
         const pauseTimeout = Number(V.pause_timeout_minutes ?? 5);
         const out = [];
@@ -227,27 +310,82 @@
           });
         }
 
-        // ── Discord / Steam ───────────────────────────────────────────
-        if (V.show_discord_steam && V.discord_steam_online && V.discord_steam_game) {
-          const online = low(states[V.discord_steam_online]?.state) === 'online';
-          const game = norm(states[V.discord_steam_game]?.state);
+        // ── Discord rich presence ─────────────────────────────────────
+        // Mirrors window._hemmaPCSources (used by the badge row); keep the two
+        // in step — the dedup rule below is the same one it applies.
+        const dcOnline = V.discord_online;
+        const dcGame = V.discord_game;
+        const dcImage = V.discord_image;
+        const dcDetails = V.discord_details;
+        if (V.show_discord && dcOnline && dcGame) {
+          // Any presence but offline counts — DND and idle are normal while gaming.
+          const status = low(states[dcOnline]?.state);
+          const live = !!status && !['offline', 'unknown', 'unavailable', 'none'].includes(status);
+          const game = norm(states[dcGame]?.state);
           const dead = !game || ['unknown', 'unavailable'].includes(game.toLowerCase());
-          if (online && !dead) {
-  const imgS = V.discord_steam_image && states[V.discord_steam_image];
+          if (live && !dead) {
+  const imgS = dcImage && states[dcImage];
   const ia = (imgS && imgS.attributes) || {};
   out.push({
-    key: 'steam',
+    key: 'discord',
     kind: 'activity',
-    entity: V.discord_steam_image || V.discord_steam_game,
+    entity: dcImage || dcGame,
     art: abs(ia.entity_picture_local || ia.entity_picture || ia.image_url),
     title: game,
-    subtitle: norm(states[V.discord_steam_details]?.state).replace(/^(unknown|unavailable)$/i, ''),
-    source: 'Steam',
-    started: ms(states[V.discord_steam_game]?.last_changed),
+    subtitle: norm(states[dcDetails]?.state).replace(/^(unknown|unavailable)$/i, ''),
+    source: norm(V.discord_label) || 'PC',
+    started: ms(states[dcGame]?.last_changed),
     state: 'playing',
     playing: true,
     controls: { toggle: false, next: false, prev: false },
   });
+          }
+        }
+
+        // ── Steam ─────────────────────────────────────────────────────
+        // steam_game is the gate; steam_online is an optional presence guard. The
+        // Steam API only reports a game when the profile's game details are public.
+        if (V.show_steam && V.steam_game) {
+          const stStatus = low(states[V.steam_online]?.state);
+          const stLive = !V.steam_online ||
+            (!!stStatus && !['offline', 'unknown', 'unavailable', 'none'].includes(stStatus));
+          const game = norm(states[V.steam_game]?.state);
+          const dead = !game || ['none', 'unknown', 'unavailable'].includes(game.toLowerCase());
+          if (stLive && !dead) {
+            const imgS = V.steam_image && states[V.steam_image];
+            const ia = (imgS && imgS.attributes) || {};
+            // These are template sensors whose STATE is the artwork URL.
+            const raw = ia.entity_picture_local || ia.entity_picture || ia.image_url ||
+              (String(imgS?.state || '').startsWith('http') ? imgS.state : null);
+            out.push({
+              key: 'steam',
+              kind: 'activity',
+              entity: V.steam_image || V.steam_game,
+              art: abs(raw),
+              title: game,
+              subtitle: '',
+              source: norm(V.steam_label) || 'Steam',
+              started: ms(states[V.steam_game]?.last_changed),
+              state: 'playing',
+              playing: true,
+              controls: { toggle: false, next: false, prev: false },
+            });
+          }
+        }
+
+        // ── One game, two reporters ───────────────────────────────────
+        // Discord reports every launcher, so a Steam game arrives twice when both are
+        // wired. Keep one tile and let it inherit whatever the dropped row had.
+        const dcRow = out.find((r) => r.key === 'discord');
+        const stRow = out.find((r) => r.key === 'steam');
+        if (dcRow && stRow && sameGame(dcRow.title, stRow.title)) {
+          const policy = low(V.duplicate_game) || 'discord';
+          if (policy !== 'both') {
+            const win = policy === 'steam' ? stRow : dcRow;
+            const lose = win === dcRow ? stRow : dcRow;
+            if (!win.art) win.art = lose.art;
+            if (!win.subtitle) win.subtitle = lose.subtitle;
+            out.splice(out.indexOf(lose), 1);
           }
         }
 
@@ -522,9 +660,15 @@
               artSig(pa.entity_picture_local || pa.entity_picture || pa.image_url || pa.media_image_url));
           }
         }
-        if (V.show_discord_steam) {
-          const ia = (V.discord_steam_image && states[V.discord_steam_image]?.attributes) || {};
-          parts.push(String(states[V.discord_steam_online]?.state) + String(states[V.discord_steam_game]?.state) +
+        if (V.show_steam) {
+          const si = states[V.steam_image];
+          parts.push(String(states[V.steam_online]?.state) + String(states[V.steam_game]?.state) +
+            artSig(si?.attributes?.entity_picture || si?.state || ''));
+        }
+        if (V.show_discord) {
+          const ia = (V.discord_image && states[V.discord_image]?.attributes) || {};
+          parts.push(String(states[V.discord_online]?.state) +
+            String(states[V.discord_game]?.state) +
             artSig(ia.entity_picture_local || ia.entity_picture || ia.image_url));
         }
         parts.push('pin:' + String(V.pinned_key || ''));

@@ -40,11 +40,13 @@
 #   progress_active_states   - states where the ring is shown (default: playing,
 #                              cleaning, running, etc. — see below)
 #   mobile_filter_category   - which mobile filter chip this card belongs to
-#                              (lights/climate/media/energy/security, or
-#                              'unfiltered' to always show). Read in JS by
-#                              hemma-smart-row and filter-overlay.js, which fall
-#                              back to their own template-name → category maps
-#                              when it is null. Set it on the card template
+#                              (lights/climate/media/energy/security), or
+#                              'unfiltered' for a card that belongs to no chip
+#                              and so hides whenever any filter is active — not
+#                              "always show", which is what null does. Read in JS
+#                              by hemma-smart-row and filter-overlay.js, which
+#                              fall back to their own template-name → category
+#                              maps when it is null. Set it on the card template
 #                              (hemma_light, hemma_cover, …), not per card.
 hemma_entity:
   template:
