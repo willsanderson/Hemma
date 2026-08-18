@@ -197,10 +197,10 @@ hemma_badge_base:
     @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (pointer: coarse),
            (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (hover: none) {
       :host {
-        --badge-icon-size-current: 26px !important;
-        --badge-min-height-current: 40px !important;
-        --badge-padding-current: 7px 11px 8px 7px !important;
-        --badge-font-size-current: 13px !important;
+        --badge-icon-size-current: var(--badge-icon-size-tablet, 26px) !important;
+        --badge-min-height-current: var(--badge-min-height-tablet, 40px) !important;
+        --badge-padding-current: var(--badge-padding-tablet, 7px 14px 8px 7px) !important;
+        --badge-font-size-current: var(--badge-font-size-tablet, 13px) !important;
       }
       #img-cell, .img-cell {
         width: var(--badge-icon-size-current, 26px) !important;

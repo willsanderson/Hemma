@@ -646,10 +646,10 @@ Hemma:
   # Tablet
   badge-gap-tablet: 10px
   badge-col-gap-tablet: 4px
-  badge-padding-tablet: 4px 15px 4px 7px
-  badge-min-height-tablet: 50px
-  badge-icon-size-tablet: 30px
-  badge-font-size-tablet: 15px
+  badge-padding-tablet: 7px 14px 8px 7px
+  badge-min-height-tablet: 40px
+  badge-icon-size-tablet: 26px
+  badge-font-size-tablet: 13px
   badge-btn-size-tablet: 20px
 
   # Mobile
@@ -688,6 +688,7 @@ Hemma:
 
   badge-media-max-width-desktop: calc(var(--hemma-u-badge, 10px) * 64)
   badge-media-max-width-tablet: 520px
+  badge-media-pad-v-tablet: 7px
   badge-media-max-width-mobile: 100%
 
   # ============================================================================

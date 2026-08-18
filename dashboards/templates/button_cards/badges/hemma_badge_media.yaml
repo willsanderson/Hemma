@@ -85,7 +85,7 @@ hemma_badge_media:
     @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (pointer: coarse),
            (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (hover: none) {
       :host{
-        --hemma-media-badge-pad-v: 7px;
+        --hemma-media-badge-pad-v: var(--badge-media-pad-v-tablet, 7px);
       }
     }
 
