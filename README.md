@@ -220,13 +220,7 @@ lovelace:
 
 The mobile dashboard is hidden from the sidebar on purpose. With `hemma-redirect.js` installed, phones are sent to it automatically and everything else goes back to the desktop dashboard, so nobody has to pick. Without the script, reach the mobile dashboard by its URL.
 
-The redirect is **on by default** (`input_boolean.hemma_dashboard_redirect`). Left off, a phone opening the *desktop* Hemma dashboard gets desktop content rendered with the mobile CSS, which looks like a broken mobile dashboard rather than a desktop one.
-
-It is deliberately narrow, and cannot hijack anyone:
-
-- it only acts on a path that is **already** a Hemma dashboard, so if your default dashboard is something else you are never pulled into Hemma's
-- it only redirects to a dashboard Home Assistant actually has registered, so installing just the desktop dashboard and skipping the mobile one is safe
-- turn the helper off to disable it entirely
+The redirect is **on by default** (`input_boolean.hemma_dashboard_redirect`). Left off, a phone opening the *desktop* Hemma dashboard gets desktop content rendered with the mobile CSS, which looks like a broken mobile dashboard rather than a desktop one. The redirect is only active when using the Hemma dashboard, and it can be disabled entirely by turning the helper off.
 
 #### Your own wallpaper
 
