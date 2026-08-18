@@ -14,8 +14,8 @@ hemma_popup_light:
   custom_fields:
     lpc_init: |
       [[[
-        if (typeof window._hemmaLPC !== 'function' || window._hemmaLPCv !== 31) {
-              window._hemmaLPCv = 31;
+        if (typeof window._hemmaLPC !== 'function' || window._hemmaLPCv !== 32) {
+              window._hemmaLPCv = 32;
               window._hemmaLPC = function(__entity, __states, __hass, __vars) {
               const entity = __entity, states = __states, hass = __hass, variables = __vars;
               const groupId  = variables.group_entity || entity?.entity_id || null;
@@ -1071,6 +1071,22 @@ hemma_popup_light:
   
                 const flatInitSnip = `
                   ${swipeGuardSnip}
+                  if (window.innerWidth < 769) {
+                    const _fhEl = this;
+                    const _fhDrawer = () => {
+                      const _w = _fhEl.getRootNode()?.host?.parentNode?.parentNode?.parentNode;
+                      return _w?.shadowRoot?.querySelector('wa-drawer')
+                          || _fhEl.closest?.('ha-adaptive-dialog')?.shadowRoot?.querySelector('wa-drawer')
+                          || null;
+                    };
+                    const _fhUnlock = () => {
+                      const _wd = _fhDrawer();
+                      if (!_wd) return false;
+                      _wd.classList.add('hemma-h-auto');
+                      return true;
+                    };
+                    if (!_fhUnlock()) [20, 120, 300, 800].forEach((_d) => setTimeout(_fhUnlock, _d));
+                  }
                   return '';
                 `;
   
@@ -1101,6 +1117,7 @@ hemma_popup_light:
                   const _wd = _h.shadowRoot?.querySelector('wa-drawer');
                   if (!_wd?.style) return;
                   const _fh = 'calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh)';
+                  _wd.classList.remove('hemma-h-auto');
                   _wd.style.setProperty('--size', _fh);
                   _wd.style.setProperty('height', _fh);
                   _wd.style.setProperty('min-height', _fh);
@@ -1456,6 +1473,14 @@ hemma_popup_light:
                 }
                 .content .container {
                   min-height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
+                }
+                wa-drawer.hemma-h-auto {
+                  --size: var(--ha-bottom-sheet-height, auto) !important;
+                  height: auto !important;
+                  min-height: 0 !important;
+                }
+                wa-drawer.hemma-h-auto .content .container {
+                  min-height: 0 !important;
                 }
               }
 

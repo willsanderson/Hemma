@@ -83,6 +83,14 @@ hemma_badge_light:
                 .content .container {
                   min-height: calc(100dvh - env(safe-area-inset-top, 0px) - 8dvh) !important;
                 }
+                wa-drawer.hemma-h-auto {
+                  --size: var(--ha-bottom-sheet-height, auto) !important;
+                  height: auto !important;
+                  min-height: 0 !important;
+                }
+                wa-drawer.hemma-h-auto .content .container {
+                  min-height: 0 !important;
+                }
               }
         content: |
           [[[
