@@ -217,23 +217,18 @@ views:
               #   lock.YOUR_LOCK_2: binary_sensor.YOUR_DOOR_2_SENSOR    # optional
 
           # All Lights (whole-home light group; tap opens the Light popup with
-          # per-room filtering and scenes)
+          # per-room filtering)
           - type: custom:button-card
             template: hemma_light
             entity: light.YOUR_HOME_LIGHT_GROUP            # e.g., light.all
             name: All Lights
             variables:
-              # Optional: order your scenes in the popup's scene row
+              # Scenes have their own row and Scenes page, so the light popup
+              # hides them. Uncomment to bring them back inside this popup.
+              # show_scenes: true
               # scene_order:
               #   - scene.YOUR_SCENE_1
               #   - scene.YOUR_SCENE_2
-              # Scenes are hidden in the light popup by default; they have their
-              # own row, Scenes page and per-room sections now. Uncomment to
-              # bring them back inside this popup.
-              # show_scenes: true
-              # Only scenes touching this group's lights are listed.
-              # Set scene_scope: all for every scene, as it behaved before 2.0.2.
-              # scene_scope: all
 
           # Scenes (optional; a launcher for every scene, including ones the
           # light popup filters out because they touch no lights in the group.
@@ -429,6 +424,8 @@ views:
             name: Lights
             variables:
               icon: light
+              # The popup opens on the whole-home group with this room selected.
+              # popup_group: none   # keep it to this card's lights instead
 
           - type: custom:button-card
             template: hemma_media

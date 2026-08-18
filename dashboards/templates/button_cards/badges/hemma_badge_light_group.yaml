@@ -7,8 +7,9 @@
 # Variables:
 #   enabled             - show/hide this badge (default: true)
 #   entity_1 – entity_8 - entity IDs of light entities to track
-#   light_group_entity  - explicit group entity for the popup (optional; falls
-#                         back to entity_1, then the badge's own entity)
+#   light_group_entity  - the light group this badge shows (optional; falls back
+#                         to entity_1, then the badge's own entity). A room group
+#                         opens the whole-home popup filtered to that room.
 hemma_badge_light_group:
   template: [hemma_badge_base, hemma_popup_light]
 
@@ -118,36 +119,13 @@ hemma_badge_light_group:
               }
         content: |
           [[[
-            let groupId = variables?.light_group_entity || variables?.entity_1 || entity?.entity_id || null;
-            let initialFilter = -1;
-            if (groupId) {
-              const originalId = groupId;
-              const mems0 = states[groupId]?.attributes?.entity_id;
-              const isFlat = !Array.isArray(mems0) || !Array.isArray(states[mems0[0]]?.attributes?.entity_id);
-              if (isFlat) {
-                for (const sid of Object.keys(states)) {
-                  if (!sid.startsWith('light.') || sid === originalId) continue;
-                  const st = states[sid];
-                  const mems = st.attributes?.entity_id;
-                  if (Array.isArray(mems) && mems.includes(originalId) && mems.length > 1
-                      && Array.isArray(states[mems[0]]?.attributes?.entity_id)) {
-                    groupId = sid;
-                    initialFilter = mems.indexOf(originalId);
-                    break;
-                  }
-                }
-              }
-            }
+            const groupId = variables?.light_group_entity || variables?.entity_1 || entity?.entity_id || null;
             const _h = typeof hass !== 'undefined' ? hass : null;
-            // Group entities are often renamed to a bare "Lights" per area, so the area wins over friendly_name.
-            const _areaName = _h?.areas?.[_h?.entities?.[groupId]?.area_id]?.name || null;
             if (typeof window._hemmaLPC === 'function') {
               return window._hemmaLPC(entity, states, _h, {
-                group_entity: groupId,
-                room_name: _areaName || states[groupId]?.attributes?.friendly_name || 'Lighting',
+                popup_group: groupId,
                 lights: [],
                 group_rooms: true,
-                initial_filter: initialFilter,
               });
             }
             return null;

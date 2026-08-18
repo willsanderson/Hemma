@@ -94,30 +94,12 @@ hemma_badge_light:
               }
         content: |
           [[[
-            const badgeEntityId = entity?.entity_id || null;
-            let groupId = badgeEntityId;
-            if (badgeEntityId) {
-              for (const sid of Object.keys(states)) {
-                if (!sid.startsWith('light.') || sid === badgeEntityId) continue;
-                const st = states[sid];
-                const mems = st.attributes?.entity_id;
-                if (Array.isArray(mems) && mems.includes(badgeEntityId) && mems.length > 1
-                    && Array.isArray(states[mems[0]]?.attributes?.entity_id)) {
-                  groupId = sid;
-                  break;
-                }
-              }
-            }
             const _h = typeof hass !== 'undefined' ? hass : null;
-            // Group entities are often renamed to a bare "Lights" per area, so the area wins over friendly_name.
-            const _areaName = _h?.areas?.[_h?.entities?.[groupId]?.area_id]?.name || null;
             if (typeof window._hemmaLPC === 'function') {
               return window._hemmaLPC(entity, states, _h, {
-                group_entity: groupId,
-                room_name: _areaName || states[groupId]?.attributes?.friendly_name || 'Lighting',
+                popup_group: entity?.entity_id || null,
                 lights: [],
                 group_rooms: true,
-                initial_filter: -1,
               });
             }
             return null;

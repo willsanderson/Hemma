@@ -308,6 +308,8 @@ The light group badge shows the combined state of your room lights and lets you 
 | `light_group_entity` | A light group covering the whole room/home |
 | `light_entity_1` – `light_entity_10` | Light group or individual light entities |
 
+If the group you point at sits inside a larger one, the popup opens on that larger group with a pill per room and this room selected. `light_group_entity` picks what the badge shows; `popup_group` on a `hemma_light` card overrides what its popup opens, and `popup_group: none` keeps the popup to that card's own lights.
+
 ---
 
 ### :bust_in_silhouette: Presence badge

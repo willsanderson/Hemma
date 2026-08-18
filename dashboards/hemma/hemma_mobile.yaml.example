@@ -282,12 +282,12 @@ views:
                 variables:
                   icon: light
                   show_toggle: true
-                  group_entity: light.YOUR_ALL_LIGHTS_GROUP
-                  # Optional: scenes shown in the light popup. Reused by every
-                  # room's light card via the *scene_order anchor.
-                  scene_order: &scene_order
-                    - scene.YOUR_SCENE_1
-                    - scene.YOUR_SCENE_2
+                  # Scenes have their own row and Scenes page, so the light popup
+                  # hides them. Uncomment to bring them back inside this popup.
+                  # show_scenes: true
+                  # scene_order:
+                  #   - scene.YOUR_SCENE_1
+                  #   - scene.YOUR_SCENE_2
 
               - type: custom:button-card
                 template:
@@ -348,8 +348,8 @@ views:
                 variables:
                   icon: light
                   show_toggle: true
-                  group_entity: light.YOUR_ALL_LIGHTS_GROUP
-                  scene_order: *scene_order
+                  # The popup opens on the whole-home group with this room selected.
+                  # popup_group: none   # keep it to this card's lights instead
 
               - type: custom:button-card
                 template: hemma_media
@@ -393,8 +393,6 @@ views:
                 variables:
                   icon: light
                   show_toggle: true
-                  group_entity: light.YOUR_ALL_LIGHTS_GROUP
-                  scene_order: *scene_order
 
               - type: custom:button-card
                 template: hemma_media

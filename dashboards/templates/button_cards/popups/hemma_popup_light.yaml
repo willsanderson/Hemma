@@ -4,22 +4,44 @@ hemma_popup_light:
     - hemma_popup_base
 
   variables:
-    room_name: "Home"
+    room_name: null  # title override; falls back to the group's area, then "Home"
     lights: []
     group_rooms: true
+    popup_group: null  # override the popup's group; 'none' keeps it on `entity` alone
     initial_filter: -1
     show_scenes: false
-    scene_scope: lights  # lights | all — 'all' restores the pre-2.0.2 full scene list
 
   custom_fields:
     lpc_init: |
       [[[
-        if (typeof window._hemmaLPC !== 'function' || window._hemmaLPCv !== 32) {
-              window._hemmaLPCv = 32;
+        if (typeof window._hemmaLPC !== 'function' || window._hemmaLPCv !== 37) {
+              window._hemmaLPCv = 37;
               window._hemmaLPC = function(__entity, __states, __hass, __vars) {
               const entity = __entity, states = __states, hass = __hass, variables = __vars;
-              const groupId  = variables.group_entity || entity?.entity_id || null;
-              const roomName = variables.room_name || states[groupId]?.attributes?.friendly_name || 'Lighting';
+              const _pgVar   = variables.popup_group || variables.group_entity || null;
+              const _pgOff   = _pgVar === 'none';
+              let   groupId  = (_pgOff ? entity?.entity_id : (_pgVar || entity?.entity_id)) || null;
+              let   _autoIdx = -1;
+              // A flat room group is promoted to the parent group-of-groups, so a room's
+              // light card opens the same popup its light badge does.
+              if (!_pgOff && groupId && variables.group_rooms === true
+                  && !(Array.isArray(variables.lights) && variables.lights.length > 0)) {
+                const _mems0 = states[groupId]?.attributes?.entity_id;
+                if (!Array.isArray(_mems0) || !Array.isArray(states[_mems0[0]]?.attributes?.entity_id)) {
+                  const _from = groupId;
+                  for (const sid of Object.keys(states)) {
+                    if (!sid.startsWith('light.') || sid === _from) continue;
+                    // Keys-then-lookup: reading states[sid] here subscribes to lights only.
+                    const mems = states[sid]?.attributes?.entity_id;
+                    if (Array.isArray(mems) && mems.includes(_from) && mems.length > 1
+                        && Array.isArray(states[mems[0]]?.attributes?.entity_id)) {
+                      groupId  = sid;
+                      _autoIdx = mems.indexOf(_from);
+                      break;
+                    }
+                  }
+                }
+              }
   
               if (!window._hemmaLightMoreInfoSetup) {
                 window._hemmaLightMoreInfoSetup = true;
@@ -76,6 +98,12 @@ hemma_popup_light:
                 return aid ? (_hassObj?.areas?.[aid]?.name || null) : null;
               };
 
+              // A single-room popup takes the group's area, since group helpers are
+              // usually renamed to a bare "Lights"; a multi-room one is the whole home.
+              const roomName = variables.room_name || _areaName(groupId)
+                            || (hasRooms ? 'Home' : states[groupId]?.attributes?.friendly_name)
+                            || 'Lighting';
+
               const rooms = hasRooms
                 ? topLevelIds.map(rid => ({
                     name:   _areaName(rid) || states[rid]?.attributes?.friendly_name || toTitle(rid.split('.').pop()),
@@ -99,7 +127,6 @@ hemma_popup_light:
   
               // Scene detection
               // Keys-then-lookup: ownKeys doesn't register entities, get does.
-              const _sceneScope  = variables.scene_scope || 'lights';
               const _scopeLeaves = new Set(_expand(groupId));
               const _touchesGroup = (s) => {
                 const targets = s.attributes?.entity_id;
@@ -120,7 +147,7 @@ hemma_popup_light:
                   const re = _getReg(s.entity_id);
                   return re && !(re.hidden || re.hidden_by || re.disabled || re.disabled_by);
                 })
-                .filter(s => _sceneScope === 'all' || _touchesGroup(s))
+                .filter(_touchesGroup)
                 .sort((a, b) => (a.attributes?.friendly_name || a.entity_id)
                   .localeCompare(b.attributes?.friendly_name || b.entity_id))
                 .map(s => s.entity_id) : [];
@@ -140,6 +167,7 @@ hemma_popup_light:
               // Initial filter
               const _popupSessionId = Math.random();
               let initialFilter = typeof variables.initial_filter === 'number' ? variables.initial_filter : -1;
+              if (initialFilter === -1 && _autoIdx >= 0 && rooms) initialFilter = _autoIdx;
               if (initialFilter === -1 && variables.initial_filter_entity && rooms) {
                 const _ifIdx = topLevelIds.indexOf(variables.initial_filter_entity);
                 if (_ifIdx >= 0) initialFilter = _ifIdx;
@@ -894,7 +922,7 @@ hemma_popup_light:
                   styles: {
                     card: [
                       { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
-                      { padding: isDesktop ? '10px 24px 24px 24px' : '10px 14px 20px 14px' },
+                      { padding: isDesktop ? '26px 24px 24px 24px' : '22px 14px 20px 14px' },
                     ],
                     grid: [
                       { 'grid-template-areas': areas },
