@@ -52,6 +52,10 @@ function getFilterCategory(card) {
   for (const t of list) {
     if (Object.prototype.hasOwnProperty.call(cats, t)) return cats[t];
   }
+  if (list.includes('hemma_mobile_header')) {
+    const slug = String(cfg.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+    if (Object.prototype.hasOwnProperty.call(HEADER_CATEGORIES, slug)) return HEADER_CATEGORIES[slug];
+  }
   return null;
 }
 
@@ -63,7 +67,11 @@ const ROW_TEMPLATE_FLAGS = {
   hemma_mobile_filter_badges:  { full_width: true, no_filter: true },
   hemma_mobile_sensor_chips:   { full_width: true, no_filter: true, collapsed_spacer: true },
   hemma_mobile_now_playing:    { full_width: true, no_filter: true },
+  hemma_scene_row:             { full_width: true },
 };
+
+// A header is generic, so the category it labels comes from its name.
+const HEADER_CATEGORIES = { scenes: 'unfiltered' };
 
 // Lives in hemma-core.js so this file and filter-overlay.js agree. Read at call
 // time; the local variables.size read is a fail-safe against a stale copy.

@@ -273,4 +273,5 @@ hemma_mobile_filter_badges:
                   ]]]
             variables:
               enabled: true
+              row_entity: input_select.hemma_mobile_filter
               power_entity: '[[[ return variables.power_entity ]]]'

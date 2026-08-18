@@ -616,6 +616,14 @@
         if (slug) config = { ...config, filter_category: 'room_' + slug };
       }
       if (!config.filter_category) throw new Error('hemma-filter-overlay: filter_category or room required');
+      // The Scenes page has no dashboard cards to auto-collect, so build its
+      // one section here rather than making every user paste it.
+      if (config.filter_category === 'room_scenes' && !config.sections) {
+        config = { ...config, sections: [{
+          full_width: true,
+          cards: [{ type: 'custom:button-card', template: 'hemma_scene_row', variables: { layout: 'grid' } }],
+        }] };
+      }
       this._config = config;
       if (this.isConnected && !this._initialized && !this._initializing) this._init();
     }

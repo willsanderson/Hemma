@@ -170,6 +170,10 @@ views:
           - type: custom:hemma-filter-overlay
             room: Bedroom
 
+          # The Scenes page. Uncomment together with the SCENES section below.
+          # - type: custom:hemma-filter-overlay
+          #   room: Scenes
+
           # ── SUB BADGE ROW ── home-wide climate chips (shown in the Climate
           # popup) + per-room chips (shown in each room popup).
           - type: custom:button-card
@@ -239,32 +243,21 @@ views:
           # Chips highlight while their scene is actually applied, and the row
           # hides whenever a category filter is active.
           #
-          # Both cards list the same scenes. Omit `scenes:` on either to show
-          # every scene that is not hidden in your entity registry; keep it to
-          # pick an exact set and order. Uncomment to enable.
-          #
-          # Needs `room_scenes` added to input_select.hemma_mobile_filter in
-          # packages/hemma_helpers.yaml, plus a matching overlay alongside the
-          # room popups above:
-          #
-          #   - type: custom:hemma-filter-overlay
-          #     room: Scenes
-          #     sections:
-          #       - full_width: true
-          #         cards:
-          #           - type: custom:button-card
-          #             template: hemma_scene_row
-          #             variables:
-          #               layout: grid
+          # Omit `scenes:` to show every scene that is not hidden in your
+          # entity registry; keep it to pick an exact set and order.
+          # Uncomment to enable, and add the Scenes overlay alongside the room
+          # popups above.
           #
           # - type: custom:button-card
           #   template: hemma_mobile_header
           #   name: Scenes
-          #   variables:
-          #     mobile_filter_category: unfiltered
           #
           # - type: custom:button-card
           #   template: hemma_scene_row
+          #   variables:
+          #     scenes:
+          #       - scene.YOUR_SCENE
+          #       - scene.YOUR_OTHER_SCENE
 
           # ── FAVORITES ── hand-picked cards, always the first section.
           - type: custom:button-card

@@ -21,6 +21,8 @@ hemma_badge_energy_group:
   variables:
     enabled: true
     power_entity: null
+    # Which input_select drives the active state (mobile swaps in its filter).
+    row_entity: input_select.hemma_expanded_row
 
   entity: input_select.hemma_expanded_row
 
@@ -43,7 +45,7 @@ hemma_badge_energy_group:
     card:
       - background: >
           [[[
-            return entity?.state === 'energy'
+            return states[variables.row_entity]?.state === 'energy'
               ? 'var(--badge-active-color, rgba(255,255,255,0.85))'
               : 'var(--badge-background, rgba(0,0,0,0.18))';
           ]]]
@@ -58,15 +60,15 @@ hemma_badge_energy_group:
           ]]]
       - --badge-title-color: >
           [[[
-            return entity?.state === 'energy' ? 'rgba(0,0,0,0.85)' : 'var(--primary-text-color)';
+            return states[variables.row_entity]?.state === 'energy' ? 'rgba(0,0,0,0.85)' : 'var(--primary-text-color)';
           ]]]
       - --badge-sub-color: >
           [[[
-            return entity?.state === 'energy' ? 'rgba(0,0,0,0.6)' : 'var(--secondary-text-color)';
+            return states[variables.row_entity]?.state === 'energy' ? 'rgba(0,0,0,0.6)' : 'var(--secondary-text-color)';
           ]]]
       - --hemma-badge-icon-color: >
           [[[
-            if (entity?.state === 'energy') return 'rgba(0,0,0,0.75)';
+            if (states[variables.row_entity]?.state === 'energy') return 'rgba(0,0,0,0.75)';
             return 'var(--hemma-badge-energy-color, #ffd600)';
           ]]]
       - --icon-primary-color: var(--hemma-badge-icon-color)
