@@ -7,7 +7,7 @@ A modern mobile-friendly dashboard for Home Assistant.  Inspired by the [Homio](
 The dashboard is fully YAML-based and designed for:
 - Desktop, tablet, and mobile (portrait + landscape)
 - Light/Dark mode styling
-- Flat card design with Liquid Glass accents
+- Flat card design with glass accents
 - Badges for climate, sensors, presence, and active media
 - Clean navigation with desktop/tablet top navbar
 
