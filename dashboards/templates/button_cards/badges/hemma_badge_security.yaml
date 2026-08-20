@@ -88,7 +88,13 @@ hemma_badge_security:
             : s === 'armed_away' ? 'Armed Away'
             : 'Armed';
       } else if (dom === 'camera') {
-        sub = s === 'recording' ? 'Recording' : s === 'streaming' ? 'Live' : 'Idle';
+        /* "Idle" is every camera, all day, so it says nothing. Fall through to the
+           same alert wording the aggregated camera badge uses. */
+        const alert = window.hemmaCameraAlert
+          ? window.hemmaCameraAlert(hass, states, [id], variables?.alert_window_minutes) : '';
+        sub = s === 'recording' ? 'Recording'
+            : s === 'streaming' ? 'Live'
+            : (alert || 'No Alerts');
       } else if (dom === 'cover') {
         sub = s === 'closed' ? 'Closed' : 'Open';
       } else if (dc === 'motion') {

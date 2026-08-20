@@ -1,28 +1,11 @@
+# Deprecated alias for hemma_camera.
+#
+# The tile was never doorbell-specific, so it was renamed once cameras got their
+# own badge and popup. Existing dashboards keep working unchanged; new ones
+# should use hemma_camera. This alias will be removed in a future major version.
 hemma_doorbell:
   template:
-    - hemma_entity
+    - hemma_camera
 
-  variables:
-    mobile_filter_category: security
-
-  tap_action:
-    action: more-info
-  show_entity_picture: true
-  show_name: true
-  show_state: true
+  # Kept so existing tiles that relied on the template's default keep their label.
   name: Doorbell
-  hold_action:
-    action: more-info
-  icon_tap_action:
-    action: more-info
-    entity: '[[[ return entity.entity_id ]]]'
-
-  styles:
-    card:
-      # doorbell.svg's viewBox origin is negative — ~6% transparent padding
-      # baked into the artwork, so it needs 60% * 1.06 to match every other icon.
-      - --hemma-icon-mask-scale: 63.6%
-    img_cell:
-      - color: var(--hemma-entity-name-active, var(--primary-text-color)) !important
-    icon:
-      - color: var(--hemma-entity-name-active, var(--primary-text-color)) !important

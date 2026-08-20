@@ -104,7 +104,7 @@ hemma_popup_camera:
 
             const cams = ids.map(id => ({ id: id, s: states[id] })).filter(c => c.s);
 
-            const TPL = 19;
+            const TPL = 21;
 
             /* Owns the selected camera, the live card and its hass pump.
                Only one stream is ever mounted; the grid stays on stills. */
@@ -200,6 +200,22 @@ hemma_popup_camera:
                   if (!this._holdFired) return false;
                   this._holdFired = false;
                   return true;
+                },
+
+                /* A one-camera popup has nothing to pick from, so it opens straight on
+                   the live view. Fired from a 1x1 data-URI image's onload: the element is
+                   in the DOM by then, which is what gives us something to climb from. */
+                autoOpen: function (el, camId) {
+                  const root = el && el.closest('.hemma-cam-root');
+                  if (!root || root.dataset.hemmaAuto) return;
+                  root.dataset.hemmaAuto = '1';
+                  const detail = root.querySelector('.cam-detail[data-cam="' + camId + '"]');
+                  const mount = detail && detail.querySelector('.cam-stream-mount');
+                  if (!mount) return;
+                  this._fit = 'cover';
+                  this._muted = true;
+                  this.mount(camId, mount);
+                  this.paintFit(detail);
                 },
 
                 moreInfo: function (id) {
@@ -1219,6 +1235,9 @@ hemma_popup_camera:
               + 'color:rgba(255,255,255,0.92);">'
               + '<ha-icon icon="' + glyph + '" style="--mdc-icon-size:18px;color:rgba(255,255,255,0.92);"></ha-icon></div>';
 
+            /* One camera means no grid, so no chevron and no tile to zoom from. */
+            const single = cams.length === 1;
+
             const detailFor = cam => {
               const label = labelOf(cam);
               const row = [];
@@ -1273,12 +1292,14 @@ hemma_popup_camera:
               row.push(circleBtn('cam-fit', 'mdi:fit-to-screen-outline', 'fit', null, 'Zoom to Fit'));
 
 
-              const back = '<div style="display:flex;align-items:center;gap:10px;padding:22px ' + pad + 'px 14px;' + font + '">'
-                + '<div class="hemma-back-glass"' + bind('back')
+              const chevron = single ? '' : ('<div class="hemma-back-glass"' + bind('back')
                 + ' style="touch-action:manipulation;-webkit-tap-highlight-color:transparent;">'
                 + '<svg width="11" height="19" viewBox="0 0 14 24" fill="none" style="margin-right:2px">'
                 + '<path d="M12 2.5 L2.8 12 L12 21.5" stroke="#fff" stroke-width="3.2" '
-                + 'stroke-linecap="round" stroke-linejoin="round"/></svg></div>'
+                + 'stroke-linecap="round" stroke-linejoin="round"/></svg></div>');
+
+              const back = '<div style="display:flex;align-items:center;gap:10px;padding:22px ' + pad + 'px 14px;' + font + '">'
+                + chevron
                 + '<div class="cam-title"' + bind('info', cam.id)
                 + ' data-tip="Details" style="position:relative;text-align:left;min-width:0;cursor:pointer;'
                 + 'transition:opacity 0.15s ease;touch-action:manipulation;'
@@ -1292,10 +1313,9 @@ hemma_popup_camera:
               const stream = '<div style="padding:0 ' + pad + 'px;">'
                 + '<div class="cam-frame" style="position:relative;width:100%;">'
                 + '<div class="cam-ratio" style="padding-top:56.25%;"></div>'
-                + '<div class="cam-stream-mount"' + bind('fs')
+                + '<div class="cam-stream-mount"'
                 + ' style="position:absolute;inset:0;border-radius:20px;overflow:hidden;background:#000;'
-                + 'cursor:pointer;pointer-events:auto;touch-action:manipulation;'
-                + '-webkit-tap-highlight-color:transparent;"></div>'
+                + 'pointer-events:auto;touch-action:manipulation;"></div>'
                 + '<div class="cam-fs"' + bind('fs') + '>'
                 + '<ha-icon icon="mdi:arrow-expand" style="--mdc-icon-size:16px;'
                 + 'color:rgba(255,255,255,0.86);"></ha-icon></div>'
@@ -1304,7 +1324,8 @@ hemma_popup_camera:
               const controls = '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px ' + pad + 'px 26px;">'
                 + row.join('') + '</div>';
 
-              return '<div class="cam-detail" data-cam="' + esc(cam.id) + '" style="display:none;">'
+              return '<div class="cam-detail" data-cam="' + esc(cam.id) + '"'
+                + ' style="display:' + (single ? 'block' : 'none') + ';">'
                 + back + stream + controls + '</div>';
             };
 
@@ -1333,7 +1354,14 @@ hemma_popup_camera:
               },
               custom_fields: {
                 c: '<div class="hemma-cam-root" style="width:100%;position:relative;">'
-                  + gridView + cams.map(detailFor).join('') + '</div>',
+                  + (single ? '' : gridView)
+                  + cams.map(detailFor).join('')
+                  + (single
+                    ? '<img alt="" style="display:none" src="data:image/gif;base64,'
+                      + 'R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="'
+                      + ' onload="window._hemmaCAM.autoOpen(this,\'' + cams[0].id + '\');">'
+                    : '')
+                  + '</div>',
               },
             };
 

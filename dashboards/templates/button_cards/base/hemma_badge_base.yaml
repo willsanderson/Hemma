@@ -14,6 +14,38 @@ hemma_badge_base:
           return true;
         ]]]
 
+    # Same guarded-initialiser pattern as the icon-url guard above: hemma_popup_camera
+    # defines this too, for cards that reach it through the popup rather than a badge.
+    hemma_camera_alert_helper:
+      force_eval: true
+      value: |
+        [[[
+          if (typeof window.hemmaCameraAlert !== 'function') {
+            window.hemmaCameraAlert = function (hass, states, cams, windowMinutes) {
+              const reg = (hass && hass.entities) || {};
+              const devs = {};
+              cams.forEach(function (id) {
+                const d = reg[id] && reg[id].device_id;
+                if (d) devs[d] = true;
+              });
+              const span = (Number(windowMinutes) > 0 ? Number(windowMinutes) : 5) * 60000;
+              const now = Date.now();
+              states['sensor.time'];
+              let ding = false, motion = false;
+              Object.keys(reg).forEach(function (id) {
+                if (id.indexOf('event.') !== 0) return;
+                if (!devs[reg[id].device_id]) return;
+                const t = Date.parse(states[id] && states[id].state);
+                if (!isFinite(t) || now - t > span) return;
+                if (/ding|doorbell|button/.test(id)) ding = true;
+                else if (/motion/.test(id)) motion = true;
+              });
+              return ding ? 'Doorbell' : motion ? 'Motion Detected' : '';
+            };
+          }
+          return true;
+        ]]]
+
   classes:
     card:
       - hemma-badge

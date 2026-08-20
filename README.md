@@ -427,7 +427,7 @@ Set `show_now_playing: true` on a room card. `hemma_room` suppresses the media b
 
 ### :zap: Energy badges
 
-The energy group badge adds an expandable row of value badges to the hero card. Each `energy_entity_N` gets one badge (up to 6). On the Home view these are typically per-room totals; on a room they're usually its own Today / This Month figures.
+The energy group badge adds an expandable row of value badges to the hero card. Each `energy_entity_N` gets one badge (up to 6). On the Home view these are typically per-room figures; on a room it's usually a single badge showing that room's running cost.
 
 | Variable | Description |
 |---|---|
@@ -437,10 +437,15 @@ The energy group badge adds an expandable row of value badges to the hero card. 
 | `energy_entity_1` – `energy_entity_6` | The sensor behind each sub-badge |
 | `energy_label_N` | Badge title — falls back to the entity's friendly name |
 | `energy_unit_N` | `auto` (W, switching to kW above 1000), `kwh`, or `cost` |
-| `energy_cost_N` | *(optional)* Cost sensor appended to the value as `· $1.23` |
+| `energy_cost_N` | *(optional)* Cost sensor appended to the value as `· $1.23`. Two numbers on one badge is hard to read at a glance; prefer `unit: cost` |
 | `normal_threshold` / `heavy_threshold` / `extreme_threshold` | Watt breakpoints for the usage tier. Defaults 200 / 1000 / 3000 |
 | `high_threshold` | Watts at which the Energy card promotes itself to its active state. Default 500 |
 | `release_threshold` | *(optional)* Watts at which it drops back. Defaults to 80% of `high_threshold` |
+
+**Cost over kWh.** A kWh figure is hard to judge at a glance, so the badges read better pointed at a cost
+sensor with `energy_unit_N: cost`. The gauge ring keeps colouring itself from the power sensor, so the icon
+still tracks live draw while the number shows the period. Currency follows your Home Assistant setting, in
+both the ring glyph and the text. kWh values round to a whole number at 10 and above.
 
 **Usage tiers.** The group badge, each sub-badge, the Energy card and the energy popup all read the same
 breakpoints, so their colours always agree: green when idle, yellow at Normal, orange at Heavy, red at
@@ -451,8 +456,9 @@ the row on every crossing.
 By default a sub-badge opens this view's own energy popup. To point a badge at a different room's popup — as the Home view does for its per-room badges — set the matching `energy_popup_*_N` keys:
 
 ```yaml
-    energy_entity_1: sensor.bedroom_current_consumption
+    energy_entity_1: sensor.bedroom_monthly_consumption_cost
     energy_label_1: Bedroom
+    energy_unit_1: cost
     energy_popup_name_1: Bedroom
     energy_popup_power_1: sensor.bedroom_current_consumption
     energy_popup_today_1: sensor.bedroom_daily_consumption
@@ -494,9 +500,9 @@ The security group badge expands into one badge per security entity. A single te
 ```
 
 **Cameras badge.** `security_cameras` collapses every camera into a single badge that opens a shared
-camera popup with a live tile per camera. The sub-line reads like Apple's: "No Alerts" at rest, a count
-when a camera goes offline, and the most recent motion or doorbell event when there is one. The badge only
-appears when the room already has a lock or a `security_entity_N` set.
+camera popup. The sub-line reads like Apple's: "No Alerts" at rest, a count when a camera goes offline,
+and the most recent motion or doorbell event when there is one. The badge only appears when the room
+already has a lock or a `security_entity_N` set.
 
 ```yaml
     security_cameras:
@@ -504,6 +510,63 @@ appears when the room already has a lock or a `security_entity_N` set.
       - camera.backyard
     security_cameras_label: Cameras                        # optional, defaults to "Cameras"
 ```
+
+#### The camera popup
+
+The popup opens on a grid of tiles: a still snapshot per camera with its name and a relative age stamp
+("11s", "2m", "3h"). A small accent dot marks a camera with activity in the last few minutes.
+
+| Gesture | Result |
+|---|---|
+| Tap a tile | Zooms into that camera and starts the live stream |
+| Hold a tile | Opens Home Assistant's own more-info dialog for it |
+| Tap the title in the detail view | Opens more-info |
+| Tap the live feed | Full screen |
+
+The detail view keeps the controls under the feed:
+
+| Control | Behaviour |
+|---|---|
+| Mute | Starts muted. The stream is mounted unmuted so audio is negotiated, then held silent until you ask for it. If the camera really has no audio track the header says so rather than leaving a dead button |
+| Last recording | Lights up while the clip plays and drops back to live on a second tap, when the clip ends, or if there is no recording to fetch. The clip loads behind the live stream, so a missing recording never blanks the frame |
+| Zoom | Toggles between filling the frame and fitting the whole sensor. Starts filled every time the popup opens |
+| Siren | Only for cameras with an onboard siren. A bare glyph until tapped, then it expands to "Sound siren?" and needs a second tap within five seconds |
+
+A full screen button fades in over the top-left of the feed on hover, and stays visible on touch where
+there is no hover to reveal it. On Android it also asks for landscape; iOS has no orientation API, so
+there the video's own native player takes over and follows the device as you turn it.
+
+Cameras are read from the registry when `cameras` is empty, so most setups need nothing beyond the list
+above. Using `hemma_popup_camera` directly gives you the rest:
+
+| Variable | Description |
+|---|---|
+| `cameras` | List of camera entity_ids. Empty auto-discovers every camera in the registry |
+| `camera_names` | `entity_id: name` overrides. Ring's trailing "Live view" is stripped automatically |
+| `activity_entities` | `entity_id: sensor` overrides for the age stamp, if the device's own last-activity sensor is not found |
+| `exclude` | Entity_ids to leave out of auto-discovery |
+| `columns` | Tile columns. Defaults to 2 on desktop, 1 on mobile |
+| `room_name` | Heading above the grid |
+| `accessory_entities` | `entity_id: [entity_ids]` to place beside a camera's feed. Defaults to the camera's own siren |
+| `alert_window_minutes` | How recent an event has to be to count as an alert. Default 5 |
+
+**Camera tiles.** Two card templates front the same popup:
+
+| Template | Use |
+|---|---|
+| `hemma_camera` | One camera as an entity tile. Opens straight onto its live view, since there is no grid to pick from. Hold for more-info |
+| `hemma_cameras` | A list of cameras as one tile. Opens the grid. This is what mobile uses, having no security sub-row |
+
+```yaml
+          - type: custom:button-card
+            template: hemma_camera
+            entity: camera.front_door
+            name: Front Door
+```
+
+`hemma_camera` was previously called `hemma_doorbell`. That name still works as an alias, so existing
+dashboards need no change, but it will be removed in a future major version. The tile was never
+doorbell-specific, and it now opens the camera popup rather than a bare more-info dialog.
 
 ---
 

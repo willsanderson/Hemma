@@ -839,7 +839,7 @@ hemma_entity:
               return 'var(--hemma-badge-energy-low-color, #30D158)';
             }
             const byIcon = {
-              plant:    'var(--hemma-color-green-plant, #34C759)',
+              plant:    'var(--hemma-color-green, #30D158)',
               wifi:     'var(--hemma-popup-primary-color, #00c3d0)',
               doorbell: 'var(--hemma-color-teal, #00c3d0)',
             };
@@ -851,7 +851,7 @@ hemma_entity:
               vacuum:       'var(--hemma-color-teal, #00C3D0)',
               cover:        'var(--hemma-color-teal, #00c3d0)',
               lock:         'var(--hemma-color-teal, #00c3d0)',
-              plant:        'var(--hemma-color-green-plant, #34C759)',
+              plant:        'var(--hemma-color-green, #30D158)',
             };
             return byIcon[icon] || byDomain[domain] || 'var(--hemma-icon-inactive-fallback-color, rgba(255,255,255,0.95))';
           ]]]

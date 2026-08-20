@@ -78,7 +78,8 @@
       hemma_media:         'media',
       hemma_energy:        'energy',
       hemma_lock:          'security',
-      hemma_doorbell:      'security',
+      hemma_camera:        'security',
+      hemma_doorbell:      'security',   // deprecated alias for hemma_camera
       hemma_cameras:       'security',
       hemma_vacuum:        'unfiltered',
       hemma_plant:         'unfiltered',

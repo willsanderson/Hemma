@@ -317,7 +317,7 @@ views:
           #               can appear under.
           # Card templates available: hemma_thermostat, hemma_light,
           # hemma_media, hemma_energy, hemma_cover, hemma_fan, hemma_lock,
-          # hemma_doorbell, hemma_vacuum, hemma_plant, hemma_air_purifier,
+          # hemma_camera, hemma_vacuum, hemma_plant, hemma_air_purifier,
           # hemma_humidifier, hemma_battery, hemma_network, hemma_updates,
           # hemma_motion, hemma_presence, hemma_entity_actions,
           # hemma_plex_recently_added, hemma_scenes.

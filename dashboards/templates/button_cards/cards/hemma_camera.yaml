@@ -1,0 +1,36 @@
+# Camera Tile
+# A single camera as an entity tile. Tapping it opens the shared camera popup
+# scoped to this one camera, which lands straight on the live view; holding it
+# opens Home Assistant's own more-info dialog.
+#
+# Was hemma_doorbell, which still works as an alias.
+hemma_camera:
+  template:
+    - hemma_entity
+    - hemma_popup_camera
+
+  variables:
+    icon: doorbell
+    mobile_filter_category: security
+    cameras: '[[[ return entity?.entity_id ? [entity.entity_id] : [] ]]]'
+
+  show_entity_picture: true
+  show_name: true
+  show_state: true
+
+  hold_action:
+    action: more-info
+
+  icon_tap_action:
+    action: more-info
+    entity: '[[[ return entity.entity_id ]]]'
+
+  styles:
+    card:
+      # doorbell.svg's viewBox origin is negative — ~6% transparent padding
+      # baked into the artwork, so it needs 60% * 1.06 to match every other icon.
+      - --hemma-icon-mask-scale: 63.6%
+    img_cell:
+      - color: var(--hemma-entity-name-active, var(--primary-text-color)) !important
+    icon:
+      - color: var(--hemma-entity-name-active, var(--primary-text-color)) !important

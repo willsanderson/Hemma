@@ -152,11 +152,14 @@ views:
           # energy_cost_month: sensor.YOUR_HOME_MONTHLY_COST    # optional
           #
           # One sub-badge per energy_entity_N (up to 6). On Home these are
-          # typically per-room totals; the energy_popup_*_N keys point each
-          # badge at that room's popup instead of the whole-house one.
-          # energy_entity_1: sensor.YOUR_ROOM_1_CURRENT_CONSUMPTION
+          # per-room figures; the energy_popup_*_N keys point each badge at
+          # that room's popup instead of the whole-house one.
+          #
+          # With unit: cost the gauge ring still colours itself from
+          # energy_popup_power_N, so the icon tracks live draw.
+          # energy_entity_1: sensor.YOUR_ROOM_1_MONTHLY_COST
           # energy_label_1: Bedroom
-          # energy_unit_1: auto                                 # auto (W/kW) | kwh | cost
+          # energy_unit_1: cost                                 # auto (W/kW) | kwh | cost
           # energy_popup_name_1: Bedroom
           # energy_popup_power_1: sensor.YOUR_ROOM_1_CURRENT_CONSUMPTION
           # energy_popup_today_1: sensor.YOUR_ROOM_1_DAILY_CONSUMPTION
@@ -243,14 +246,14 @@ views:
           #       - scene.YOUR_SCENE_1
           #       - scene.YOUR_SCENE_2
 
-          # Doorbell Camera
+          # Camera (tap for the live view, hold for more-info)
           - type: custom:button-card
-            template: hemma_doorbell
-            entity: camera.YOUR_DOORBELL                  # e.g., camera.front_door
-            name: Doorbell
+            template: hemma_camera
+            entity: camera.YOUR_CAMERA                    # e.g., camera.front_door
+            name: Front Door
             variables:
               icon: doorbell
-              battery_entity: sensor.YOUR_DOORBELL_BATTERY  # optional
+              battery_entity: sensor.YOUR_CAMERA_BATTERY   # optional
 
           # Battery Status (shows battery levels for multiple devices in a popup)
           - type: custom:button-card
@@ -386,17 +389,16 @@ views:
           # Media Player Badges (optional)
           # media_player_1: media_player.YOUR_LIVING_ROOM_PLAYER
 
-          # Energy Badges (optional) — on a room these are usually the room's
-          # own Today / This Month figures rather than per-room totals.
+          # Energy Badges (optional). One badge, one number: the room's
+          # running cost. Daily and kWh figures stay in the popup.
           # energy_power_entity: sensor.YOUR_LIVING_ROOM_CURRENT_CONSUMPTION
           # energy_usage_today: sensor.YOUR_LIVING_ROOM_DAILY_CONSUMPTION
           # energy_usage_month: sensor.YOUR_LIVING_ROOM_MONTHLY_CONSUMPTION
-          # energy_entity_1: sensor.YOUR_LIVING_ROOM_DAILY_CONSUMPTION
-          # energy_label_1: Today
-          # energy_unit_1: kwh
-          # energy_entity_2: sensor.YOUR_LIVING_ROOM_MONTHLY_CONSUMPTION
-          # energy_label_2: This Month
-          # energy_unit_2: kwh
+          # energy_cost_today: sensor.YOUR_LIVING_ROOM_DAILY_COST     # optional
+          # energy_cost_month: sensor.YOUR_LIVING_ROOM_MONTHLY_COST   # optional
+          # energy_entity_1: sensor.YOUR_LIVING_ROOM_MONTHLY_COST
+          # energy_label_1: This Month
+          # energy_unit_1: cost
 
           # Security Badges (optional) — a room lists its own entities directly
           # instead of the aggregated Locks badge used on Home.

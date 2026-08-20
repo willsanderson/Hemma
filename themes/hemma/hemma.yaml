@@ -699,7 +699,6 @@ Hemma:
   hemma-color-yellow:      '#FFCC00'   # warning / lights on / warm
   hemma-color-yellow-dark: '#F4C403'   # selected/active pills only
   hemma-color-green:       '#30D158'   # good / online / healthy
-  hemma-color-green-plant: '#34C759'   # plant / nature / organic
   hemma-color-orange:      '#FF9230'   # caution / high usage / hot
   hemma-color-red:         '#FF4245'   # critical / danger / offline
   hemma-color-ice:         '#3cd3fe'   # cold temps / high humidity
@@ -733,7 +732,7 @@ Hemma:
   hemma-show-color:  var(--hemma-color-gold)
 
   # ============================================================================
-  # GLASS MATERIAL (popup pills, navbar dropdown, badges)
+  # GLASS MATERIAL
   # ============================================================================
 
   # Entity tile
@@ -817,83 +816,78 @@ Hemma:
     0 4px 28px 2px rgba(0,0,0,0.07)
 
   # ============================================================================
-  # BADGE / STATUS COLORS
+  # STATUS COLORS
   # ============================================================================
 
   # Global
   hemma-icon-circle-bg: rgba(0,0,0,0.20)
 
   # Light
-  hemma-badge-light-color:             var(--hemma-color-yellow, #FFCC00)
+  hemma-badge-light-color:             var(--hemma-color-yellow)
 
   # Climate / Thermostat
-  hemma-badge-climate-color:           var(--hemma-color-teal, #00c3d0)
-  hemma-puck-cool-color:               var(--hemma-color-teal, #00c3d0)
-  hemma-puck-heat-color:               var(--hemma-color-yellow, #FFCC00)
+  hemma-badge-climate-color:           var(--hemma-color-teal)
+  hemma-puck-cool-color:               var(--hemma-color-teal)
+  hemma-puck-heat-color:               var(--hemma-color-yellow)
 
   # Temperature
-  hemma-badge-climate-very-cold-color: var(--hemma-color-ice, #3cd3fe)
-  hemma-badge-temp-very-cold-color:    var(--hemma-color-deep-blue, #0091ff)
-  hemma-badge-temp-cool-color:         var(--hemma-color-ice, #3cd3fe)
-  hemma-badge-temp-comfortable-color:  var(--hemma-color-green, #30D158)
-  hemma-badge-temp-warm-color:         var(--hemma-color-yellow, #FFCC00)
-  hemma-badge-temp-hot-color:          var(--hemma-color-orange, #ff9230)
-  hemma-badge-temp-very-hot-color:     var(--hemma-color-red, #ff4245)
+  hemma-badge-climate-very-cold-color: var(--hemma-color-ice)
+  hemma-badge-temp-very-cold-color:    var(--hemma-color-deep-blue)
+  hemma-badge-temp-cool-color:         var(--hemma-color-ice)
+  hemma-badge-temp-comfortable-color:  var(--hemma-color-green)
+  hemma-badge-temp-warm-color:         var(--hemma-color-yellow)
+  hemma-badge-temp-hot-color:          var(--hemma-color-orange)
+  hemma-badge-temp-very-hot-color:     var(--hemma-color-red)
 
   # Air Quality
-  hemma-badge-air-quality-excellent-color: var(--hemma-color-green, #30D158)
-  hemma-badge-air-quality-good-color:      var(--hemma-color-green, #30D158)
-  hemma-badge-air-quality-moderate-color:  var(--hemma-color-yellow, #FFCC00)
-  hemma-badge-air-quality-poor-color:      var(--hemma-color-orange, #ff9230)
-  hemma-badge-air-quality-bad-color:       var(--hemma-color-red, #ff4245)
+  hemma-badge-air-quality-excellent-color: var(--hemma-color-green)
+  hemma-badge-air-quality-good-color:      var(--hemma-color-green)
+  hemma-badge-air-quality-moderate-color:  var(--hemma-color-yellow)
+  hemma-badge-air-quality-poor-color:      var(--hemma-color-orange)
+  hemma-badge-air-quality-bad-color:       var(--hemma-color-red)
 
   # Humidity
-  hemma-badge-humidity-dry-color:  var(--hemma-color-amber, #ffb254)
-  hemma-badge-humidity-high-color: var(--hemma-color-ice, #3cd3fe)
+  hemma-badge-humidity-dry-color:  var(--hemma-color-amber)
+  hemma-badge-humidity-high-color: var(--hemma-color-ice)
 
   # Presence
-  hemma-badge-presence-home-color: var(--hemma-color-green, #30D158)
-  hemma-badge-presence-away-color: var(--hemma-color-yellow, #FFCC00)
+  hemma-badge-presence-home-color: var(--hemma-color-green)
+  hemma-badge-presence-away-color: var(--hemma-color-yellow)
 
   # Security
-  # Every security icon reads through --hemma-security-accent. Point it at
-  # --hemma-color-mint to move the whole family to Apple Home's own hue.
-  hemma-security-accent: var(--hemma-color-mint, #00C8B3)
-  hemma-badge-alert-color: var(--hemma-color-orange, #ff9230)
-  hemma-badge-security-color: var(--hemma-security-accent, #00C3D0)
-
-  # Media
-  hemma-badge-media-color: var(--hemma-color-pink, #ff4d70)
+  hemma-security-accent: var(--hemma-color-teal)
+  hemma-badge-alert-color: var(--hemma-color-orange)
+  hemma-badge-security-color: var(--hemma-security-accent)
 
   # Network
-  hemma-badge-network-online-color:        var(--hemma-color-green, #30D158)
-  hemma-badge-network-offline-color:       var(--hemma-color-red, #ff4245)
-  hemma-badge-network-idle-color:          var(--hemma-color-neutral, #CDCDCF)
-  hemma-badge-network-low-color:           var(--hemma-color-green, #30D158)
-  hemma-badge-network-active-color:        var(--hemma-color-yellow, #FFCC00)
-  hemma-badge-network-high-color:          var(--hemma-color-orange, #ff9230)
-  hemma-badge-network-ping-good-color:     var(--hemma-color-green, #30D158)
-  hemma-badge-network-ping-moderate-color: var(--hemma-color-yellow, #FFCC00)
-  hemma-badge-network-ping-bad-color:      var(--hemma-color-red, #ff4245)
+  hemma-badge-network-online-color:        var(--hemma-color-green)
+  hemma-badge-network-offline-color:       var(--hemma-color-red)
+  hemma-badge-network-idle-color:          var(--hemma-color-neutral)
+  hemma-badge-network-low-color:           var(--hemma-color-green)
+  hemma-badge-network-active-color:        var(--hemma-color-yellow)
+  hemma-badge-network-high-color:          var(--hemma-color-orange)
+  hemma-badge-network-ping-good-color:     var(--hemma-color-green)
+  hemma-badge-network-ping-moderate-color: var(--hemma-color-yellow)
+  hemma-badge-network-ping-bad-color:      var(--hemma-color-red)
 
   # Energy
-  hemma-badge-energy-color:           var(--hemma-color-green, #30D158)
-  hemma-badge-energy-low-color:       var(--hemma-color-green, #30D158)
-  hemma-badge-energy-medium-color:    var(--hemma-color-yellow, #FFCC00)
-  hemma-badge-energy-high-color:      var(--hemma-color-orange, #ff9230)
-  hemma-badge-energy-very-high-color: var(--hemma-color-red, #ff4245)
+  hemma-badge-energy-color:           var(--hemma-color-green)
+  hemma-badge-energy-low-color:       var(--hemma-color-green)
+  hemma-badge-energy-medium-color:    var(--hemma-color-yellow)
+  hemma-badge-energy-high-color:      var(--hemma-color-orange)
+  hemma-badge-energy-very-high-color: var(--hemma-color-red)
 
   # Battery
-  hemma-badge-battery-critical-color:  var(--hemma-color-red, #ff4245)
-  hemma-badge-battery-very-low-color:  var(--hemma-color-deep-orange, #ff6b30)
-  hemma-badge-battery-low-color:       var(--hemma-color-yellow, #FFCC00)
-  hemma-badge-battery-good-color:      var(--hemma-color-green, #30D158)
+  hemma-badge-battery-critical-color:  var(--hemma-color-red)
+  hemma-badge-battery-very-low-color:  var(--hemma-color-deep-orange)
+  hemma-badge-battery-low-color:       var(--hemma-color-yellow)
+  hemma-badge-battery-good-color:      var(--hemma-color-green)
 
   # Plant Health
-  hemma-badge-plant-healthy-color:    var(--hemma-color-green-plant, #34C759)
-  hemma-badge-plant-care-color:       var(--hemma-color-yellow, #FFCC00)
-  hemma-badge-plant-struggling-color: var(--hemma-color-orange, #ff9230)
-  hemma-badge-plant-critical-color:   var(--hemma-color-red, #ff4245)
+  hemma-badge-plant-healthy-color:    var(--hemma-color-green)
+  hemma-badge-plant-care-color:       var(--hemma-color-yellow)
+  hemma-badge-plant-struggling-color: var(--hemma-color-orange)
+  hemma-badge-plant-critical-color:   var(--hemma-color-red)
 
   # ============================================================================
   # ENTITY STATE COLORS
