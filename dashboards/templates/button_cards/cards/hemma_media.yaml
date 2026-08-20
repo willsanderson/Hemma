@@ -141,9 +141,23 @@ hemma_media:
   hold_action:
     action: more-info
 
+  # 'none' binds no icon handler, so an un-toggleable player falls through to the card.
   icon_tap_action:
-    action: more-info
-    entity: '[[[ return entity.entity_id ]]]'
+    action: |
+      [[[
+        const s = String(entity?.state || '').toLowerCase();
+        if (s === 'unavailable' || s === 'unknown') return 'none';
+        const feats = Number(entity?.attributes?.supported_features || 0);
+        return (s === 'off' ? (feats & 128) : (feats & 256)) ? 'call-service' : 'none';
+      ]]]
+    service: |
+      [[[
+        return String(entity?.state || '').toLowerCase() === 'off'
+          ? 'media_player.turn_on'
+          : 'media_player.turn_off';
+      ]]]
+    service_data: |
+      [[[ return { entity_id: entity.entity_id }; ]]]
 
   styles:
     card:
@@ -162,7 +176,7 @@ hemma_media:
       - --hemma-media-icon-bg: |
           [[[
             if (variables.has_artwork) return 'rgba(255,255,255,0.10)';
-            if (!variables.is_active) return 'var(--hemma-icon-circle-bg, rgba(255,255,255,0.10))';
+            if (!variables.is_active) return 'var(--hemma-icon-circle-bg, rgba(0,0,0,0.20))';
             if (variables.icon === 'ps5') return 'rgba(10,10,10,0.85)';
             return 'var(--hemma-icon-color-current)';
           ]]]
@@ -174,7 +188,7 @@ hemma_media:
 
   extra_styles: |
     #img-cell {
-      background: var(--hemma-media-icon-bg, var(--hemma-icon-circle-bg, rgba(255,255,255,0.10))) !important;
+      background: var(--hemma-media-icon-bg, var(--hemma-icon-circle-bg, rgba(0,0,0,0.20))) !important;
       width: var(--hemma-icon-circle-size, 44px) !important;
       height: var(--hemma-icon-circle-size, 44px) !important;
       /* Forces a square whichever rule wins on each axis. */

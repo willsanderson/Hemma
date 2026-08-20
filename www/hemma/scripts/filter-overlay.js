@@ -60,6 +60,40 @@
   const BADGE_INACTIVE_BG  = 'rgba(46,48,56,0.78)';
 
   let _movedBadgeRow = null; // { owner, wrapper, el, parent, sibling }
+  // The dashboard badge row's resting top, so the adopted row lands on the same
+  // pixel instead of a hand-tuned margin. { top, vw, vh }
+  let _badgeNaturalTop = null;
+
+  // Only valid with the dashboard scrolled to the top: the row is sticky, so a
+  // scrolled measurement reads the stuck position, not the resting one.
+  function _measureBadgeNaturalTop(badgeEl) {
+    if (!badgeEl) return _badgeNaturalTop;
+    const se = _dashHeader?.scrollEl;
+    const dashScroll = se ? (se === window ? (window.scrollY || 0) : (se.scrollTop || 0)) : 0;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    if (_badgeNaturalTop && (_badgeNaturalTop.vw !== vw || _badgeNaturalTop.vh !== vh)) {
+      _badgeNaturalTop = null;
+    }
+    if (dashScroll <= 1) {
+      const card = badgeEl.shadowRoot?.querySelector('ha-card') || badgeEl;
+      const rect = card.getBoundingClientRect();
+      if (rect.height > 4) _badgeNaturalTop = { top: rect.top, vw, vh };
+    }
+    return _badgeNaturalTop;
+  }
+
+  // Folds the measured drift into the wrapper's margin. Guarded so a bad
+  // measurement leaves the hand-tuned fallback margin in place.
+  function _alignAdoptedBadgeRow(badgeW, badgeEl, natural, maxShift = 12) {
+    if (!badgeW || !badgeEl || !natural) return;
+    const card  = badgeEl.shadowRoot?.querySelector('ha-card') || badgeEl;
+    const rect  = card.getBoundingClientRect();
+    if (!rect.height) return;
+    const shift = natural.top - rect.top;
+    if (Math.abs(shift) <= 0.1 || Math.abs(shift) > maxShift) return;
+    const cur = parseFloat(badgeW.style.getPropertyValue('margin-top')) || 0;
+    badgeW.style.setProperty('margin-top', `${(cur + shift).toFixed(2)}px`, 'important');
+  }
   // iOS decides a pan gesture's fate at touchstart, and mutating layout inside
   // the scroller while a finger is down kills it until the finger lifts.
   let _touchActive = false;
@@ -1632,6 +1666,11 @@
       headerWrapper?.style.removeProperty('pointer-events');
       this._headerWrapper = headerWrapper;
 
+      // Measured here: the row is back in the dashboard flow and nothing has
+      // been suppressed or moved yet.
+      const badgeNaturalTop = this._config?.room
+        ? null : _measureBadgeNaturalTop(this._badgeRowEl);
+
       window._hemmaNoFilterAnim = true;
       for (const hsr of (window._hemmaSmartRows || [])) {
         const sr = hsr.shadowRoot;
@@ -1951,6 +1990,18 @@
               }
             });
           }
+        }
+
+        if (badgeNaturalTop && _movedBadgeRow?.owner === this &&
+            this._badgeRowWrapper?.parentNode === this._contentEl) {
+          const badgeW  = this._badgeRowWrapper;
+          const badgeEl = this._badgeRowEl;
+          _alignAdoptedBadgeRow(badgeW, badgeEl, badgeNaturalTop);
+          requestAnimationFrame(() => {
+            if (!this._showing || badgeW.parentNode !== this._contentEl) return;
+            if (_movedBadgeRow?.owner !== this) return;
+            _alignAdoptedBadgeRow(badgeW, badgeEl, badgeNaturalTop, 4);
+          });
         }
 
         for (const w of [this._subBadgesWrapper, this._npWrapper]) {

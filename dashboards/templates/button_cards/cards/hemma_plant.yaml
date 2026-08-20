@@ -126,7 +126,7 @@ hemma_plant:
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
           # Active = unhealthy here, so it uses warning yellow like an "on"
           # light — green is reserved for the healthy/inactive tint.
-          - --hemma-icon-color-current: "var(--hemma-color-yellow, #ffd600)"
+          - --hemma-icon-color-current: "var(--hemma-color-yellow, #FFCC00)"
           - --hemma-icon-svg-url: "[[[ return `url('${window.hemmaIconUrl('plant')}')`; ]]]"
           - --hemma-icon-use-mask: "1"
           - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
@@ -137,7 +137,7 @@ hemma_plant:
         img_cell:
           - opacity: "1 !important"
           - filter: none !important
-          - background: "var(--hemma-color-yellow, #ffd600) !important"
+          - background: "var(--hemma-color-yellow, #FFCC00) !important"
         entity_picture:
           - opacity: "1 !important"
           - filter: none !important

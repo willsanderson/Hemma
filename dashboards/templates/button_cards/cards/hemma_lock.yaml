@@ -31,8 +31,16 @@ hemma_lock:
     entity: '[[[ return entity.entity_id ]]]'
 
   icon_tap_action:
-    action: more-info
-    entity: '[[[ return entity.entity_id ]]]'
+    action: call-service
+    service: |
+      [[[
+        const s = (entity?.state || '').toLowerCase();
+        return ['unlocked', 'unlocking', 'open', 'opening'].includes(s)
+          ? 'lock.lock'
+          : 'lock.unlock';
+      ]]]
+    service_data:
+      entity_id: '[[[ return entity.entity_id ]]]'
 
   icon_hold_action:
     action: more-info

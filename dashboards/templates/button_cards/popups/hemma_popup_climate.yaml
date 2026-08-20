@@ -77,10 +77,10 @@ hemma_climate_popup:
               temp == null ? '#67F5A0' :
               isFahrenheit ? (
                 temp < 76 ? '#67F5A0' :
-                temp < 82 ? '#FF9230' : '#FF453A'
+                temp < 82 ? '#FF9230' : '#FF4245'
               ) : (
                 temp < 24 ? '#67F5A0' :
-                temp < 28 ? '#FF9230' : '#FF453A'
+                temp < 28 ? '#FF9230' : '#FF4245'
               );
 
             // Tooltip time format
@@ -117,7 +117,7 @@ hemma_climate_popup:
 
             const tileTapStyle = [
               ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: inset 0 1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-tight,0.20) * 1.5)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-tight,0.15) * 1.5)), inset 0 3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-soft,0.08) * 1.5)), inset 0 -3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-soft,0.05) * 1.5)) !important; }',
-              'ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }',
+              'ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.08)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }',
               'ha-card:hover { background: var(--hemma-popup-tile-hover, rgba(255,255,255,0.09)) !important; transform: scale(var(--hemma-popup-tile-hover-scale, 1.01)) !important; }',
               'ha-ripple { display: none !important; }',
             ].join('\n');
@@ -422,10 +422,10 @@ hemma_climate_popup:
                     v == null ? 'var(--hemma-badge-temp-comfortable-color, #67F5A0)' :
                     isFahrenheit ? (
                       v < 76 ? 'var(--hemma-badge-temp-comfortable-color, #67F5A0)' :
-                      v < 82 ? '#FF9230' : '#FF453A'
+                      v < 82 ? '#FF9230' : '#FF4245'
                     ) : (
                       v < 24 ? 'var(--hemma-badge-temp-comfortable-color, #67F5A0)' :
-                      v < 28 ? '#FF9230' : '#FF453A'
+                      v < 28 ? '#FF9230' : '#FF4245'
                     );
                   return '<div>'
                     + '<div style="display:flex;align-items:baseline;gap:3px;padding-right:6px;">'
@@ -462,7 +462,7 @@ hemma_climate_popup:
                   const humidStr = v != null ? v.toFixed(0) : '—';
                   const humidColor =
                     v == null        ? 'rgba(255,255,255,0.7)' :
-                    v < 20 || v > 75 ? 'var(--hemma-popup-red-color, #ff453a)'    :
+                    v < 20 || v > 75 ? 'var(--hemma-popup-red-color, #ff4245)'    :
                     v < 30 || v > 65 ? 'var(--hemma-popup-orange-color, #ff9230)' :
                     v < 35 || v > 60 ? 'var(--hemma-popup-yellow-color, #ffd600)' :
                     'var(--hemma-badge-climate-color, #C7CED6)';
@@ -553,7 +553,7 @@ hemma_climate_popup:
             const humidV = safeNum(humidId);
             const humidGraphColor =
               humidV == null ? '#00c3d0' :
-              (humidV < 20 || humidV > 75) ? '#FF453A' :
+              (humidV < 20 || humidV > 75) ? '#FF4245' :
               (humidV < 30 || humidV > 65) ? '#FF9230' :
               (humidV < 35 || humidV > 60) ? '#FFD600' :
               '#00c3d0';

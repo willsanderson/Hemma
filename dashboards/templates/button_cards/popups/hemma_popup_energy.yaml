@@ -83,11 +83,10 @@ hemma_popup_energy:
             const tHeavy   = Number(variables.heavy_threshold   ?? 1000);
             const tExtreme = Number(variables.extreme_threshold ?? 3000);
 
-            // Status badge pill
+            // Usage tier — drives the graph line and the memo keys below
             const statusLabel = power >= tExtreme ? 'Extreme' : power >= tHeavy ? 'Heavy' : power >= tNormal ? 'Normal' : 'Idle';
-            const statusColor = power >= tExtreme ? 'var(--hemma-popup-red-color, #ff453a)' : power >= tHeavy ? 'var(--hemma-popup-orange-color, #ff9230)' : power >= tNormal ? 'var(--hemma-popup-yellow-color, #ffd600)' : 'var(--hemma-popup-green-color, #67f5a0)';
             // apexcharts can't resolve CSS vars, so these mirror the Apple palette literally
-            const graphColor  = power >= tExtreme ? '#FF453A' : power >= tHeavy ? '#FF9F0A' : power >= tNormal ? '#FFD60A' : '#30D158';
+            const graphColor  = power >= tExtreme ? '#FF4245' : power >= tHeavy ? '#FF9230' : power >= tNormal ? '#FFD600' : '#30D158';
 
             // Safe JSON literals for inner templates
             const _pid  = JSON.stringify(powerId     || '');
@@ -105,8 +104,8 @@ hemma_popup_energy:
             const _powerScore = `
               const tNormal = ${tNormal}, tHeavy = ${tHeavy}, tExtreme = ${tExtreme};
               const power = safeNum(powerId);
-              let color = 'var(--hemma-popup-green-color, #67f5a0)', label = 'Idle';
-              if (power >= tExtreme)     { color = 'var(--hemma-popup-red-color, #ff453a)';    label = 'Extreme'; }
+              let color = 'var(--hemma-popup-green-color, #30D158)', label = 'Idle';
+              if (power >= tExtreme)     { color = 'var(--hemma-popup-red-color, #ff4245)';    label = 'Extreme'; }
               else if (power >= tHeavy)  { color = 'var(--hemma-popup-orange-color, #ff9230)'; label = 'Heavy'; }
               else if (power >= tNormal) { color = 'var(--hemma-popup-yellow-color, #ffd600)'; label = 'Normal'; }
             `;
@@ -137,7 +136,7 @@ hemma_popup_energy:
 
             const tileTapStyle = [
               ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: inset 0 1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-tight,0.20) * 1.5)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-tight,0.15) * 1.5)), inset 0 3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-soft,0.08) * 1.5)), inset 0 -3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-soft,0.05) * 1.5)) !important; }',
-              'ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }',
+              'ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.08)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }',
               'ha-card:hover { background: var(--hemma-popup-tile-hover, rgba(255,255,255,0.09)) !important; transform: scale(var(--hemma-popup-tile-hover-scale, 1.01)) !important; }',
               'ha-ripple { display: none !important; }',
             ].join('\n');
@@ -613,7 +612,7 @@ hemma_popup_energy:
                   const costV = safeNum(costTodayId);
                   const costStr = costV != null ? costCurrency + costV.toFixed(2) : '';
                   const pct = Math.max(0, Math.min(100, (v || 0) / 50 * 100));
-                  const color = pct >= 85 ? 'var(--hemma-popup-red-color, #ff453a)' : pct >= 45 ? 'var(--hemma-popup-orange-color, #ff9230)' : 'var(--hemma-popup-green-color, #67f5a0)';
+                  const color = pct >= 85 ? 'var(--hemma-popup-red-color, #ff4245)' : pct >= 45 ? 'var(--hemma-popup-orange-color, #ff9230)' : 'var(--hemma-popup-green-color, #30D158)';
                   const gradient = color;
                   return '<div style="margin-top:1px;min-width:0;overflow:hidden;">'
                     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">'
@@ -651,7 +650,7 @@ hemma_popup_energy:
                   const costV = safeNum(costMonthId);
                   const costStr = costV != null ? costCurrency + costV.toFixed(2) : '';
                   const pct = Math.max(0, Math.min(100, (v || 0) / 1500 * 100));
-                  const color = pct >= 85 ? 'var(--hemma-popup-red-color, #ff453a)' : pct >= 45 ? 'var(--hemma-popup-orange-color, #ff9230)' : 'var(--hemma-popup-green-color, #67f5a0)';
+                  const color = pct >= 85 ? 'var(--hemma-popup-red-color, #ff4245)' : pct >= 45 ? 'var(--hemma-popup-orange-color, #ff9230)' : 'var(--hemma-popup-green-color, #30D158)';
                   const gradient = color;
                   return '<div style="margin-top:1px;min-width:0;overflow:hidden;">'
                     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">'

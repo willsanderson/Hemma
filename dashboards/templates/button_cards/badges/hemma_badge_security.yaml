@@ -59,20 +59,7 @@ hemma_badge_security:
             const dead = !entity?.entity_id || !st || ['unknown','unavailable'].includes(st);
             return (!enabled || dead) ? 'none' : 'inline-grid';
           ]]]
-      - --hemma-badge-icon-color: >
-          [[[
-            const id = String(entity?.entity_id || '');
-            const dom = id.split('.')[0];
-            const s = String(entity?.state || '').toLowerCase();
-            let secure = true;
-            if (dom === 'lock') secure = s === 'locked';
-            else if (dom === 'alarm_control_panel') secure = s !== 'disarmed' && s !== 'triggered';
-            else if (dom === 'binary_sensor') secure = s === 'off';
-            else if (dom === 'cover') secure = s === 'closed';
-            return secure
-              ? 'var(--hemma-badge-security-color, #00c3d0)'
-              : 'var(--hemma-badge-security-alert-color, #ff9f0a)';
-          ]]]
+      - --hemma-badge-icon-color: var(--hemma-badge-security-color, #00c3d0)
       - --icon-primary-color: var(--hemma-badge-icon-color)
       - --paper-item-icon-color: var(--hemma-badge-icon-color)
       - --state-icon-color: var(--hemma-badge-icon-color)
@@ -135,9 +122,9 @@ hemma_badge_security:
       else if (dom === 'binary_sensor' || dom === 'cover') name = st === 'on' || st === 'open' ? 'lock-open' : 'lock';
       const URL = window.hemmaIconUrl(name);
       // One size for every security glyph so the group badge and its
-      // sub-badges are visually identical. The lock glyphs carry 6% of
-      // transparent padding in their viewBox, so they need 6% more here.
-      const SIZE = variables?.icon_size || (name.startsWith('lock') ? '72%' : '68%');
+      // sub-badges are visually identical. Every glyph here now carries 6% of
+      // transparent viewBox padding, so they all take the same 6% bump.
+      const SIZE = variables?.icon_size || '72%';
 
       return `:host{display:${(!enabled || dead) ? 'none' : 'inline-block'} !important;}
         #img-cell, .img-cell{ position: relative; }

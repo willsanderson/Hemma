@@ -1,23 +1,22 @@
-# Lock Group Sub-Badge  (Home dashboard)
-# Aggregates every lock into one "Locks" badge and opens the shared lock group
-# popup, the way the Lights badge aggregates lights. Rooms keep using
-# hemma_badge_security with their own single lock — this is for the Home view,
-# which covers the whole house.
+# Camera Group Sub-Badge
+# Aggregates every camera into one "Cameras" badge and opens the shared camera
+# popup, the way hemma_badge_lock_group aggregates locks.
 #
 # Variables:
-#   enabled          - show/hide (default: true)
-#   label            - title override (default: "Locks")
-#   locks            - list of lock entity_ids (also drives the popup)
-#   battery_entities - lock_id -> battery entity_id  (popup)
-#   door_sensors     - lock_id -> contact sensor entity_id (popup)
-#   room_name        - popup heading
-hemma_badge_lock_group:
-  template: [hemma_badge_base, hemma_popup_lock]
+#   enabled  - show/hide (default: true)
+#   label    - title override (default: "Cameras")
+#   cameras  - list of camera entity_ids (also drives the popup); empty list
+#              lets the popup auto-discover every camera in the registry
+#
+# The sub-line reads like Apple's: "No Alerts" until something actually
+# happened, not a count of how many cameras exist.
+hemma_badge_camera_group:
+  template: [hemma_badge_base, hemma_popup_camera]
 
   show_state: false
   show_label: false
   show_icon: true
-  icon: mdi:lock
+  icon: mdi:cctv
 
   variables:
     enabled: true
@@ -33,10 +32,16 @@ hemma_badge_lock_group:
               (typeof v === 'boolean') ? v :
               (typeof v === 'number') ? v !== 0 :
               !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
-            const locks = Array.isArray(variables?.locks) ? variables.locks.filter(Boolean) : [];
-            return (enabled && locks.length) ? 'inline-grid' : 'none';
+            return enabled ? 'inline-grid' : 'none';
           ]]]
-      - --hemma-badge-icon-color: var(--hemma-badge-security-color, #00c3d0)
+      - --hemma-badge-icon-color: >
+          [[[
+            const cams = Array.isArray(variables?.cameras) ? variables.cameras.filter(Boolean) : [];
+            const dead = cams.filter(id => ['unavailable','unknown',''].includes(String(states[id]?.state ?? '').toLowerCase())).length;
+            return dead === 0
+              ? 'var(--hemma-badge-security-color, #00c3d0)'
+              : 'var(--hemma-badge-alert-color, #FF9230)';
+          ]]]
       - --icon-primary-color: var(--hemma-badge-icon-color)
       - --paper-item-icon-color: var(--hemma-badge-icon-color)
       - --state-icon-color: var(--hemma-badge-icon-color)
@@ -47,16 +52,18 @@ hemma_badge_lock_group:
   name: >
     [[[
       const esc = (t) => String(t ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      const locks = Array.isArray(variables?.locks) ? variables.locks.filter(Boolean) : [];
-      const total = locks.length;
-      const open = locks.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
+      const cams = Array.isArray(variables?.cameras) ? variables.cameras.filter(Boolean) : [];
+      const total = cams.length;
+      const dead = cams.filter(id => ['unavailable','unknown',''].includes(String(states[id]?.state ?? '').toLowerCase())).length;
+      const alert = window.hemmaCameraAlert ? window.hemmaCameraAlert(hass, states, cams, variables?.alert_window_minutes) : '';
       const sub = total === 0 ? ''
-                : open === 0 ? (total === 1 ? 'Locked' : 'All Locked')
-                : open + ' Unlocked';
+                : dead === total ? (total === 1 ? 'Offline' : 'All Offline')
+                : dead > 0 ? dead + ' Offline'
+                : alert || 'No Alerts';
 
       return `
         <div class="badge-wrap">
-          <div class="badge-title">${esc(variables?.label || 'Doors')}</div>
+          <div class="badge-title">${esc(variables?.label || 'Cameras')}</div>
           ${sub ? `<div class="badge-sub">${esc(sub)}</div>` : ''}
         </div>
       `;
@@ -69,14 +76,10 @@ hemma_badge_lock_group:
         (typeof v === 'boolean') ? v :
         (typeof v === 'number') ? v !== 0 :
         !['false','0','no','off','disabled'].includes(String(v).trim().toLowerCase());
-      const locks = Array.isArray(variables?.locks) ? variables.locks.filter(Boolean) : [];
-      const hide = !enabled || !locks.length;
-
-      const open = locks.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
-      const URL = window.hemmaIconUrl(open === 0 ? 'lock-fill' : 'lock-open-fill');
+      const URL = window.hemmaIconUrl('doorbell');
       const SIZE = variables?.icon_size || '72%';
 
-      return `:host{display:${hide ? 'none' : 'inline-block'} !important;}
+      return `:host{display:${enabled ? 'inline-block' : 'none'} !important;}
         #img-cell, .img-cell{ position: relative; }
 
         #img-cell #icon, .img-cell #icon{

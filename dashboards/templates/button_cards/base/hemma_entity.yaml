@@ -96,10 +96,10 @@ hemma_entity:
       opacity: var(--hemma-active-overlay-opacity, 0);
       background: linear-gradient(
         to bottom right,
-        var(--hemma-card-specular-start, rgba(255,255,255,0.35)) 0%,
-        var(--hemma-card-specular-mid, rgba(255,255,255,0.18)) 45%,
-        var(--hemma-card-specular-mid, rgba(255,255,255,0.18)) 55%,
-        var(--hemma-card-specular-end, rgba(255,255,255,0.35)) 100%
+        var(--hemma-card-specular-start, transparent) 0%,
+        var(--hemma-card-specular-mid, transparent) 45%,
+        var(--hemma-card-specular-mid, transparent) 55%,
+        var(--hemma-card-specular-end, transparent) 100%
       );
       -webkit-mask:
         linear-gradient(#fff 0 0) content-box,
@@ -180,7 +180,7 @@ hemma_entity:
     }
 
     #progress svg .hemma-progress-track {
-      stroke: var(--hemma-progress-track-color, rgba(255,255,255,0.2));
+      stroke: var(--hemma-progress-track-color, rgba(0,0,0,0.12));
     }
 
     #progress svg .hemma-progress-arc {
@@ -321,7 +321,7 @@ hemma_entity:
     #img-cell, .hemma-icon-circle {
       position: relative;
       border-radius: 50% !important;
-      background: var(--hemma-icon-circle-bg, rgba(255,255,255,0.10)) !important;
+      background: var(--hemma-icon-circle-bg, rgba(0,0,0,0.20)) !important;
       width: var(--hemma-icon-circle-size, 44px) !important;
       height: var(--hemma-icon-circle-size, 44px) !important;
       display: flex !important;
@@ -716,24 +716,33 @@ hemma_entity:
               [[[
                 const icon   = variables.icon || '';
                 const domain = entity.entity_id.split('.')[0];
+                // Energy follows the same Idle/Normal/Heavy/Extreme tier as its popup
+                // and sub-badges, off the popup's own power entity.
+                if (icon === 'energy' || icon === 'power') {
+                  const pid = variables.entity_power || entity.entity_id;
+                  const w = parseFloat(states[pid]?.state);
+                  if (!Number.isFinite(w)) return 'var(--hemma-badge-energy-color, #30D158)';
+                  if (w >= Number(variables.extreme_threshold ?? 3000)) return 'var(--hemma-badge-energy-very-high-color, #FF4245)';
+                  if (w >= Number(variables.heavy_threshold   ?? 1000)) return 'var(--hemma-badge-energy-high-color, #FF9230)';
+                  if (w >= Number(variables.normal_threshold  ?? 200))  return 'var(--hemma-badge-energy-medium-color, #FFD600)';
+                  return 'var(--hemma-badge-energy-low-color, #30D158)';
+                }
                 const byIcon = {
-                  energy:   'var(--hemma-color-yellow, #ffd600)',
-                  power:    'var(--hemma-color-yellow, #ffd600)',
-                  plant:    'var(--hemma-color-yellow, #ffd600)',
+                  plant:    'var(--hemma-color-yellow, #FFCC00)',
                   updates:  'var(--hemma-color-teal, #00c3d0)',
                   wifi:     'var(--hemma-popup-primary-color, #00c3d0)',
                   doorbell: 'var(--hemma-color-teal, #00c3d0)',
                 };
                 const byDomain = {
-                  light:        'var(--hemma-color-yellow, #ffd600)',
-                  fan:          'var(--hemma-color-teal, #00d2e0)',
-                  humidifier:   'var(--hemma-color-teal, #00d2e0)',
-                  climate:      'var(--hemma-color-teal, #00d2e0)',
-                  vacuum:       'var(--hemma-color-teal, #00d2e0)',
+                  light:        'var(--hemma-color-yellow, #FFCC00)',
+                  fan:          'var(--hemma-color-teal, #00C3D0)',
+                  humidifier:   'var(--hemma-color-teal, #00C3D0)',
+                  climate:      'var(--hemma-color-teal, #00C3D0)',
+                  vacuum:       'var(--hemma-color-teal, #00C3D0)',
                   cover:        'var(--hemma-color-teal, #00c3d0)',
                   media_player: 'var(--hemma-color-teal, #00c3d0)',
-                  lock:         entity.state === 'unlocking' ? 'var(--hemma-color-yellow, #ffd600)' : 'var(--hemma-color-teal, #00c3d0)',
-                  plant:        'var(--hemma-color-yellow, #ffd600)',
+                  lock:         entity.state === 'unlocking' ? 'var(--hemma-color-yellow, #FFCC00)' : 'var(--hemma-color-teal, #00c3d0)',
+                  plant:        'var(--hemma-color-yellow, #FFCC00)',
                 };
                 return byIcon[icon] || byDomain[domain] || 'var(--hemma-icon-fallback-color, rgba(255,255,255,0.95))';
               ]]]
@@ -818,19 +827,28 @@ hemma_entity:
             const icon   = variables.icon || '';
             const domain = entity.entity_id.split('.')[0];
             if (domain === 'media_player') return 'var(--hemma-icon-inactive-fallback-color, rgba(255,255,255,0.95))';
+            // Energy follows the same Idle/Normal/Heavy/Extreme tier as its popup
+            // and sub-badges, off the popup's own power entity.
+            if (icon === 'energy' || icon === 'power') {
+              const pid = variables.entity_power || entity.entity_id;
+              const w = parseFloat(states[pid]?.state);
+              if (!Number.isFinite(w)) return 'var(--hemma-badge-energy-color, #30D158)';
+              if (w >= Number(variables.extreme_threshold ?? 3000)) return 'var(--hemma-badge-energy-very-high-color, #FF4245)';
+              if (w >= Number(variables.heavy_threshold   ?? 1000)) return 'var(--hemma-badge-energy-high-color, #FF9230)';
+              if (w >= Number(variables.normal_threshold  ?? 200))  return 'var(--hemma-badge-energy-medium-color, #FFD600)';
+              return 'var(--hemma-badge-energy-low-color, #30D158)';
+            }
             const byIcon = {
-              energy:   'var(--hemma-color-yellow, #ffd600)',
-              power:    'var(--hemma-color-yellow, #ffd600)',
               plant:    'var(--hemma-color-green-plant, #34C759)',
               wifi:     'var(--hemma-popup-primary-color, #00c3d0)',
               doorbell: 'var(--hemma-color-teal, #00c3d0)',
             };
             const byDomain = {
-              light:        'var(--hemma-color-yellow, #ffd600)',
-              fan:          'var(--hemma-color-teal, #00d2e0)',
-              humidifier:   'var(--hemma-color-teal, #00d2e0)',
-              climate:      'var(--hemma-color-teal, #00d2e0)',
-              vacuum:       'var(--hemma-color-teal, #00d2e0)',
+              light:        'var(--hemma-color-yellow, #FFCC00)',
+              fan:          'var(--hemma-color-teal, #00C3D0)',
+              humidifier:   'var(--hemma-color-teal, #00C3D0)',
+              climate:      'var(--hemma-color-teal, #00C3D0)',
+              vacuum:       'var(--hemma-color-teal, #00C3D0)',
               cover:        'var(--hemma-color-teal, #00c3d0)',
               lock:         'var(--hemma-color-teal, #00c3d0)',
               plant:        'var(--hemma-color-green-plant, #34C759)',

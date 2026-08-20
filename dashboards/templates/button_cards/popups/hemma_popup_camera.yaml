@@ -1,0 +1,1344 @@
+# Camera Popup
+hemma_popup_camera:
+  template:
+    - hemma_popup_base
+
+  variables:
+    cameras: null
+    camera_names: {}
+    activity_entities: {}
+    exclude: []
+    columns: null
+    room_name: null
+    accessory_entities: {}
+    alert_window_minutes: null
+
+    hemma_camera_alert_helper:
+      force_eval: true
+      value: |
+        [[[
+          if (typeof window.hemmaCameraAlert !== 'function') {
+            /* Ring publishes ding/motion as event.* entities whose state is the
+               timestamp of the last one, so "recent" is the whole alert model.
+               Reading sensor.time subscribes the caller to the minute tick, which
+               is what lets a stale alert expire without another camera event. */
+            window.hemmaCameraAlert = function (hass, states, cams, windowMinutes) {
+              const reg = (hass && hass.entities) || {};
+              const devs = {};
+              cams.forEach(function (id) {
+                const d = reg[id] && reg[id].device_id;
+                if (d) devs[d] = true;
+              });
+              const span = (Number(windowMinutes) > 0 ? Number(windowMinutes) : 5) * 60000;
+              const now = Date.now();
+              states['sensor.time'];
+              let ding = false, motion = false;
+              Object.keys(reg).forEach(function (id) {
+                if (id.indexOf('event.') !== 0) return;
+                if (!devs[reg[id].device_id]) return;
+                const t = Date.parse(states[id] && states[id].state);
+                if (!isFinite(t) || now - t > span) return;
+                if (/ding|doorbell|button/.test(id)) ding = true;
+                else if (/motion/.test(id)) motion = true;
+              });
+              return ding ? 'Doorbell' : motion ? 'Motion Detected' : '';
+            };
+          }
+          return true;
+        ]]]
+
+  tap_action: &camera_popup_action
+    browser_mod:
+      data:
+        # Width comes from --popup-min-width and nothing else; browser_mod feeds it
+        # into --ha-dialog-width-md. --mdc-dialog-* and wa-dialog{--width} are both
+        # unreachable from popup_styles, which is why this sat at the 580px default.
+        # Clamp to 92vw: browser_mod only re-declares the width below 450px, so a flat
+        # px value overflows every viewport between there and the target.
+        style: "--popup-min-width: min(1040px, 92vw); --popup-max-width: min(1040px, 92vw);"
+        popup_styles:
+          - style: all
+            styles: |
+              ha-adaptive-dialog, ha-dialog {
+                --dialog-surface-margin-top: 90px;
+                --dialog-content-padding: 0px;
+                --mdc-dialog-max-height: 620px;
+              }
+              @media (max-width: 767px) {
+                ha-adaptive-dialog, ha-dialog {
+                  --dialog-surface-margin-top: 0px;
+                  --mdc-dialog-max-height: calc(100svh - 80px);
+                }
+              }
+              @media (min-width: 1250px) {
+                ha-adaptive-dialog, ha-dialog { --dialog-surface-margin-top: 150px; }
+              }
+              .content .container > * {
+                width: 100% !important;
+                max-width: none !important;
+                box-sizing: border-box !important;
+              }
+        content: |
+          [[[
+            const reg    = (hass && hass.entities) || {};
+            const nameOv = variables.camera_names || {};
+            const actOv  = variables.activity_entities || {};
+            const exclude = Array.isArray(variables.exclude) ? variables.exclude : [];
+
+            /* Candidate ids come from the registry, never Object.values(states) —
+               that Proxy walk subscribes this card to every entity in the house. */
+            let ids;
+            if (Array.isArray(variables.cameras) && variables.cameras.length) {
+              ids = variables.cameras.filter(Boolean);
+            } else {
+              ids = Object.keys(reg).filter(id => {
+                if (!id.startsWith('camera.')) return false;
+                const r = reg[id] || {};
+                if (r.hidden || r.hidden_by || r.entity_category) return false;
+                if (r.platform === 'browser_mod') return false;
+                if (/_last_recording$/.test(id)) return false;
+                return true;
+              });
+            }
+            ids = ids.filter(id => !exclude.includes(id));
+
+            const cams = ids.map(id => ({ id: id, s: states[id] })).filter(c => c.s);
+
+            const TPL = 19;
+
+            /* Owns the selected camera, the live card and its hass pump.
+               Only one stream is ever mounted; the grid stays on stills. */
+            if (window._hemmaCAMv !== TPL) {
+              window._hemmaCAMv = TPL;
+              window._hemmaCAM = {
+                _card: null, _timer: null,
+
+                _ha: function () { return document.querySelector('home-assistant'); },
+
+                svc: function (domain, service, data) {
+                  const ha = this._ha();
+                  if (ha && ha.hass) ha.hass.callService(domain, service, data);
+                },
+
+                /* Mobile: the popup's swipe-dismiss handler claims touchstart, so the
+                   browser never synthesises a click and onclick alone never fires. Every
+                   control acts on touchend instead; whichever event lands first wins and
+                   the other is dropped inside the 900ms window. */
+                act: function (event, el, name, arg) {
+                  if (event) {
+                    if (event.type === 'touchend') {
+                      this._lt = Date.now();
+                      if (event.cancelable) event.preventDefault();
+                    } else if (this._lt && Date.now() - this._lt < 900) {
+                      return;
+                    }
+                  }
+                  if (name === 'open') {
+                    if (this.holdConsumed()) return;
+                    this.open(arg, el);
+                  }
+                  else if (name === 'back') this.back(el);
+                  else if (name === 'mute') this.toggleMute(el);
+                  else if (name === 'fit')  this.toggleFit(el);
+                  else if (name === 'rec')  this.toggleRecording(arg, el);
+                  else if (name === 'acc')  this.accToggle(arg, el);
+                  else if (name === 'fs')   this.fullscreen(el);
+                  else if (name === 'info') this.moreInfo(arg);
+                },
+
+                /* Tap opens the camera in this popup; hold hands off to HA's own
+                   more-info, so both routes out of the grid are available. */
+                holdPoint: function (event) {
+                  if (!event) return null;
+                  const t = event.touches && event.touches[0];
+                  const x = t ? t.clientX : event.clientX;
+                  const y = t ? t.clientY : event.clientY;
+                  return (x === undefined || x === null) ? null : [x, y];
+                },
+
+                /* brightness, never transform: open() measures the tile to start the
+                   zoom, and a scaled tile would hand it the wrong rect. */
+                holdPaint: function (on) {
+                  const el = this._holdEl;
+                  if (el && el.style) el.style.filter = on ? 'brightness(0.93)' : '';
+                },
+
+                holdEnd: function () {
+                  if (this._holdT) { clearTimeout(this._holdT); this._holdT = null; }
+                  this.holdPaint(false);
+                },
+
+                holdStart: function (event, el, camId) {
+                  const self = this;
+                  self.holdEnd();
+                  self._holdEl = el;
+                  self._holdFired = false;
+                  self._holdXY = self.holdPoint(event);
+                  self.holdPaint(true);
+                  self._holdT = setTimeout(function () {
+                    self._holdT = null;
+                    self._holdFired = true;
+                    self.holdPaint(false);
+                    self.moreInfo(camId);
+                  }, 480);
+                },
+
+                holdMove: function (event) {
+                  if (!this._holdT || !this._holdXY) return;
+                  const p = this.holdPoint(event);
+                  if (!p) return;
+                  if (Math.abs(p[0] - this._holdXY[0]) > 10 || Math.abs(p[1] - this._holdXY[1]) > 10) {
+                    this._holdFired = false;
+                    this.holdEnd();
+                  }
+                },
+
+                /* True once the press has already become a hold, so the tap that
+                   follows it is dropped rather than opening the camera too. */
+                holdConsumed: function () {
+                  this.holdEnd();
+                  if (!this._holdFired) return false;
+                  this._holdFired = false;
+                  return true;
+                },
+
+                moreInfo: function (id) {
+                  const ha = this._ha();
+                  if (!ha) return;
+                  ha.dispatchEvent(new CustomEvent('hass-more-info', {
+                    bubbles: true, composed: true, detail: { entityId: id },
+                  }));
+                },
+
+                /* videoWidth is unknown until metadata lands, and the scale factor needs it.
+                   Show the still until the video can be revealed already zoomed. */
+                settle: function () {
+                  const self = this;
+                  if (self._poll) clearInterval(self._poll);
+                  let n = 0;
+                  self._poll = setInterval(function () {
+                    n++;
+                    const v = self.video();
+                    if (v) {
+                      if (!v.dataset.hemmaHeld) {
+                        v.dataset.hemmaHeld = '1';
+                        v.style.opacity = '0';
+                      }
+                      if ((v.videoWidth && v.videoHeight) || v.readyState >= 2) {
+                        self.applyFit(false);
+                        self.applyAudio();
+                        v.style.opacity = '1';
+                        self.clearBackdrop();
+                        clearInterval(self._poll); self._poll = null;
+                        return;
+                      }
+                    }
+                    /* Give up after 5s and drop the still regardless: a placeholder that
+                       outlives the poll reads as a permanently out-of-focus camera. */
+                    if (n > 50) {
+                      if (v) v.style.opacity = '1';
+                      self.clearBackdrop();
+                      clearInterval(self._poll); self._poll = null;
+                    }
+                  }, 100);
+                },
+
+                /* The tile still is painted onto the mount as a placeholder. Once the
+                   stream is up it would show through the letterbox bars in contain mode,
+                   so it has to come off as soon as the video is visible. */
+                clearBackdrop: function () {
+                  if (this._mount) this._mount.style.backgroundImage = '';
+                },
+
+                teardown: function () {
+                  this._playing = false;
+                  if (this._poll) { clearInterval(this._poll); this._poll = null; }
+                  if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
+                  if (this._audT) { clearTimeout(this._audT); this._audT = null; }
+                  if (this._recT) { clearTimeout(this._recT); this._recT = null; }
+                  if (this._probeT) { clearTimeout(this._probeT); this._probeT = null; }
+                  if (this._probe) { try { this._probe.remove(); } catch (e) {} this._probe = null; }
+                  this._mount = null;
+                  if (this._timer) { clearInterval(this._timer); this._timer = null; }
+                  if (this._card) { try { this._card.remove(); } catch (e) {} this._card = null; }
+                },
+
+                mount: function (camId, mountEl) {
+                  const self = this;
+                  self.teardown();
+                  self._mount = mountEl;
+                  self._modeText = 'Live';
+                  const ha = self._ha();
+                  if (!ha || !mountEl) return;
+
+                  /* Building a picture-entity is what pulls in hui-image, and with it
+                     ha-camera-stream. We throw the card away and mount the player
+                     ourselves: hui-image hardcodes `muted`, and ha-camera-stream reads
+                     that flag when it PICKS a stream, not just to set volume — muted
+                     lets it settle on WebRTC, which for Ring has no audio track at all.
+                     Mounted unmuted it prefers HLS, which carries audio; we then hold
+                     the <video> silent ourselves until the user asks for sound. */
+                  Promise.resolve(window.loadCardHelpers()).then(function (h) {
+                    return h.createCardElement({
+                      type: 'picture-entity', entity: camId, camera_view: 'live',
+                      show_name: false, show_state: false,
+                    });
+                  }).then(function (fallback) {
+                    let card;
+                    if (customElements.get('ha-camera-stream')) {
+                      card = document.createElement('ha-camera-stream');
+                      card.controls = false;
+                      card.allowExoPlayer = false;
+                      card.muted = false;
+                      card.stateObj = ha.hass.states[camId];
+                      card.hass = ha.hass;
+                      self._native = true;
+                    } else {
+                      card = fallback;
+                      card.hass = ha.hass;
+                      self._native = false;
+                    }
+                    card.style.width = '100%';
+                    card.style.height = '100%';
+                    card.style.display = 'block';
+                    mountEl.appendChild(card);
+                    self._card = card;
+                    self.holdAudio();
+                    self.settle();
+                    /* hass is replaced per update, so re-query rather than cache. */
+                    self._timer = setInterval(function () {
+                      if (!self._card || !self._card.isConnected) { self.teardown(); return; }
+                      const h2 = self._ha();
+                      if (h2 && h2.hass) {
+                        self._card.hass = h2.hass;
+                        if (self._native && h2.hass.states[camId] !== self._card.stateObj) {
+                          self._card.stateObj = h2.hass.states[camId];
+                        }
+                      }
+                      self.applyFit(false);
+                      self.applyAudio();
+                    }, 1000);
+                  }).catch(function () {});
+                },
+
+                /* The player is mounted unmuted so audio gets negotiated, so the first
+                   frames could escape before the 1s pump silences them. Ride every frame
+                   for the first two seconds instead. */
+                holdAudio: function () {
+                  const self = this;
+                  const until = Date.now() + 2000;
+                  const step = function () {
+                    self._raf = null;
+                    if (!self._card || !self._card.isConnected) return;
+                    self.applyAudio();
+                    if (Date.now() < until) self._raf = requestAnimationFrame(step);
+                  };
+                  if (self._raf) cancelAnimationFrame(self._raf);
+                  self._raf = requestAnimationFrame(step);
+                },
+
+                /* Shared-element zoom. The ghost lives inside the popup root, not body:
+                   the dialog is in the top layer, and the theme's will-change on ha-card
+                   makes position:fixed resolve against the card rather than the viewport. */
+                flip: function (root, from, to, imgUrl, radius, done) {
+                  const rr = root.getBoundingClientRect();
+                  const dur = 360;
+                  const g = document.createElement('div');
+                  g.style.cssText = 'position:absolute;z-index:50;pointer-events:none;overflow:hidden;'
+                    + 'background-color:#000;background-size:cover;background-position:center;'
+                    + 'border-radius:' + radius + 'px;'
+                    + 'left:' + (from.left - rr.left) + 'px;top:' + (from.top - rr.top) + 'px;'
+                    + 'width:' + from.width + 'px;height:' + from.height + 'px;'
+                    + 'transform-origin:top left;'
+                    + 'transition:transform ' + dur + 'ms cubic-bezier(0.32,0.72,0,1),opacity 120ms ease ' + (dur - 100) + 'ms;';
+                  if (imgUrl) g.style.backgroundImage = 'url("' + imgUrl + '")';
+                  root.appendChild(g);
+                  g.getBoundingClientRect();
+                  g.style.transform = 'translate(' + (to.left - from.left) + 'px,' + (to.top - from.top) + 'px)'
+                    + ' scale(' + (to.width / from.width) + ',' + (to.height / from.height) + ')';
+                  g.style.opacity = '0';
+                  setTimeout(function () { try { g.remove(); } catch (e) {} if (done) done(); }, dur + 40);
+                },
+
+                open: function (camId, el) {
+                  const root = el.closest('.hemma-cam-root');
+                  if (!root) return;
+                  const tile = el.closest('.hemma-cam-tile') || el;
+                  const from = tile.getBoundingClientRect();
+                  const img  = tile.querySelector('img');
+                  const src  = img && img.style.display !== 'none' ? img.getAttribute('src') : '';
+
+                  const grid = root.querySelector('.cam-grid');
+                  if (grid) grid.style.display = 'none';
+                  let mount = null, detail = null;
+                  root.querySelectorAll('.cam-detail').forEach(function (d) {
+                    const on = d.getAttribute('data-cam') === camId;
+                    d.style.display = on ? 'block' : 'none';
+                    if (on) { detail = d; mount = d.querySelector('.cam-stream-mount'); }
+                  });
+                  if (!mount) return;
+
+                  if (src) {
+                    mount.style.backgroundImage = 'url("' + src + '")';
+                    mount.style.backgroundSize = 'cover';
+                    mount.style.backgroundPosition = 'center';
+                  }
+
+                  const to = mount.getBoundingClientRect();
+                  if (detail) {
+                    detail.style.opacity = '0';
+                    detail.style.transition = 'opacity 200ms ease 140ms';
+                    detail.getBoundingClientRect();
+                    detail.style.opacity = '1';
+                  }
+                  this._fit = 'cover';
+                  this._muted = true;
+                  this.flip(root, from, to, src, 20);
+                  this.mount(camId, mount);
+                  this.paintFit(detail);
+                },
+
+                back: function (el) {
+                  const root = el.closest('.hemma-cam-root');
+                  const detail = el.closest('.cam-detail');
+                  const camId = detail && detail.getAttribute('data-cam');
+                  const mount = detail && detail.querySelector('.cam-stream-mount');
+                  const from = mount ? mount.getBoundingClientRect() : null;
+                  this.clearConfirm();
+                  this.teardown();
+                  if (mount) mount.style.backgroundImage = '';
+                  if (!root) return;
+
+                  root.querySelectorAll('.cam-detail').forEach(function (d) {
+                    d.style.display = 'none';
+                    d.style.opacity = '';
+                    d.style.transition = '';
+                  });
+                  const grid = root.querySelector('.cam-grid');
+                  if (grid) grid.style.display = 'block';
+
+                  const tile = camId && root.querySelector('.hemma-cam-tile[data-cam="' + camId + '"]');
+                  if (!tile || !from) return;
+                  const to  = tile.getBoundingClientRect();
+                  const img = tile.querySelector('img');
+                  const src = img && img.style.display !== 'none' ? img.getAttribute('src') : '';
+                  if (grid) {
+                    grid.style.opacity = '0';
+                    grid.style.transition = 'opacity 200ms ease 120ms';
+                    grid.getBoundingClientRect();
+                    grid.style.opacity = '1';
+                  }
+                  this.flip(root, from, to, src, 20);
+                },
+
+                /* The <video> is several shadow roots down inside the player. */
+                video: function () {
+                  const find = function (root, d) {
+                    if (!root || d > 12) return null;
+                    if (root.querySelector) {
+                      const v = root.querySelector('video');
+                      if (v) return v;
+                    }
+                    const kids = root.querySelectorAll ? root.querySelectorAll('*') : [];
+                    for (let i = 0; i < kids.length; i++) {
+                      if (kids[i].shadowRoot) {
+                        const r = find(kids[i].shadowRoot, d + 1);
+                        if (r) return r;
+                      }
+                    }
+                    return null;
+                  };
+                  if (!this._card) return null;
+                  if (this._card.tagName === 'VIDEO') return this._card;
+                  return find(this._card.shadowRoot || this._card, 0);
+                },
+
+                /* Ring's sensor is squarer than the 16:9 frame, so cover crops instead of
+                   letterboxing. The chain between mount and <video> has to fill for it to bite. */
+                /* Runs once a second off the hass pump, so it must not touch a property
+                   that is already correct — rewriting inline styles under the cursor
+                   resets whatever the browser is drawing on top of the video. */
+                applyFit: function (animate) {
+                  const v = this.video();
+                  if (!v) return;
+                  const mode = this.fitMode();
+                  const mount = this._mount;
+                  const set = function (el, prop, val) {
+                    if (el && el.style && el.style[prop] !== val) el.style[prop] = val;
+                  };
+
+                  set(v, 'width', '100%');
+                  set(v, 'height', '100%');
+                  set(v, 'transformOrigin', 'center center');
+                  set(v, 'transition', (animate ? 'transform 0.38s cubic-bezier(0.32,0.72,0,1)' : 'transform 0s')
+                    + ', opacity 0.18s ease');
+
+                  /* Fill every wrapper between the mount and the <video>, crossing shadow
+                     boundaries. Generous guard: HA nests card > image > stream > player. */
+                  let n = v.parentElement || (v.getRootNode() && v.getRootNode().host);
+                  let guard = 0;
+                  while (n && n !== mount && guard++ < 40) {
+                    set(n, 'height', '100%');
+                    set(n, 'width', '100%');
+                    n = n.parentElement || (n.getRootNode() && n.getRootNode().host);
+                  }
+
+                  /* object-fit can't animate, so hold `contain` and scale by exactly the
+                     cover/contain ratio. If the intrinsic size isn't known yet, fall back to
+                     plain object-fit so the frame is never left un-filled. */
+                  let k = 1;
+                  let measured = false;
+                  if (mode === 'cover' && v.videoWidth && v.videoHeight && mount) {
+                    const r = mount.getBoundingClientRect();
+                    if (r.width && r.height) {
+                      const fit  = Math.min(r.width / v.videoWidth, r.height / v.videoHeight);
+                      const fill = Math.max(r.width / v.videoWidth, r.height / v.videoHeight);
+                      if (fit > 0) { k = fill / fit; measured = true; }
+                    }
+                  }
+                  set(v, 'objectFit', (mode === 'cover' && !measured) ? 'cover' : 'contain');
+                  set(v, 'transform', 'scale(' + k.toFixed(4) + ')');
+                },
+
+                /* Not persisted: every open starts filled, the way Apple's does. */
+                fitMode: function () {
+                  if (!this._fit) this._fit = 'cover';
+                  return this._fit;
+                },
+
+                toggleFit: function (el) {
+                  this._fit = this.fitMode() === 'cover' ? 'contain' : 'cover';
+                  this.applyFit(true);
+                  this.paintFit(el.closest('.cam-detail'));
+                },
+
+                /* One flag the CSS can select on: the active background is written
+                   inline, so a hover rule cannot otherwise tell a lit button from a
+                   dark one. */
+                mark: function (el, on) {
+                  if (!el) return;
+                  if (on) el.setAttribute('data-on', '1');
+                  else el.removeAttribute('data-on');
+                },
+
+                paintFit: function (scope) {
+                  const on = this.fitMode() === 'cover';
+                  const btns = scope ? scope.querySelectorAll('.cam-fit') : [];
+                  for (let i = 0; i < btns.length; i++) {
+                    const b = btns[i];
+                    const ic = b.querySelector('ha-icon');
+                    b.setAttribute('data-tip', on ? 'Zoom to Fit' : 'Zoom to Fill');
+                    this.mark(b, on);
+                    b.style.background = on ? 'rgba(255,255,255,0.92)' : 'var(--hemma-glass-pill-fill, rgba(255,255,255,0.12))';
+                    b.style.color = on ? '#1c1c1e' : 'rgba(255,255,255,0.92)';
+                    if (ic) {
+                      ic.setAttribute('icon', on ? 'mdi:overscan' : 'mdi:fit-to-screen-outline');
+                      ic.style.color = on ? '#1c1c1e' : 'rgba(255,255,255,0.92)';
+                    }
+                  }
+                },
+
+                /* HA mounts the player muted so autoplay is allowed, and re-asserts it
+                   on every hass push, so the choice has to be re-applied rather than set
+                   once. _muted is the intent; the element only ever follows it. */
+                applyAudio: function () {
+                  const v = this.video();
+                  if (!v) return;
+                  const want = this._muted !== false;
+                  if (v.muted !== want) v.muted = want;
+                  if (v.hasAttribute && v.hasAttribute('muted') && !want) v.removeAttribute('muted');
+                  if (!want) {
+                    if (!v.volume) v.volume = 0.8;
+                    const pl = v.play();
+                    if (pl && pl.catch) pl.catch(function () {});
+                  }
+                },
+
+                /* A Ring stream without an audio track can't be unmuted; say so rather
+                   than leaving a button that looks broken. */
+                hasAudio: function () {
+                  const v = this.video();
+                  if (!v) return false;
+                  if (v.audioTracks && typeof v.audioTracks.length === 'number') return v.audioTracks.length > 0;
+                  if (typeof v.mozHasAudio === 'boolean') return v.mozHasAudio;
+                  if (typeof v.webkitAudioDecodedByteCount === 'number') return v.webkitAudioDecodedByteCount > 0;
+                  return true;
+                },
+
+                syncAudio: function (scope) {
+                  const btn = scope && scope.querySelector('.cam-mute');
+                  const ic  = btn && btn.querySelector('ha-icon');
+                  const off = this._muted !== false;
+                  if (ic) ic.setAttribute('icon', off ? 'mdi:volume-off' : 'mdi:volume-high');
+                  if (btn) btn.setAttribute('data-tip', off ? 'Unmute' : 'Mute');
+                  this.mark(btn, !off);
+                  if (btn) {
+                    btn.style.background = off
+                      ? 'var(--hemma-glass-pill-fill, rgba(255,255,255,0.12))'
+                      : 'rgba(255,255,255,0.92)';
+                    btn.style.color = off ? 'rgba(255,255,255,0.92)' : '#1c1c1e';
+                    if (ic) ic.style.color = off ? 'rgba(255,255,255,0.92)' : '#1c1c1e';
+                  }
+                },
+
+                toggleMute: function (el) {
+                  const self = this;
+                  self._muted = self._muted === false;
+                  self.applyAudio();
+                  const scope = el.closest('.cam-detail');
+                  if (!scope) return;
+                  self.syncAudio(scope);
+                  if (self._audT) { clearTimeout(self._audT); self._audT = null; }
+                  self.setMode(scope, self._modeText || 'Live');
+                  if (self._muted) return;
+                  /* audioTracks/webkitAudioDecodedByteCount are both empty until the
+                     decoder has actually run, so an immediate verdict always reads
+                     "no audio" even when there is some. */
+                  self._audT = setTimeout(function () {
+                    self._audT = null;
+                    if (self._muted === false && !self.hasAudio()) {
+                      self.setMode(scope, (self._modeText || 'Live') + ' \xb7 no audio');
+                    }
+                  }, 1500);
+                },
+
+                /* Apple's gesture: tap the picture to fill the screen. The frame goes,
+                   not the <video>, so the rounded mask and the aspect box travel with it.
+                   iOS has no element fullscreen — there only the video can go. */
+                /* The browser can leave fullscreen without us — Esc, the system gesture,
+                   iOS's own Done button — so the glyph follows the document, not our call. */
+                paintFs: function () {
+                  const on = !!(document.fullscreenElement || document.webkitFullscreenElement);
+                  const scope = this._fsScope;
+                  const b = scope && scope.querySelector('.cam-fs');
+                  const ic = b && b.querySelector('ha-icon');
+                  if (ic) ic.setAttribute('icon', on ? 'mdi:arrow-collapse' : 'mdi:arrow-expand');
+                },
+
+                watchFs: function () {
+                  if (this._fsBound) return;
+                  this._fsBound = true;
+                  const self = this;
+                  const upd = function () { self.paintFs(); };
+                  document.addEventListener('fullscreenchange', upd);
+                  document.addEventListener('webkitfullscreenchange', upd);
+                },
+
+                fullscreen: function (el) {
+                  const scope = el.closest('.cam-detail');
+                  this._fsScope = scope;
+                  this.watchFs();
+                  const box = scope && scope.querySelector('.cam-frame');
+                  const d = document;
+                  if (d.fullscreenElement || d.webkitFullscreenElement) {
+                    if (d.exitFullscreen) d.exitFullscreen();
+                    else if (d.webkitExitFullscreen) d.webkitExitFullscreen();
+                    return;
+                  }
+                  const landscape = function () {
+                    try {
+                      const o = window.screen && window.screen.orientation;
+                      if (o && o.lock) {
+                        const p = o.lock('landscape');
+                        if (p && p.catch) p.catch(function () {});
+                      }
+                    } catch (e) {}
+                  };
+
+                  const req = box && (box.requestFullscreen || box.webkitRequestFullscreen);
+                  if (req) {
+                    try {
+                      const r = req.call(box);
+                      if (r && r.then) r.then(landscape, function () {});
+                      else landscape();
+                      return;
+                    } catch (e) {}
+                  }
+                  const v = this.video();
+                  if (v && v.webkitEnterFullscreen) v.webkitEnterFullscreen();
+                },
+
+                accState: function (id) {
+                  const ha = this._ha();
+                  const st = ha && ha.hass && ha.hass.states[id];
+                  if (!st) return null;
+                  const v = String(st.state).toLowerCase();
+                  if (id.indexOf('lock.') === 0) return v === 'unlocked' ? 'open' : 'shut';
+                  if (id.indexOf('cover.') === 0) return (v === 'open' || v === 'opening') ? 'open' : 'shut';
+                  if (id.indexOf('alarm_control_panel.') === 0) return v === 'disarmed' ? 'shut' : 'open';
+                  return v === 'on' ? 'open' : 'shut';
+                },
+
+                /* A pill is content-width, and auto can't be transitioned. Measure the
+                   old and new widths around the swap, animate between the two numbers,
+                   then hand the width back to the content. */
+                morph: function (el, paint) {
+                  const from = el.getBoundingClientRect().width;
+                  el.style.transition = 'none';
+                  el.style.width = 'auto';
+                  el.style.overflow = '';
+                  paint();
+                  const to = el.getBoundingClientRect().width;
+                  if (!from || !to || Math.abs(to - from) < 0.5) {
+                    el.style.width = '';
+                    el.style.transition = 'background-color 260ms ease, color 260ms ease, box-shadow 180ms ease';
+                    return;
+                  }
+                  /* Clipped only while the label slides in — left on, it would cut the
+                     hover tooltip off at the pill's edge. */
+                  el.style.overflow = 'hidden';
+                  el.style.width = from + 'px';
+                  el.getBoundingClientRect();
+                  el.style.transition = 'width 420ms cubic-bezier(0.34,1.42,0.52,1),'
+                    + ' background-color 260ms ease, color 260ms ease';
+                  el.style.width = to + 'px';
+                  if (el._morphT) clearTimeout(el._morphT);
+                  el._morphT = setTimeout(function () {
+                    el._morphT = null;
+                    el.style.transition = 'background-color 260ms ease, color 260ms ease, box-shadow 180ms ease';
+                    el.style.width = '';
+                    el.style.overflow = '';
+                  }, 440);
+                },
+
+                /* One tap on the siren wakes the building, so it arms a confirm state
+                   and fires on the second tap. */
+                needsConfirm: function (id) {
+                  return id.indexOf('siren.') === 0 || id.indexOf('alarm_control_panel.') === 0;
+                },
+
+                confirmLabel: function (id, open) {
+                  if (id.indexOf('siren.') === 0) return open ? 'Stop siren?' : 'Sound siren?';
+                  return open ? 'Disarm?' : 'Arm away?';
+                },
+
+                clearConfirm: function () {
+                  if (this._cfT) { clearTimeout(this._cfT); this._cfT = null; }
+                  const el = this._cfEl;
+                  this._cfEl = null;
+                  if (!el) return;
+                  el.removeAttribute('data-confirm');
+                  this.paintAcc(el, this.accState(el.getAttribute('data-acc')));
+                },
+
+                armConfirm: function (id, el) {
+                  const self = this;
+                  self.clearConfirm();
+                  el.setAttribute('data-confirm', '1');
+                  self._cfEl = el;
+                  self.mark(el, true);
+
+                  self.morph(el, function () {
+                    el.style.background = 'var(--hemma-popup-orange-color, #ff9230)';
+                    el.style.color = '#1c1c1e';
+                    const ic = el.querySelector('ha-icon');
+                    const tx = el.querySelector('span');
+                    if (ic) { ic.setAttribute('icon', 'mdi:alert-outline'); ic.style.color = '#1c1c1e'; }
+                    if (tx) {
+                      tx.textContent = self.confirmLabel(id, self.accState(id) === 'open');
+                      tx.style.display = '';
+                    }
+                    el.removeAttribute('data-tip');
+                  });
+
+                  self._cfT = setTimeout(function () { self._cfT = null; self.clearConfirm(); }, 5000);
+                },
+
+                accToggle: function (id, el) {
+                  const cur = this.accState(id);
+                  if (cur === null) return;
+                  if (this.needsConfirm(id) && el.getAttribute('data-confirm') !== '1') {
+                    this.armConfirm(id, el);
+                    return;
+                  }
+                  if (this._cfT) { clearTimeout(this._cfT); this._cfT = null; }
+                  this._cfEl = null;
+                  el.removeAttribute('data-confirm');
+                  const open = cur === 'open';
+                  if (id.indexOf('lock.') === 0)        this.svc('lock', open ? 'lock' : 'unlock', { entity_id: id });
+                  else if (id.indexOf('cover.') === 0)  this.svc('cover', open ? 'close_cover' : 'open_cover', { entity_id: id });
+                  else if (id.indexOf('alarm_control_panel.') === 0)
+                    this.svc('alarm_control_panel', open ? 'alarm_disarm' : 'alarm_arm_away', { entity_id: id });
+                  else                                  this.svc('homeassistant', open ? 'turn_off' : 'turn_on', { entity_id: id });
+                  this.paintAcc(el, open ? 'shut' : 'open');
+                  const self = this;
+                  setTimeout(function () { self.paintAcc(el, self.accState(id)); }, 1400);
+                },
+
+                paintAcc: function (el, state) {
+                  if (!el || !state) return;
+                  const open = state === 'open';
+                  const self = this;
+                  self.mark(el, open);
+                  self.morph(el, function () {
+                    el.style.background = open ? 'rgba(255,255,255,0.92)' : 'var(--hemma-glass-pill-fill, rgba(255,255,255,0.12))';
+                    el.style.color = open ? '#1c1c1e' : 'rgba(255,255,255,0.92)';
+                    const ic = el.querySelector('ha-icon');
+                    const tx = el.querySelector('span');
+                    const on = el.getAttribute('data-icon-open'), off = el.getAttribute('data-icon-shut');
+                    const txt = open ? (el.getAttribute('data-label-open') || '') : '';
+                    if (ic) { ic.setAttribute('icon', open ? on : off); ic.style.color = open ? '#1c1c1e' : 'rgba(255,255,255,0.92)'; }
+                    if (tx) { tx.textContent = txt; tx.style.display = txt ? '' : 'none'; }
+                    /* A tooltip repeating a label the pill is already showing is noise. */
+                    if (txt) el.removeAttribute('data-tip');
+                    else el.setAttribute('data-tip', el.getAttribute('data-label-shut') || '');
+                  });
+                },
+
+                /* One button owns playback: it lights up while the recording runs and
+                   the next tap drops back to live, so there is no second "go live"
+                   control needing room in the row. */
+                toggleRecording: function (recId, el) {
+                  const scope = el.closest('.cam-detail');
+                  const camId = scope && scope.getAttribute('data-cam');
+                  if (this._playing) { this.goLive(camId, el); return; }
+                  if (this._probe) {
+                    /* Still loading. Live never stopped, so dropping the probe is enough. */
+                    try { this._probe.remove(); } catch (e) {}
+                    this._probe = null;
+                    if (this._probeT) { clearTimeout(this._probeT); this._probeT = null; }
+                    this.paintRec(scope, false);
+                    return;
+                  }
+                  this.playRecording(recId, el);
+                },
+
+                /* Live is still running underneath, so just say so and put the header back. */
+                unavailable: function (scope) {
+                  const self = this;
+                  self.setMode(scope, 'Recording unavailable');
+                  if (self._recT) clearTimeout(self._recT);
+                  self._recT = setTimeout(function () {
+                    self._recT = null;
+                    self.setMode(scope, self._modeText || 'Live');
+                  }, 1800);
+                },
+
+                paintRec: function (scope, playing) {
+                  const b = scope && scope.querySelector('.cam-rec');
+                  if (!b) return;
+                  const ic = b.querySelector('ha-icon');
+                  b.style.background = playing
+                    ? 'rgba(255,255,255,0.92)'
+                    : 'var(--hemma-glass-pill-fill, rgba(255,255,255,0.12))';
+                  b.style.color = playing ? '#1c1c1e' : 'rgba(255,255,255,0.92)';
+                  b.setAttribute('data-tip', playing ? 'Live' : 'Last Recording');
+                  this.mark(b, playing);
+                  if (ic) ic.style.color = playing ? '#1c1c1e' : 'rgba(255,255,255,0.92)';
+                },
+
+                /* Plays the recording in the same frame — no second dialog. The clip
+                   loads behind the live stream and only swaps in once it can actually
+                   play, so a recording that never arrives costs nothing on screen. */
+                playRecording: function (recId, el) {
+                  const self = this;
+                  const scope = el.closest('.cam-detail');
+                  const ha = self._ha();
+                  const st = ha && ha.hass && ha.hass.states[recId];
+                  const url = st && st.attributes && st.attributes.video_url;
+                  const mount = scope && scope.querySelector('.cam-stream-mount');
+                  if (!mount) return;
+                  if (!url) { self.unavailable(scope); return; }
+
+                  const v = document.createElement('video');
+                  v.src = url; v.controls = true; v.playsInline = true; v.preload = 'auto';
+                  v.muted = self._muted !== false;
+                  v.setAttribute('playsinline', '');
+                  v.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;'
+                    + 'object-fit:contain;background:#000;display:block;z-index:3;'
+                    + 'opacity:0;transition:opacity 180ms ease;';
+                  mount.appendChild(v);
+                  self._probe = v;
+                  self.paintRec(scope, true);
+
+                  let done = false;
+                  const fail = function () {
+                    if (done) return; done = true;
+                    if (self._probeT) { clearTimeout(self._probeT); self._probeT = null; }
+                    if (self._probe === v) self._probe = null;
+                    try { v.remove(); } catch (e) {}
+                    self.paintRec(scope, false);
+                    self.unavailable(scope);
+                  };
+                  const ready = function () {
+                    if (done) return; done = true;
+                    if (self._probeT) { clearTimeout(self._probeT); self._probeT = null; }
+                    self._probe = null;
+                    self.teardown();
+                    self._mount = mount;
+                    self._card = v;
+                    self._playing = true;
+                    self.clearBackdrop();
+                    v.style.opacity = '1';
+                    const pl = v.play();
+                    if (pl && pl.catch) pl.catch(function () {});
+                    self.applyFit(false);
+                    self._modeText = 'Last Recording';
+                    self.setMode(scope, 'Last Recording');
+                    self.paintRec(scope, true);
+                  };
+
+                  v.addEventListener('loadeddata', ready);
+                  v.addEventListener('canplay', ready);
+                  v.addEventListener('error', fail);
+                  v.addEventListener('ended', function () {
+                    self.goLive(scope.getAttribute('data-cam'), el);
+                  });
+                  /* A source that neither errors nor loads would otherwise leave the
+                     button lit forever. */
+                  self._probeT = setTimeout(fail, 8000);
+                },
+
+                goLive: function (camId, el) {
+                  const scope = el.closest('.cam-detail');
+                  const mount = scope && scope.querySelector('.cam-stream-mount');
+                  if (this._recT) { clearTimeout(this._recT); this._recT = null; }
+                  this.mount(camId, mount);
+                  this._modeText = 'Live';
+                  this.setMode(scope, 'Live');
+                  this.paintRec(scope, false);
+                },
+
+                setMode: function (scope, txt) {
+                  const el = scope && scope.querySelector('.cam-mode');
+                  if (el) el.textContent = txt;
+                },
+
+              };
+            }
+
+            /* Bump TPL on any edit to the markup or to _hemmaCAM. The cached render is
+               keyed on entity state alone, so without it a soft reload keeps serving the
+               previous version of this popup until someone hard-refreshes. */
+            const _ck = 'hemma_cams_' + TPL + '_' + (entity?.entity_id || 'x');
+            const _ch = cams.map(c => [c.id, c.s.state, c.s.attributes?.entity_picture, c.s.last_changed].join(':')).join('|')
+              + '|' + Object.keys(reg).length + '|' + window.innerWidth;
+            window._hc = window._hc || {};
+            if (window._hc[_ck]?.h === _ch) return window._hc[_ck].r;
+
+            const esc = s => String(s ?? '')
+              .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+              .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+            const resolveUrl = raw => {
+              if (!raw) return '';
+              const s = String(raw);
+              return s.startsWith('/') ? location.origin + s : s;
+            };
+
+            const siblingsOf = {};
+            Object.keys(reg).forEach(id => {
+              const dev = reg[id] && reg[id].device_id;
+              if (!dev) return;
+              (siblingsOf[dev] = siblingsOf[dev] || []).push(id);
+            });
+            const sibs = camId => siblingsOf[(reg[camId] || {}).device_id] || [];
+
+            const activityOf = camId => {
+              if (actOv[camId]) return actOv[camId];
+              return sibs(camId).find(id =>
+                id.startsWith('sensor.') &&
+                /last_activity|last_motion|last_seen|last_event/.test(id) &&
+                isFinite(Date.parse(states[id]?.state))
+              ) || null;
+            };
+
+            /* Apple's tile stamp: bare "11s" / "2m" / "3h", no "ago". */
+            const stamp = ms => {
+              if (!isFinite(ms) || ms < 0) return '';
+              const s = ms / 1000;
+              if (s < 60)    return Math.max(1, Math.floor(s)) + 's';
+              if (s < 3600)  return Math.floor(s / 60) + 'm';
+              if (s < 86400) return Math.floor(s / 3600) + 'h';
+              return Math.floor(s / 86400) + 'd';
+            };
+
+            const ageMsOf = cam => {
+              const act = activityOf(cam.id);
+              const raw = act ? states[act]?.state : null;
+              const t = raw ? Date.parse(raw) : Date.parse(cam.s.last_changed);
+              return isFinite(t) ? Date.now() - t : NaN;
+            };
+            const ageOf = cam => stamp(ageMsOf(cam));
+
+            /* Ring's live view 500s when no snapshot is cached; the device's
+               last_recording camera usually still has one. */
+            const fallbackOf = camId => {
+              const alt = camId.replace(/_live_view$/, '_last_recording');
+              const pick = (id) => (id && id !== camId && states[id]?.attributes?.entity_picture)
+                ? resolveUrl(states[id].attributes.entity_picture) : '';
+              return pick(alt)
+                || pick(sibs(camId).find(id => id.startsWith('camera.') && /_last_recording$/.test(id)));
+            };
+
+            const accState = id => {
+              const st = states[id];
+              if (!st) return null;
+              const v = String(st.state).toLowerCase();
+              if (id.startsWith('lock.'))  return v === 'unlocked' ? 'open' : 'shut';
+              if (id.startsWith('cover.')) return (v === 'open' || v === 'opening') ? 'open' : 'shut';
+              if (id.startsWith('alarm_control_panel.')) return v === 'disarmed' ? 'shut' : 'open';
+              return v === 'on' ? 'open' : 'shut';
+            };
+
+            const labelOf = cam => {
+              if (nameOv[cam.id]) return nameOv[cam.id];
+              const fn = cam.s.attributes?.friendly_name;
+              if (fn) return fn.replace(/\s*Live view$/i, '').trim() || fn;
+              return cam.id.split('.').pop().replace(/_/g, ' ');
+            };
+
+            const isMobile = window.innerWidth < 600;
+            const cols = variables.columns || (isMobile ? 1 : 2);
+            const pad  = isMobile ? 20 : 28;
+            const GAP  = 12;
+
+            const font = 'font-family:var(--primary-font-family,system-ui);';
+            const tileW = cols === 1
+              ? '100%'
+              : 'calc((100% - ' + (GAP * (cols - 1)) + 'px) / ' + cols + ')';
+
+            const wrapperStyle = `
+              :host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: none !important; }
+              ha-card { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; cursor: default !important; width: 100% !important; box-sizing: border-box !important; }
+              ha-card:hover { box-shadow: none !important; }
+              ha-ripple { display: none !important; }
+            `;
+
+            const gridStyle = wrapperStyle + `
+              ha-card #container { display: block !important; padding: 0 !important; width: 100% !important; }
+              .hemma-cam-tile img { transition: transform 0.35s ease, filter 0.2s ease; }
+              .hemma-back-glass { position: relative; width: 34px; height: 34px; border-radius: 50%;
+                display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+                cursor: pointer; pointer-events: auto;
+                transition: transform 0.15s ease, background-color 0.18s ease;
+                background-color: rgba(255,255,255,0.07);
+                background-image: radial-gradient(140% 90% at 50% -20%, rgba(255,255,255,0.14), rgba(255,255,255,0.04) 45%, transparent 62%);
+                backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2); }
+              .hemma-back-glass::before { content: ""; position: absolute; inset: 0; border-radius: 50%; padding: 1.4px;
+                background: conic-gradient(from 0deg, rgba(255,255,255,0.55) 0deg, rgba(255,255,255,0.12) 55deg,
+                  rgba(255,255,255,0.02) 90deg, rgba(255,255,255,0.12) 130deg, rgba(255,255,255,0.30) 175deg 185deg,
+                  rgba(255,255,255,0.12) 230deg, rgba(255,255,255,0.02) 270deg, rgba(255,255,255,0.12) 305deg,
+                  rgba(255,255,255,0.55) 360deg);
+                -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+                -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+                mask-composite: exclude; pointer-events: none; }
+              .hemma-back-glass::after { content: ""; position: absolute; inset: -1px; border-radius: 50%; padding: 1px;
+                background: conic-gradient(from 0deg, transparent 0deg 50deg, rgba(0,0,0,0.32) 80deg 100deg,
+                  transparent 130deg 230deg, rgba(0,0,0,0.32) 260deg 280deg, transparent 310deg 360deg);
+                -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+                -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+                mask-composite: exclude; pointer-events: none; }
+              .hemma-back-glass:active { transform: scale(0.94); }
+              /* Top-left, matching where HA puts it on its own camera views. backdrop-filter is
+                 inert inside a popup, so the glass is a fill plus a rim. Hidden until the
+                 feed is hovered; pointer-events go with the opacity, or the invisible
+                 button still swallows taps on touch. */
+              /* 16:9 of a 984px-wide frame is 553px tall, which clears the viewport on a
+                 shorter laptop once the header and control row are added. The cap keeps
+                 the whole detail view on screen; the mount is inset:0 so the picture
+                 follows it down. */
+              /* ha-icon does not centre its own glyph here — the parent's align-items
+                 centres the icon's box, not the artwork inside it, so every icon lands a
+                 couple of px low. Same forcing hemma_popup_lock_group already does. */
+              .hemma-cam-root ha-icon {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: var(--mdc-icon-size, 24px);
+                height: var(--mdc-icon-size, 24px);
+                flex: 0 0 auto;
+                line-height: 0;
+              }
+
+              /* An inset shadow layers over whatever background the JS wrote inline, so
+                 the highlight lands without fighting it for specificity. Lit buttons
+                 darken instead of lightening — white cannot get any brighter. */
+              .cam-mute, .cam-rec, .cam-fit { transition: box-shadow 180ms ease; }
+              @media (hover: hover) {
+                .cam-mute:hover, .cam-rec:hover, .cam-fit:hover, [data-acc]:hover {
+                  box-shadow: inset 0 0 0 999px rgba(255,255,255,0.07);
+                }
+                .cam-mute[data-on]:hover, .cam-rec[data-on]:hover,
+                .cam-fit[data-on]:hover, [data-acc][data-on]:hover {
+                  box-shadow: inset 0 0 0 999px rgba(0,0,0,0.055);
+                }
+              }
+
+              .cam-frame { max-height: 52vh; }
+              .cam-frame:fullscreen, .cam-frame:-webkit-full-screen { max-height: none; }
+
+              .cam-fs {
+                position: absolute; left: 12px; top: 12px; z-index: 4;
+                display: inline-flex; align-items: center; justify-content: center;
+                width: 32px; height: 32px; border-radius: 50%;
+                cursor: pointer;
+                opacity: 0; pointer-events: none;
+                touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+                background: rgba(0,0,0,0.30);
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+                transition: opacity 0.2s ease,
+                            transform 0.22s cubic-bezier(0.34,1.25,0.55,1),
+                            background 0.2s ease, box-shadow 0.2s ease;
+              }
+              .cam-fs:active { transform: scale(0.96); }
+              /* No hover to reveal it on a phone, so it just stays. */
+              @media (hover: none) { .cam-fs { opacity: 1; pointer-events: auto; } }
+
+              [data-tip]::after {
+                content: attr(data-tip);
+                position: absolute; left: 50%; bottom: calc(100% + 8px);
+                transform: translateX(-50%);
+                padding: 4px 9px; border-radius: 7px;
+                background: var(--hemma-tooltip-bg, rgba(233,233,236,0.96));
+                color: var(--hemma-tooltip-fg, #1c1c1e);
+                font-family: var(--primary-font-family, system-ui);
+                font-size: 12px; font-weight: 500; line-height: 1.35;
+                white-space: nowrap; pointer-events: none; z-index: 20;
+                opacity: 0; transition: opacity 110ms ease;
+              }
+              /* Above the button, not below: the control row is the last thing in the
+                 popup, so a label under it lands outside the card and gets clipped. */
+              @media (hover: hover) {
+                .hemma-cam-tile:hover img { transform: scale(1.03); filter: brightness(1.06); }
+                .hemma-back-glass:hover { background-color: rgba(255,255,255,0.18); }
+                [data-tip]:hover::after { opacity: 1; transition-delay: 280ms; }
+                .cam-title:hover { opacity: 0.72; }
+                .cam-title[data-tip]::after { bottom: auto; top: calc(100% + 6px); }
+                /* The sibling rule is the one that fires while the pointer is over the
+                   player; :hover on .cam-fs itself keeps it up once you reach it. */
+                .cam-frame:hover .cam-fs,
+                .cam-stream-mount:hover ~ .cam-fs,
+                .cam-fs:hover { opacity: 1; pointer-events: auto; }
+                .cam-fs:hover {
+                  transform: scale(1.04);
+                  background: rgba(0,0,0,0.40);
+                  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+                }
+              }
+              .cam-frame:fullscreen, .cam-frame:-webkit-full-screen {
+                width: 100vw; height: 100vh; background: #000; }
+              .cam-frame:fullscreen .cam-ratio,
+              .cam-frame:-webkit-full-screen .cam-ratio { padding-top: 0 !important; }
+              .cam-frame:fullscreen .cam-stream-mount,
+              .cam-frame:-webkit-full-screen .cam-stream-mount { border-radius: 0 !important; }
+            `;
+
+            const stop = "event.stopPropagation();event.stopImmediatePropagation();";
+
+            /* Claim the touch on the way down and act on touchend — see _hemmaCAM.act.
+               onclick alone never fires on mobile inside a browser_mod popup. */
+            const CAMW = 'window._hemmaCAM';
+
+            const bindTile = camId => {
+              const start = CAMW + ".holdStart(event,this,'" + camId + "');";
+              const tap   = CAMW + ".act(event,this,'open','" + camId + "');";
+              const off   = CAMW + '.holdEnd();';
+              return ' onpointerdown="' + stop + start + '" ontouchstart="' + stop + start + '"'
+                + ' onpointermove="' + CAMW + '.holdMove(event);"'
+                + ' ontouchmove="' + CAMW + '.holdMove(event);"'
+                + ' onpointercancel="' + off + '" ontouchcancel="' + off + '"'
+                + ' onpointerleave="' + off + '"'
+                + ' ontouchend="' + stop + tap + '" onclick="' + stop + tap + '"';
+            };
+
+            const bind = (action, arg) => {
+              const call = "window._hemmaCAM.act(event,this,'" + action + "'"
+                + (arg ? ",'" + arg + "'" : "") + ");";
+              return ' onpointerdown="' + stop + '" ontouchstart="' + stop + '"'
+                + ' ontouchend="' + stop + call + '" onclick="' + stop + call + '"';
+            };
+
+            const buildTile = cam => {
+              const dead  = ['unavailable', 'unknown'].includes(String(cam.s.state || '').toLowerCase());
+              const pic   = resolveUrl(cam.s.attributes?.entity_picture);
+              const label = labelOf(cam);
+              const age   = dead ? 'Unavailable' : ageOf(cam);
+
+              const placeholder = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);">'
+                + '<ha-icon icon="mdi:cctv" style="--mdc-icon-size:30px;color:rgba(255,255,255,0.20);"></ha-icon></div>';
+
+              const hide = "this.onerror=null;this.style.display='none'";
+              const fb = fallbackOf(cam.id);
+              const onErr = fb
+                ? "this.onerror=function(){" + hide + "};this.src='" + fb + "'"
+                : hide;
+
+              const shot = placeholder + ((pic && !dead)
+                ? '<img src="' + esc(pic) + '" loading="lazy" onerror="' + onErr + '" '
+                  + 'style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;"/>'
+                : '');
+
+              /* Motion detection is a setting that is on for every camera all day, so a
+                 permanent dot for it carries no information. This marks a real event
+                 instead: something happened here in the last few minutes. */
+              const ms = ageMsOf(cam);
+              const recent = isFinite(ms) && ms < (Number(variables.alert_window_minutes) > 0
+                ? Number(variables.alert_window_minutes) : 5) * 60000;
+              const dot = (recent && !dead)
+                ? '<div style="position:absolute;top:11px;right:11px;width:6px;height:6px;border-radius:50%;'
+                  + 'background:var(--hemma-badge-security-color,#00C3D0);'
+                  + 'box-shadow:0 1px 3px rgba(0,0,0,0.5);"></div>'
+                : '';
+
+              const scrim = '<div style="position:absolute;left:0;right:0;bottom:0;height:58%;pointer-events:none;'
+                + 'background:linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.34) 42%, rgba(0,0,0,0) 100%);"></div>';
+
+              const caption = '<div style="position:absolute;left:14px;right:14px;bottom:11px;text-align:left;pointer-events:none;' + font + '">'
+                + '<div style="font-size:15px;font-weight:600;letter-spacing:-0.01em;color:#ffffff;line-height:1.25;'
+                + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px rgba(0,0,0,0.45);">' + esc(label) + '</div>'
+                + (age ? '<div style="font-size:13px;font-weight:400;color:rgba(255,255,255,0.72);margin-top:1px;'
+                  + 'text-shadow:0 1px 3px rgba(0,0,0,0.45);">' + esc(age) + '</div>' : '')
+                + '</div>';
+
+              return '<div class="hemma-cam-tile" data-cam="' + esc(cam.id) + '"'
+                + bindTile(cam.id)
+                + ' style="position:relative;width:' + tileW + ';border-radius:20px;overflow:hidden;'
+                + 'background:rgba(0,0,0,0.30);cursor:pointer;pointer-events:auto;'
+                + 'touch-action:manipulation;-webkit-tap-highlight-color:transparent;'
+                + 'transition:filter 0.18s ease;'
+                + '-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;'
+                + 'box-shadow:var(--hemma-tile-glass-rim, inset 0 1px 0.5px -0.5px rgba(255,255,255,0.20), inset 0 -1px 0.5px -0.5px rgba(255,255,255,0.15));">'
+                + '<div style="padding-top:56.25%;"></div>'
+                + '<div style="position:absolute;inset:0;">' + shot + scrim + caption + dot + '</div>'
+                + '</div>';
+            };
+
+            const CAM = 'window._hemmaCAM';
+
+            /* data-tip drives the hover label — see the [data-tip] rules in gridStyle.
+               The pills carry their own text, so only the icon-only buttons get one. */
+            const circleBtn = (cls, glyph, action, arg, tip) =>
+              '<div class="' + cls + '"' + bind(action, arg)
+              + (tip ? ' data-tip="' + esc(tip) + '"' : '')
+              + ' style="position:relative;display:inline-flex;align-items:center;justify-content:center;'
+              + 'width:38px;height:38px;'
+              + 'border-radius:50%;flex:0 0 auto;cursor:pointer;pointer-events:auto;'
+              + 'touch-action:manipulation;-webkit-tap-highlight-color:transparent;'
+              + 'background:var(--hemma-glass-pill-fill, rgba(255,255,255,0.12));'
+              + 'color:rgba(255,255,255,0.92);">'
+              + '<ha-icon icon="' + glyph + '" style="--mdc-icon-size:18px;color:rgba(255,255,255,0.92);"></ha-icon></div>';
+
+            const detailFor = cam => {
+              const label = labelOf(cam);
+              const row = [];
+
+              row.push(circleBtn('cam-mute', 'mdi:volume-off', 'mute', null, 'Unmute'));
+
+              /* Only the camera's own siren. Apple's camera view carries no locks or
+                 alarm panel, and neither does this one — accessory_entities is the
+                 escape hatch if a camera really needs something else beside it. */
+              const explicit = (variables.accessory_entities || {})[cam.id];
+              const accIds = Array.isArray(explicit)
+                ? explicit.filter(id => states[id])
+                : sibs(cam.id).filter(id => id.startsWith('siren.') && states[id]);
+
+              accIds.forEach(id => {
+                const dom = id.split('.')[0];
+                const open = accState(id) === 'open';
+                const META = {
+                  lock:                 ['mdi:lock-open-variant', 'mdi:lock',             'Unlocked', 'Locked'],
+                  siren:                ['mdi:bullhorn',          'mdi:bullhorn-outline', 'Siren On', 'Siren'],
+                  alarm_control_panel:  ['mdi:shield-check',      'mdi:shield-off-outline', 'Armed',  'Disarmed'],
+                  cover:                ['mdi:garage-open',       'mdi:garage',           'Open',     'Closed'],
+                };
+                const m = META[dom] || META.cover;
+                const icOpen = m[0], icShut = m[1], lbOpen = m[2], lbShut = m[3];
+                row.push('<div' + bind('acc', id)
+                  + ' data-acc="' + id + '"'
+                  + ' data-icon-open="' + icOpen + '" data-icon-shut="' + icShut + '"'
+                  + ' data-label-open="' + lbOpen + '" data-label-shut="' + lbShut + '"'
+                  + (open ? ' data-on="1"' : ' data-tip="' + esc(lbShut) + '"')
+                  + ' style="position:relative;display:inline-flex;align-items:center;gap:7px;'
+                  + 'padding:11px 12px;border-radius:999px;'
+                  + 'cursor:pointer;pointer-events:auto;flex:0 0 auto;box-sizing:border-box;'
+                  + 'transition:background-color 260ms ease, color 260ms ease, box-shadow 180ms ease;'
+                  + 'touch-action:manipulation;-webkit-tap-highlight-color:transparent;'
+                  + 'background:' + (open ? 'rgba(255,255,255,0.92)' : 'var(--hemma-glass-pill-fill, rgba(255,255,255,0.12))') + ';'
+                  + 'color:' + (open ? '#1c1c1e' : 'rgba(255,255,255,0.92)') + ';'
+                  + 'font-size:13px;font-weight:500;white-space:nowrap;' + font + '">'
+                  + '<ha-icon icon="' + (open ? icOpen : icShut)
+                  + '" style="flex:0 0 auto;--mdc-icon-size:16px;color:' + (open ? '#1c1c1e' : 'rgba(255,255,255,0.92)') + ';"></ha-icon>'
+                  + '<span style="white-space:nowrap;' + (open ? '' : 'display:none;') + '">'
+                  + esc(open ? lbOpen : '') + '</span></div>');
+              });
+
+              const recAlt = cam.id.replace(/_live_view$/, '_last_recording');
+              const recId = states[recAlt] ? recAlt
+                : sibs(cam.id).find(id => id.startsWith('camera.') && /_last_recording$/.test(id) && states[id]);
+              if (recId) {
+                row.push(circleBtn('cam-rec', 'mdi:play-circle-outline', 'rec', recId, 'Last Recording'));
+              }
+
+              row.push(circleBtn('cam-fit', 'mdi:fit-to-screen-outline', 'fit', null, 'Zoom to Fit'));
+
+
+              const back = '<div style="display:flex;align-items:center;gap:10px;padding:22px ' + pad + 'px 14px;' + font + '">'
+                + '<div class="hemma-back-glass"' + bind('back')
+                + ' style="touch-action:manipulation;-webkit-tap-highlight-color:transparent;">'
+                + '<svg width="11" height="19" viewBox="0 0 14 24" fill="none" style="margin-right:2px">'
+                + '<path d="M12 2.5 L2.8 12 L12 21.5" stroke="#fff" stroke-width="3.2" '
+                + 'stroke-linecap="round" stroke-linejoin="round"/></svg></div>'
+                + '<div class="cam-title"' + bind('info', cam.id)
+                + ' data-tip="Details" style="position:relative;text-align:left;min-width:0;cursor:pointer;'
+                + 'transition:opacity 0.15s ease;touch-action:manipulation;'
+                + '-webkit-tap-highlight-color:transparent;">'
+                + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;color:var(--hemma-popup-tiles-text-primary,#fff);'
+                + 'line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(label) + '</div>'
+                + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary,rgba(255,255,255,0.75));margin-top:2px;">'
+                + 'Camera \xb7 <span class="cam-mode">Live</span></div>'
+                + '</div></div>';
+
+              const stream = '<div style="padding:0 ' + pad + 'px;">'
+                + '<div class="cam-frame" style="position:relative;width:100%;">'
+                + '<div class="cam-ratio" style="padding-top:56.25%;"></div>'
+                + '<div class="cam-stream-mount"' + bind('fs')
+                + ' style="position:absolute;inset:0;border-radius:20px;overflow:hidden;background:#000;'
+                + 'cursor:pointer;pointer-events:auto;touch-action:manipulation;'
+                + '-webkit-tap-highlight-color:transparent;"></div>'
+                + '<div class="cam-fs"' + bind('fs') + '>'
+                + '<ha-icon icon="mdi:arrow-expand" style="--mdc-icon-size:16px;'
+                + 'color:rgba(255,255,255,0.86);"></ha-icon></div>'
+                + '</div></div>';
+
+              const controls = '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px ' + pad + 'px 26px;">'
+                + row.join('') + '</div>';
+
+              return '<div class="cam-detail" data-cam="' + esc(cam.id) + '" style="display:none;">'
+                + back + stream + controls + '</div>';
+            };
+
+            const gridView = '<div class="cam-grid">'
+              + '<div style="text-align:left;padding:22px ' + pad + 'px 14px;' + font + '">'
+              + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;color:var(--hemma-popup-tiles-text-primary,#fff);line-height:1.2;">'
+              + esc(variables.room_name || 'Home') + '</div>'
+              + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary,rgba(255,255,255,0.75));margin-top:2px;">'
+              + 'Security \xb7 Cameras</div></div>'
+              + (cams.length
+                ? '<div style="display:flex;flex-wrap:wrap;gap:' + GAP + 'px;padding:4px ' + pad + 'px 26px;">'
+                  + cams.map(buildTile).join('') + '</div>'
+                : '<div style="padding:8px ' + pad + 'px 26px;' + font + 'font-size:22px;font-weight:400;letter-spacing:-.5px;'
+                  + 'text-align:left;color:var(--hemma-popup-tiles-text-primary,#fff);">No cameras available</div>')
+              + '</div>';
+
+            const _r = {
+              type: 'custom:button-card',
+              tap_action: { action: 'none' },
+              show_icon: false, show_name: false, show_label: false, show_state: false,
+              card_mod: { style: gridStyle },
+              styles: {
+                card: [{ background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' }, { padding: '0' }],
+                grid: [{ 'grid-template-areas': '"c"' }, { 'grid-template-columns': '1fr' }],
+                custom_fields: { c: [{ 'justify-self': 'stretch' }, { width: '100%' }] },
+              },
+              custom_fields: {
+                c: '<div class="hemma-cam-root" style="width:100%;position:relative;">'
+                  + gridView + cams.map(detailFor).join('') + '</div>',
+              },
+            };
+
+            window._hc[_ck] = { h: _ch, r: _r };
+            return _r;
+          ]]]
+
+  icon_tap_action: *camera_popup_action

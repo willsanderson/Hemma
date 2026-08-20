@@ -438,6 +438,15 @@ The energy group badge adds an expandable row of value badges to the hero card. 
 | `energy_label_N` | Badge title — falls back to the entity's friendly name |
 | `energy_unit_N` | `auto` (W, switching to kW above 1000), `kwh`, or `cost` |
 | `energy_cost_N` | *(optional)* Cost sensor appended to the value as `· $1.23` |
+| `normal_threshold` / `heavy_threshold` / `extreme_threshold` | Watt breakpoints for the usage tier. Defaults 200 / 1000 / 3000 |
+| `high_threshold` | Watts at which the Energy card promotes itself to its active state. Default 500 |
+| `release_threshold` | *(optional)* Watts at which it drops back. Defaults to 80% of `high_threshold` |
+
+**Usage tiers.** The group badge, each sub-badge, the Energy card and the energy popup all read the same
+breakpoints, so their colours always agree: green when idle, yellow at Normal, orange at Heavy, red at
+Extreme. The Energy card uses a separate, higher `high_threshold` to decide whether it is prominent enough
+to sort to the front of a smart row, with hysteresis so a sensor hovering at the line does not reshuffle
+the row on every crossing.
 
 By default a sub-badge opens this view's own energy popup. To point a badge at a different room's popup — as the Home view does for its per-room badges — set the matching `energy_popup_*_N` keys:
 
@@ -482,6 +491,18 @@ The security group badge expands into one badge per security entity. A single te
       lock.front_door: sensor.front_door_lock_battery      # optional
     security_door_sensors:
       lock.front_door: binary_sensor.front_door            # optional
+```
+
+**Cameras badge.** `security_cameras` collapses every camera into a single badge that opens a shared
+camera popup with a live tile per camera. The sub-line reads like Apple's: "No Alerts" at rest, a count
+when a camera goes offline, and the most recent motion or doorbell event when there is one. The badge only
+appears when the room already has a lock or a `security_entity_N` set.
+
+```yaml
+    security_cameras:
+      - camera.front_door
+      - camera.backyard
+    security_cameras_label: Cameras                        # optional, defaults to "Cameras"
 ```
 
 ---

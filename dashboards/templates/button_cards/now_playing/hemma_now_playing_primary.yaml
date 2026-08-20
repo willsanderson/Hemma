@@ -466,8 +466,8 @@ hemma_now_playing_primary:
       - --np-accent: >
           [[[
             const k = variables.hold_src?.kind;
-            if (k === 'plex') return 'var(--hemma-color-orange, #e5a00d)';
-            if (k === 'activity') return 'var(--hemma-color-blue, #007AFF)';
+            if (k === 'plex') return 'var(--hemma-color-orange, #FF9230)';
+            if (k === 'activity') return 'var(--hemma-color-blue, #0088FF)';
             return 'var(--hemma-color-teal, #00c3d0)';
           ]]]
       # Overridden here (not the shared --hemma-badge-body-tint default) so only this tile's light-mode tint changes, not every media badge.
@@ -486,7 +486,7 @@ hemma_now_playing_primary:
           color-mix(in srgb,
             rgba(0,0,0,calc(var(--hemma-badge-body-tint, 0.25) + (var(--np-inner-glass, 1) * 0.05)))
               calc(var(--np-has-art, 0) * 100%),
-            var(--badge-background, rgba(150,150,150,0.18))) !important
+            var(--badge-background, rgba(10,12,14,0.65))) !important
       - -webkit-backdrop-filter: >
           blur(calc(var(--np-inner-glass, 1) * 22px))
           saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1)))) !important

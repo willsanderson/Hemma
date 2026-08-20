@@ -270,10 +270,10 @@ card:
           box-sizing: border-box;
           background: linear-gradient(
             to bottom right,
-            var(--hemma-navbar-popup-specular-start, rgba(255,255,255,0.32)) 0%,
-            var(--hemma-navbar-popup-specular-mid, rgba(255,255,255,0.26)) 45%,
-            var(--hemma-navbar-popup-specular-mid, rgba(255,255,255,0.26)) 55%,
-            var(--hemma-navbar-popup-specular-end, rgba(255,255,255,0.22)) 100%
+            var(--hemma-navbar-popup-specular-start, transparent) 0%,
+            var(--hemma-navbar-popup-specular-mid, transparent) 45%,
+            var(--hemma-navbar-popup-specular-mid, transparent) 55%,
+            var(--hemma-navbar-popup-specular-end, transparent) 100%
           );
           -webkit-mask:
             linear-gradient(#fff 0 0) content-box,

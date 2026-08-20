@@ -4,8 +4,8 @@ hemma_scene_core:
       force_eval: true
       value: |
         [[[
-            if (typeof window._hemmaSC !== 'object' || window._hemmaSCv !== 13) {
-              window._hemmaSCv = 13;
+            if (typeof window._hemmaSC !== 'object' || window._hemmaSCv !== 23) {
+              window._hemmaSCv = 23;
 
               const CFG_KEY = 'hemma_scene_cfg_v1';
               const IGN_KEY = 'hemma_scene_ignore_v1';
@@ -27,11 +27,58 @@ hemma_scene_core:
 
               const els = new Set();
               window._hemmaSCReg = (el) => { if (el) els.add(el); };
+
+              const SORT_HOLD_MS = 2500;
+              const SORT_MS      = 450;
+              const SORT_EASE    = 'cubic-bezier(0.4, 0, 0.2, 1)';  // matches SORT_MS/EASE in smart-row.js
+              const seenIds      = new Set();
+              let   heldActive   = null;
+              let   sortTimer    = null;
+              let   firstSort    = true;
+              let   noAnimUntil  = 0;
+              let   userTapped   = false;
+              let   sortNotBefore = 0;
+              let   tapSurface   = null;
+              const flipStat     = { runs: 0, moved: 0, skipped: '', stores: [], chips: 0, frozen: 0 };
+              let   storeSeq     = 0;
+              // Keyed by surface, not by element: smart-row rebuilds its children, and
+              // anything cached on the card dies with it.
+              const surfaces     = new Map();
+              const surfaceOf = (key) => {
+                let su = surfaces.get(key || 'default');
+                if (!su) { su = { rects: null, freezeUntil: 0, flipTs: 0, html: '', id: ++storeSeq }; surfaces.set(key || 'default', su); }
+                return su;
+              };
+              const reduceMotion = () => {
+                try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { return false; }
+              };
               const nudge = () => els.forEach((el) => {
                 try { if (el.isConnected === false) { els.delete(el); return; } el.requestUpdate && el.requestUpdate(); } catch (_) {}
               });
 
               const liveHass = () => document.querySelector('home-assistant')?.hass || null;
+
+              // Hold before re-sorting: a scene you just tapped must not jump out
+              // from under your finger, and a strip mid-scroll must not reflow.
+              const scheduleSort = () => {
+                if (sortTimer) return;
+                // Boot means the configs arriving, not anything the user did. Once a
+                // scene has been tapped, every sort is a real one and animates.
+                const first = firstSort && !userTapped;
+                // Wait out the scene transition: while lights fade, every state change
+                // re-renders the row and replaces the chips mid-animation.
+                const wait = first ? 350 : Math.max(SORT_HOLD_MS, sortNotBefore - Date.now());
+                sortTimer = setTimeout(function run() {
+                  if (!first && Date.now() - (window._hemmaSCBusy || 0) < 1200) { sortTimer = setTimeout(run, 800); return; }
+                  sortTimer = null;
+                  firstSort = false;
+                  if (first) noAnimUntil = Date.now() + 800;
+                  const st = liveHass()?.states || null;
+                  if (st) heldActive = window._hemmaSC.activeList(Array.from(seenIds), st);
+                  tapSurface = null;
+                  nudge();
+                }, wait);
+              };
 
               const eqArr = (a, b) => Array.isArray(a) && Array.isArray(b)
                 && a.length === b.length && a.every((v, i) => v === b[i]);
@@ -39,7 +86,7 @@ hemma_scene_core:
               const SC_C = {
                 onBg: 'var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))',
                 offBg: 'var(--hemma-entity-background, rgba(0,0,0,0.40))',
-                onName: 'var(--hemma-entity-name-active, rgba(0,0,0,0.85))',
+                onName: 'var(--hemma-entity-name-active, rgba(0,0,0,0.88))',
                 offName: 'rgba(255,255,255,0.90)',
                 rim: 'var(--hemma-tile-glass-rim, inset 0 1px 0 -0.5px rgba(255,255,255,0.10), 0 2px 8px rgba(0,0,0,0.10))',
                 backdrop: 'var(--hemma-scene-chip-backdrop, blur(22px) saturate(1.2))',
@@ -194,6 +241,14 @@ hemma_scene_core:
               };
 
               window._hemmaSC = {
+                iconColors: {},
+
+                noteColors(map) {
+                  // A YAML list of single-key maps is the easy slip next to `scenes:`.
+                  if (Array.isArray(map)) map = Object.assign({}, ...map.filter((x) => x && typeof x === 'object'));
+                  if (map && typeof map === 'object') Object.assign(this.iconColors, map);
+                },
+
                 list(states, hass, vars) {
                   const v = vars || {};
                   const reg = hass?.entities || {};
@@ -273,6 +328,104 @@ hemma_scene_core:
                   return this.activeList(ids, states)[0] || null;
                 },
 
+                // Visual order only: the caller keeps building chips in its own
+                // order, so the DOM stays stable and flip() has something to move.
+                order(ids, states, sid) {
+                  const list = ids || [];
+                  list.forEach((id) => seenIds.add(id));
+                  const live = this.activeList(list, states);
+                  if (heldActive === null) heldActive = live;
+                  else {
+                    const liveSet = new Set(live);
+                    const heldSet = new Set(heldActive);
+                    if (list.some((id) => liveSet.has(id) !== heldSet.has(id))) scheduleSort();
+                  }
+                  // The hold exists so a tapped chip cannot jump out from under the
+                  // finger. Every other surface is off-screen, so it sorts now and is
+                  // already correct when the user gets back to it.
+                  const held = (tapSurface != null && sid != null && sid !== tapSurface)
+                    ? live : (heldActive || []);
+                  const rank = new Map();
+                  held.forEach((id, i) => rank.set(id, i));
+                  const active = list.filter((id) => rank.has(id)).sort((a, b) => rank.get(a) - rank.get(b));
+                  const rest   = list.filter((id) => !rank.has(id));
+                  const out = new Map();
+                  active.concat(rest).forEach((id, i) => out.set(id, i));
+                  return out;
+                },
+
+                // FLIP across renders: chips are rebuilt from innerHTML every time,
+                // so positions are cached per container and keyed by scene id.
+                flip(el, key) {
+                  // The caller may hand us the field element, the card, or the card's
+                  // shadow root; find whichever one actually holds chips.
+                  const cands = [];
+                  if (el) {
+                    cands.push(el);
+                    if (el.shadowRoot) cands.push(el.shadowRoot);
+                    const h = el.getRootNode && el.getRootNode().host;
+                    if (h) { cands.push(h); if (h.shadowRoot) cands.push(h.shadowRoot); }
+                  }
+                  let root = null;
+                  for (let i = 0; i < cands.length; i++) {
+                    const c = cands[i];
+                    if (c && c.querySelector && c.querySelector('[data-scene]')) { root = c; break; }
+                  }
+                  if (!root) { flipStat.runs++; flipStat.skipped = 'no-chips-found'; return; }
+                  const nodes = Array.from(root.querySelectorAll('[data-scene]'));
+                  const su = surfaceOf(key);
+                  if (su.flipTs && Date.now() - su.flipTs < 50) return;
+                  su.flipTs = Date.now();
+                  // Overlays are built inside a display:none subtree, so every offset
+                  // reads 0 and a snapshot taken here would fling each chip in from
+                  // the container's corner on the next render.
+                  if (!nodes.some((n) => n.offsetWidth || n.offsetHeight)) {
+                    su.rects = null;
+                    flipStat.runs++;
+                    flipStat.skipped = 'not-laid-out';
+                    return;
+                  }
+                  flipStat.stores.push(su.id);
+                  if (flipStat.stores.length > 6) flipStat.stores.shift();
+                  flipStat.chips = nodes.length;
+                  const prev = su.rects;
+                  const cur = {};
+                  nodes.forEach((n) => { cur[n.dataset.scene] = { l: n.offsetLeft, t: n.offsetTop }; });
+                  su.rects = cur;
+                  flipStat.runs++;
+                  flipStat.skipped = !prev ? 'no-previous-positions'
+                    : reduceMotion() ? 'prefers-reduced-motion'
+                    : Date.now() < noAnimUntil ? 'boot-window'
+                    : (tapSurface != null && su.id !== tapSurface) ? 'other-surface' : '';
+                  if (flipStat.skipped) return;
+                  let moved = 0;
+                  nodes.forEach((n) => {
+                    const p = prev[n.dataset.scene];
+                    if (!p) return;
+                    const c = cur[n.dataset.scene];
+                    const dx = p.l - c.l, dy = p.t - c.t;
+                    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+                    moved++;
+                    const t0 = n.style.transition;
+                    n.style.transition = 'none';
+                    n.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                      n.style.transition = 'transform ' + SORT_MS + 'ms ' + SORT_EASE;
+                      n.style.transform = '';
+                      setTimeout(() => { n.style.transition = t0; }, SORT_MS + 60);
+                    }));
+                  });
+                  flipStat.moved = moved;
+                  if (!moved) flipStat.skipped = 'no-position-change';
+                  else {
+                    // Every light the scene touches re-renders the row, and a re-render
+                    // swaps in fresh chips mid-transition. Hold the markup steady until
+                    // the slide is done: an identical string means no DOM churn.
+                    su.freezeUntil = Date.now() + SORT_MS + 120;
+                    flipStat.frozen++;
+                  }
+                },
+
                 chipHtml(sceneId, states, opts) {
                   const o = opts || {};
                   const on = this.isActive(sceneId, states);
@@ -282,26 +435,32 @@ hemma_scene_core:
                   const name = esc(st?.attributes?.friendly_name
                     || sceneId.replace('scene.', '').replace(/_/g, ' '));
                   const trans = o.transition == null ? 4 : o.transition;
-                  const accent = 'var(--hemma-color-yellow, #ffd600)';
+                  const accent = 'var(--hemma-color-yellow, #FFCC00)';
+                  const clr = o.color || this.iconColors[sceneId] || null;
+                  const tint = on
+                    ? (clr ? String(clr).replace(/["<>]/g, '') : accent)
+                    : SC_C.offName;
 
                   const glyph = o.icon
-                    ? '<div style="width:22px;height:22px;background-color:' + (on ? '#ffffff' : accent)
+                    ? '<div style="width:26px;height:26px;background-color:' + tint
+                      + ';transition:background-color 0.45s ease'
                       + ';-webkit-mask:url(' + esc(o.icon) + ') no-repeat center/contain;mask:url('
                       + esc(o.icon) + ') no-repeat center/contain;"></div>'
                     : '<ha-icon icon="' + esc(st?.attributes?.icon || 'mdi:palette')
-                      + '" style="--mdc-icon-size:22px;color:' + (on ? '#ffffff' : accent) + ';"></ha-icon>';
+                      + '" style="--mdc-icon-size:26px;transition:color 0.45s ease;color:' + tint + ';"></ha-icon>';
 
-                  const sizing = o.grid
+                  const sizing = (o.grid
                     ? 'width:100%;'
-                    : 'flex:0 0 auto;width:' + (o.width || '44vw') + ';';
+                    : 'flex:0 0 auto;width:' + (o.width || '44vw') + ';')
+                    + (o.order == null ? '' : 'order:' + o.order + ';');
 
                   const tap = ' onpointerdown="this.dataset.sx=event.clientX;this.dataset.sy=event.clientY"'
                     + ' onpointerup="var dx=Math.abs(event.clientX-this.dataset.sx),'
                     + 'dy=Math.abs(event.clientY-this.dataset.sy);if(dx>8||dy>8)return;'
                     + 'event.stopPropagation();window._hemmaSC&amp;&amp;window._hemmaSC.apply(&#39;'
-                    + sceneId + '&#39;,' + trans + ')"';
+                    + sceneId + '&#39;,' + trans + ',' + (o.sid == null ? 'null' : o.sid) + ')"';
 
-                  return '<div role="button" tabindex="0"' + tap
+                  return '<div role="button" tabindex="0" data-scene="' + esc(sceneId) + '"' + tap
                     + ' style="' + sizing
                     + 'display:flex;align-items:center;gap:10px;padding:12px;border-radius:26px;box-sizing:border-box;'
                     + 'cursor:pointer;pointer-events:auto;-webkit-tap-highlight-color:transparent;'
@@ -310,9 +469,8 @@ hemma_scene_core:
                     + 'box-shadow:' + SC_C.rim + ';'
                     + '-webkit-backdrop-filter:' + SC_C.backdrop + ';backdrop-filter:' + SC_C.backdrop + ';'
                     + 'background:' + (on ? SC_C.onBg : SC_C.offBg) + ';">'
-                      + '<div style="width:38px;height:38px;min-width:38px;border-radius:50%;display:flex;'
-                        + 'align-items:center;justify-content:center;transition:background 0.45s ease;'
-                        + 'background:' + (on ? accent : 'rgba(255,255,255,0.10)') + ';">' + glyph + '</div>'
+                      + '<div style="width:38px;height:38px;min-width:38px;display:flex;'
+                        + 'align-items:center;justify-content:center;">' + glyph + '</div>'
                       + '<div style="font-size:14px;font-weight:500;line-height:1.2;white-space:nowrap;'
                         + 'overflow:hidden;text-overflow:ellipsis;font-family:var(--primary-font-family,system-ui);'
                         + 'color:' + (on ? SC_C.onName : SC_C.offName) + ';">' + name + '</div>'
@@ -331,7 +489,7 @@ hemma_scene_core:
                   const card = [
                     { background: '[[[ ' + act + ' return _sca?"' + SC_C.onBg + '":"' + SC_C.offBg + '"; ]]]' },
                     { '--sc-nc': '[[[ ' + act + ' return _sca?"' + SC_C.onName + '":"' + SC_C.offName + '"; ]]]' },
-                    { '--sc-clr': '[[[ ' + act + ' return _sca?"#ffffff":"var(--hemma-color-yellow, #ffd600)"; ]]]' },
+                    { '--sc-clr': '[[[ ' + act + ' return _sca?"#ffffff":"var(--hemma-color-yellow, #FFCC00)"; ]]]' },
                     { '--hemma-card-hover-filter': '[[[ ' + act + ' return _sca?"none":"brightness(1.10)"; ]]]' },
                     { '--sc-hover-tint': '[[[ ' + act + ' return _sca?"transparent":"rgba(255,255,255,0.06)"; ]]]' },
                     { border: 'none' },
@@ -368,7 +526,7 @@ hemma_scene_core:
                         { 'align-items': 'center' },
                       ],
                       img_cell: [
-                        { background: '[[[ ' + act + ' return _sca?"var(--hemma-color-yellow,#ffd600)":"rgba(255,255,255,0.10)"; ]]]' },
+                        { background: '[[[ ' + act + ' return _sca?"var(--hemma-color-yellow,#FFCC00)":"rgba(255,255,255,0.10)"; ]]]' },
                         { 'border-radius': '50%' },
                         { width: '38px' },
                         { height: '38px' },
@@ -395,18 +553,40 @@ hemma_scene_core:
                   };
                 },
 
-                apply(sceneId, transition) {
+                apply(sceneId, transition, sid) {
                   const h = liveHass();
                   if (!h) return;
                   const t = transition == null ? 4 : transition;
                   const settle = settleMs(t);
                   optimistic = { id: sceneId, until: Date.now() + settle + 750 };
+                  userTapped = true;
+                  tapSurface = sid == null ? null : sid;
+                  sortNotBefore = Date.now() + t * 1000 + 400;
                   h.callService('scene', 'turn_on', { entity_id: sceneId, transition: t });
                   setTimeout(() => learn(sceneId), settle);
                 },
 
                 debug() {
                   return { apiDead, noCfg: Array.from(noCfg), cached: Object.keys(cfgCache), ignore };
+                },
+
+                surfaceId(key) { return surfaceOf(key).id; },
+
+                frozenHtml(key) {
+                  const su = surfaces.get(key || 'default');
+                  return (su && su.freezeUntil > Date.now() && su.html) ? su.html : null;
+                },
+
+                noteHtml(key, h) { surfaceOf(key).html = h; },
+
+                sortDebug() {
+                  return 'v=' + window._hemmaSCv + ' flips=' + flipStat.runs + ' moved=' + flipStat.moved
+                    + ' skipped=' + (flipStat.skipped || 'none')
+                    + ' firstSort=' + firstSort + ' userTapped=' + userTapped
+                    + ' waitLeft=' + Math.max(0, sortNotBefore - Date.now())
+                    + ' chips=' + flipStat.chips + ' frozen=' + flipStat.frozen
+                    + ' stores=[' + flipStat.stores.join(',') + ']'
+                    + ' held=[' + (heldActive || []).join(',') + ']';
                 },
               };
             }
@@ -428,6 +608,14 @@ hemma_scene_core:
         try {
           const host = this.getRootNode && this.getRootNode().host;
           if (host && typeof window._hemmaSCReg === 'function') window._hemmaSCReg(host);
+          const rail = host && host.shadowRoot ? host.shadowRoot.getElementById('scenes_row') : null;
+          if (rail && window._hemmaSC && window._hemmaSC.flip) {
+            if (!rail._scBusyBound) {
+              rail._scBusyBound = true;
+              rail.addEventListener('scroll', () => { window._hemmaSCBusy = Date.now(); }, { passive: true });
+            }
+            requestAnimationFrame(() => { try { window._hemmaSC.flip(rail); } catch (_) {} });
+          }
         } catch (_) {}
         return '';
       ]]]

@@ -190,7 +190,7 @@ cards:
 
         .route.active .label,
         .label.active{
-          background: var(--hemma-nav-active-fill, rgba(255,255,255,0.22)) !important;
+          background: var(--hemma-nav-active-fill, rgba(200,200,200,0.25)) !important;
           box-shadow: none !important;
           color: var(--navbar-active-color) !important;
           opacity: 1 !important;
@@ -650,7 +650,7 @@ cards:
 
         .route.active .label,
         .label.active{
-          background: var(--hemma-nav-active-fill, rgba(255,255,255,0.22)) !important;
+          background: var(--hemma-nav-active-fill, rgba(200,200,200,0.25)) !important;
           box-shadow: none !important;
           color: var(--navbar-active-color) !important;
           opacity: 1 !important;

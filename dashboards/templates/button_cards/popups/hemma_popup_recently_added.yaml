@@ -105,8 +105,8 @@ hemma_popup_recently_added:
                 },
                 styles: {
                   card: [
-                    { background: 'var(--hemma-glass-pill-fill,rgba(255,255,255,0.07))' },
-                    { '--pill-accent': 'var(--hemma-popup-green-color,#67f5a0)' },
+                    { background: 'var(--hemma-glass-pill-fill,rgba(255,255,255,0.12))' },
+                    { '--pill-accent': 'var(--hemma-popup-green-color,#30D158)' },
                     { border: 'none' },
                   ],
                   name: [
@@ -151,7 +151,7 @@ hemma_popup_recently_added:
                 },
                 custom_fields: {
                   body: '<div style="font-family:var(--primary-font-family,system-ui);">'
-                    + '<div style="font-size:22px;color:var(--primary-text-color,#e4e7eb);font-weight:400;letter-spacing:-.5px;">Nothing recently added</div>'
+                    + '<div style="font-size:22px;color:var(--primary-text-color,#ffffff);font-weight:400;letter-spacing:-.5px;">Nothing recently added</div>'
                     + '</div>',
                 },
               };

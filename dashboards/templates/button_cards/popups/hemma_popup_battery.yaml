@@ -346,7 +346,7 @@ hemma_popup_battery:
                     ? window.hemmaIconUrl(icon)
                     : '/local/hemma/icons/' + icon + '.svg');
 
-              const gsz =icon.indexOf('lock') === 0 ? '23.3px' : '22px';
+              const gsz = (icon.indexOf('lock') === 0 || icon === 'doorbell' || icon === 'light') ? '23.3px' : '22px';
 
               const glyph = isMdi
                 ? '<ha-icon class="hemma-ring-glyph" icon="' + icon + '" style="--mdc-icon-size:22px;width:22px;height:22px;color:var(--hemma-ring-glyph, var(--hemma-popup-tiles-text-primary));display:block;"></ha-icon>'
@@ -401,9 +401,9 @@ hemma_popup_battery:
                       if (cid.indexOf('vacuum.') === 0 && (v === 'docked' || v === 'returning')) charging = true;
                     });
 
-                    const accent = !known ? 'var(--hemma-popup-tiles-text-muted, rgba(255,255,255,0.28))'
-                      : pct <= 10 ? 'var(--hemma-battery-red,#FF453A)'
-                      : pct <= 20 ? 'var(--hemma-battery-yellow,#FFD60A)'
+                    const accent = !known ? 'var(--hemma-popup-tiles-text-muted, rgba(255,255,255,0.52))'
+                      : pct <= 10 ? 'var(--hemma-battery-red,#FF4245)'
+                      : pct <= 20 ? 'var(--hemma-battery-yellow,#FFD600)'
                       : 'var(--hemma-battery-green,#30D158)';
 
                     const ringC = ${RING_C.toFixed(2)};

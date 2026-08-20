@@ -10,7 +10,7 @@ hemma_badge_media:
       - background: >
           color-mix(in srgb,
             rgba(0,0,0,var(--hemma-badge-body-tint, 0.25)) calc(var(--hemma-badge-has-art, 1) * 100%),
-            var(--badge-background, rgba(150,150,150,0.18))) !important
+            var(--badge-background, rgba(10,12,14,0.65))) !important
       - -webkit-backdrop-filter: blur(14px) saturate(calc(1 + 0.2 * var(--hemma-badge-has-art, 1))) !important
       - backdrop-filter: blur(14px) saturate(calc(1 + 0.2 * var(--hemma-badge-has-art, 1))) !important
       - border-radius: var(--hemma-media-badge-br, 9999px) !important

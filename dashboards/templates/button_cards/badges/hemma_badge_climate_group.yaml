@@ -58,7 +58,7 @@ hemma_badge_climate_group:
           [[[
             return entity?.state === 'climate'
               ? 'var(--badge-active-color, rgba(255,255,255,0.85))'
-              : 'var(--badge-background, rgba(0,0,0,0.18))';
+              : 'var(--badge-background, rgba(10,12,14,0.65))';
           ]]]
       - display: >
           [[[
@@ -107,9 +107,14 @@ hemma_badge_climate_group:
             if (justOff) return 'hemma-fan-coast 1.5s ease-out 1 forwards';
             return 'none';
           ]]]
+      - --hemma-badge-icon-inactive: >
+          [[[
+            return entity?.state === 'climate'
+              ? 'var(--badge-title-inactive-selected, rgba(0,0,0,0.7))'
+              : 'var(--badge-title-inactive)';
+          ]]]
       - --hemma-badge-icon-color: >
           [[[
-            if (entity?.state === 'climate') return 'rgba(0,0,0,0.75)';
             const entities = [
               variables.climate_entity,
               variables.climate_entity_2,
@@ -125,7 +130,7 @@ hemma_badge_climate_group:
             if (hvacActive) return 'var(--hemma-badge-climate-color)';
             const sensor = variables.temp_sensor || variables.temp_sensor_2 || variables.temp_sensor_3 || variables.temp_sensor_4 || variables.temp_sensor_5;
             const v = parseFloat(hass.states[sensor]?.state);
-            if (!sensor || isNaN(v)) return 'var(--badge-title-inactive)';
+            if (!sensor || isNaN(v)) return 'var(--hemma-badge-icon-inactive, var(--badge-title-inactive))';
             const unit = String(variables.temp_unit || 'F').toUpperCase();
             const t = (unit === 'F')
               ? { veryCold: 65, cool: 70, comfortable: 76, warm: 81, hot: 85 }

@@ -290,7 +290,7 @@ hemma_now_playing_chip:
           color-mix(in srgb,
             rgba(0,0,0,calc(var(--hemma-badge-body-tint, 0.25) + (var(--np-inner-glass, 1) * 0.05)))
               calc(var(--np-chip-has-art, 0) * 100%),
-            var(--badge-background, rgba(150,150,150,0.18))) !important
+            var(--badge-background, rgba(10,12,14,0.65))) !important
       - -webkit-backdrop-filter: 'blur(calc(var(--np-chip, 0) * var(--np-inner-glass, 1) * 12px)) saturate(calc(1 + (var(--np-chip, 0) * var(--np-inner-glass, 1) * 0.5)))'
       - backdrop-filter: 'blur(calc(var(--np-chip, 0) * var(--np-inner-glass, 1) * 12px)) saturate(calc(1 + (var(--np-chip, 0) * var(--np-inner-glass, 1) * 0.5)))'
       - --np-chip-radius: calc(var(--hemma-u-np, 10px) * 1.6)

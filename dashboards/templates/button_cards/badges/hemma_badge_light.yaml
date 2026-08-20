@@ -118,7 +118,7 @@ hemma_badge_light:
   extra_styles: >
     [[[
       const SVG_URL  = window.hemmaIconUrl('light');
-      const ICON_PCT = 85;
+      const ICON_PCT = 90;
 
       return `
         #img-cell, .img-cell{ position: relative; }

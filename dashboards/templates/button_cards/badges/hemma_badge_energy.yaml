@@ -45,7 +45,18 @@ hemma_badge_energy:
             const dead = !entity?.entity_id || !st || ['unknown','unavailable'].includes(st);
             return (!enabled || dead) ? 'none' : 'inline-grid';
           ]]]
-      - --hemma-badge-icon-color: var(--hemma-badge-energy-color, #ffd600)
+      # Same Idle/Normal/Heavy/Extreme tier the popup pill and the hemma_energy
+      # card use, read off the popup's own power entity so the two can't disagree.
+      - --hemma-badge-icon-color: >
+          [[[
+            const pid = variables?.entity_power || entity?.entity_id;
+            const w = parseFloat(states[pid]?.state);
+            if (!Number.isFinite(w)) return 'var(--hemma-badge-energy-color, #30D158)';
+            if (w >= Number(variables?.extreme_threshold ?? 3000)) return 'var(--hemma-badge-energy-very-high-color, #FF4245)';
+            if (w >= Number(variables?.heavy_threshold   ?? 1000)) return 'var(--hemma-badge-energy-high-color, #FF9230)';
+            if (w >= Number(variables?.normal_threshold  ?? 200))  return 'var(--hemma-badge-energy-medium-color, #FFD600)';
+            return 'var(--hemma-badge-energy-low-color, #30D158)';
+          ]]]
       - --icon-primary-color: var(--hemma-badge-icon-color)
       - --paper-item-icon-color: var(--hemma-badge-icon-color)
       - --state-icon-color: var(--hemma-badge-icon-color)
@@ -61,14 +72,23 @@ hemma_badge_energy:
         || entity?.attributes?.friendly_name
         || 'Power';
 
+      // Same symbol table the gauge glyph in extra_styles uses, so the ring
+      // and the text can't show different currencies.
+      const cur = String((typeof hass !== 'undefined' && hass?.config?.currency) || 'USD').toUpperCase();
+      const SYM = { USD:'$', CAD:'$', AUD:'$', NZD:'$', MXN:'$',
+                    EUR:'\u20AC', GBP:'\u00A3', JPY:'\u00A5', CNY:'\u00A5',
+                    SEK:'kr', NOK:'kr', DKK:'kr', CHF:'Fr', INR:'\u20B9',
+                    BRL:'R$', PLN:'z\u0142', KRW:'\u20A9' }[cur] || '$';
+      const money = (n) => SYM + (n >= 100 ? Math.round(n) : n.toFixed(2));
+
       const raw = parseFloat(entity?.state);
       const unit = String(variables?.unit || 'auto').toLowerCase();
       let value = '';
       if (Number.isFinite(raw)) {
         if (unit === 'kwh') {
-          value = (raw >= 100 ? Math.round(raw) : raw.toFixed(1)) + ' kWh';
+          value = (raw >= 10 ? Math.round(raw) : raw.toFixed(1)) + ' kWh';
         } else if (unit === 'cost') {
-          value = '$' + (raw >= 100 ? Math.round(raw) : raw.toFixed(2));
+          value = money(raw);
         } else {
           value = raw >= 1000 ? (raw / 1000).toFixed(1) + ' kW' : Math.round(raw) + ' W';
         }
@@ -77,8 +97,7 @@ hemma_badge_energy:
       const cid = variables?.cost_entity;
       const cost = cid ? parseFloat(states[cid]?.state) : NaN;
       if (Number.isFinite(cost)) {
-        const money = '$' + (cost >= 100 ? Math.round(cost) : cost.toFixed(2));
-        value = value ? (value + ' · ' + money) : money;
+        value = value ? (value + ' · ' + money(cost)) : money(cost);
       }
 
       return `
@@ -155,7 +174,7 @@ hemma_badge_energy:
           content: '';
           position: absolute;
           inset: 0;
-          background-color: var(--hemma-badge-icon-color, var(--hemma-badge-energy-color, #ffd600)) !important;
+          background-color: var(--hemma-badge-icon-color, var(--hemma-badge-energy-color, #30D158)) !important;
           -webkit-mask: url("${URL}") no-repeat center / auto 86%;
           mask: url("${URL}") no-repeat center / auto 86%;
           transform: translateZ(0);

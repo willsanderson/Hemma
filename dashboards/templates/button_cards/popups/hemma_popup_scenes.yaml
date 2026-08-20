@@ -104,7 +104,7 @@ hemma_popup_scenes:
               custom_fields: {
                 title: '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tiles-text-primary,#ffffff);text-align:left;">'
                   + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;">' + roomName + '</div>'
-                  + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary,rgba(255,255,255,0.6));margin-top:2px;">Scenes · '
+                  + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary,rgba(255,255,255,0.75));margin-top:2px;">Scenes · '
                   + sceneIds.length + (sceneIds.length === 1 ? ' Scene' : ' Scenes') + '</div>'
                   + '</div>',
               },
@@ -133,7 +133,7 @@ hemma_popup_scenes:
                     : 'No scene applied';
                   if (_act.length > 1) _label += ' +' + (_act.length - 1);
                   return '<div style="font-family:var(--primary-font-family,system-ui);">'
-                    + '<div style="font-size:22px;color:var(--primary-text-color,#e4e7eb);font-weight:400;letter-spacing:-.5px;">' + _label + '</div>'
+                    + '<div style="font-size:22px;color:var(--primary-text-color,#ffffff);font-weight:400;letter-spacing:-.5px;">' + _label + '</div>'
                     + '</div>';
                 ]]]`,
               },
@@ -163,7 +163,7 @@ hemma_popup_scenes:
                   custom_fields: { body: [{ 'justify-self': 'stretch' }, { 'text-align': 'left' }] },
                 },
                 custom_fields: {
-                  body: '<div style="font-family:var(--primary-font-family,system-ui);font-size:14px;color:var(--hemma-popup-tiles-text-secondary,rgba(255,255,255,0.6));line-height:1.45;">'
+                  body: '<div style="font-family:var(--primary-font-family,system-ui);font-size:14px;color:var(--hemma-popup-tiles-text-secondary,rgba(255,255,255,0.75));line-height:1.45;">'
                     + 'No scenes found. Hemma lists every scene in the entity registry that is not hidden or disabled, so check Settings &rsaquo; Devices &amp; Services &rsaquo; Entities if you expected some here.'
                     + '</div>',
                 },

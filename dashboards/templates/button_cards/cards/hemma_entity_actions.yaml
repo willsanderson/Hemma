@@ -189,11 +189,11 @@ hemma_entity_actions:
 
           const teal = 'var(--hemma-color-teal, #00c3d0)';
           const byDomain = {
-            light:         'var(--hemma-color-yellow, #ffd600)',
-            fan:           'var(--hemma-color-teal, #00d2e0)',
-            humidifier:    'var(--hemma-color-teal, #00d2e0)',
-            climate:       'var(--hemma-color-teal, #00d2e0)',
-            vacuum:        'var(--hemma-color-teal, #00d2e0)',
+            light:         'var(--hemma-color-yellow, #FFCC00)',
+            fan:           'var(--hemma-color-teal, #00C3D0)',
+            humidifier:    'var(--hemma-color-teal, #00C3D0)',
+            climate:       'var(--hemma-color-teal, #00C3D0)',
+            vacuum:        'var(--hemma-color-teal, #00C3D0)',
             cover:         teal,
             media_player:  teal,
             lock:          teal,

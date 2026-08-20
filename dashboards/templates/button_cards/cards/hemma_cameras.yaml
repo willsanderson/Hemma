@@ -1,0 +1,35 @@
+# Cameras Tile  (mobile)
+# Mobile has no security badge row, so the camera gallery gets a flat entity
+# tile here instead, the way hemma_battery fronts the battery popup.
+#
+# Variables:
+#   cameras - list of camera entity_ids; empty lets the popup auto-discover
+hemma_cameras:
+  template:
+    - hemma_entity
+    - hemma_popup_camera
+
+  variables:
+    icon: doorbell
+    mobile_filter_category: security
+    cameras: null
+
+  hold_action:
+    action: more-info
+
+  state_display: |
+    [[[
+      const cams = Array.isArray(variables.cameras) ? variables.cameras.filter(Boolean) : [];
+      if (!cams.length) return 'No Cameras';
+      const dead = cams.filter(id => ['unavailable','unknown',''].includes(String(states[id]?.state ?? '').toLowerCase())).length;
+      if (dead === cams.length) return cams.length === 1 ? 'Offline' : 'All Offline';
+      if (dead > 0) return dead + ' Offline';
+      const alert = window.hemmaCameraAlert ? window.hemmaCameraAlert(hass, states, cams, variables.alert_window_minutes) : '';
+      return alert || 'No Alerts';
+    ]]]
+
+  styles:
+    card:
+      # doorbell.svg's viewBox origin is negative — ~6% transparent padding
+      # baked into the artwork, so it needs 60% * 1.06 to match every other icon.
+      - --hemma-icon-mask-scale: 63.6%

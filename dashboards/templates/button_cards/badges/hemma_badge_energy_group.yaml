@@ -47,7 +47,7 @@ hemma_badge_energy_group:
           [[[
             return states[variables.row_entity]?.state === 'energy'
               ? 'var(--badge-active-color, rgba(255,255,255,0.85))'
-              : 'var(--badge-background, rgba(0,0,0,0.18))';
+              : 'var(--badge-background, rgba(10,12,14,0.65))';
           ]]]
       - display: >
           [[[
@@ -66,10 +66,25 @@ hemma_badge_energy_group:
           [[[
             return states[variables.row_entity]?.state === 'energy' ? 'rgba(0,0,0,0.6)' : 'var(--secondary-text-color)';
           ]]]
+      # A bare yellow glyph washes out on the white selected pill; deepen it there.
+      - --hemma-badge-energy-medium-color: >
+          [[[
+            return states[variables.row_entity]?.state === 'energy'
+              ? 'var(--hemma-color-yellow-dark, #F4C403)'
+              : 'var(--hemma-color-yellow, #FFCC00)';
+          ]]]
+      # Same tier the sub-line text uses, so icon and label can't disagree.
+      # power_entity (not entity) — on mobile the badge's entity is the filter
+      # input_select, not a power sensor.
       - --hemma-badge-icon-color: >
           [[[
-            if (states[variables.row_entity]?.state === 'energy') return 'rgba(0,0,0,0.75)';
-            return 'var(--hemma-badge-energy-color, #ffd600)';
+            const pid = variables.power_entity || variables.entity_power;
+            const w = pid ? parseFloat(states[pid]?.state) : NaN;
+            if (!Number.isFinite(w)) return 'var(--hemma-badge-energy-color, #30D158)';
+            if (w >= Number(variables.extreme_threshold ?? 3000)) return 'var(--hemma-badge-energy-very-high-color, #FF4245)';
+            if (w >= Number(variables.heavy_threshold   ?? 1000)) return 'var(--hemma-badge-energy-high-color, #FF9230)';
+            if (w >= Number(variables.normal_threshold  ?? 200))  return 'var(--hemma-badge-energy-medium-color, #FFD600)';
+            return 'var(--hemma-badge-energy-low-color, #30D158)';
           ]]]
       - --icon-primary-color: var(--hemma-badge-icon-color)
       - --paper-item-icon-color: var(--hemma-badge-icon-color)
@@ -119,7 +134,7 @@ hemma_badge_energy_group:
           content: '';
           position: absolute;
           inset: 0;
-          background-color: var(--hemma-badge-icon-color, var(--hemma-badge-energy-color, #ffd600)) !important;
+          background-color: var(--hemma-badge-icon-color, var(--hemma-badge-energy-color, #30D158)) !important;
           -webkit-mask: url('${URL}') no-repeat center / auto 82%;
           mask: url('${URL}') no-repeat center / auto 82%;
           transform: translateZ(0);

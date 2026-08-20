@@ -694,7 +694,7 @@ hemma_now_playing:
       - --np-glass-fill: >
           color-mix(in srgb,
             rgba(255,255,255,0.5) var(--np-glass-lift),
-            var(--hemma-entity-background, rgba(0,0,0,0.18)))
+            var(--hemma-entity-background, rgba(0,0,0,0.40)))
       - background: >
           color-mix(in srgb, var(--np-glass-fill) calc(var(--np-shell) * 100%), transparent) !important
       - -webkit-backdrop-filter: >

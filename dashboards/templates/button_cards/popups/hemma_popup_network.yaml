@@ -135,7 +135,7 @@ hemma_popup_network:
 
             const tileTapStyle = `
               :host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: inset 0 1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-tight,0.20) * 1.5)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-tight,0.15) * 1.5)), inset 0 3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-soft,0.08) * 1.5)), inset 0 -3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-soft,0.05) * 1.5)) !important; }
-              ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }
+              ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.08)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background-color var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }
               ha-card:hover { background: var(--hemma-popup-tile-hover, rgba(255,255,255,0.09)) !important; transform: scale(var(--hemma-popup-tile-hover-scale, 1.01)) !important; }
               ha-ripple { display: none !important; }
               @keyframes hemma-action-swap { from { opacity:0; } to { opacity:1; } }
@@ -431,7 +431,7 @@ hemma_popup_network:
               ? 'var(--hemma-badge-network-online-color, #44e371)'
               : (
                   statusRaw
-                    ? 'var(--hemma-badge-network-offline-color, #ff453a)'
+                    ? 'var(--hemma-badge-network-offline-color, #ff4245)'
                     : 'rgba(255,255,255,0.4)'
                 );
 
@@ -483,11 +483,11 @@ hemma_popup_network:
             const pingProgress = ping != null ? 1 - Math.min(ping / pingMax, 1) : 0;
             const pingDashOffset = pingCircumference - (pingProgress * pingCircumference);
 
-            let pingColor = 'var(--hemma-popup-green-color, #67f5a0)';
+            let pingColor = 'var(--hemma-popup-green-color, #30D158)';
             if (ping == null) {
               pingColor = 'rgba(255,255,255,0.15)';
             } else if (ping >= 150) {
-              pingColor = 'var(--hemma-popup-red-color, #ff453a)';
+              pingColor = 'var(--hemma-popup-red-color, #ff4245)';
             } else if (ping >= 60) {
               pingColor = 'var(--hemma-popup-orange-color, #ff9230)';
             } else if (ping >= 20) {
@@ -634,9 +634,9 @@ hemma_popup_network:
                   const pingCircumference = 2 * Math.PI * pingRadius;
                   const pingProgress = ping != null ? 1 - Math.min(ping / pingMax, 1) : 0;
                   const pingDashOffset = pingCircumference - pingProgress * pingCircumference;
-                  let pingColor = 'var(--hemma-popup-green-color, #67f5a0)';
+                  let pingColor = 'var(--hemma-popup-green-color, #30D158)';
                   if (ping == null)     pingColor = 'rgba(255,255,255,0.15)';
-                  else if (ping >= 150) pingColor = 'var(--hemma-popup-red-color, #ff453a)';
+                  else if (ping >= 150) pingColor = 'var(--hemma-popup-red-color, #ff4245)';
                   else if (ping >= 60)  pingColor = 'var(--hemma-popup-orange-color, #ff9230)';
                   else if (ping >= 20)  pingColor = 'var(--hemma-popup-yellow-color, #ffd600)';
                   const fmtPing = ping != null ? (ping < 1 ? '< 1' : String(Math.round(ping))) : '—';
@@ -756,7 +756,7 @@ hemma_popup_network:
               networkSeries.push({
                 entity: ulId,
                 name: 'Upload',
-                color: '#FFD60A',
+                color: '#FFD600',
                 type: 'area',
                 curve: 'monotoneCubic',
                 stroke_width: 2.5,
@@ -881,7 +881,7 @@ hemma_popup_network:
                     const val = isNaN(v) ? null : v;
                     const maxScale = ${maxScale};
 
-                    let pct = 0, label = '—', color = 'var(--hemma-popup-tiles-text-muted, var(--disabled-text-color, rgba(255,255,255,0.4)))';
+                    let pct = 0, label = '—', color = 'var(--hemma-popup-tiles-text-muted, var(--disabled-text-color, rgba(208,208,208,0.5)))';
                     if (val != null) {
                       if (val < 1)       { pct = val * 15;                                                      label = 'Idle';   color = 'var(--hemma-badge-network-idle-color, rgba(255,255,255,0.90))'; }
                       else if (val < 10) { pct = 15 + ((val - 1) / 9) * 25;                                    label = 'Light';  color = 'var(--hemma-badge-network-low-color, #44e371)'; }
@@ -909,10 +909,10 @@ hemma_popup_network:
                       + iconHtml
                       + '<span style="font-size:13px;color:var(--hemma-popup-tiles-text-primary, var(--primary-text-color));font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;">' + nameLabel + '</span>'
                       + '</div>'
-                      + '<span style="font-size:13px;color:' + (val != null ? color : 'var(--hemma-popup-tiles-text-muted, var(--disabled-text-color, rgba(255,255,255,0.35)))') + ';white-space:nowrap;font-weight:600;letter-spacing:.01em;flex-shrink:0;">' + label + '</span>'
+                      + '<span style="font-size:13px;color:' + (val != null ? color : 'var(--hemma-popup-tiles-text-muted, var(--disabled-text-color, rgba(208,208,208,0.5)))') + ';white-space:nowrap;font-weight:600;letter-spacing:.01em;flex-shrink:0;">' + label + '</span>'
                       + '</div>'
                       + '<div style="display:flex;align-items:baseline;gap:3px;">'
-                      + '<span style="font-size:20px;font-weight:400;color:' + (val != null ? 'var(--hemma-popup-tiles-text-primary, var(--primary-text-color, #fff))' : 'var(--hemma-popup-tiles-text-muted, var(--disabled-text-color, rgba(255,255,255,0.35)))') + ';line-height:1;white-space:nowrap;">' + display + '</span>'
+                      + '<span style="font-size:20px;font-weight:400;color:' + (val != null ? 'var(--hemma-popup-tiles-text-primary, var(--primary-text-color, #fff))' : 'var(--hemma-popup-tiles-text-muted, var(--disabled-text-color, rgba(208,208,208,0.5)))') + ';line-height:1;white-space:nowrap;">' + display + '</span>'
                       + (val != null ? '<span style="font-size:12px;color:var(--hemma-popup-tiles-text-muted, var(--secondary-text-color));white-space:nowrap;">Mbit/s</span>' : '')
                       + '</div>'
                       + '<div style="position:relative;height:8px;width:100%;background:var(--hemma-popup-progress-track, rgba(255,255,255,0.09));border-radius:999px;overflow:hidden;margin-top:10px;">'
@@ -1044,14 +1044,14 @@ hemma_popup_network:
               const actionBg = (_ch || _dh) ? `[[[
                 const ch = '${_ch}', dh = '${_dh}';
                 if (dh && states[dh]?.state === 'on') return 'color-mix(in srgb,#44e371 24%,transparent)';
-                if (ch && states[ch]?.state === 'on') return 'color-mix(in srgb,#ff453a 26%,transparent)';
+                if (ch && states[ch]?.state === 'on') return 'color-mix(in srgb,#ff4245 26%,transparent)';
                 return 'rgba(255,255,255,0.13)';
               ]]]` : 'rgba(255,255,255,0.13)';
 
               const actionBorder = (_ch || _dh) ? `[[[
                 const ch = '${_ch}', dh = '${_dh}';
                 if (dh && states[dh]?.state === 'on') return '1px solid color-mix(in srgb,#44e371 55%,transparent)';
-                if (ch && states[ch]?.state === 'on') return '1px solid color-mix(in srgb,#ff453a 55%,transparent)';
+                if (ch && states[ch]?.state === 'on') return '1px solid color-mix(in srgb,#ff4245 55%,transparent)';
                 return '1px solid transparent';
               ]]]` : '1px solid transparent';
 
@@ -1070,7 +1070,7 @@ hemma_popup_network:
               const actionColor = (_ch || _dh) ? `[[[
                 const ch = '${_ch}', dh = '${_dh}';
                 if (dh && states[dh]?.state === 'on') return 'var(--hemma-badge-network-online-color,#44e371)';
-                if (ch && states[ch]?.state === 'on') return 'var(--hemma-popup-red-color,#ff453a)';
+                if (ch && states[ch]?.state === 'on') return 'var(--hemma-popup-red-color,#ff4245)';
                 return 'var(--hemma-popup-tiles-text-primary)';
               ]]]` : 'var(--hemma-popup-tiles-text-primary)';
 
@@ -1133,7 +1133,7 @@ hemma_popup_network:
                 const ss = states[sid];
                 const unav = !ss || ss.state === 'unavailable' || ss.state === 'unknown';
                 let stc = 'rgba(255,255,255,0.4)', stt = unav ? 'Unknown' : null;
-                if (!unav) { if (ss.state === 'on') { stt = 'Connected'; stc = 'var(--hemma-badge-network-online-color,#44e371)'; } else { stt = 'Offline'; stc = 'var(--hemma-badge-network-offline-color,#ff453a)'; } }
+                if (!unav) { if (ss.state === 'on') { stt = 'Connected'; stc = 'var(--hemma-badge-network-online-color,#44e371)'; } else { stt = 'Offline'; stc = 'var(--hemma-badge-network-offline-color,#ff4245)'; } }
                 const sr = stt ? '<div style="margin-top:0;"><span style="font-size:12px;color:' + stc + ';font-weight:500;letter-spacing:.01em;">' + stt + '</span></div>' : '';
                 return '<div style="display:flex;flex-direction:column;align-items:flex-start;">'
                   + '<span style="font-size:13px;font-weight:600;color:var(--hemma-popup-tiles-text-primary);letter-spacing:.01em;white-space:nowrap;">' + name + '</span>'

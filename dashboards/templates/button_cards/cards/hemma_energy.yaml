@@ -11,6 +11,9 @@ hemma_energy:
     mobile_filter_category: energy
     icon: energy
     high_threshold: 500
+    # Drop-out point for the active state. Null scales it to 80% of
+    # high_threshold; set it explicitly to widen or narrow the dead band.
+    release_threshold: null
     normal_threshold: 200
     heavy_threshold: 1000
     extreme_threshold: 3000
@@ -45,8 +48,15 @@ hemma_energy:
     - operator: template
       value: |
         [[[
+          // Hysteresis: smart-row sorts off this state, so a sensor hovering at
+          // the trigger would reshuffle the row on every crossing. Release lower.
           const w = parseFloat(entity?.state);
-          return Number.isFinite(w) && w >= Number(variables.high_threshold ?? 500);
+          if (!Number.isFinite(w)) { this._hemmaEnergyActive = false; return false; }
+          const on  = Number(variables.high_threshold ?? 500);
+          const off = Number(variables.release_threshold ?? on * 0.8);
+          const now = this._hemmaEnergyActive === true ? (w >= off) : (w >= on);
+          this._hemmaEnergyActive = now;
+          return now;
         ]]]
       styles:
         card:
@@ -55,6 +65,11 @@ hemma_energy:
           - "--hemma-active-overlay-dur": "0s"
           - --hemma-entity-top-gradient: none
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
+          # A numeric power sensor never matches hemma_entity's active state, so
+          # the icon vars it would have set have to be set here.
+          - --hemma-icon-color-current: var(--hemma-icon-inactive-color)
+          - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
+          - --hemma-icon-mask-active: "0"
         name:
           - color: var(--hemma-entity-name-active, var(--primary-text-color))
         state:
@@ -62,7 +77,7 @@ hemma_energy:
         img_cell:
           - opacity: "1 !important"
           - filter: none !important
-          - background: "var(--hemma-popup-yellow-color, #ffd600) !important"
+          - background: "var(--hemma-icon-color-current) !important"
         entity_picture:
           - opacity: "1 !important"
           - filter: none !important

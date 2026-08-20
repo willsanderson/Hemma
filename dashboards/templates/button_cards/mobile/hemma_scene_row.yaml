@@ -8,9 +8,11 @@ hemma_scene_row:
     layout: row
     room: null
     scenes: null
+    sort_debug: false
     scene_exclude: null
     scene_order: null
     scene_icons: {}
+    scene_colors: {}
     scene_transition: 4
     chip_width: 44vw
 
@@ -48,25 +50,63 @@ hemma_scene_row:
       [[[
         const SC = window._hemmaSC;
         if (!SC) return '';
+
+        const _self = this;
         const ids = SC.list(states, typeof hass !== 'undefined' ? hass : null, variables);
         if (!ids.length) return '';
+
+        // Surface key survives a card rebuild; smart-row recreates its children.
+        const _key = (variables.layout || 'row') + '|' + (variables.room || '') + '|' + ids.join(',');
+
+        // While chips are sliding, hand back the identical markup so nothing
+        // re-renders out from under the animation.
+        if (SC.frozenHtml) {
+          const _frozen = SC.frozenHtml(_key);
+          if (_frozen) return _frozen;
+        }
         SC.prefetch(ids, states);
 
         const grid = variables.layout === 'grid';
         const icons = variables.scene_icons || {};
+        // Colors live on SC so the JS-built Scenes page and room rows see them too.
+        if (SC.noteColors) SC.noteColors(variables.scene_colors);
         const opts = {
           transition: variables.scene_transition == null ? 4 : variables.scene_transition,
           width: variables.chip_width || '44vw',
           grid: grid,
         };
 
+        const _sid = SC.surfaceId ? SC.surfaceId(_key) : null;
+        const ord = SC.order ? SC.order(ids, states, _sid) : null;
+
+        // Drive the FLIP from the field that actually renders the chips, rather
+        // than relying on sc_init having found this card's rail.
+        if (SC.flip) {
+          if (!_self._scBusyBound) {
+            _self._scBusyBound = true;
+            try {
+              _self.addEventListener('scroll', () => { window._hemmaSCBusy = Date.now(); }, { passive: true });
+            } catch (_) {}
+          }
+          requestAnimationFrame(() => { try { SC.flip(_self, _key); } catch (_) {} });
+        }
+
         const inner = grid
           ? 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;pointer-events:auto;'
           : 'display:flex;flex-direction:row;gap:8px;width:max-content;min-width:100%;pointer-events:auto;';
 
-        return '<div style="' + inner + '">'
-          + ids.map((id) => SC.chipHtml(id, states, Object.assign({ icon: icons[id] || null }, opts))).join('')
+        const dbg = (variables.sort_debug === true && SC.sortDebug)
+          ? '<div style="font:11px/1.4 ui-monospace,monospace;color:rgba(255,255,255,0.75);'
+            + 'padding:2px 0 6px 0;white-space:pre-wrap;word-break:break-all;">'
+            + SC.sortDebug() + '</div>'
+          : '';
+
+        const _html = dbg + '<div style="' + inner + '">'
+          + ids.map((id) => SC.chipHtml(id, states, Object.assign(
+              { icon: icons[id] || null, order: ord ? ord.get(id) : null, sid: _sid }, opts))).join('')
           + '</div>';
+        if (SC.noteHtml) SC.noteHtml(_key, _html);
+        return _html;
       ]]]
 
   styles:

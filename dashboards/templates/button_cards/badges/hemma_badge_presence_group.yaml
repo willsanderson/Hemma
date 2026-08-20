@@ -80,7 +80,7 @@ hemma_badge_presence_group:
           [[[
             return entity?.state === 'presence'
               ? 'var(--badge-active-color, rgba(255,255,255,0.85))'
-              : 'var(--badge-background, rgba(0,0,0,0.18))';
+              : 'var(--badge-background, rgba(10,12,14,0.65))';
           ]]]
       - display: >
           [[[
@@ -101,9 +101,20 @@ hemma_badge_presence_group:
           [[[
             return entity?.state === 'presence' ? 'rgba(0,0,0,0.6)' : 'var(--secondary-text-color)';
           ]]]
+      - --hemma-badge-presence-away-color: >
+          [[[
+            return entity?.state === 'presence'
+              ? 'var(--hemma-color-yellow-dark, #F4C403)'
+              : 'var(--hemma-color-yellow, #FFCC00)';
+          ]]]
+      - --hemma-badge-icon-inactive: >
+          [[[
+            return entity?.state === 'presence'
+              ? 'var(--badge-title-inactive-selected, rgba(0,0,0,0.7))'
+              : 'var(--badge-title-inactive)';
+          ]]]
       - --hemma-badge-icon-color: >
           [[[
-            if (entity?.state === 'presence') return 'rgba(0,0,0,0.75)';
             const isHome = (eid) => {
               if (!eid) return false;
               const s = String(hass.states[eid]?.state || '').toLowerCase().replace(/_/g, ' ');
@@ -112,7 +123,7 @@ hemma_badge_presence_group:
             const entities = [variables?.entity_1, variables?.entity_2, variables?.entity_3, variables?.entity_4].filter(Boolean);
             const homeCount = entities.filter(isHome).length;
             if (homeCount === entities.length) return 'var(--hemma-badge-presence-home-color)';
-            if (homeCount === 0)               return 'var(--badge-title-inactive)';
+            if (homeCount === 0)               return 'var(--hemma-badge-icon-inactive, var(--badge-title-inactive))';
             return 'var(--hemma-badge-presence-away-color)';
           ]]]
       - --icon-primary-color: var(--hemma-badge-icon-color)

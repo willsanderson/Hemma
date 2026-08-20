@@ -48,7 +48,7 @@ hemma_battery:
           - "--hemma-active-overlay-dur": "0s"
           - --hemma-entity-top-gradient: none
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
-          - --hemma-icon-color-current: "var(--hemma-battery-yellow, #FFD60A)"
+          - --hemma-icon-color-current: "var(--hemma-battery-yellow, #FFD600)"
           - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
           - --hemma-icon-mask-active: "0"
         name:
@@ -65,4 +65,4 @@ hemma_battery:
 
   styles:
     card:
-      - --hemma-icon-inactive-color: "var(--hemma-color-green-soft, #67f5a0)"
+      - --hemma-icon-inactive-color: "var(--hemma-color-green, #30D158)"

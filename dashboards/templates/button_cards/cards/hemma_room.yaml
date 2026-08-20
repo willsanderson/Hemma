@@ -140,6 +140,8 @@ hemma_room:
     security_door_sensors: null
     security_lock_entity: null
     security_lock_entity_2: null
+    security_cameras: null
+    security_cameras_label: null
     security_entity_1: null
     security_label_1: null
     security_entity_2: null
@@ -2428,6 +2430,14 @@ hemma_room:
               door_sensors: '[[[ return variables.security_door_sensors || {} ]]]'
               room_name: '[[[ return variables.room_name || variables.aqi_room_name ]]]'
 
+          - type: custom:button-card
+            template: hemma_badge_camera_group
+            entity: '[[[ return (variables.security_cameras || [])[0] ]]]'
+            variables:
+              enabled: '[[[ return (!!variables.security_lock_entity||!!variables.security_entity_1) && !!(variables.security_cameras || []).length ]]]'
+              label: '[[[ return variables.security_cameras_label ]]]'
+              cameras: '[[[ return variables.security_cameras || [] ]]]'
+              room_name: '[[[ return variables.room_name || variables.aqi_room_name ]]]'
           - type: custom:button-card
             template: hemma_badge_security
             entity: '[[[ return variables.security_entity_1 ]]]'

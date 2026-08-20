@@ -446,7 +446,7 @@ hemma_thermostat:
           [[[
             return ['cool','heat'].includes(entity?.state)
               ? 'var(--hemma-entity-state-active, rgba(0,0,0,0.55))'
-              : 'var(--hemma-entity-state, rgba(240,240,240,0.85))';
+              : 'var(--hemma-entity-state, rgba(255,255,255,0.65))';
           ]]]
     img_cell:
       - background: "transparent !important"

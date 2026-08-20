@@ -79,6 +79,7 @@
       hemma_energy:        'energy',
       hemma_lock:          'security',
       hemma_doorbell:      'security',
+      hemma_cameras:       'security',
       hemma_vacuum:        'unfiltered',
       hemma_plant:         'unfiltered',
     };

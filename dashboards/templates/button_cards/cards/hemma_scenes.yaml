@@ -43,7 +43,7 @@ hemma_scenes:
           - "--hemma-active-overlay-dur": "0s"
           - --hemma-entity-top-gradient: none
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
-          - --hemma-icon-color-current: "var(--hemma-color-yellow, #ffd600)"
+          - --hemma-icon-color-current: "var(--hemma-color-yellow, #FFCC00)"
           - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
           - --hemma-icon-mask-active: "0"
         name:
@@ -60,4 +60,4 @@ hemma_scenes:
 
   styles:
     card:
-      - --hemma-icon-inactive-color: "var(--hemma-color-yellow, #ffd600)"
+      - --hemma-icon-inactive-color: "var(--hemma-color-yellow, #FFCC00)"

@@ -44,7 +44,7 @@ hemma_popup_cover:
               const oc = openIds.length, tot = coverIds.length;
               const allClosed = oc === 0 && tot > 0;
               const allOpen   = oc === tot && tot > 0;
-              const badgeColor = allClosed ? 'var(--hemma-popup-green-color,#67f5a0)' : '#0A84FF';
+              const badgeColor = allClosed ? 'var(--hemma-popup-green-color,#30D158)' : '#0A84FF';
             `;
 
             /* Styles */
@@ -67,7 +67,7 @@ hemma_popup_cover:
 
             const tileTapStyle = [
               ':host { --ha-card-box-shadow: none !important; --button-card-box-shadow: none !important; --button-card-box-shadow-hover: inset 0 1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-tight,0.20) * 1.5)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-tight,0.15) * 1.5)), inset 0 3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-top-soft,0.08) * 1.5)), inset 0 -3px 6px -3px rgba(255,255,255,calc(var(--hemma-popup-tiles-glow-bottom-soft,0.05) * 1.5)) !important; }',
-              'ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.07)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }',
+              'ha-card { background: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.08)) !important; border: none !important; border-radius: 24px !important; box-shadow: inset 0 1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-tight,0.20)), inset 0 -1px 0.5px -0.5px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-tight,0.15)), inset 0 3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-top-soft,0.08)), inset 0 -3px 6px -3px rgba(255,255,255,var(--hemma-popup-tiles-glow-bottom-soft,0.05)) !important; backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; -webkit-backdrop-filter: var(--hemma-popup-tiles-backdrop, blur(10px) saturate(1.1)) !important; cursor: pointer !important; transform: scale(1) !important; transition: background var(--hemma-popup-tile-hover-duration, 0.2s) ease, transform var(--hemma-popup-tile-hover-duration, 0.2s) ease, box-shadow 0.2s ease !important; }',
               'ha-card:hover { background: var(--hemma-popup-tile-hover, rgba(255,255,255,0.09)) !important; transform: scale(var(--hemma-popup-tile-hover-scale, 1.004)) !important; }',
               'ha-ripple { display: none !important; }',
             ].join('\n');
@@ -132,7 +132,7 @@ hemma_popup_cover:
               custom_fields: {
                 title: '<div style="font-family:var(--primary-font-family,system-ui);color:var(--hemma-popup-tiles-text-primary,#ffffff);text-align:left;">'
                   + '<div style="font-size:16px;font-weight:500;letter-spacing:-0.01em;">' + roomName + '</div>'
-                  + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary,rgba(255,255,255,0.6));margin-top:2px;">Climate · Covers</div>'
+                  + '<div style="font-size:14px;color:var(--hemma-popup-tiles-text-secondary,rgba(255,255,255,0.75));margin-top:2px;">Climate · Covers</div>'
                   + '</div>',
               },
             };

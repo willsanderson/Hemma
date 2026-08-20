@@ -1,8 +1,10 @@
 # Security Badge
-# Shows consolidated lock status for up to two locks.
+# Shows consolidated lock status for up to two locks. The sub-line reads like
+# Apple's category badge: "No Alerts" at rest, a count when something is open.
 #
 # Variables:
 #   enabled       - show/hide this badge (default: true)
+#   locks         - list of lock entity_ids; wins over the two scalars below
 #   lock_entity   - primary lock entity_id
 #   lock_entity_2 - second lock entity_id (optional)
 hemma_badge_security_group:
@@ -14,10 +16,11 @@ hemma_badge_security_group:
 
   variables:
     enabled: true
+    locks: null
     lock_entity: null
     lock_entity_2: null
-
   entity: input_select.hemma_expanded_row
+
 
   tap_action:
     action: call-service
@@ -37,9 +40,11 @@ hemma_badge_security_group:
 
   icon: >
     [[[
-      const locks = [variables.lock_entity, variables.lock_entity_2].filter(Boolean);
-      const anyUnlocked = locks.some(eid => states[eid]?.state === 'unlocked');
-      return anyUnlocked ? 'mdi:lock-open-variant' : 'mdi:lock';
+      const locks = (Array.isArray(variables?.locks) && variables.locks.length)
+        ? variables.locks.filter(Boolean)
+        : [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean);
+      const open = locks.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
+      return open ? 'mdi:lock-open-variant' : 'mdi:lock';
     ]]]
 
   styles:
@@ -48,7 +53,7 @@ hemma_badge_security_group:
           [[[
             return entity?.state === 'security'
               ? 'var(--badge-active-color, rgba(255,255,255,0.85))'
-              : 'var(--badge-background, rgba(0,0,0,0.18))';
+              : 'var(--badge-background, rgba(10,12,14,0.65))';
           ]]]
       - display: >
           [[[
@@ -67,15 +72,7 @@ hemma_badge_security_group:
           [[[
             return entity?.state === 'security' ? 'rgba(0,0,0,0.6)' : 'var(--secondary-text-color)';
           ]]]
-      - --hemma-badge-icon-color: >
-          [[[
-            if (entity?.state === 'security') return 'rgba(0,0,0,0.75)';
-            const locks = [variables.lock_entity, variables.lock_entity_2].filter(Boolean);
-            const anyUnlocked = locks.some(eid => states[eid]?.state === 'unlocked');
-            return anyUnlocked
-              ? 'var(--hemma-badge-alert-color, #ff9800)'
-              : 'var(--hemma-badge-security-color, #00c3d0)';
-          ]]]
+      - --hemma-badge-icon-color: var(--hemma-badge-security-color, #00c3d0)
       - --icon-primary-color: var(--hemma-badge-icon-color)
       - --paper-item-icon-color: var(--hemma-badge-icon-color)
       - --state-icon-color: var(--hemma-badge-icon-color)
@@ -85,9 +82,11 @@ hemma_badge_security_group:
 
   name: >
     [[[
-      const locks = [variables.lock_entity, variables.lock_entity_2].filter(Boolean);
-      const anyUnlocked = locks.some(eid => states[eid]?.state === 'unlocked');
-      const sub = anyUnlocked ? 'Unlocked' : 'Secured';
+      const locks = (Array.isArray(variables?.locks) && variables.locks.length)
+        ? variables.locks.filter(Boolean)
+        : [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean);
+      const open = locks.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
+      const sub = open === 0 ? 'No Alerts' : open + ' Unlocked';
       return `
         <div class="badge-wrap">
           <div class="badge-title">Security</div>
@@ -104,7 +103,9 @@ hemma_badge_security_group:
         (typeof ev === 'number') ? ev !== 0 :
         !['false','0','no','off','disabled'].includes(String(ev).trim().toLowerCase());
 
-      const ids = [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean);
+      const ids = (Array.isArray(variables?.locks) && variables.locks.length)
+        ? variables.locks.filter(Boolean)
+        : [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean);
       const open = ids.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
       const URL = window.hemmaIconUrl(open === 0 ? 'lock-fill' : 'lock-open-fill');
 

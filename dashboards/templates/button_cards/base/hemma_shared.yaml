@@ -133,7 +133,7 @@ hemma_shared:
       pointer-events:none;
       z-index:-10;
       background-image:
-        linear-gradient(var(--hero-tint, rgba(56,56,56,0.50)), var(--hero-tint, rgba(56,56,56,0.50))),
+        linear-gradient(var(--hero-tint, rgba(55,55,55,0.50)), var(--hero-tint, rgba(55,55,55,0.50))),
         var(--hero-img);
       background-position: 0 0, var(--hero-img-pos, center center), var(--hero-img-pos, center center);
       background-size: 100% 100%, cover, cover;
