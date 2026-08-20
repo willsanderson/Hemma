@@ -8,10 +8,10 @@ The dashboard is fully YAML-based and designed for:
 - Desktop, tablet, and mobile (portrait + landscape)
 - Light/Dark mode styling
 - Flat card design with glass accents
-- Badges for climate, sensors, presence, and active media
+- Badges for climate, lights, presence, media, security, and energy
 - Clean navigation with desktop/tablet top navbar
 
-Hemma now ships as **two dashboards**: the desktop/tablet dashboard (`hemma.yaml`) and a brand-new, dedicated **mobile dashboard** (`hemma_mobile.yaml`) inspired by Apple Home. Phones are automatically routed to the mobile dashboard (and everything else back to desktop) by the included redirect script.
+Hemma ships as **two dashboards**: the desktop/tablet dashboard (`hemma.yaml`) and dedicated **mobile dashboard** (`hemma_mobile.yaml`) inspired by Apple Home. Phones are automatically routed to the mobile dashboard (and everything else back to desktop) by the included redirect script.
 
 ---
 ### Highlights and Features
@@ -31,7 +31,7 @@ Hemma now ships as **two dashboards**: the desktop/tablet dashboard (`hemma.yaml
   - Security group badge — locks, alarm panel, door/window sensors, cameras
 - **Now Playing** — a full media panel showing every active source at once, with controls, progress, and pinnable media chips
 - **Button-cards**
-  - Thermostat, media, lock, doorbell, network, motion, cover, energy, presence, vacuum, Plex Recently Added, and more.
+  - Thermostat, media, lock, camera, network, motion, cover, energy, presence, vacuum, Plex Recently Added, and more.
 - **Popups**
   - Climate/air quality, energy usage, network, light control (multi-room + scenes), lock/security group, cover/shades group, plant monitor, battery monitor, system updates, Plex stream, and Plex Recently Added.
 
