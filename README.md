@@ -514,16 +514,24 @@ already has a lock or a `security_entity_N` set.
 #### The camera popup
 
 The popup opens on a grid of tiles: a still snapshot per camera with its name and a relative age stamp
-("11s", "2m", "3h"). A small accent dot marks a camera with activity in the last few minutes.
+("11s", "2m", "3h"). A small accent dot marks a camera with activity in the last few minutes. Tapping a
+tile zooms it into a single-camera view and starts the live stream; the chevron in the corner goes back.
+
+Opened with only one camera there is nothing to choose between, so the grid is skipped entirely and the
+popup lands directly on the live view, with no chevron.
 
 | Gesture | Result |
 |---|---|
 | Tap a tile | Zooms into that camera and starts the live stream |
 | Hold a tile | Opens Home Assistant's own more-info dialog for it |
 | Tap the title in the detail view | Opens more-info |
-| Tap the live feed | Full screen |
+| Tap the full screen button | Full screen, and again to leave it |
 
-The detail view keeps the controls under the feed:
+The feed itself is deliberately inert. Full screen is the button's job alone, so you can point at the
+picture without triggering anything.
+
+The detail view keeps the controls under the feed. Each has a label on hover, and the labels say what
+the next tap will *do* rather than what the state is, so the mute button reads "Unmute" while muted:
 
 | Control | Behaviour |
 |---|---|
@@ -532,9 +540,16 @@ The detail view keeps the controls under the feed:
 | Zoom | Toggles between filling the frame and fitting the whole sensor. Starts filled every time the popup opens |
 | Siren | Only for cameras with an onboard siren. A bare glyph until tapped, then it expands to "Sound siren?" and needs a second tap within five seconds |
 
-A full screen button fades in over the top-left of the feed on hover, and stays visible on touch where
-there is no hover to reveal it. On Android it also asks for landscape; iOS has no orientation API, so
-there the video's own native player takes over and follows the device as you turn it.
+**Full screen.** A small button fades in over the top-left of the feed on hover, matching where Home
+Assistant puts its own, and stays permanently visible on touch where there is no hover to reveal it. Its
+glyph flips between the outward and inward arrows to match the current state, and it follows the browser
+rather than its own clicks, so leaving full screen with Escape or a system gesture still flips it back.
+
+On Android it also requests landscape. iOS has no orientation API, so there the video's own native player
+takes over instead, which fills the screen and follows the device as you turn it.
+
+**Sizing.** The popup is 1040 px wide on desktop, clamped to 92vw so it never overflows a narrow window,
+and the feed is capped at 52vh so the whole detail view stays on screen on a shorter laptop.
 
 Cameras are read from the registry when `cameras` is empty, so most setups need nothing beyond the list
 above. Using `hemma_popup_camera` directly gives you the rest:
