@@ -14,7 +14,7 @@ hemma_scene_row:
     scene_icons: {}
     scene_colors: {}
     scene_transition: 4
-    chip_width: 44vw
+    chip_width: 41vw
 
   show_icon: false
   show_name: false
@@ -72,7 +72,7 @@ hemma_scene_row:
         if (SC.noteColors) SC.noteColors(variables.scene_colors);
         const opts = {
           transition: variables.scene_transition == null ? 4 : variables.scene_transition,
-          width: variables.chip_width || '44vw',
+          width: variables.chip_width || '41vw',
           grid: grid,
         };
 
@@ -92,7 +92,7 @@ hemma_scene_row:
         }
 
         const inner = grid
-          ? 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;pointer-events:auto;'
+          ? 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--hemma-scene-grid-row-gap, 12px) var(--hemma-scene-grid-col-gap, 11px);width:100%;pointer-events:auto;'
           : 'display:flex;flex-direction:row;gap:8px;width:max-content;min-width:100%;pointer-events:auto;';
 
         const dbg = (variables.sort_debug === true && SC.sortDebug)
@@ -143,8 +143,8 @@ hemma_scene_row:
         - scrollbar-width: none
         - "-ms-overflow-style": none
         - "-webkit-overflow-scrolling": touch
-        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) !important"
-        - padding-right: "var(--hemma-rail-left, 11px) !important"
+        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) !important"
+        - padding-right: "var(--hemma-rail-left, 16px) !important"
         - margin: "0 !important"
         - width: "100%"
         - box-sizing: border-box

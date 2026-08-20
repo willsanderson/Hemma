@@ -258,6 +258,12 @@ views:
           #     scenes:
           #       - scene.YOUR_SCENE
           #       - scene.YOUR_OTHER_SCENE
+          #     # Optional. Colours a scene's icon while that scene is active;
+          #     # anything unlisted uses the default yellow. Takes any CSS
+          #     # colour, including theme tokens.
+          #     scene_colors:
+          #       scene.YOUR_SCENE: var(--hemma-color-teal)
+          #       scene.YOUR_OTHER_SCENE: "#af52de"
 
           # ── FAVORITES ── hand-picked cards, always the first section.
           - type: custom:button-card

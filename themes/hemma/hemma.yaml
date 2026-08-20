@@ -475,7 +475,13 @@ Hemma:
   # Page gutters
   page-gutter-desktop: 6vw
   page-gutter-tablet: 3vw
-  page-gutter-mobile: 11px
+  page-gutter-mobile: 16px
+
+  # Scene tiles
+  hemma-scene-tile-h: 62px
+  hemma-scene-tile-radius: 26px
+  hemma-scene-grid-row-gap: 11px
+  hemma-scene-grid-col-gap: 11px
 
   # Header top
   header-top-desktop: clamp(300px, 36vh, 620px)
@@ -726,94 +732,10 @@ Hemma:
   hemma-battery-green:  var(--hemma-color-green)
   hemma-battery-yellow: var(--hemma-color-yellow)
   hemma-battery-red:    var(--hemma-color-red)
-
   hemma-battery-ring-track-hover: rgba(255,255,255,0.125)
+
   hemma-movie-color: var(--hemma-color-purple)
   hemma-show-color:  var(--hemma-color-gold)
-
-  # ============================================================================
-  # GLASS MATERIAL
-  # ============================================================================
-
-  # Entity tile
-  hemma-tile-glass-rim: >-
-    inset 0 1px 0 -0.5px rgba(255,255,255,0.10),
-    0 2px 8px rgba(0,0,0,0.10)
-
-  hemma-glass-background: rgba(255,255,255,0.10)
-  hemma-glass-backdrop: blur(24px) saturate(180%)
-  hemma-glass-rim: >-
-    inset 0 1px .5px -0.5px rgba(255,255,255,0.55),
-    inset 0 -1px .5px -0.5px rgba(255,255,255,0.48),
-    inset 0 3px 6px -3px rgba(255,255,255,0.20),
-    inset 0 -3px 6px -3px rgba(255,255,255,0.12),
-    2px 0 3px -2px rgba(0,0,0,0.45),
-    -2px 0 3px -2px rgba(0,0,0,0.45),
-    0 2px 8px rgba(0,0,0,0.18)
-
-  # Badge
-  hemma-badge-art-floor: rgba(160,160,160,0.28)
-  hemma-badge-rim-side: 0.98
-  hemma-badge-rim-side-spread: -1px
-  hemma-badge-rim-side-blur: 1px
-  hemma-badge-glow-top-tight: 0.35
-  hemma-badge-glow-top-soft: 0.10
-  hemma-badge-glow-bottom-tight: 0.16
-  hemma-badge-glow-bottom-soft: 0.12
-
-  # Status pill
-  hemma-glass-pill-fill: rgba(255,255,255,0.12)
-  hemma-glass-pill-backdrop: none
-  hemma-glass-pill-glow-top-tight: 1
-  hemma-glass-pill-glow-top-soft: 0.20
-  hemma-glass-pill-glow-bottom-tight: 0.58
-  hemma-glass-pill-glow-bottom-soft: 0.30
-  hemma-glass-pill-ring-tint: 0%
-  hemma-glass-pill-ring-tint-tight: 0%
-
-  hemma-glass-pill-corner-tint: 100%
-  hemma-glass-pill-corner-alpha: 0.22
-  hemma-glass-pill-corner-bloom-alpha: 0
-  hemma-glass-pill-dispersion-deg: 10
-  hemma-glass-pill-cap-shade: 0
-  hemma-glass-pill-corner-angle: 115deg
-  hemma-glass-pill-corner-falloff: 0.50
-  hemma-glass-pill-accent-fill: 30%
-  hemma-glass-pill-fill-l: 0.82
-  hemma-glass-pill-fill-c: 0.24
-  hemma-glass-pill-accent-sheen: 11%
-
-  # Media poster
-  hemma-media-pill-fill: rgba(255,255,255,0.04)
-  hemma-media-pill-backdrop: none
-  hemma-media-pill-glow-top-tight: 1
-  hemma-media-pill-glow-top-soft: .20
-  hemma-media-pill-glow-bottom-tight: 0.50
-  hemma-media-pill-glow-bottom-soft: 0.35
-  hemma-media-poster-glow-top: linear-gradient(to bottom, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.12) 10%, rgba(255,255,255,0) 58%)
-  hemma-media-poster-glow-bottom: linear-gradient(to top, rgba(255,255,255,0.11) 0%, rgba(255,255,255,0.07) 10%, rgba(255,255,255,0) 45%)
-  hemma-media-poster-highlight: >-
-    inset 0 1px 1px -0.5px rgba(255,255,255,0.15),
-    inset 0 -1px 1px -0.5px rgba(255,255,255,0.05)
-  
-  # Popup bottom tiles
-  hemma-popup-tiles-fill: rgba(255,255,255,0.08)
-  hemma-popup-tiles-backdrop: none
-  hemma-popup-tiles-glow-top-tight: 0.24
-  hemma-popup-tiles-glow-top-soft: 0.15
-  hemma-popup-tiles-glow-bottom-tight: 0.10
-  hemma-popup-tiles-glow-bottom-soft: 0.07
-
-  # Navbar
-  hemma-nav-glass-backdrop: blur(24px) saturate(120%)
-  hemma-nav-glass-rim: >-
-    inset 0 1px .5px -0.5px rgba(255,255,255,0.55),
-    inset 0 -1px .5px -0.5px rgba(255,255,255,0.48),
-    inset 0 3px 6px -3px rgba(255,255,255,0.20),
-    inset 0 -3px 6px -3px rgba(255,255,255,0.12),
-    2px 0 3px -2px rgba(0,0,0,0.45),
-    -2px 0 3px -2px rgba(0,0,0,0.45),
-    0 4px 28px 2px rgba(0,0,0,0.07)
 
   # ============================================================================
   # STATUS COLORS
@@ -977,6 +899,90 @@ Hemma:
   energy-battery-in-color: rgb(180,130,255)
   energy-battery-out-color: rgb(255,140,60)
   energy-gas-color: rgb(255,120,100)
+
+  # ============================================================================
+  # GLASS MATERIAL
+  # ============================================================================
+
+  # Entity tile
+  hemma-tile-glass-rim: >-
+    inset 0 1px 0 -0.5px rgba(255,255,255,0.10),
+    0 2px 8px rgba(0,0,0,0.10)
+
+  hemma-glass-background: rgba(255,255,255,0.10)
+  hemma-glass-backdrop: blur(24px) saturate(180%)
+  hemma-glass-rim: >-
+    inset 0 1px .5px -0.5px rgba(255,255,255,0.55),
+    inset 0 -1px .5px -0.5px rgba(255,255,255,0.48),
+    inset 0 3px 6px -3px rgba(255,255,255,0.20),
+    inset 0 -3px 6px -3px rgba(255,255,255,0.12),
+    2px 0 3px -2px rgba(0,0,0,0.45),
+    -2px 0 3px -2px rgba(0,0,0,0.45),
+    0 2px 8px rgba(0,0,0,0.18)
+
+  # Badge
+  hemma-badge-art-floor: rgba(160,160,160,0.28)
+  hemma-badge-rim-side: 0.98
+  hemma-badge-rim-side-spread: -1px
+  hemma-badge-rim-side-blur: 1px
+  hemma-badge-glow-top-tight: 0.35
+  hemma-badge-glow-top-soft: 0.10
+  hemma-badge-glow-bottom-tight: 0.16
+  hemma-badge-glow-bottom-soft: 0.12
+
+  # Status pill
+  hemma-glass-pill-fill: rgba(255,255,255,0.12)
+  hemma-glass-pill-backdrop: none
+  hemma-glass-pill-glow-top-tight: 1
+  hemma-glass-pill-glow-top-soft: 0.20
+  hemma-glass-pill-glow-bottom-tight: 0.58
+  hemma-glass-pill-glow-bottom-soft: 0.30
+  hemma-glass-pill-ring-tint: 0%
+  hemma-glass-pill-ring-tint-tight: 0%
+
+  hemma-glass-pill-corner-tint: 100%
+  hemma-glass-pill-corner-alpha: 0.22
+  hemma-glass-pill-corner-bloom-alpha: 0
+  hemma-glass-pill-dispersion-deg: 10
+  hemma-glass-pill-cap-shade: 0
+  hemma-glass-pill-corner-angle: 115deg
+  hemma-glass-pill-corner-falloff: 0.50
+  hemma-glass-pill-accent-fill: 30%
+  hemma-glass-pill-fill-l: 0.82
+  hemma-glass-pill-fill-c: 0.24
+  hemma-glass-pill-accent-sheen: 11%
+
+  # Media poster
+  hemma-media-pill-fill: rgba(255,255,255,0.04)
+  hemma-media-pill-backdrop: none
+  hemma-media-pill-glow-top-tight: 1
+  hemma-media-pill-glow-top-soft: .20
+  hemma-media-pill-glow-bottom-tight: 0.50
+  hemma-media-pill-glow-bottom-soft: 0.35
+  hemma-media-poster-glow-top: linear-gradient(to bottom, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.12) 10%, rgba(255,255,255,0) 58%)
+  hemma-media-poster-glow-bottom: linear-gradient(to top, rgba(255,255,255,0.11) 0%, rgba(255,255,255,0.07) 10%, rgba(255,255,255,0) 45%)
+  hemma-media-poster-highlight: >-
+    inset 0 1px 1px -0.5px rgba(255,255,255,0.15),
+    inset 0 -1px 1px -0.5px rgba(255,255,255,0.05)
+  
+  # Popup bottom tiles
+  hemma-popup-tiles-fill: rgba(255,255,255,0.08)
+  hemma-popup-tiles-backdrop: none
+  hemma-popup-tiles-glow-top-tight: 0.24
+  hemma-popup-tiles-glow-top-soft: 0.15
+  hemma-popup-tiles-glow-bottom-tight: 0.10
+  hemma-popup-tiles-glow-bottom-soft: 0.07
+
+  # Navbar
+  hemma-nav-glass-backdrop: blur(24px) saturate(120%)
+  hemma-nav-glass-rim: >-
+    inset 0 1px .5px -0.5px rgba(255,255,255,0.55),
+    inset 0 -1px .5px -0.5px rgba(255,255,255,0.48),
+    inset 0 3px 6px -3px rgba(255,255,255,0.20),
+    inset 0 -3px 6px -3px rgba(255,255,255,0.12),
+    2px 0 3px -2px rgba(0,0,0,0.45),
+    -2px 0 3px -2px rgba(0,0,0,0.45),
+    0 4px 28px 2px rgba(0,0,0,0.07)
 
   # ============================================================================
   # CARD-MOD GLOBAL STYLES

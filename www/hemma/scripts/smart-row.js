@@ -164,7 +164,7 @@ class HemmaSmartRow extends HTMLElement {
       : window.location.pathname.includes('dashboard-hemma-mobile');
     this._rowPadding  = config.row_padding ??
       (this._sortEnabled
-        ? '0 var(--hemma-rail-left, 11px) 0 max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))'
+        ? '0 var(--hemma-rail-left, 16px) 0 max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px))'
         : null);
   }
 

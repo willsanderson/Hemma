@@ -55,7 +55,7 @@ hemma_mobile_weather:
       - box-shadow: none
       - border: none
       - border-radius: 0
-      - padding: "52px var(--hemma-rail-left, 11px) 12px max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))"
+      - padding: "52px var(--hemma-rail-left, 16px) 12px max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px))"
       - margin: 0
       - "--button-card-ripple-color": transparent
       - "-webkit-tap-highlight-color": transparent
@@ -87,5 +87,5 @@ hemma_mobile_weather:
         - position: absolute
         - top: "calc(52px + var(--hero-room-name-size-current, 38px) * 0.6)"
         - transform: translateY(-50%)
-        - right: "var(--hemma-rail-left, 11px)"
+        - right: "var(--hemma-rail-left, 16px)"
         - z-index: 1

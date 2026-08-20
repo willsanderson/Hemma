@@ -683,12 +683,12 @@ hemma_mobile_now_playing:
         @media (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-height: 600px) {
           #np_rail > * {
             width: calc((100vw
-              - (max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))
-                 + max(env(safe-area-inset-right), var(--hemma-rail-left, 11px)))
+              - (max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px))
+                 + max(env(safe-area-inset-right), var(--hemma-rail-left, 16px)))
               - 60px - var(--np-gap, 10px)) / 2) !important;
             max-width: calc((100vw
-              - (max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))
-                 + max(env(safe-area-inset-right), var(--hemma-rail-left, 11px)))
+              - (max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px))
+                 + max(env(safe-area-inset-right), var(--hemma-rail-left, 16px)))
               - 60px - var(--np-gap, 10px)) / 2) !important;
           }
         }
@@ -733,7 +733,7 @@ hemma_mobile_now_playing:
         - text-align: left
         - letter-spacing: "-0.3px"
         - line-height: "1.3"
-        - padding: "10px 0 18px max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))"
+        - padding: "10px 0 18px max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px))"
         - margin: 0
       media_row:
         - display: |
@@ -752,9 +752,9 @@ hemma_mobile_now_playing:
         - scrollbar-width: none
         - "-ms-overflow-style": none
         - scroll-snap-type: "x mandatory"
-        - scroll-padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))"
-        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) !important"
-        - padding-right: "max(env(safe-area-inset-right), var(--hemma-rail-left, 11px)) !important"
+        - scroll-padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px))"
+        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) !important"
+        - padding-right: "max(env(safe-area-inset-right), var(--hemma-rail-left, 16px)) !important"
         - padding-top: "16px !important"
         - padding-bottom: "16px !important"
         - margin: "-16px 0 -16px 0 !important"
@@ -790,8 +790,8 @@ hemma_mobile_now_playing:
             transform 0.38s cubic-bezier(0.32, 0.72, 0, 1),
             opacity 0.26s ease,
             max-height 0.38s cubic-bezier(0.32, 0.72, 0, 1)
-        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) !important"
-        - padding-right: "max(env(safe-area-inset-right), var(--hemma-rail-left, 11px)) !important"
+        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) !important"
+        - padding-right: "max(env(safe-area-inset-right), var(--hemma-rail-left, 16px)) !important"
         - margin: "calc(var(--npm-open, 0) * 10px) 0 0 0 !important"
         - width: "100%"
         - box-sizing: border-box
@@ -926,8 +926,8 @@ hemma_mobile_now_playing:
                right gutter was a flat 11px — so in landscape, where the notch/inset sits on the
                right, the tile ran underneath it and got clipped. env() covers the right directly;
                no JS measurement needed. */
-            const gutters = `(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))`
-              + ` + max(env(safe-area-inset-right), var(--hemma-rail-left, 11px)))`;
+            const gutters = `(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px))`
+              + ` + max(env(safe-area-inset-right), var(--hemma-rail-left, 16px)))`;
             const cap = 'var(--np-slot-cap, 100vw)';
             const peekW = `min(calc(100vw - ${gutters} - var(--np-peek, 26px)), ${cap})`;
             const fullW = `min(calc(100vw - ${gutters}), ${cap})`;

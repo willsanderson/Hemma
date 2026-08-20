@@ -512,7 +512,7 @@
         const inColumn = filter === 'media';
         const usesPeek = !inColumn && activeCount > 1;
 
-        const gutters = '(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + var(--hemma-rail-left, 11px))';
+        const gutters = '(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + var(--hemma-rail-left, 16px))';
         const activeW = usesPeek
           ? `calc(100vw - ${gutters} - var(--np-peek, 26px))`
           : `calc(100vw - ${gutters})`;

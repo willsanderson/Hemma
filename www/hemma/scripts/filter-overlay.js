@@ -469,7 +469,7 @@
     if (!_dashTitleStyle?.isConnected) {
       _dashTitleStyle = document.createElement('style');
       _dashTitleStyle.textContent =
-        `.hemma-dash-compact-title{padding-left:calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + ${LANDSCAPE_GUTTER_CALC}) !important;}`;
+        `.hemma-dash-compact-title{padding-left:calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + ${LANDSCAPE_GUTTER_CALC}) !important;}`;
       (target || document.head).appendChild(_dashTitleStyle);
     }
     const title = document.createElement('div');
@@ -478,7 +478,7 @@
       'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:112',
       `height:${DASH_BAR_HEIGHT}px`,
       'padding-top:env(safe-area-inset-top, 0px)',
-      'padding-left:max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))',
+      'padding-left:max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px))',
       'box-sizing:content-box',
       'display:flex', 'align-items:center', 'justify-content:flex-start',
       'font-size:20px', 'font-weight:700', 'color:#ffffff', 'letter-spacing:-0.3px',
@@ -887,8 +887,8 @@
       grid.style.cssText = [
         'display:grid',
         'gap:8px',
-        `padding-left:calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + ${LANDSCAPE_GUTTER_CALC})`,
-        `padding-right:calc(var(--hemma-rail-left, 11px) + ${LANDSCAPE_GUTTER_CALC})`,
+        `padding-left:calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + ${LANDSCAPE_GUTTER_CALC})`,
+        `padding-right:calc(var(--hemma-rail-left, 16px) + ${LANDSCAPE_GUTTER_CALC})`,
         'box-sizing:border-box',
         'width:100%',
       ].join(';');
@@ -965,7 +965,7 @@
             name:       'Scenes',
             variables:  { hide_caret: true, mobile_filter_categories: null },
             styles:     {
-              card:          [{ padding: `24px var(--hemma-rail-left, 11px) 10px calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + ${LANDSCAPE_GUTTER_CALC})` }],
+              card:          [{ padding: `24px var(--hemma-rail-left, 16px) 10px calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + ${LANDSCAPE_GUTTER_CALC})` }],
               custom_fields: { arrow: [{ display: 'none' }] },
             },
           }, this._contentEl, 0);
@@ -993,7 +993,7 @@
             styles:    {
               // Mirrors hemma_mobile_header.yaml's padding formula.
               // Popups clone the header rather than reuse it, so keep in sync.
-              card:          [{ padding: `24px var(--hemma-rail-left, 11px) 10px calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + ${LANDSCAPE_GUTTER_CALC})` }],
+              card:          [{ padding: `24px var(--hemma-rail-left, 16px) 10px calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + ${LANDSCAPE_GUTTER_CALC})` }],
               custom_fields: { arrow: [{ display: 'none' }] },
             },
           }, this._contentEl, i);
@@ -1019,7 +1019,7 @@
                 name:       ROOM_SECTION_LABEL[key],
                 variables:  { hide_caret: true, mobile_filter_categories: null },
                 styles:     {
-                  card:          [{ padding: `18px var(--hemma-rail-left, 11px) 10px calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + ${LANDSCAPE_GUTTER_CALC})` }],
+                  card:          [{ padding: `18px var(--hemma-rail-left, 16px) 10px calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + ${LANDSCAPE_GUTTER_CALC})` }],
                   custom_fields: { arrow: [{ display: 'none' }] },
                 },
               }, this._contentEl, i);
@@ -1065,7 +1065,7 @@
         name:      'Favorites',
         variables: { mobile_filter_categories: null },
         // Mirrors hemma_mobile_header.yaml's padding formula.
-        styles:    { card: [{ padding: `24px var(--hemma-rail-left, 11px) 10px calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + ${LANDSCAPE_GUTTER_CALC})` }] },
+        styles:    { card: [{ padding: `24px var(--hemma-rail-left, 16px) 10px calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + ${LANDSCAPE_GUTTER_CALC})` }] },
       }, frag, 0);
       this._appendEntityGrid(cards.map((c) => JSON.parse(JSON.stringify(c))), frag, 0);
       this._contentEl.insertBefore(frag, this._contentEl.firstChild);
@@ -1728,7 +1728,7 @@
       titleEl.style.setProperty('margin-top',
         `calc(env(safe-area-inset-top, 0px) + 52px + calc(12px * var(${LANDSCAPE_PHONE_VAR}, 0)))`);
       titleEl.style.setProperty('padding-left',
-        `calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + ${LANDSCAPE_GUTTER_CALC})`);
+        `calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + ${LANDSCAPE_GUTTER_CALC})`);
       // Copy the dashboard title's text metrics so the margin-top above lands
       // the glyphs at exactly the same y.
       if (nameSrcEl && nameRect?.height) {
@@ -1779,7 +1779,7 @@
         back.className = 'hemma-back-glass';
         back.style.cssText = [
           'position:fixed',
-          `left:calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) + ${LANDSCAPE_GUTTER_CALC})`,
+          `left:calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + ${LANDSCAPE_GUTTER_CALC})`,
           `top:calc(env(safe-area-inset-top, 0px) + 4px + calc(12px * var(${LANDSCAPE_PHONE_VAR}, 0)))`,
           'width:40px', 'height:40px', 'border-radius:50%',
           'display:flex', 'align-items:center', 'justify-content:center',

@@ -96,8 +96,8 @@ hemma_mobile_filter_badges:
         - overscroll-behavior-x: contain
         - scrollbar-width: none
         - "-ms-overflow-style": none
-        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px)) !important"
-        - padding-right: "var(--hemma-rail-left, 11px) !important"
+        - padding-left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) !important"
+        - padding-right: "var(--hemma-rail-left, 16px) !important"
         - margin: "0 !important"
         - width: "100%"
         - box-sizing: border-box

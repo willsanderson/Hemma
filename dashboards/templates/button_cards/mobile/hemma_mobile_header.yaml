@@ -90,7 +90,7 @@ hemma_mobile_header:
       - box-shadow: none
       - border-radius: 0
       - border: none
-      - padding: "24px var(--hemma-rail-left, 11px) 10px max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 11px))"
+      - padding: "24px var(--hemma-rail-left, 16px) 10px max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px))"
       - margin: 0
       - "--button-card-ripple-color": transparent
       - "-webkit-tap-highlight-color": transparent

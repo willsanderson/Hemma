@@ -451,7 +451,7 @@ hemma_scene_core:
 
                   const sizing = (o.grid
                     ? 'width:100%;'
-                    : 'flex:0 0 auto;width:' + (o.width || '44vw') + ';')
+                    : 'flex:0 0 auto;width:' + (o.width || '41vw') + ';')
                     + (o.order == null ? '' : 'order:' + o.order + ';');
 
                   const tap = ' onpointerdown="this.dataset.sx=event.clientX;this.dataset.sy=event.clientY"'
@@ -462,14 +462,18 @@ hemma_scene_core:
 
                   return '<div role="button" tabindex="0" data-scene="' + esc(sceneId) + '"' + tap
                     + ' style="' + sizing
-                    + 'display:flex;align-items:center;gap:10px;padding:12px;border-radius:26px;box-sizing:border-box;'
+                    + 'display:flex;align-items:center;gap:10px;padding:12px;box-sizing:border-box;'
+                    // One height and radius for every surface: the home row and the
+                    // Scenes page are the same component and must not diverge.
+                    + 'min-height:var(--hemma-scene-tile-h, 56px);'
+                    + 'border-radius:var(--hemma-scene-tile-radius, 20px);'
                     + 'cursor:pointer;pointer-events:auto;-webkit-tap-highlight-color:transparent;'
                     + 'user-select:none;-webkit-user-select:none;'
                     + 'transition:background 0.45s ease,transform 0.2s ease;'
                     + 'box-shadow:' + SC_C.rim + ';'
                     + '-webkit-backdrop-filter:' + SC_C.backdrop + ';backdrop-filter:' + SC_C.backdrop + ';'
                     + 'background:' + (on ? SC_C.onBg : SC_C.offBg) + ';">'
-                      + '<div style="width:38px;height:38px;min-width:38px;display:flex;'
+                      + '<div style="width:28px;height:28px;min-width:28px;display:flex;'
                         + 'align-items:center;justify-content:center;">' + glyph + '</div>'
                       + '<div style="font-size:14px;font-weight:500;line-height:1.2;white-space:nowrap;'
                         + 'overflow:hidden;text-overflow:ellipsis;font-family:var(--primary-font-family,system-ui);'
