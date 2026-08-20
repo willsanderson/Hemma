@@ -500,7 +500,7 @@ The security group badge expands into one badge per security entity. A single te
 ```
 
 **Cameras badge.** `security_cameras` collapses every camera into a single badge that opens a shared
-camera popup. The sub-line reads like Apple's: "No Alerts" at rest, a count when a camera goes offline,
+camera popup. The sub-line reads "No Alerts" at rest, a count when a camera goes offline,
 and the most recent motion or doorbell event when there is one. The badge only appears when the room
 already has a lock or a `security_entity_N` set.
 
