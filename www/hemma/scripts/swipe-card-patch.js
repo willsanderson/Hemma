@@ -1,4 +1,4 @@
-// Colours the active swipe-card pagination bullet to match the slide's
+// Colors the active swipe-card pagination bullet to match the slide's
 // TV SHOW (purple) or MOVIE (amber) badge. Size and shape come from card_mod.
 (function () {
   const TV_COLOR    = '#9333ea';

@@ -2,7 +2,7 @@
 # Shows consolidated light status for multiple light entities.
 # Tap to expand/collapse the individual light sub-badges row
 # (driven by input_select.hemma_expanded_row).
-# Hold to open a browser_mod popup with per-light toggle, brightness, and colour temperature controls.
+# Hold to open a browser_mod popup with per-light toggle, brightness, and color temperature controls.
 #
 # Variables:
 #   enabled             - show/hide this badge (default: true)

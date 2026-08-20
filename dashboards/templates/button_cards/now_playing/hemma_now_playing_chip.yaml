@@ -162,7 +162,7 @@ hemma_now_playing_chip:
                   easing: 'cubic-bezier(0.25, 0.9, 0.3, 1)',
                   fill: 'both',
                 });
-                // fill:'both' leaves the animation live forever unless cancelled — a permanently-active transform on ha-card can mis-clip its rounded overflow:hidden descendants.
+                // fill:'both' leaves the animation live forever unless canceled — a permanently-active transform on ha-card can mis-clip its rounded overflow:hidden descendants.
                 store._npShiftAnim.finished
                   .then(() => { try { store._npShiftAnim?.cancel(); } catch (e) {} })
                   .catch(() => {});
@@ -439,7 +439,7 @@ hemma_now_playing_chip:
       pointer-events: none;
       z-index: 0;
       /* No flat black layer over the art (the large tile's bloom has none either) — dimming the
-         cover before compositing, then landing it at 0.30, is what left the pill grey while the
+         cover before compositing, then landing it at 0.30, is what left the pill gray while the
          large tile read purple off the same artwork. */
       background:
         var(--bg-url, none),
@@ -570,7 +570,7 @@ hemma_now_playing_chip:
       font-weight: 500;
       line-height: 1.2;
       /* Same translucent white as the large tile's .np-sub — the artwork hue reaches this row
-         through the bloom behind it, not by tinting the glyph colour directly. */
+         through the bloom behind it, not by tinting the glyph color directly. */
       color: rgba(255,255,255,0.62);
       white-space: nowrap;
       overflow: hidden;

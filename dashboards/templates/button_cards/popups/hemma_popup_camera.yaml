@@ -1054,7 +1054,7 @@ hemma_popup_camera:
                  shorter laptop once the header and control row are added. The cap keeps
                  the whole detail view on screen; the mount is inset:0 so the picture
                  follows it down. */
-              /* ha-icon does not centre its own glyph here — the parent's align-items
+              /* ha-icon does not center its own glyph here — the parent's align-items
                  centres the icon's box, not the artwork inside it, so every icon lands a
                  couple of px low. Same forcing hemma_popup_lock_group already does. */
               .hemma-cam-root ha-icon {

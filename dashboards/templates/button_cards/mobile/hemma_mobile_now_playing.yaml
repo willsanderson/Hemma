@@ -933,7 +933,7 @@ hemma_mobile_now_playing:
             const fullW = `min(calc(100vw - ${gutters}), ${cap})`;
             const activeW = usesPeek ? peekW : fullW;
             /* The gap must NOT animate. It is margin-right on every slot, and column mode used to
-               drop it to 0 — so while a neighbour was still visibly collapsing, the head's right
+               drop it to 0 — so while a neighbor was still visibly collapsing, the head's right
                margin was closing at the same time and the two tiles met. Holding it constant
                whenever more than one slot is occupied means the separation is always there and
                the collapsing slot simply carries its own margin down to 0 with its width. */

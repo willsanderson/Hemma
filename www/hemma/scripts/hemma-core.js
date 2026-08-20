@@ -1147,7 +1147,7 @@
   const MOBILE_RE = /^\/dashboard-hemma-mobile(\/|$)/;
   // Build marker. Read --hemma-wallpaper-js in the console: if it is missing, an
   // OLD cached script is serving this module and the theme's fallback literals
-  // are painting instead of sampled colours — silently, because the fallbacks are
+  // are painting instead of sampled colors — silently, because the fallbacks are
   // valid CSS. Lovelace resources are version-pinned per file (`?v=`), so moving
   // code between files means BOTH files' pins have to be bumped. This module used
   // to live in hemma-redirect.js; bumping only one of the two leaves either a
@@ -1242,7 +1242,7 @@
   // paletteFrom returns changes. Without that, a palette cached before a field
   // existed is reused forever and the missing field silently falls through to the
   // theme's literal fallback — which looks like the feature never shipped. That
-  // is exactly what happened when mesh colours were added: the key was unchanged,
+  // is exactly what happened when mesh colors were added: the key was unchanged,
   // so every browser kept serving a pre-mesh palette and painted the hand-tuned
   // fallbacks instead. localStorage also survives a hard refresh, so there is no
   // way for a user to clear it themselves.
@@ -1266,11 +1266,11 @@
   const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
   const hex = (c) => '#' + c.map((v) => clamp8(v).toString(16).padStart(2, '0')).join('');
   const mute = (c, k) => { const l = lum(c); return c.map((v) => v + (l - v) * k); };
-  // Set a colour's brightness while keeping its hue. Luminance is driven
-  // separately from colour below, and this is the join between the two.
+  // Set a color's brightness while keeping its hue. Luminance is driven
+  // separately from color below, and this is the join between the two.
   const atLum = (c, target) => { const l = lum(c) || 1; return c.map((v) => v * target / l); };
   // Positive is warm (red side), negative cool (blue side). Crude next to a real
-  // hue angle, but it only ever has to rank two colours against each other.
+  // hue angle, but it only ever has to rank two colors against each other.
   const warmth = (c) => c[0] - c[2];
 
   function readVarUrl(name) {

@@ -60,7 +60,7 @@ views:
 
       # BACKGROUND — no configuration needed. Uses the same room photo the
       # desktop dashboard loads from /config/www/hemma/rooms/ (light + -night
-      # variants), anchored to the top, with the gradient below it coloured by
+      # variants), anchored to the top, with the gradient below it colored by
       # sampling the photo itself.
       - type: custom:button-card
         template: hemma_mobile_bg
@@ -258,9 +258,9 @@ views:
           #     scenes:
           #       - scene.YOUR_SCENE
           #       - scene.YOUR_OTHER_SCENE
-          #     # Optional. Colours a scene's icon while that scene is active;
+          #     # Optional. Colors a scene's icon while that scene is active;
           #     # anything unlisted uses the default yellow. Takes any CSS
-          #     # colour, including theme tokens.
+          #     # color, including theme tokens.
           #     scene_colors:
           #       scene.YOUR_SCENE: var(--hemma-color-teal)
           #       scene.YOUR_OTHER_SCENE: "#af52de"

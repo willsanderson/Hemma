@@ -155,7 +155,7 @@ views:
           # per-room figures; the energy_popup_*_N keys point each badge at
           # that room's popup instead of the whole-house one.
           #
-          # With unit: cost the gauge ring still colours itself from
+          # With unit: cost the gauge ring still colors itself from
           # energy_popup_power_N, so the icon tracks live draw.
           # energy_entity_1: sensor.YOUR_ROOM_1_MONTHLY_COST
           # energy_label_1: Bedroom

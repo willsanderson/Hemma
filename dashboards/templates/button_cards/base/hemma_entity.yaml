@@ -69,7 +69,7 @@ hemma_entity:
     toggle_service: null
     toggle_service_data: null
     show_progress: false
-    progress_transport: true  # centre a play/pause glyph in the ring when the entity supports it
+    progress_transport: true  # center a play/pause glyph in the ring when the entity supports it
     progress_entity: null
     progress_value: null
     progress_active_states:
@@ -270,7 +270,7 @@ hemma_entity:
         --hemma-tile-align-content-mq: center;
         --hemma-tile-icon-align-mq: center;
         --hemma-tile-icon-mt-mq: 0px;
-        --hemma-tile-icon-mt-lg: 0px;  /* or a large tile's icon sits 2px above its small neighbour */
+        --hemma-tile-icon-mt-lg: 0px;  /* or a large tile's icon sits 2px above its small neighbor */
         --hemma-tile-extras-mq: none;  /* no corners; icon_tap_action toggles instead */
         --hemma-tile-radius-mq: var(--hemma-tile-radius-phone, 26px);
         --hemma-tile-radius-lg: var(--hemma-tile-radius-phone, 26px);

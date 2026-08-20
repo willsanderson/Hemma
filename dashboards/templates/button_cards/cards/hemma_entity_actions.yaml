@@ -4,7 +4,7 @@
 # Originally contributed by @hostand.
 #
 # The rail renders each action as its own flat button. A button whose entity is in an
-# "on"-like state fills with its domain accent colour; an unavailable or missing entity
+# "on"-like state fills with its domain accent color; an unavailable or missing entity
 # renders dimmed. Disabling an action (or leaving its entity unset) removes that capsule
 # entirely, and disabling both collapses the rail so the card reflows to normal padding.
 #
@@ -33,7 +33,7 @@
 #   action_N_icon              mdi:xxx, a bare SVG name resolved against svg_path,
 #                              or an explicit /local/... , http(s)://... , .svg/.png/.webp path.
 #                              Defaults to the entity's own icon attribute, then mdi:help-circle.
-#   action_N_active_color      Optional CSS colour for the active fill. Defaults to a colour
+#   action_N_active_color      Optional CSS color for the active fill. Defaults to a color
 #                              derived from the entity's domain.
 #
 #   action_N_action            One of:
@@ -182,7 +182,7 @@ hemma_entity_actions:
         };
 
         // Mirrors the domain accent map in hemma_entity so an active button reads the
-        // same colour the tile's own icon circle would use for that domain.
+        // same color the tile's own icon circle would use for that domain.
         const accentFor = (idx, eid) => {
           const override = variables[`action_${idx}_active_color`];
           if (override) return String(override);

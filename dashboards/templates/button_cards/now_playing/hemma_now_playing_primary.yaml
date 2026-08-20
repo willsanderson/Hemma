@@ -498,7 +498,7 @@ hemma_now_playing_primary:
       - --np-art-radius: calc(var(--hemma-u-np, 10px) * 1.5)
       - border: none !important
       - padding: var(--np-pad-tb, var(--np-pad-v, 12px)) calc(var(--hemma-u-np, 10px) * 1.6) var(--np-pad-tb, var(--np-pad-v, 12px)) var(--np-pad-v, 12px) !important
-      # Forces the artwork (not the text column) to set tile height, or a tall text column grows the card and the centred art floats off-inset.
+      # Forces the artwork (not the text column) to set tile height, or a tall text column grows the card and the centered art floats off-inset.
       - min-height: 'calc(var(--np-art-size, 100px) + (2 * var(--np-pad-tb, var(--np-pad-v, 12px))))'
       # Phone pins height outright: every tile in the row must measure the same regardless of transport controls, or the carousel's pages jump height as you swipe.
       - height: >
@@ -532,7 +532,7 @@ hemma_now_playing_primary:
             return hasControls ? 'max-content max-content' : 'max-content 0px';
           ]]]
       - column-gap: calc(var(--hemma-u-np, 10px) * 1.4)
-      # Collapses when there's no transport row — a grid gap still applies between an empty track and its neighbour otherwise (phantom space on Plex/PSN, where ctl is display:none).
+      # Collapses when there's no transport row — a grid gap still applies between an empty track and its neighbor otherwise (phantom space on Plex/PSN, where ctl is display:none).
       - row-gap: >
           [[[
             const c = variables.hold_src?.controls;

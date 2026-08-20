@@ -182,7 +182,7 @@ In Settings → Dashboards → Resources, add:
 Add these two first — the others read their icons and shared entity tables from them:
 
 - `/local/hemma/scripts/hemma-icons.js` (from this repo)
-- `/local/hemma/scripts/hemma-core.js` (from this repo, **required** — shared card helpers, the Now Playing collector, and the mobile wallpaper: it samples your home photos to derive the colours the mobile background fades into)
+- `/local/hemma/scripts/hemma-core.js` (from this repo, **required** — shared card helpers, the Now Playing collector, and the mobile wallpaper: it samples your home photos to derive the colors the mobile background fades into)
 
 Then the rest, in any order:
 
@@ -231,11 +231,11 @@ Point the theme at your own pair of photos and everything below them follows aut
   hemma-mobile-hero-img-night: url("/local/hemma/rooms/my-home-night.jpg")
 ```
 
-`hemma-core.js` reads both images and derives the gradient and mesh colours the
+`hemma-core.js` reads both images and derives the gradient and mesh colors the
 photo dissolves into, per mode, so the bottom of the screen blends with whatever
 house is at the top. The hex values in the theme are only fallbacks for the demo
 photos, and if that script is missing they paint instead, silently, and your
-wallpaper ends up carrying the demo house's colours. Serve the photos from
+wallpaper ends up carrying the demo house's colors. Serve the photos from
 `/local/` so the sampling stays same-origin.
 
 Restart Home Assistant.
@@ -284,7 +284,7 @@ Each view typically contains:
 
 The climate group badge aggregates temperature, HVAC activity, humidity, and air quality into a single tappable badge on the hero card. Tap to expand sub-badges for temperature range, humidity, and air quality.
 
-> **Dependency:** The expand/collapse behaviour for all badge groups (climate, lights, presence, media, energy, security) is driven by `input_select.hemma_expanded_row`. This entity is defined in `packages/hemma_helpers.yaml` — make sure you have copied that file and reloaded HA (or restarted) so the entity exists before using any badge. Without it, tapping a badge group will throw a service-call error and the sub-badge row will not expand.
+> **Dependency:** The expand/collapse behavior for all badge groups (climate, lights, presence, media, energy, security) is driven by `input_select.hemma_expanded_row`. This entity is defined in `packages/hemma_helpers.yaml` — make sure you have copied that file and reloaded HA (or restarted) so the entity exists before using any badge. Without it, tapping a badge group will throw a service-call error and the sub-badge row will not expand.
 
 > **Badges are enabled by their entities.** As of 2.0 there are no `show_*` switches for the badge rows — a badge appears as soon as you give it something to show and stays hidden otherwise. The climate badge appears when **any** of `climate_entity_1`, `temp_sensor_1`, `humidity_sensor`, or `quality_sensor` is set.
 
@@ -443,12 +443,12 @@ The energy group badge adds an expandable row of value badges to the hero card. 
 | `release_threshold` | *(optional)* Watts at which it drops back. Defaults to 80% of `high_threshold` |
 
 **Cost over kWh.** A kWh figure is hard to judge at a glance, so the badges read better pointed at a cost
-sensor with `energy_unit_N: cost`. The gauge ring keeps colouring itself from the power sensor, so the icon
+sensor with `energy_unit_N: cost`. The gauge ring keeps coloring itself from the power sensor, so the icon
 still tracks live draw while the number shows the period. Currency follows your Home Assistant setting, in
 both the ring glyph and the text. kWh values round to a whole number at 10 and above.
 
 **Usage tiers.** The group badge, each sub-badge, the Energy card and the energy popup all read the same
-breakpoints, so their colours always agree: green when idle, yellow at Normal, orange at Heavy, red at
+breakpoints, so their colors always agree: green when idle, yellow at Normal, orange at Heavy, red at
 Extreme. The Energy card uses a separate, higher `high_threshold` to decide whether it is prominent enough
 to sort to the front of a smart row, with hysteresis so a sensor hovering at the line does not reshuffle
 the row on every crossing.
@@ -533,7 +533,7 @@ picture without triggering anything.
 The detail view keeps the controls under the feed. Each has a label on hover, and the labels say what
 the next tap will *do* rather than what the state is, so the mute button reads "Unmute" while muted:
 
-| Control | Behaviour |
+| Control | Behavior |
 |---|---|
 | Mute | Starts muted. The stream is mounted unmuted so audio is negotiated, then held silent until you ask for it. If the camera really has no audio track the header says so rather than leaving a dead button |
 | Last recording | Lights up while the clip plays and drops back to live on a second tap, when the clip ends, or if there is no recording to fetch. The clip loads behind the live stream, so a missing recording never blanks the frame |
@@ -630,7 +630,7 @@ Replace a plain list of `button-card` entries with a single `hemma-smart-row` ca
 
 ### :zap: Entity Actions card (`hemma_entity_actions`)
 
-`hemma_entity_actions` extends `hemma_entity` with up to two action buttons in a rail down the right side of the card. Each button is a flat capsule that fills with its domain's accent colour when its entity is on, dims when the entity is unavailable, and disappears entirely when disabled or left without an entity. Turn both off and the rail collapses so the card reflows to normal padding.
+`hemma_entity_actions` extends `hemma_entity` with up to two action buttons in a rail down the right side of the card. Each button is a flat capsule that fills with its domain's accent color when its entity is on, dims when the entity is unavailable, and disappears entirely when disabled or left without an entity. Turn both off and the rail collapses so the card reflows to normal padding.
 
 Originally contributed by [@hostand](https://github.com/hostand).
 
@@ -660,7 +660,7 @@ Replace `N` with `1` or `2`.
 | `action_N_entity` | — | Entity the button acts on and reads state from. Required — no entity, no button |
 | `action_N_enabled` | `true` | Set to `false` to hide this button |
 | `action_N_icon` | entity's own icon, then `mdi:help-circle` | `mdi:*`, a bare Hemma SVG name, or a full `/local/…`, `http(s)://…`, or `.svg`/`.png`/`.webp` path |
-| `action_N_active_color` | domain accent | CSS colour for the active fill, overriding the domain default |
+| `action_N_active_color` | domain accent | CSS color for the active fill, overriding the domain default |
 | `action_N_action` | `more-info` | `more-info` · `toggle` · `navigate` · `call-service` |
 | `action_N_navigation_path` | — | Path for the `navigate` action |
 | `action_N_service` | — | `domain.service` for the `call-service` action |
@@ -733,7 +733,7 @@ Optionally add a `room_chips:` entry for its sensor chips, and set `mobile_filte
 
 `room_key:` on the header remains available as an override for the rare case where a display name shouldn't drive the key — two rooms whose names slug identically, or a name containing an emoji. Setting it also overrides the overlay if you pass `filter_category:` explicitly there.
 
-**Wallpaper:** nothing to configure here. The mobile background reuses the same room photo the desktop dashboard loads from `www/hemma/rooms/`, with the gradient beneath it coloured by sampling that photo — there is no separate set of mobile wallpapers. To point it at your own pair of images, see [Your own wallpaper](#your-own-wallpaper) above.
+**Wallpaper:** nothing to configure here. The mobile background reuses the same room photo the desktop dashboard loads from `www/hemma/rooms/`, with the gradient beneath it colored by sampling that photo — there is no separate set of mobile wallpapers. To point it at your own pair of images, see [Your own wallpaper](#your-own-wallpaper) above.
 
 ---
 

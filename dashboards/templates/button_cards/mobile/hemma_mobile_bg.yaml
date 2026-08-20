@@ -83,7 +83,7 @@ hemma_mobile_bg:
       }
     }
 
-    /* LAYER 3 — wash, mesh and the colour gradient */
+    /* LAYER 3 — wash, mesh and the color gradient */
     :host ha-card::before {
       content: "";
       position: absolute;
