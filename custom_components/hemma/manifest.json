@@ -1,0 +1,12 @@
+{
+  "domain": "hemma",
+  "name": "Hemma",
+  "codeowners": ["@willsanderson"],
+  "config_flow": true,
+  "dependencies": ["http", "frontend", "lovelace"],
+  "documentation": "https://github.com/willsanderson/hemma",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "requirements": [],
+  "version": "0.5.0"
+}
