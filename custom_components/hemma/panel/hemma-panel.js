@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.8.0";
+const PANEL_VERSION = "0.9.0";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -436,8 +436,7 @@ class HemmaPanel extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host {
-          display:block; min-height:100%;
-          --g-fill: var(--hemma-glass-background, rgba(255,255,255,0.10));
+          display:block; min-height:100%; position:relative; isolation:isolate;
           --g-blur: var(--hemma-glass-backdrop, blur(24px) saturate(180%));
           --g-rim: var(--hemma-glass-rim,
             inset 0 1px .5px -0.5px rgba(255,255,255,0.55),
@@ -445,191 +444,202 @@ class HemmaPanel extends HTMLElement {
             inset 0 3px 6px -3px rgba(255,255,255,0.20),
             inset 0 -3px 6px -3px rgba(255,255,255,0.12),
             0 2px 8px rgba(0,0,0,0.18));
-          --g-soft: var(--hemma-popup-tiles-fill, rgba(255,255,255,0.08));
-          --ink: #f5f5f7;
-          --ink-2: rgba(235,235,245,0.62);
-          --ink-3: rgba(235,235,245,0.34);
-          --hair: rgba(255,255,255,0.08);
-          --accent: #0a84ff;
-          --r-lg: 22px; --r-md: 14px; --r-sm: 10px;
+          --ink:#f5f5f7; --ink-2:rgba(235,235,245,0.66); --ink-3:rgba(235,235,245,0.38);
+          --hair:rgba(255,255,255,0.10);
+          --accent:#0a84ff;
+          --r-xl:30px; --r-lg:22px; --r-md:15px; --r-sm:11px;
+          --gap:18px;
           color:var(--ink);
           font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
           font-size:14px; -webkit-font-smoothing:antialiased;
-          background:
-            radial-gradient(1200px 700px at 18% -10%, rgba(80,120,200,0.22), transparent 60%),
-            radial-gradient(1000px 600px at 92% 8%, rgba(150,90,200,0.16), transparent 62%),
-            var(--primary-background-color, #0d0d10);
-          background-attachment: fixed;
+          background:var(--primary-background-color,#0c0c0f);
         }
+
+        /* Blurred room photo behind the glass. Sibling, never an ancestor, so it
+           cannot break backdrop-filter on the cards. Overhangs to keep the blur
+           from darkening at the edges. */
+        .bg, .bgtint { position:fixed; inset:-160px; z-index:0; pointer-events:none; }
+        .bg {
+          width:calc(100% + 320px); height:calc(100% + 320px);
+          object-fit:cover; filter:blur(44px) saturate(130%);
+          opacity:0; transition:opacity .5s ease;
+        }
+        .bg.on { opacity:.55; }
+        .bgtint {
+          background:
+            radial-gradient(1100px 620px at 15% -12%, rgba(120,150,220,0.16), transparent 62%),
+            linear-gradient(to bottom, rgba(8,8,12,0.42), rgba(8,8,12,0.74));
+        }
+        .top, .body { position:relative; z-index:1; }
 
         .top {
-          position:sticky; top:0; z-index:5;
-          display:flex; align-items:center; gap:14px;
-          padding:14px 26px; box-sizing:border-box;
-          background:rgba(20,20,24,0.55);
+          position:sticky; top:0; z-index:6;
+          display:flex; align-items:center; gap:14px; padding:15px 28px; box-sizing:border-box;
+          background:rgba(22,22,28,0.42);
           backdrop-filter:var(--g-blur); -webkit-backdrop-filter:var(--g-blur);
-          border-bottom:1px solid var(--hair);
+          box-shadow:inset 0 -1px 0 var(--hair);
         }
-        .top h1 { font-size:20px; font-weight:600; margin:0; letter-spacing:-0.02em; }
-        .ver { font-size:11px; color:var(--ink-3); font-weight:450; margin-left:6px; letter-spacing:0; }
+        .top h1 { font-size:21px; font-weight:600; margin:0; letter-spacing:-0.022em; }
+        .ver { font-size:11px; color:var(--ink-3); font-weight:450; margin-left:7px; letter-spacing:0; }
         .burger {
-          background:var(--g-soft); border:0; color:var(--ink); font-size:17px; cursor:pointer;
-          width:34px; height:34px; border-radius:50%; line-height:1; display:grid; place-items:center;
+          background:rgba(255,255,255,0.12); border:0; color:var(--ink); font-size:17px; cursor:pointer;
+          width:36px; height:36px; border-radius:50%; display:grid; place-items:center;
+          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10);
           transition:background .18s ease;
         }
-        .burger:hover { background:rgba(255,255,255,0.16); }
+        .burger:hover { background:rgba(255,255,255,0.20); }
         .spacer { flex:1; }
 
-        .body { padding:26px; max-width:1280px; margin:0 auto; box-sizing:border-box; }
+        .body { padding:28px; max-width:1320px; margin:0 auto; box-sizing:border-box; }
 
         select, input[type=text], input:not([type]), textarea {
           font:inherit; color:var(--ink);
-          background:rgba(255,255,255,0.06);
-          border:1px solid rgba(255,255,255,0.09);
-          border-radius:var(--r-sm); padding:8px 11px;
+          background:rgba(0,0,0,0.24);
+          border:1px solid rgba(255,255,255,0.10);
+          border-radius:var(--r-sm); padding:9px 12px;
           transition:border-color .16s ease, background .16s ease;
         }
         select:focus, input:focus, textarea:focus {
-          outline:none; border-color:rgba(10,132,255,0.85);
-          background:rgba(255,255,255,0.09);
+          outline:none; border-color:rgba(10,132,255,0.9); background:rgba(0,0,0,0.30);
         }
         input::placeholder, textarea::placeholder { color:var(--ink-3); }
 
         button {
           font:inherit; font-weight:590; cursor:pointer; color:#fff;
-          background:var(--accent); border:0; border-radius:999px; padding:9px 18px;
+          background:var(--accent); border:0; border-radius:999px; padding:10px 20px;
           transition:filter .16s ease, transform .12s ease;
         }
         button:hover:not(:disabled) { filter:brightness(1.12); }
         button:active:not(:disabled) { transform:scale(0.97); }
         button.ghost {
-          background:var(--g-soft); color:var(--ink);
-          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10);
+          background:rgba(255,255,255,0.13); color:var(--ink);
+          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.13);
+          backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
         }
-        button.ghost:hover:not(:disabled) { background:rgba(255,255,255,0.15); filter:none; }
+        button.ghost:hover:not(:disabled) { background:rgba(255,255,255,0.20); filter:none; }
         button:disabled { opacity:.35; cursor:default; }
 
-        .bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-        .bar select { min-width:230px; border-radius:999px; padding:9px 14px; }
-        .status { min-height:20px; font-size:12.5px; margin:12px 2px 20px; color:var(--ink-2); }
+        .bar { display:flex; gap:11px; align-items:center; flex-wrap:wrap; }
+        .bar select { min-width:230px; border-radius:999px; padding:10px 16px; }
+        .status { min-height:20px; font-size:12.5px; margin:13px 2px 22px; color:var(--ink-2); }
         .status.ok { color:#30d158; } .status.err { color:#ff453a; } .status.warn { color:#ffd60a; }
 
-        .tabs { display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 12px; }
+        .tabs { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px; }
         .tab {
-          padding:8px 17px; border-radius:999px; cursor:pointer; font-size:13.5px; font-weight:500;
-          background:var(--g-soft); box-shadow:inset 0 0 0 1px rgba(255,255,255,0.09);
+          padding:9px 19px; border-radius:999px; cursor:pointer; font-size:13.5px; font-weight:520;
+          background:rgba(255,255,255,0.11); box-shadow:inset 0 0 0 1px rgba(255,255,255,0.11);
+          backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
           transition:background .16s ease, transform .12s ease;
         }
-        .tab:hover { background:rgba(255,255,255,0.14); }
+        .tab:hover { background:rgba(255,255,255,0.18); }
         .tab:active { transform:scale(0.97); }
-        .tab.on { background:var(--accent); box-shadow:none; color:#fff; }
+        .tab.on { background:var(--accent); box-shadow:none; }
         .roombar { display:flex; gap:8px; align-items:center; margin:0 0 22px; flex-wrap:wrap; }
 
-        #pane {
-          display:grid; gap:18px; align-items:start;
-          grid-template-columns:repeat(auto-fit, minmax(440px, 1fr));
-        }
-        #pane > .tabs, #pane > .roombar { grid-column:1 / -1; }
+        /* Masonry flow so a short card never leaves a hole under it. */
+        #pane { column-count:2; column-gap:var(--gap); }
+        @media (max-width:1080px) { #pane { column-count:1; } }
 
         .card {
-          background:var(--g-fill);
+          break-inside:avoid; -webkit-column-break-inside:avoid;
+          display:inline-block; width:100%; box-sizing:border-box;
+          margin:0 0 var(--gap);
+          background:
+            linear-gradient(to bottom, rgba(255,255,255,0.13), rgba(255,255,255,0.06) 44%, rgba(255,255,255,0.045));
           backdrop-filter:var(--g-blur); -webkit-backdrop-filter:var(--g-blur);
           box-shadow:var(--g-rim);
-          border-radius:var(--r-lg); padding:4px 20px 16px;
-          overflow:hidden;
+          border-radius:var(--r-xl); padding:6px 24px 20px;
         }
-        .card.wide { grid-column:1 / -1; }
         .card > h2 {
-          font-size:15.5px; font-weight:600; letter-spacing:-0.01em;
-          margin:16px 0 6px; color:var(--ink);
+          font-size:16px; font-weight:600; letter-spacing:-0.015em;
+          margin:20px 0 8px; color:var(--ink);
         }
 
         .row {
-          display:grid; grid-template-columns:minmax(120px, 34%) 1fr;
-          gap:14px; align-items:center;
-          padding:11px 0; border-top:1px solid var(--hair);
+          display:grid; grid-template-columns:minmax(120px,36%) 1fr; gap:14px; align-items:center;
+          padding:12px 0; border-top:1px solid var(--hair);
         }
         .row:first-of-type { border-top:0; }
         .row label { color:var(--ink-2); font-size:13.5px; }
         .row input, .row select, .row textarea { width:100%; box-sizing:border-box; }
-        .hint { color:var(--ink-3); font-size:11.5px; padding:0 0 10px; }
+        .hint { color:var(--ink-3); font-size:11.5px; padding:2px 0 12px; }
 
         textarea {
           font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12px;
-          min-height:70px; resize:vertical; line-height:1.5;
+          min-height:72px; resize:vertical; line-height:1.5;
         }
 
         .empty {
-          grid-column:1 / -1; text-align:center; padding:56px 30px;
-          background:var(--g-fill); backdrop-filter:var(--g-blur);
-          box-shadow:var(--g-rim); border-radius:var(--r-lg);
+          text-align:center; padding:60px 34px; margin-bottom:var(--gap);
+          background:linear-gradient(to bottom, rgba(255,255,255,0.13), rgba(255,255,255,0.05));
+          backdrop-filter:var(--g-blur); -webkit-backdrop-filter:var(--g-blur);
+          box-shadow:var(--g-rim); border-radius:var(--r-xl);
         }
-        .empty h2 { margin:0 0 10px; font-size:19px; font-weight:600; letter-spacing:-0.01em; }
-        .empty p { margin:0 0 22px; color:var(--ink-2); font-size:13.5px; line-height:1.65; }
+        .empty h2 { margin:0 0 10px; font-size:20px; font-weight:600; letter-spacing:-0.015em; }
+        .empty p { margin:0 0 24px; color:var(--ink-2); font-size:13.5px; line-height:1.65; }
 
-        .areas {
-          display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr));
-          gap:9px; margin:12px 0 18px; text-align:left;
-        }
+        .areas { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin:10px 0 18px; text-align:left; }
         .area {
           display:flex; align-items:center; gap:10px; font-size:13.5px; cursor:pointer;
-          background:var(--g-soft); border-radius:var(--r-md); padding:11px 14px;
-          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.07);
+          background:rgba(255,255,255,0.09); border-radius:var(--r-md); padding:12px 15px;
+          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.09);
           transition:background .16s ease;
         }
-        .area:hover { background:rgba(255,255,255,0.13); }
+        .area:hover { background:rgba(255,255,255,0.15); }
 
-        .shots { display:flex; gap:12px; padding:4px 0 12px; }
+        .shots { display:flex; gap:12px; padding:6px 0 14px; }
         .shot { flex:1; }
         .shot img {
-          width:100%; height:118px; object-fit:cover; display:block;
-          border-radius:var(--r-md); box-shadow:var(--hemma-tile-glass-rim,
-            inset 0 1px 0 -0.5px rgba(255,255,255,0.10), 0 2px 8px rgba(0,0,0,0.10));
+          width:100%; height:124px; object-fit:cover; display:block; border-radius:var(--r-md);
+          box-shadow:0 4px 16px rgba(0,0,0,0.30), inset 0 0 0 1px rgba(255,255,255,0.10);
         }
         .shot .none {
-          height:118px; border-radius:var(--r-md); display:grid; place-items:center;
-          color:var(--ink-3); font-size:12px; background:rgba(0,0,0,0.28);
+          height:124px; border-radius:var(--r-md); display:grid; place-items:center;
+          color:var(--ink-3); font-size:12px; background:rgba(0,0,0,0.30);
           box-shadow:inset 0 0 0 1px var(--hair);
         }
-        .shot .cap { color:var(--ink-3); font-size:11.5px; margin-top:6px; }
+        .shot .cap { color:var(--ink-3); font-size:11.5px; margin-top:7px; }
 
+        /* Glass on glass: nested surfaces sit brighter than the card. */
         .tile {
-          border-radius:var(--r-md); padding:12px 14px; margin:10px 0;
-          background:rgba(0,0,0,0.26); box-shadow:inset 0 0 0 1px var(--hair);
-        }
-        .tile.locked { opacity:.62; }
-        .thead { display:flex; align-items:center; gap:9px; }
-        .thead .grow { flex:1; font-size:13.5px; font-weight:550; }
-        .thead .kind { color:var(--ink-3); font-size:11.5px; font-weight:400; margin-left:6px; }
-        .mini {
-          padding:5px 12px; font-size:12px; font-weight:520; border-radius:999px;
-          background:var(--g-soft); color:var(--ink);
+          border-radius:var(--r-lg); padding:13px 16px; margin:11px 0;
+          background:rgba(255,255,255,0.07);
           box-shadow:inset 0 0 0 1px rgba(255,255,255,0.09);
         }
-        .mini:hover:not(:disabled) { background:rgba(255,255,255,0.15); filter:none; }
+        .tile.locked { opacity:.6; }
+        .thead { display:flex; align-items:center; gap:9px; }
+        .thead .grow { flex:1; font-size:13.5px; font-weight:560; }
+        .thead .kind { color:var(--ink-3); font-size:11.5px; font-weight:400; margin-left:6px; }
+        .mini {
+          padding:6px 13px; font-size:12px; font-weight:530; border-radius:999px;
+          background:rgba(255,255,255,0.13); color:var(--ink);
+          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12);
+        }
+        .mini:hover:not(:disabled) { background:rgba(255,255,255,0.20); filter:none; }
         .mini.danger { color:#ff453a; }
         .tbody { margin-top:6px; }
-        .tbody .row { grid-template-columns:minmax(110px,30%) 1fr; padding:9px 0; }
-        .addbar { display:flex; gap:9px; align-items:center; margin-top:14px; flex-wrap:wrap; }
-        .addbar select { border-radius:999px; padding:8px 14px; }
+        .tbody .row { grid-template-columns:minmax(110px,30%) 1fr; padding:10px 0; }
+        .addbar { display:flex; gap:10px; align-items:center; margin-top:15px; flex-wrap:wrap; }
+        .addbar select { border-radius:999px; padding:9px 15px; }
 
-        details { grid-column:1 / -1; margin-top:6px; }
-        summary { cursor:pointer; color:var(--ink-2); font-size:12.5px; padding:6px 2px; }
+        details { margin-top:4px; }
+        summary { cursor:pointer; color:var(--ink-2); font-size:12.5px; padding:7px 2px; }
         #log {
           margin-top:10px; max-height:230px; overflow:auto;
-          background:rgba(0,0,0,0.42); border-radius:var(--r-md); padding:14px 16px;
+          background:rgba(0,0,0,0.40); border-radius:var(--r-md); padding:14px 16px;
           box-shadow:inset 0 0 0 1px var(--hair);
           font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12px; line-height:1.6;
         }
         .line { color:var(--ink-2); white-space:pre-wrap; }
         .line.ok { color:#30d158; } .line.err { color:#ff453a; } .line.warn { color:#ffd60a; }
 
-        @media (max-width: 900px) {
+        @media (max-width:900px) {
           .body { padding:18px; }
-          #pane { grid-template-columns:1fr; }
-          .row { grid-template-columns:1fr; gap:6px; align-items:start; }
+          .row { grid-template-columns:1fr; gap:7px; align-items:start; }
         }
       </style>
+      <img class="bg" id="bg" alt="">
+      <div class="bgtint"></div>
       <div class="top">
         <button class="burger" id="burger" title="Menu">&#9776;</button>
         <h1>Hemma<span class="ver"></span></h1>
@@ -643,7 +653,9 @@ class HemmaPanel extends HTMLElement {
           <button id="save" disabled>Save changes</button>
         </div>
         <div id="status" class="status"></div>
+        <div id="rooms"></div>
         <div id="pane"></div>
+        <div id="tilespane"></div>
         <details>
           <summary>Details</summary>
           <div id="log"></div>
@@ -692,6 +704,8 @@ class HemmaPanel extends HTMLElement {
 
   _firstRun() {
     this.$("save").disabled = true;
+    this.$("rooms").innerHTML = "";
+    this.$("tilespane").innerHTML = "";
     this.$("pane").innerHTML = `
       <div class="empty">
         <h2>No dashboard yet</h2>
@@ -704,6 +718,8 @@ class HemmaPanel extends HTMLElement {
 
   async _createForm() {
     this.$("save").disabled = true;
+    this.$("rooms").innerHTML = "";
+    this.$("tilespane").innerHTML = "";
     this._status("");
     let areas = [];
     try {
@@ -819,6 +835,8 @@ class HemmaPanel extends HTMLElement {
         this._state = null;
         this.$("save").disabled = true;
         this._status("Not a Hemma dashboard.", "warn");
+        this.$("rooms").innerHTML = "";
+        this.$("tilespane").innerHTML = "";
         this.$("pane").innerHTML = `
           <div class="empty">
             <h2>Not a Hemma dashboard</h2>
@@ -891,7 +909,7 @@ class HemmaPanel extends HTMLElement {
       t.onclick = () => { this._room = i; this._renderTabs(); this._renderForm(); };
       el.appendChild(t);
     });
-    const pane = this.$("pane");
+    const pane = this.$("rooms");
     const old = pane.querySelector(".tabs");
     if (old) old.replaceWith(el); else pane.prepend(el);
 
@@ -942,6 +960,7 @@ class HemmaPanel extends HTMLElement {
     if (!room) return;
     const pane = this.$("pane");
     pane.querySelectorAll("section.card, datalist, .empty").forEach((n) => n.remove());
+    this._setBackdrop(room);
     const ids = Object.keys(this._hass.states);
 
     SECTIONS.forEach((sec) => {
@@ -1037,10 +1056,24 @@ class HemmaPanel extends HTMLElement {
       pane.appendChild(fs);
     });
 
-    this._renderTiles(room, pane);
+    this._renderTiles(room, this.$("tilespane"));
   }
 
   // ── room images ───────────────────────────────────────────────────────────
+
+  _setBackdrop(room) {
+    const bg = this.$("bg");
+    if (!bg) return;
+    const found = (this._imgs || []).find((i) => i.name === (room && room.variables.image));
+    const url = found && found.day;
+    if (!url) { bg.classList.remove("on"); return; }
+    if (bg.dataset.src === url) { bg.classList.add("on"); return; }
+    bg.dataset.src = url;
+    bg.classList.remove("on");
+    bg.onload = () => bg.classList.add("on");
+    bg.src = url;
+  }
+
 
   async _images(force) {
     if (this._imgs && !force) return this._imgs;
@@ -1100,7 +1133,7 @@ class HemmaPanel extends HTMLElement {
       preview();
     };
 
-    sel.onchange = () => { room.variables.image = sel.value; preview(); };
+    sel.onchange = () => { room.variables.image = sel.value; preview(); this._setBackdrop(room); };
 
     const file = document.createElement("input");
     file.type = "file";
@@ -1146,7 +1179,7 @@ class HemmaPanel extends HTMLElement {
 
     fill();
     this._images()
-      .then(fill)
+      .then(() => { fill(); this._setBackdrop(room); })
       .catch((e) => {
         this._log("could not list images: " + e.message, "warn");
         this._status("Image list unavailable. Restart Home Assistant to load the Hemma image endpoint.", "warn");
@@ -1166,8 +1199,9 @@ class HemmaPanel extends HTMLElement {
   }
 
   _renderTiles(room, pane) {
+    pane.innerHTML = "";
     const fs = document.createElement("section");
-    fs.className = "card wide";
+    fs.className = "card";
     fs.innerHTML = "<h2>Tiles</h2>";
 
     if (!room.tiles.length) {
