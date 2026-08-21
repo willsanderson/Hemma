@@ -549,6 +549,16 @@ hemma_entity:
               height: calc(26px * var(--hemma-toggle-scale, 1)) !important;
             }
           }
+          /* Visual size stays; a transparent halo brings the tap target to 44pt. */
+          @media (pointer: coarse) {
+            #container { position: relative !important; }
+            #container::after {
+              content: "";
+              position: absolute;
+              inset: -12px;
+              border-radius: 9999px;
+            }
+          }
           ha-card, #container {
             overflow: visible !important;
             background: transparent !important;

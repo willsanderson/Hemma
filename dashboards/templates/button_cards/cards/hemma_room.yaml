@@ -2690,8 +2690,8 @@ hemma_room:
     }
 
     /* Tablet - Time */
-    @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (pointer: coarse),
-           (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (hover: none) {
+    @media (min-width: 768px) and (max-width: 1600px) and (min-height: 501px) and (pointer: coarse),
+           (min-width: 768px) and (max-width: 1600px) and (min-height: 501px) and (hover: none) {
       #time {
         display: var(--hemma-time-nav-open, block);
         top: calc(env(safe-area-inset-top, 0px) + var(--hemma-time-top-tablet, 20px));
@@ -2717,8 +2717,8 @@ hemma_room:
     }
 
     /* Tablet - Now Playing */
-    @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (orientation: landscape) and (pointer: coarse),
-           (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (orientation: landscape) and (hover: none) {
+    @media (min-width: 768px) and (max-width: 1600px) and (min-height: 501px) and (orientation: landscape) and (pointer: coarse),
+           (min-width: 768px) and (max-width: 1600px) and (min-height: 501px) and (orientation: landscape) and (hover: none) {
       #now_playing {
         --np-vp: 1;
         pointer-events: auto;
@@ -2728,8 +2728,8 @@ hemma_room:
       }
     }
 
-    @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (orientation: portrait) and (pointer: coarse),
-           (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (orientation: portrait) and (hover: none) {
+    @media (min-width: 768px) and (max-width: 1600px) and (min-height: 501px) and (orientation: portrait) and (pointer: coarse),
+           (min-width: 768px) and (max-width: 1600px) and (min-height: 501px) and (orientation: portrait) and (hover: none) {
       #now_playing {
         --np-vp: 1;
         pointer-events: auto;

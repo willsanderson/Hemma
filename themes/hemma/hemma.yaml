@@ -1248,7 +1248,7 @@ Hemma:
       }
 
       /* Tablet */
-      @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (hover: none) and (pointer: coarse) {
+      @media (min-width: 768px) and (max-width: 1600px) and (min-height: 501px) and (hover: none) and (pointer: coarse) {
         html,
         :host,
         ha-app-layout {
@@ -1295,7 +1295,7 @@ Hemma:
       }
 
       /* 13" iPad gets a tile between the small-tablet and desktop sizes. */
-      @media (min-width: 1024px) and (max-width: 1400px) and (min-height: 1024px) and (hover: none) and (pointer: coarse) {
+      @media (min-width: 1024px) and (max-width: 1600px) and (min-height: 1024px) and (hover: none) and (pointer: coarse) {
         html,
         :host,
         ha-app-layout {
@@ -1308,7 +1308,7 @@ Hemma:
 
       /* Landscape tablets: solve tile width for a fixed peek rather than
          leaving the next card's sliver to integer division. */
-      @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+      @media (min-width: 768px) and (max-width: 1600px) and (min-height: 501px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
         html,
         :host,
         ha-app-layout {
@@ -1326,7 +1326,7 @@ Hemma:
       }
 
       /* Tablet Portrait */
-      @media (min-width: 768px) and (max-width: 1400px) and (orientation: portrait) and (min-height: 501px) and (hover: none) and (pointer: coarse) {
+      @media (min-width: 768px) and (max-width: 1600px) and (orientation: portrait) and (min-height: 501px) and (hover: none) and (pointer: coarse) {
         html,
         :host,
         ha-app-layout {
