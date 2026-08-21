@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.20.2";
+const PANEL_VERSION = "0.20.3";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -128,7 +128,7 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Time", icon: "clock", iconColor: "var(--ink)", group: "room", scope: "dashboard",
+    label: "Time", icon: "clock", iconRaw: true, group: "room", scope: "dashboard",
     desc: "The clock in the top corner. Shared by every room, like the navigation.",
     fields: [
       E("time_entity", "Time sensor", ["sensor"]),
