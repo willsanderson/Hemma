@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.11.0";
+const PANEL_VERSION = "0.12.0";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -95,68 +95,69 @@ function expandConfig(compact, scaffold, extras, templates) {
 
 // ─── form schema ──────────────────────────────────────────────────────────────
 
+const E = (key, label, domains) => ({ key, label, domains });
+const T = (key, label) => ({ key, label, type: "text" });
+const LIST = (key, label, domains) => ({ key, label, type: "list", domains });
+
+// Groups follow the anatomy of a room card rather than the variable prefixes,
+// so the panel reads in the order you meet things on the dashboard.
+const GROUPS = [
+  { id: "room", label: "The room", desc: "The photo, the name and the weather at the top." },
+  { id: "badges", label: "Badges", desc: "The pills under the room name. Tap one on the dashboard to open its popup." },
+  { id: "tiles", label: "Tiles", desc: "The row of cards along the bottom of the room." },
+];
+
 const SECTIONS = [
   {
-    label: "Appearance",
+    label: "Appearance", group: "room",
+    desc: "Room name and the background photo behind it.",
     fields: [
       { key: "__name", label: "Room name", type: "text", always: true },
       { key: "image", label: "Background image", type: "image", always: true },
     ],
   },
   {
-    label: "Climate",
+    label: "Weather", group: "room",
+    desc: "Temperature and conditions shown above the room name.",
     fields: [
-      { key: "climate_entity_1", label: "Thermostat 1", domains: ["climate"] },
-      { key: "climate_entity_2", label: "Thermostat 2", domains: ["climate"] },
-      { key: "temp_sensor_1", label: "Temperature 1", domains: ["sensor"] },
-      { key: "temp_sensor_2", label: "Temperature 2", domains: ["sensor"] },
-      { key: "temp_sensor_3", label: "Temperature 3", domains: ["sensor"] },
-      { key: "humidity_sensor", label: "Humidity", domains: ["sensor"] },
-      { key: "quality_sensor", label: "Air quality", domains: ["sensor"] },
+      E("weather_entity", "Weather", ["weather"]),
+      E("weather_temp_sensor", "Outdoor temperature", ["sensor"]),
+    ],
+  },
+  {
+    label: "Climate", group: "badges",
+    desc: "The Climate pill. Its popup shows air quality detail.",
+    fields: [
+      E("climate_entity_1", "Thermostat 1", ["climate"]),
+      E("climate_entity_2", "Thermostat 2", ["climate"]),
+      E("temp_sensor_1", "Temperature 1", ["sensor"]),
+      E("temp_sensor_2", "Temperature 2", ["sensor"]),
+      E("temp_sensor_3", "Temperature 3", ["sensor"]),
+      E("humidity_sensor", "Humidity", ["sensor"]),
+      E("quality_sensor", "Air quality", ["sensor"]),
       { key: "temp_unit", label: "Unit", type: "select", options: ["", "F", "C"] },
-    ],
-  },
-];
-
-
-SECTIONS.push(
-  {
-    label: "Lights",
-    fields: [
-      { key: "light_group_entity", label: "Room light group", domains: ["light"] },
-      { key: "light_entity_1", label: "Light 1", domains: ["light"] },
-      { key: "light_entity_2", label: "Light 2", domains: ["light"] },
-      { key: "light_entity_3", label: "Light 3", domains: ["light"] },
+      T("aqi_room_name", "Air quality popup heading"),
+      E("aqi_entity_pm25", "Air quality popup: PM2.5", ["sensor"]),
+      E("aqi_entity_pm10", "Air quality popup: PM10", ["sensor"]),
+      E("aqi_entity_voc", "Air quality popup: VOC", ["sensor"]),
+      E("aqi_entity_co2", "Air quality popup: CO2", ["sensor"]),
+      E("aqi_entity_temp", "Air quality popup: temperature", ["sensor"]),
+      E("aqi_entity_humidity", "Air quality popup: humidity", ["sensor"]),
     ],
   },
   {
-    label: "Weather",
+    label: "Lights", group: "badges",
+    desc: "The Lights pill, and which lights its popup controls.",
     fields: [
-      { key: "weather_entity", label: "Weather", domains: ["weather"] },
-      { key: "weather_temp_sensor", label: "Outdoor temperature", domains: ["sensor"] },
-    ],
-  }
-);
-
-
-const E = (key, label, domains) => ({ key, label, domains });
-const T = (key, label) => ({ key, label, type: "text" });
-const LIST = (key, label, domains) => ({ key, label, type: "list", domains });
-
-SECTIONS.push(
-  {
-    label: "Media",
-    fields: [
-      E("media_player_1", "Media player 1", ["media_player"]),
-      E("media_player_2", "Media player 2", ["media_player"]),
-      E("media_player_3", "Media player 3", ["media_player"]),
-      E("media_player_4", "Media player 4", ["media_player"]),
-      E("media_player_5", "Media player 5", ["media_player"]),
-      { key: "show_now_playing", label: "Now Playing panel", type: "bool" },
+      E("light_group_entity", "Room light group", ["light"]),
+      E("light_entity_1", "Light 1", ["light"]),
+      E("light_entity_2", "Light 2", ["light"]),
+      E("light_entity_3", "Light 3", ["light"]),
     ],
   },
   {
-    label: "Presence",
+    label: "People", group: "badges",
+    desc: "The People pill. One entry per person you want shown.",
     fields: [
       E("presence_entity_1", "Person 1", ["sensor", "person"]),
       E("presence_entity_2", "Person 2", ["sensor", "person"]),
@@ -165,70 +166,62 @@ SECTIONS.push(
     ],
   },
   {
-    label: "Air quality",
-    fields: [
-      T("aqi_room_name", "Popup title"),
-      E("aqi_entity_pm25", "PM2.5", ["sensor"]),
-      E("aqi_entity_pm10", "PM10", ["sensor"]),
-      E("aqi_entity_voc", "VOC", ["sensor"]),
-      E("aqi_entity_co2", "CO2", ["sensor"]),
-      E("aqi_entity_temp", "Temperature", ["sensor"]),
-      E("aqi_entity_humidity", "Humidity", ["sensor"]),
-    ],
-  },
-  {
-    label: "Security",
+    label: "Security", group: "badges",
+    desc: "The Security pill. Its popup lists locks, doors and cameras.",
     fields: [
       E("security_entity_1", "Badge entity 1", ["lock", "binary_sensor", "camera"]),
       T("security_label_1", "Badge label 1"),
       E("security_entity_2", "Badge entity 2", ["lock", "binary_sensor", "camera"]),
       T("security_label_2", "Badge label 2"),
       E("security_lock_entity", "Primary lock", ["lock"]),
-      LIST("security_locks", "Locks", ["lock"]),
-      LIST("security_door_sensors", "Door / window sensors", ["binary_sensor"]),
-      LIST("security_cameras", "Cameras", ["camera"]),
-      LIST("security_lock_batteries", "Lock batteries", ["sensor"]),
+      LIST("security_locks", "Popup: locks", ["lock"]),
+      LIST("security_door_sensors", "Popup: door and window sensors", ["binary_sensor"]),
+      LIST("security_cameras", "Popup: cameras", ["camera"]),
+      LIST("security_lock_batteries", "Popup: lock batteries", ["sensor"]),
     ],
   },
   {
-    label: "Energy",
+    label: "Energy", group: "badges",
+    desc: "The Energy pill, what it totals, and the devices in its popup.",
     fields: [
       E("energy_power_entity", "Current power", ["sensor"]),
       E("energy_usage_today", "Usage today", ["sensor"]),
       E("energy_usage_month", "Usage this month", ["sensor"]),
       E("energy_cost_today", "Cost today", ["sensor"]),
       E("energy_cost_month", "Cost this month", ["sensor"]),
+      E("energy_entity_1", "Badge item 1 entity", ["sensor"]),
+      T("energy_label_1", "Badge item 1 label"),
+      { key: "energy_unit_1", label: "Badge item 1 unit", type: "select", options: ["", "cost", "power", "energy"] },
+      E("energy_entity_2", "Badge item 2 entity", ["sensor"]),
+      T("energy_label_2", "Badge item 2 label"),
+      { key: "energy_unit_2", label: "Badge item 2 unit", type: "select", options: ["", "cost", "power", "energy"] },
+      T("energy_popup_name_1", "Popup device 1 name"),
+      E("energy_popup_power_1", "Popup device 1 power", ["sensor"]),
+      E("energy_popup_today_1", "Popup device 1 today", ["sensor"]),
+      E("energy_popup_month_1", "Popup device 1 month", ["sensor"]),
+      E("energy_popup_cost_today_1", "Popup device 1 cost today", ["sensor"]),
+      E("energy_popup_cost_month_1", "Popup device 1 cost month", ["sensor"]),
+      T("energy_popup_name_2", "Popup device 2 name"),
+      E("energy_popup_power_2", "Popup device 2 power", ["sensor"]),
+      E("energy_popup_today_2", "Popup device 2 today", ["sensor"]),
+      E("energy_popup_month_2", "Popup device 2 month", ["sensor"]),
+      E("energy_popup_cost_today_2", "Popup device 2 cost today", ["sensor"]),
+      E("energy_popup_cost_month_2", "Popup device 2 cost month", ["sensor"]),
     ],
   },
   {
-    label: "Energy badge items",
+    label: "Media", group: "badges",
+    desc: "Players shown as a media pill, or as the Now Playing panel.",
     fields: [
-      E("energy_entity_1", "Item 1 entity", ["sensor"]),
-      T("energy_label_1", "Item 1 label"),
-      { key: "energy_unit_1", label: "Item 1 unit", type: "select", options: ["", "cost", "power", "energy"] },
-      E("energy_entity_2", "Item 2 entity", ["sensor"]),
-      T("energy_label_2", "Item 2 label"),
-      { key: "energy_unit_2", label: "Item 2 unit", type: "select", options: ["", "cost", "power", "energy"] },
+      E("media_player_1", "Media player 1", ["media_player"]),
+      E("media_player_2", "Media player 2", ["media_player"]),
+      E("media_player_3", "Media player 3", ["media_player"]),
+      E("media_player_4", "Media player 4", ["media_player"]),
+      E("media_player_5", "Media player 5", ["media_player"]),
+      { key: "show_now_playing", label: "Use Now Playing panel", type: "bool" },
     ],
   },
-  {
-    label: "Energy popup devices",
-    fields: [
-      T("energy_popup_name_1", "Device 1 name"),
-      E("energy_popup_power_1", "Device 1 power", ["sensor"]),
-      E("energy_popup_today_1", "Device 1 today", ["sensor"]),
-      E("energy_popup_month_1", "Device 1 month", ["sensor"]),
-      E("energy_popup_cost_today_1", "Device 1 cost today", ["sensor"]),
-      E("energy_popup_cost_month_1", "Device 1 cost month", ["sensor"]),
-      T("energy_popup_name_2", "Device 2 name"),
-      E("energy_popup_power_2", "Device 2 power", ["sensor"]),
-      E("energy_popup_today_2", "Device 2 today", ["sensor"]),
-      E("energy_popup_month_2", "Device 2 month", ["sensor"]),
-      E("energy_popup_cost_today_2", "Device 2 cost today", ["sensor"]),
-      E("energy_popup_cost_month_2", "Device 2 cost month", ["sensor"]),
-    ],
-  }
-);
+];
 
 const slug = (s) =>
   String(s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "room";
@@ -531,7 +524,11 @@ class HemmaPanel extends HTMLElement {
         button:disabled { opacity:.35; cursor:default; }
 
         .bar { display:flex; gap:11px; align-items:center; flex-wrap:wrap; }
-        .bar select { min-width:230px; border-radius:999px; padding:10px 16px; }
+        .bar > select, .bar > button {
+          height:40px; box-sizing:border-box; display:inline-flex; align-items:center;
+        }
+        .bar > select { min-width:230px; border-radius:999px; padding:0 16px; }
+        .bar > button { padding:0 20px; }
         .status { min-height:20px; font-size:12.5px; margin:13px 2px 22px; color:var(--ink-2); }
         .status.ok { color:#30d158; } .status.err { color:#ff453a; } .status.warn { color:#ffd60a; }
 
@@ -549,9 +546,33 @@ class HemmaPanel extends HTMLElement {
 
         /* Two columns packed in JS. Browser column balancing put tall cards in
            unpredictable places, so sections go to whichever column is shorter. */
-        #pane { display:flex; gap:var(--gap); align-items:flex-start; }
+        #pane { display:block; }
+        .band { margin:0 0 30px; }
+        .bandhead { margin:0 0 12px; padding:0 2px; }
+        .bandhead h3 {
+          margin:0; font-size:12px; font-weight:600; letter-spacing:0.07em;
+          text-transform:uppercase; color:var(--ink-2);
+        }
+        .bandhead p { margin:4px 0 0; font-size:12.5px; color:var(--ink-3); }
+        .cols { display:flex; gap:var(--gap); align-items:flex-start; }
         .col { flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:var(--gap); }
-        @media (max-width:1080px) { #pane { flex-direction:column; } }
+        @media (max-width:1080px) { .cols { flex-direction:column; } }
+
+        .card > .cdesc { color:var(--ink-3); font-size:12px; margin:-2px 0 10px; }
+
+        .map { margin:0 0 26px; padding:16px 20px; display:flex; gap:22px; align-items:center; flex-wrap:wrap; }
+        .map svg { width:300px; height:158px; flex:0 0 auto; }
+        .map .legend { display:flex; flex-direction:column; gap:9px; min-width:230px; }
+        .map .leg {
+          display:flex; gap:10px; align-items:baseline; cursor:pointer; padding:6px 9px;
+          border-radius:10px; transition:background .15s ease;
+        }
+        .map .leg:hover { background:rgba(255,255,255,0.09); }
+        .map .leg b { font-size:13px; font-weight:590; min-width:64px; }
+        .map .leg span { font-size:12px; color:var(--ink-3); }
+        .map .zone { cursor:pointer; }
+        .map .zone rect, .map .zone circle { transition:opacity .15s ease; }
+        .map .zone:hover .hit { opacity:.30; }
 
         .card {
           width:100%; box-sizing:border-box;
@@ -583,6 +604,10 @@ class HemmaPanel extends HTMLElement {
         .row:first-of-type { border-top:0; }
         .row label { color:var(--ink-2); font-size:13.5px; }
         .row input, .row select, .row textarea { width:100%; box-sizing:border-box; }
+        .row > select, .row > input, .row > .combo > input { height:38px; }
+        .row > textarea { height:auto; }
+        .addbar > select { height:34px; box-sizing:border-box; padding:0 15px; }
+        .addbar > .mini { height:34px; box-sizing:border-box; }
         .hint { color:var(--ink-3); font-size:11.5px; padding:2px 0 12px; }
 
         textarea {
@@ -626,7 +651,7 @@ class HemmaPanel extends HTMLElement {
             0 18px 48px rgba(0,0,0,0.22);
         }
         .combo-opt {
-          padding:6px 10px; border-radius:7px; cursor:default; font-size:13.5px;
+          padding:6px 10px; border-radius:9px; cursor:default; font-size:13.5px;
           display:flex; align-items:center; gap:8px; color:var(--ink);
           white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
           line-height:1.4; letter-spacing:-0.005em;
@@ -1041,10 +1066,6 @@ class HemmaPanel extends HTMLElement {
     this._setBackdrop();
     const ids = Object.keys(this._hass.states);
 
-    const colA = document.createElement("div"); colA.className = "col";
-    const colB = document.createElement("div"); colB.className = "col";
-    pane.appendChild(colA); pane.appendChild(colB);
-
     // A field shows when it holds a value, when it is part of the room's
     // identity, or when it was revealed with the section's + button.
     const isSet = (f) => {
@@ -1054,26 +1075,63 @@ class HemmaPanel extends HTMLElement {
     const shownFields = (sec) => sec.fields.filter(
       (f) => f.always || isSet(f) || this._revealed.has(room.path + "|" + f.key));
 
-    // Tallest first so the columns come out even, but Appearance is pinned to
-    // the top left, then each column is restored to declaration order.
     const weigh = (sec) => {
       const v = shownFields(sec);
       return 2 + v.length
         + (v.some((f) => f.type === "image") ? 7 : 0)
         + v.filter((f) => f.type === "list").length * 2;
     };
+
+    pane.appendChild(this._roomMap());
+
+    const bandFor = {};
+    GROUPS.forEach((g) => {
+      const band = document.createElement("div");
+      band.className = "band";
+      band.id = "band-" + g.id;
+
+      const head = document.createElement("div");
+      head.className = "bandhead";
+      const h3 = document.createElement("h3");
+      h3.textContent = g.label;
+      const pd = document.createElement("p");
+      pd.textContent = g.desc;
+      head.appendChild(h3); head.appendChild(pd);
+      band.appendChild(head);
+
+      const cols = document.createElement("div");
+      cols.className = "cols";
+      const a = document.createElement("div"); a.className = "col";
+      cols.appendChild(a);
+      let b = a;
+      if (g.id !== "tiles") {
+        b = document.createElement("div"); b.className = "col";
+        cols.appendChild(b);
+      }
+      band.appendChild(cols);
+
+      pane.appendChild(band);
+      bandFor[g.id] = { colA: a, colB: b, wA: 0, wB: 0 };
+    });
+
+    // Balance within each band, tallest first, but keep the first section of a
+    // band at the top left so the order still reads.
     const side = new Map();
-    let wA = 0, wB = 0;
-    const pinned = SECTIONS[0];
-    side.set(pinned, colA);
-    wA += weigh(pinned);
-    SECTIONS.map((sec, i) => ({ sec, i, w: weigh(sec) }))
-      .filter(({ sec }) => sec !== pinned)
-      .sort((a, b) => b.w - a.w || a.i - b.i)
-      .forEach(({ sec, w }) => {
-        if (wA <= wB) { side.set(sec, colA); wA += w; }
-        else { side.set(sec, colB); wB += w; }
-      });
+    GROUPS.forEach((g) => {
+      const inGroup = SECTIONS.filter((sec) => sec.group === g.id);
+      if (!inGroup.length) return;
+      const slot = bandFor[g.id];
+      const pinned = inGroup[0];
+      side.set(pinned, slot.colA);
+      slot.wA += weigh(pinned);
+      inGroup.map((sec, i) => ({ sec, i, w: weigh(sec) }))
+        .filter(({ sec }) => sec !== pinned)
+        .sort((x, y) => y.w - x.w || x.i - y.i)
+        .forEach(({ sec, w }) => {
+          if (slot.wA <= slot.wB) { side.set(sec, slot.colA); slot.wA += w; }
+          else { side.set(sec, slot.colB); slot.wB += w; }
+        });
+    });
 
     SECTIONS.forEach((sec) => {
       const fs = document.createElement("section");
@@ -1106,6 +1164,13 @@ class HemmaPanel extends HTMLElement {
         head.appendChild(add);
       }
       fs.appendChild(head);
+
+      if (sec.desc) {
+        const d = document.createElement("div");
+        d.className = "cdesc";
+        d.textContent = sec.desc;
+        fs.appendChild(d);
+      }
 
       if (!visible.length) {
         const n = document.createElement("div");
@@ -1197,7 +1262,7 @@ class HemmaPanel extends HTMLElement {
       (side.get(sec) || colA).appendChild(fs);
     });
 
-    this._renderTiles(room, this.$("tilespane"));
+    this._renderTiles(room, bandFor.tiles.colA);
   }
 
   // Shared popover for the section + buttons, same material as the combobox.
@@ -1508,6 +1573,59 @@ class HemmaPanel extends HTMLElement {
         this._log("could not list images: " + e.message, "warn");
         this._status("Image list unavailable. Restart Home Assistant to load the Hemma image endpoint.", "warn");
       });
+  }
+
+  // ── room map ──────────────────────────────────────────────────────────────
+
+  // A drawing, not a preview. It shows where each group lands on a room card;
+  // the real thing is one click away on Open.
+  _roomMap() {
+    const card = document.createElement("section");
+    card.className = "card map";
+
+    const jump = (id) => {
+      const el = this.shadowRoot.getElementById("band-" + id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    card.innerHTML = `
+      <svg viewBox="0 0 300 158" role="img" aria-label="Where each group appears on a room card">
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6f8bb5"/><stop offset="100%" stop-color="#c99a6f"/>
+          </linearGradient>
+        </defs>
+        <rect x="1" y="1" width="298" height="156" rx="16" fill="url(#sky)" opacity="0.55"/>
+        <g class="zone" data-jump="room">
+          <rect class="hit" x="6" y="6" width="288" height="62" rx="12" fill="#fff" opacity="0"/>
+          <text x="20" y="30" fill="#fff" font-size="9" opacity="0.85">21&#176;</text>
+          <text x="20" y="52" fill="#fff" font-size="20" font-weight="600">Home</text>
+        </g>
+        <g class="zone" data-jump="badges">
+          <rect class="hit" x="6" y="72" width="288" height="26" rx="12" fill="#fff" opacity="0"/>
+          <rect x="20" y="76" width="52" height="18" rx="9" fill="#000" opacity="0.45"/>
+          <rect x="78" y="76" width="46" height="18" rx="9" fill="#000" opacity="0.45"/>
+          <rect x="130" y="76" width="52" height="18" rx="9" fill="#000" opacity="0.45"/>
+          <rect x="188" y="76" width="46" height="18" rx="9" fill="#000" opacity="0.45"/>
+        </g>
+        <g class="zone" data-jump="tiles">
+          <rect class="hit" x="6" y="104" width="288" height="48" rx="12" fill="#fff" opacity="0"/>
+          <rect x="20" y="110" width="62" height="38" rx="10" fill="#fff" opacity="0.82"/>
+          <rect x="88" y="110" width="62" height="38" rx="10" fill="#fff" opacity="0.82"/>
+          <rect x="156" y="110" width="62" height="38" rx="10" fill="#000" opacity="0.42"/>
+          <rect x="224" y="110" width="56" height="38" rx="10" fill="#000" opacity="0.42"/>
+        </g>
+      </svg>
+      <div class="legend">
+        <div class="leg" data-jump="room"><b>The room</b><span>photo, name, weather</span></div>
+        <div class="leg" data-jump="badges"><b>Badges</b><span>the pills under the name</span></div>
+        <div class="leg" data-jump="tiles"><b>Tiles</b><span>the cards along the bottom</span></div>
+      </div>`;
+
+    card.querySelectorAll("[data-jump]").forEach((el) => {
+      el.onclick = () => jump(el.dataset.jump);
+    });
+    return card;
   }
 
   // ── tiles ─────────────────────────────────────────────────────────────────
