@@ -613,14 +613,23 @@ Hemma:
   hemma-hover-overlay-opacity: 0.06
   hemma-entity-text-shadow: none
   hemma-entity-header-buffer: 220px
-  hemma-entity-height-desktop: calc(var(--hemma-u, 10px) * 20)
-  hemma-entity-col-width-desktop: calc(var(--hemma-u, 10px) * 29)
+  hemma-entity-height-desktop: clamp(200px, calc(var(--hemma-u, 10px) * 20), 220px)
+  hemma-entity-col-width-desktop: clamp(290px, calc(var(--hemma-u, 10px) * 29), 319px)
   hemma-entity-inner-pad-desktop: calc(var(--hemma-u, 10px) * 2)
   hemma-entity-name-font-desktop: calc(var(--hemma-u, 10px) * 1.8)
   hemma-entity-state-font-desktop: calc(var(--hemma-u, 10px) * 1.5)
   hemma-entity-icon-size-desktop: calc(var(--hemma-u, 10px) * 3.4)
   hemma-entity-height-tablet: 160px
   hemma-entity-col-width-tablet: 220px
+  hemma-entity-height-tablet-lg: 185px
+  hemma-entity-col-width-tablet-lg: 260px
+  hemma-entity-icon-size-tablet-lg: 32px
+  hemma-entity-name-font-tablet-lg: 16px
+  hemma-entity-state-font-tablet-lg: 14px
+
+  # Icon circle is a ratio of tile height, so the two can never drift apart.
+  hemma-icon-circle-ratio: 0.22
+  hemma-icon-circle-ratio-tablet: 0.2375
   hemma-entity-height-mobile: 110px
   hemma-entity-col-width-mobile: 180px
   hemma-entity-height-landscape: 120px
@@ -1271,9 +1280,23 @@ Hemma:
           --hemma-entity-name-font-current: var(--hemma-entity-name-font-tablet, 15px);
           --hemma-entity-state-font-current: var(--hemma-entity-state-font-tablet, 13px);
           --hemma-entity-icon-size-current: var(--hemma-entity-icon-size-tablet, 28px);
+          --hemma-icon-circle-ratio: var(--hemma-icon-circle-ratio-tablet, 0.2375);
           --hemma-button-card-box-shadow-current: var(--button-card-box-shadow);
           --hemma-button-card-box-shadow-active-current: var(--button-card-box-shadow-active);
           --hemma-button-card-box-shadow-hover-current: var(--button-card-box-shadow-hover);
+        }
+      }
+
+      /* 13" iPad gets a tile between the small-tablet and desktop sizes. */
+      @media (min-width: 1024px) and (max-width: 1400px) and (min-height: 1024px) and (hover: none) and (pointer: coarse) {
+        html,
+        :host,
+        ha-app-layout {
+          --hemma-entity-col-width-current: var(--hemma-entity-col-width-tablet-lg, 260px);
+          --hemma-entity-height-current: var(--hemma-entity-height-tablet-lg, 185px);
+          --hemma-entity-icon-size-current: var(--hemma-entity-icon-size-tablet-lg, 32px);
+          --hemma-entity-name-font-current: var(--hemma-entity-name-font-tablet-lg, 16px);
+          --hemma-entity-state-font-current: var(--hemma-entity-state-font-tablet-lg, 14px);
         }
       }
 
