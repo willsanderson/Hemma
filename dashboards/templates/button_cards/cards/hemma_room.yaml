@@ -1255,6 +1255,10 @@ hemma_room:
       card:
         type: custom:button-card
         template: hemma_time
+        variables:
+          time_entity: '[[[ return variables.time_entity || "sensor.time" ]]]'
+          use_12h: '[[[ return variables.use_12h !== false ]]]'
+          time_suffix: '[[[ return variables.time_suffix || "" ]]]'
 
     now_playing:
       card:
