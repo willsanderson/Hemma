@@ -452,16 +452,16 @@ Hemma:
   # ============================================================================
 
   # Desktop
-  hemma-u: clamp(10px, 0.575vw, 14px)
+  hemma-u: clamp(10px, 0.575vw, 11.5px)
 
   # Badges
-  hemma-u-badge: clamp(10px, 0.42vw, 13px)
+  hemma-u-badge: clamp(10px, 0.42vw, 11.5px)
 
   # Now Playing
-  hemma-u-np: clamp(10px, 0.575vw, 14.5px)
+  hemma-u-np: clamp(10px, 0.575vw, 11.5px)
 
   # Weather
-  hemma-u-weather: clamp(10px, 0.575vw, 19px)
+  hemma-u-weather: clamp(10px, 0.575vw, 12px)
 
   # Fonts
   hemma-chrome-font-size: calc(var(--hemma-u-badge, 10px) * 1.8)
@@ -621,6 +621,8 @@ Hemma:
   hemma-entity-icon-size-desktop: calc(var(--hemma-u, 10px) * 3.4)
   hemma-entity-height-tablet: 160px
   hemma-entity-col-width-tablet: 220px
+  # Landscape tablets solve tile width so exactly this much of the next card shows.
+  hemma-tile-peek-tablet: 60px
   hemma-entity-height-tablet-lg: 185px
   hemma-entity-col-width-tablet-lg: 260px
   hemma-entity-icon-size-tablet-lg: 32px
@@ -1281,6 +1283,7 @@ Hemma:
           --hemma-entity-state-font-current: var(--hemma-entity-state-font-tablet, 13px);
           --hemma-entity-icon-size-current: var(--hemma-entity-icon-size-tablet, 28px);
           --hemma-icon-circle-ratio: var(--hemma-icon-circle-ratio-tablet, 0.2375);
+          --hemma-entity-right-inset-current: 0px;
           --hemma-button-card-box-shadow-current: var(--button-card-box-shadow);
           --hemma-button-card-box-shadow-active-current: var(--button-card-box-shadow-active);
           --hemma-button-card-box-shadow-hover-current: var(--button-card-box-shadow-hover);
@@ -1297,6 +1300,16 @@ Hemma:
           --hemma-entity-icon-size-current: var(--hemma-entity-icon-size-tablet-lg, 32px);
           --hemma-entity-name-font-current: var(--hemma-entity-name-font-tablet-lg, 16px);
           --hemma-entity-state-font-current: var(--hemma-entity-state-font-tablet-lg, 14px);
+        }
+      }
+
+      /* Landscape tablets: solve tile width for a fixed peek rather than
+         leaving the next card's sliver to integer division. */
+      @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+        html,
+        :host,
+        ha-app-layout {
+          --hemma-entity-col-width-current: calc((100vw - var(--hemma-rail-left, 3vw) - var(--hemma-tile-peek-tablet, 60px) - 40px) / 5);
         }
       }
 
