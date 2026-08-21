@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from homeassistant.components.frontend import (
     async_register_built_in_panel,
@@ -37,6 +38,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # a path that is already there.
         pass
 
+    # The panel URL carries the file mtime so editing the JS busts the browser's
+    # module cache without needing a version bump or a manual hard refresh.
+    def _stamp() -> int:
+        try:
+            return int(os.path.getmtime(os.path.join(panel_dir, "hemma-panel.js")))
+        except OSError:
+            return 0
+
+    stamp = await hass.async_add_executor_job(_stamp)
+
     # Remove first so a version bump re-registers cleanly instead of being skipped.
     async_remove_panel(hass, PANEL_URL, warn_if_unknown=False)
     async_register_built_in_panel(
@@ -51,7 +62,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "name": "hemma-panel",
                 "embed_iframe": False,
                 "trust_external": False,
-                "module_url": f"{URL_BASE}/hemma-panel.js?v={VERSION}",
+                "module_url": f"{URL_BASE}/hemma-panel.js?v={VERSION}.{stamp}",
             }
         },
     )
