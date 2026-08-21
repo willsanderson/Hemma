@@ -623,6 +623,8 @@ Hemma:
   hemma-entity-col-width-tablet: 220px
   # Landscape tablets solve tile width so exactly this much of the next card shows.
   hemma-tile-peek-tablet: 60px
+  hemma-entity-col-width-tablet-landscape: calc((100vw - var(--hemma-rail-left, 3vw) - var(--hemma-tile-peek-tablet, 60px) - 40px) / 5)
+  hemma-entity-col-width-tablet-landscape-sm: calc((100vw - var(--hemma-rail-left, 3vw) - var(--hemma-tile-peek-tablet, 60px) - 32px) / 4)
   hemma-entity-height-tablet-lg: 185px
   hemma-entity-col-width-tablet-lg: 260px
   hemma-entity-icon-size-tablet-lg: 32px
@@ -1309,7 +1311,16 @@ Hemma:
         html,
         :host,
         ha-app-layout {
-          --hemma-entity-col-width-current: calc((100vw - var(--hemma-rail-left, 3vw) - var(--hemma-tile-peek-tablet, 60px) - 40px) / 5);
+          --hemma-entity-col-width-current: var(--hemma-entity-col-width-tablet-landscape);
+        }
+      }
+
+      /* Only the smallest landscape tablets fit four; everything else keeps five. */
+      @media (min-width: 768px) and (max-width: 1179px) and (min-height: 501px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+        html,
+        :host,
+        ha-app-layout {
+          --hemma-entity-col-width-current: var(--hemma-entity-col-width-tablet-landscape-sm);
         }
       }
 
