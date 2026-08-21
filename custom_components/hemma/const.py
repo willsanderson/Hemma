@@ -1,7 +1,7 @@
 """Constants for the Hemma integration."""
 
 DOMAIN = "hemma"
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 
 URL_BASE = "/hemma_panel"
 PANEL_URL = "hemma"

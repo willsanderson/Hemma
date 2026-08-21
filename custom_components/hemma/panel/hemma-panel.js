@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.5.0";
+const PANEL_VERSION = "0.6.0";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -189,6 +189,57 @@ function retargetRoutes(root, urlPath, rooms) {
   return { config: out, rewritten };
 }
 
+
+// ─── tile catalog ─────────────────────────────────────────────────────────────
+// Types people set up by hand. Anything else in a room's row is preserved
+// untouched and shown read-only, so unknown tiles can be reordered but not
+// edited into something the template does not understand.
+
+const HEMMA_ICONS = ["access_point","apple","apple_tv","aqi-high","aqi-low","aqi-medium","arrow-down","arrow-up","backward","battery","bedroom","clock","close","console","cooling","curtain-closed","curtain-open","decrease","default","door-closed","door-open","doorbell","electric","energy","fan","forward","fridge","gas","heating","home","homepod","hot_water","humidifier","humidity","increase","kitchen","lamp","light","living-room","lock-fill","lock-open-fill","lock-open","lock-unlocking-fill","lock-unlocking","lock","media","menu","motion","music","mute","pause","pendant-light","pendent","person","plant","play-next","play","plex","plug","power_off","power_on","ps5","ps5_off","purifier","scenes","skip_next","skip_previous","sony","speaker","temp-high","temp-low","temp-medium","thermostat","tv-play","tv","unmute","updates","vacuum-charge","vacuum-clean","vacuum","wifi","youtube.png"];
+
+const ICON_FIELD = { key: "icon", label: "Icon", type: "icon" };
+
+const TILE_TYPES = [
+  { id: "light", label: "Light", template: "hemma_light",
+    domains: ["light"], fields: [ICON_FIELD] },
+  { id: "thermostat", label: "Thermostat", template: "hemma_thermostat",
+    domains: ["climate"], fields: [{ key: "temp_sensor", label: "Temperature sensor", domains: ["sensor"] }] },
+  { id: "media", label: "Media player", template: "hemma_media",
+    domains: ["media_player"], fields: [
+      ICON_FIELD,
+      { key: "show_progress", label: "Show progress", type: "bool" },
+      { key: "progress_entity", label: "Progress entity", domains: ["media_player"] },
+    ] },
+  { id: "fan", label: "Fan", template: "hemma_fan",
+    domains: ["fan"], fields: [ICON_FIELD] },
+  { id: "cover", label: "Cover", template: "hemma_cover",
+    domains: ["cover"], fields: [ICON_FIELD] },
+  { id: "vacuum", label: "Vacuum", template: "hemma_vacuum",
+    domains: ["vacuum"], fields: [ICON_FIELD] },
+  { id: "air_purifier", label: "Air purifier", template: "hemma_air_purifier",
+    domains: ["fan"], fields: [ICON_FIELD] },
+  { id: "humidifier", label: "Humidifier", template: "hemma_humidifier",
+    domains: ["humidifier"], fields: [ICON_FIELD] },
+  { id: "updates", label: "Updates", template: "hemma_updates",
+    domains: ["sensor"], fields: [] },
+];
+
+const tileTypeOf = (tile) =>
+  typeof tile.template === "string"
+    ? TILE_TYPES.find((t) => t.template === tile.template) || null
+    : null;
+
+const tileLabel = (tile) => {
+  const t = tile.template;
+  return Array.isArray(t) ? t.join(" + ") : String(t || tile.type || "card");
+};
+
+function newTile(type) {
+  const tile = { type: "custom:button-card", template: type.template, entity: "", name: type.label };
+  if (type.fields.length) tile.variables = {};
+  return tile;
+}
+
 // ─── panel ────────────────────────────────────────────────────────────────────
 
 class HemmaPanel extends HTMLElement {
@@ -269,6 +320,18 @@ class HemmaPanel extends HTMLElement {
         .row label { color:#c7c7cc; font-size:13px; }
         .row input, .row select { width:100%; box-sizing:border-box; }
         .hint { grid-column:2; color:#636366; font-size:11px; margin-top:-5px; }
+        .tile { border:1px solid #3a3a3c; border-radius:10px; padding:10px 12px; margin:8px 0;
+                background:#242426; }
+        .tile.locked { opacity:.72; }
+        .thead { display:flex; align-items:center; gap:10px; }
+        .thead .grow { flex:1; font-size:13px; }
+        .thead .kind { color:#8e8e93; font-size:11.5px; }
+        .mini { padding:4px 9px; font-size:12px; font-weight:500; background:#2c2c2e;
+                border-color:#3a3a3c; border-radius:7px; }
+        .mini.danger { color:#ff453a; }
+        .tbody { margin-top:8px; }
+        .tbody .row { grid-template-columns:150px 1fr; margin:6px 0; }
+        .addbar { display:flex; gap:8px; align-items:center; margin-top:12px; flex-wrap:wrap; }
         .empty { border:1px dashed #3a3a3c; border-radius:14px; padding:36px 28px; text-align:center; }
         .empty h2 { margin:0 0 8px; font-size:18px; font-weight:600; }
         .empty p { margin:0 0 20px; color:#8e8e93; font-size:13.5px; line-height:1.6; }
@@ -609,6 +672,157 @@ class HemmaPanel extends HTMLElement {
       });
       pane.appendChild(fs);
     });
+
+    this._renderTiles(room, pane);
+  }
+
+  // ── tiles ─────────────────────────────────────────────────────────────────
+
+  _datalist(id, values, host) {
+    let dl = this.shadowRoot.getElementById(id);
+    if (dl) return id;
+    dl = document.createElement("datalist");
+    dl.id = id;
+    values.forEach((v) => { const o = document.createElement("option"); o.value = v; dl.appendChild(o); });
+    host.appendChild(dl);
+    return id;
+  }
+
+  _renderTiles(room, pane) {
+    const fs = document.createElement("fieldset");
+    fs.innerHTML = "<legend>Tiles</legend>";
+
+    if (!room.tiles.length) {
+      const e = document.createElement("div");
+      e.className = "hint";
+      e.style.gridColumn = "1";
+      e.textContent = "No tiles yet. Add one below.";
+      fs.appendChild(e);
+    }
+
+    room.tiles.forEach((tile, i) => fs.appendChild(this._tileCard(room, tile, i, pane)));
+
+    const bar = document.createElement("div");
+    bar.className = "addbar";
+    const sel = document.createElement("select");
+    TILE_TYPES.forEach((t) => {
+      const o = document.createElement("option");
+      o.value = t.id; o.textContent = t.label;
+      sel.appendChild(o);
+    });
+    const add = document.createElement("button");
+    add.className = "mini";
+    add.textContent = "Add tile";
+    add.onclick = () => {
+      const type = TILE_TYPES.find((t) => t.id === sel.value);
+      if (!type) return;
+      room.tiles.push(newTile(type));
+      this._renderForm();
+    };
+    bar.appendChild(sel);
+    bar.appendChild(add);
+    fs.appendChild(bar);
+
+    pane.appendChild(fs);
+  }
+
+  _tileCard(room, tile, i, pane) {
+    const type = tileTypeOf(tile);
+    const box = document.createElement("div");
+    box.className = "tile" + (type ? "" : " locked");
+
+    const head = document.createElement("div");
+    head.className = "thead";
+    const title = document.createElement("div");
+    title.className = "grow";
+    title.innerHTML = `${tile.name || "(unnamed)"} <span class="kind">${type ? type.label : tileLabel(tile) + " - not editable here"}</span>`;
+    head.appendChild(title);
+
+    const mk = (label, fn, danger) => {
+      const b = document.createElement("button");
+      b.className = "mini" + (danger ? " danger" : "");
+      b.textContent = label;
+      b.onclick = fn;
+      return b;
+    };
+    const move = (d) => {
+      const j = i + d;
+      if (j < 0 || j >= room.tiles.length) return;
+      const [x] = room.tiles.splice(i, 1);
+      room.tiles.splice(j, 0, x);
+      this._renderForm();
+    };
+    head.appendChild(mk("\u2191", () => move(-1)));
+    head.appendChild(mk("\u2193", () => move(1)));
+    head.appendChild(mk("Remove", () => { room.tiles.splice(i, 1); this._renderForm(); }, true));
+    box.appendChild(head);
+
+    if (!type) return box;
+
+    const body = document.createElement("div");
+    body.className = "tbody";
+
+    const addRow = (label, input) => {
+      const r = document.createElement("div");
+      r.className = "row";
+      const l = document.createElement("label");
+      l.textContent = label;
+      r.appendChild(l); r.appendChild(input);
+      body.appendChild(r);
+    };
+
+    const nameIn = document.createElement("input");
+    nameIn.value = tile.name || "";
+    nameIn.onchange = () => { tile.name = nameIn.value.trim(); title.firstChild.textContent = (tile.name || "(unnamed)") + " "; };
+    addRow("Name", nameIn);
+
+    const entIn = document.createElement("input");
+    entIn.value = tile.entity || "";
+    entIn.placeholder = type.domains.map((d) => d + ".").join(" / ");
+    entIn.setAttribute("list", this._datalist("dl-tile-" + type.id,
+      Object.keys(this._hass.states).filter((e) => type.domains.includes(e.split(".")[0])).sort(), pane));
+    entIn.onchange = () => { tile.entity = entIn.value.trim(); };
+    addRow("Entity", entIn);
+
+    type.fields.forEach((f) => {
+      const cur = (tile.variables || {})[f.key];
+      let input;
+
+      if (f.type === "bool") {
+        input = document.createElement("select");
+        [["", "(default)"], ["true", "yes"], ["false", "no"]].forEach(([v, t]) => {
+          const o = document.createElement("option"); o.value = v; o.textContent = t; input.appendChild(o);
+        });
+        input.value = cur === undefined ? "" : String(cur);
+      } else {
+        input = document.createElement("input");
+        input.value = cur === undefined ? "" : String(cur);
+        if (f.type === "icon") {
+          input.setAttribute("list", this._datalist("dl-icons", HEMMA_ICONS, pane));
+          input.placeholder = "hemma icon name";
+        } else if (f.domains) {
+          input.setAttribute("list", this._datalist("dl-tf-" + f.key,
+            Object.keys(this._hass.states).filter((e) => f.domains.includes(e.split(".")[0])).sort(), pane));
+          input.placeholder = f.domains.map((d) => d + ".").join(" / ");
+        }
+      }
+
+      input.onchange = () => {
+        const raw = input.value.trim();
+        if (raw === "") {
+          if (tile.variables) delete tile.variables[f.key];
+          if (tile.variables && !Object.keys(tile.variables).length) delete tile.variables;
+          return;
+        }
+        if (!tile.variables) tile.variables = {};
+        tile.variables[f.key] = f.type === "bool" ? raw === "true" : raw;
+      };
+
+      addRow(f.label, input);
+    });
+
+    box.appendChild(body);
+    return box;
   }
 }
 
