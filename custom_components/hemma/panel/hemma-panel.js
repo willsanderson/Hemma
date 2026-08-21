@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.12.0";
+const PANEL_VERSION = "0.13.0";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -500,7 +500,7 @@ class HemmaPanel extends HTMLElement {
           font:inherit; color:var(--ink);
           background:rgba(0,0,0,0.24);
           border:1px solid rgba(255,255,255,0.10);
-          border-radius:var(--r-sm); padding:9px 12px;
+          border-radius:13px; padding:9px 12px;
           transition:border-color .16s ease, background .16s ease;
         }
         select:focus, input:focus, textarea:focus {
@@ -528,6 +528,7 @@ class HemmaPanel extends HTMLElement {
           height:40px; box-sizing:border-box; display:inline-flex; align-items:center;
         }
         .bar > select { min-width:230px; border-radius:999px; padding:0 16px; }
+        .combo > input { border-radius:13px; }
         .bar > button { padding:0 20px; }
         .status { min-height:20px; font-size:12.5px; margin:13px 2px 22px; color:var(--ink-2); }
         .status.ok { color:#30d158; } .status.err { color:#ff453a; } .status.warn { color:#ffd60a; }
@@ -547,15 +548,16 @@ class HemmaPanel extends HTMLElement {
         /* Two columns packed in JS. Browser column balancing put tall cards in
            unpredictable places, so sections go to whichever column is shorter. */
         #pane { display:block; }
-        .band { margin:0 0 30px; }
+        .band { margin:0 0 30px; scroll-margin-top:92px; }
         .bandhead { margin:0 0 12px; padding:0 2px; }
         .bandhead h3 {
           margin:0; font-size:12px; font-weight:600; letter-spacing:0.07em;
           text-transform:uppercase; color:var(--ink-2);
         }
         .bandhead p { margin:4px 0 0; font-size:12.5px; color:var(--ink-3); }
-        .cols { display:flex; gap:var(--gap); align-items:flex-start; }
+        .cols { display:flex; gap:var(--gap); align-items:stretch; }
         .col { flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:var(--gap); }
+        .col > .card:last-child { flex:1 1 auto; }
         @media (max-width:1080px) { .cols { flex-direction:column; } }
 
         .card > .cdesc { color:var(--ink-3); font-size:12px; margin:-2px 0 10px; }
@@ -606,7 +608,7 @@ class HemmaPanel extends HTMLElement {
         .row input, .row select, .row textarea { width:100%; box-sizing:border-box; }
         .row > select, .row > input, .row > .combo > input { height:38px; }
         .row > textarea { height:auto; }
-        .addbar > select { height:34px; box-sizing:border-box; padding:0 15px; }
+        .addbar > select { height:34px; box-sizing:border-box; padding:0 16px; border-radius:999px; }
         .addbar > .mini { height:34px; box-sizing:border-box; }
         .hint { color:var(--ink-3); font-size:11.5px; padding:2px 0 12px; }
 
@@ -686,11 +688,11 @@ class HemmaPanel extends HTMLElement {
         .shots { display:flex; gap:12px; padding:6px 0 14px; }
         .shot { flex:1; }
         .shot img {
-          width:100%; height:124px; object-fit:cover; display:block; border-radius:var(--r-md);
+          width:100%; height:96px; object-fit:cover; display:block; border-radius:var(--r-md);
           box-shadow:0 4px 16px rgba(0,0,0,0.30), inset 0 0 0 1px rgba(255,255,255,0.10);
         }
         .shot .none {
-          height:124px; border-radius:var(--r-md); display:grid; place-items:center;
+          height:96px; border-radius:var(--r-md); display:grid; place-items:center;
           color:var(--ink-3); font-size:12px; background:rgba(0,0,0,0.30);
           box-shadow:inset 0 0 0 1px var(--hair);
         }
@@ -1062,6 +1064,7 @@ class HemmaPanel extends HTMLElement {
     const room = this._state && this._state.compact.rooms[this._room];
     if (!room) return;
     const pane = this.$("pane");
+    const beforeRects = this._captureCards();
     pane.innerHTML = "";
     this._setBackdrop();
     const ids = Object.keys(this._hass.states);
@@ -1136,6 +1139,7 @@ class HemmaPanel extends HTMLElement {
     SECTIONS.forEach((sec) => {
       const fs = document.createElement("section");
       fs.className = "card";
+      fs.dataset.k = sec.label;
 
       const visible = shownFields(sec);
       const hidden = sec.fields.filter((f) => !visible.includes(f));
@@ -1263,6 +1267,7 @@ class HemmaPanel extends HTMLElement {
     });
 
     this._renderTiles(room, bandFor.tiles.colA);
+    requestAnimationFrame(() => this._playCards(beforeRects));
   }
 
   // Shared popover for the section + buttons, same material as the combobox.
@@ -1575,6 +1580,47 @@ class HemmaPanel extends HTMLElement {
       });
   }
 
+  // ── layout animation ──────────────────────────────────────────────────────
+
+  // FLIP: measure before the rebuild, then animate each card from where it was
+  // to where it landed. Cards carry backdrop-filter, so only transform is
+  // animated; height is left to settle.
+  _captureCards() {
+    const map = new Map();
+    this.shadowRoot.querySelectorAll("section.card[data-k]").forEach((c) => {
+      map.set(c.dataset.k, c.getBoundingClientRect());
+    });
+    return map;
+  }
+
+  _playCards(before) {
+    if (!before || !before.size) return;
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (motion) return;
+
+    this.shadowRoot.querySelectorAll("section.card[data-k]").forEach((c) => {
+      const b = before.get(c.dataset.k);
+      const a = c.getBoundingClientRect();
+
+      if (!b) {
+        c.animate(
+          [{ opacity: 0, transform: "scale(0.96)" }, { opacity: 1, transform: "none" }],
+          { duration: 280, easing: "cubic-bezier(.22,1,.36,1)" }
+        );
+        return;
+      }
+
+      const dx = b.left - a.left;
+      const dy = b.top - a.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+
+      c.animate(
+        [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }],
+        { duration: 420, easing: "cubic-bezier(.34,1.42,.5,1)" }
+      );
+    });
+  }
+
   // ── room map ──────────────────────────────────────────────────────────────
 
   // A drawing, not a preview. It shows where each group lands on a room card;
@@ -1634,6 +1680,7 @@ class HemmaPanel extends HTMLElement {
     pane.innerHTML = "";
     const fs = document.createElement("section");
     fs.className = "card";
+    fs.dataset.k = "__tiles";
     fs.innerHTML = "<h2>Tiles</h2>";
 
     if (!room.tiles.length) {
