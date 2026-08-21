@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.9.0";
+const PANEL_VERSION = "0.10.0";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -399,6 +399,8 @@ class HemmaPanel extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    const dark = !(hass.themes && hass.themes.darkMode === false);
+    this.classList.toggle("is-light", !dark);
     if (!this._built) { this._built = true; this._build(); }
   }
   set narrow(v) { this._narrow = v; }
@@ -461,14 +463,20 @@ class HemmaPanel extends HTMLElement {
         .bg, .bgtint { position:fixed; inset:-160px; z-index:0; pointer-events:none; }
         .bg {
           width:calc(100% + 320px); height:calc(100% + 320px);
-          object-fit:cover; filter:blur(44px) saturate(130%);
+          object-fit:cover; filter:blur(16px) saturate(118%);
           opacity:0; transition:opacity .5s ease;
         }
         .bg.on { opacity:.55; }
         .bgtint {
           background:
-            radial-gradient(1100px 620px at 15% -12%, rgba(120,150,220,0.16), transparent 62%),
-            linear-gradient(to bottom, rgba(8,8,12,0.42), rgba(8,8,12,0.74));
+            radial-gradient(1100px 620px at 15% -12%, rgba(120,150,220,0.14), transparent 62%),
+            linear-gradient(to bottom, rgba(8,8,12,0.44), rgba(8,8,12,0.72));
+        }
+        :host(.is-light) .bg.on { opacity:.68; }
+        :host(.is-light) .bgtint {
+          background:
+            radial-gradient(1100px 620px at 15% -12%, rgba(120,150,220,0.10), transparent 62%),
+            linear-gradient(to bottom, rgba(8,8,12,0.30), rgba(8,8,12,0.58));
         }
         .top, .body { position:relative; z-index:1; }
 
@@ -482,11 +490,13 @@ class HemmaPanel extends HTMLElement {
         .top h1 { font-size:21px; font-weight:600; margin:0; letter-spacing:-0.022em; }
         .ver { font-size:11px; color:var(--ink-3); font-weight:450; margin-left:7px; letter-spacing:0; }
         .burger {
-          background:rgba(255,255,255,0.12); border:0; color:var(--ink); font-size:17px; cursor:pointer;
-          width:36px; height:36px; border-radius:50%; display:grid; place-items:center;
+          background:rgba(255,255,255,0.12); border:0; color:var(--ink); cursor:pointer;
+          width:38px; height:38px; border-radius:50%; padding:0;
+          display:flex; align-items:center; justify-content:center;
           box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10);
           transition:background .18s ease;
         }
+        .burger svg { width:20px; height:20px; display:block; }
         .burger:hover { background:rgba(255,255,255,0.20); }
         .spacer { flex:1; }
 
@@ -536,14 +546,14 @@ class HemmaPanel extends HTMLElement {
         .tab.on { background:var(--accent); box-shadow:none; }
         .roombar { display:flex; gap:8px; align-items:center; margin:0 0 22px; flex-wrap:wrap; }
 
-        /* Masonry flow so a short card never leaves a hole under it. */
-        #pane { column-count:2; column-gap:var(--gap); }
-        @media (max-width:1080px) { #pane { column-count:1; } }
+        /* Two columns packed in JS. Browser column balancing put tall cards in
+           unpredictable places, so sections go to whichever column is shorter. */
+        #pane { display:flex; gap:var(--gap); align-items:flex-start; }
+        .col { flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:var(--gap); }
+        @media (max-width:1080px) { #pane { flex-direction:column; } }
 
         .card {
-          break-inside:avoid; -webkit-column-break-inside:avoid;
-          display:inline-block; width:100%; box-sizing:border-box;
-          margin:0 0 var(--gap);
+          width:100%; box-sizing:border-box;
           background:
             linear-gradient(to bottom, rgba(255,255,255,0.13), rgba(255,255,255,0.06) 44%, rgba(255,255,255,0.045));
           backdrop-filter:var(--g-blur); -webkit-backdrop-filter:var(--g-blur);
@@ -568,6 +578,30 @@ class HemmaPanel extends HTMLElement {
           font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12px;
           min-height:72px; resize:vertical; line-height:1.5;
         }
+
+        /* Native datalist and select popups cannot be styled, so entity and icon
+           fields use a real listbox instead. */
+        .combo { position:relative; }
+        .combo > input { width:100%; box-sizing:border-box; }
+        .combo-menu {
+          display:none; position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:40;
+          max-height:264px; overflow-y:auto; padding:6px;
+          border-radius:var(--r-md);
+          background:rgba(38,38,44,0.86);
+          backdrop-filter:blur(30px) saturate(180%); -webkit-backdrop-filter:blur(30px) saturate(180%);
+          box-shadow:0 18px 44px rgba(0,0,0,0.52), inset 0 0 0 1px rgba(255,255,255,0.13);
+        }
+        .combo-menu.open { display:block; }
+        .combo-opt {
+          padding:8px 11px; border-radius:9px; cursor:pointer; font-size:13px;
+          display:flex; align-items:center; gap:8px; color:var(--ink);
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .combo-opt:hover { background:rgba(255,255,255,0.13); }
+        .combo-opt.active { background:var(--accent); color:#fff; }
+        .combo-opt .tick { width:13px; flex:0 0 13px; opacity:0; font-size:12px; }
+        .combo-opt.sel .tick { opacity:.9; }
+        .combo-empty { padding:9px 11px; color:var(--ink-3); font-size:12.5px; }
 
         .empty {
           text-align:center; padding:60px 34px; margin-bottom:var(--gap);
@@ -602,7 +636,7 @@ class HemmaPanel extends HTMLElement {
 
         /* Glass on glass: nested surfaces sit brighter than the card. */
         .tile {
-          border-radius:var(--r-lg); padding:13px 16px; margin:11px 0;
+          border-radius:var(--r-lg); padding:13px 16px; margin:0;
           background:rgba(255,255,255,0.07);
           box-shadow:inset 0 0 0 1px rgba(255,255,255,0.09);
         }
@@ -620,6 +654,8 @@ class HemmaPanel extends HTMLElement {
         .tbody { margin-top:6px; }
         .tbody .row { grid-template-columns:minmax(110px,30%) 1fr; padding:10px 0; }
         .addbar { display:flex; gap:10px; align-items:center; margin-top:15px; flex-wrap:wrap; }
+        #tilespane { margin-top:var(--gap); }
+        .tilegrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(330px,1fr)); gap:12px; }
         .addbar select { border-radius:999px; padding:9px 15px; }
 
         details { margin-top:4px; }
@@ -641,7 +677,11 @@ class HemmaPanel extends HTMLElement {
       <img class="bg" id="bg" alt="">
       <div class="bgtint"></div>
       <div class="top">
-        <button class="burger" id="burger" title="Menu">&#9776;</button>
+        <button class="burger" id="burger" title="Menu" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M4 7h16M4 12h16M4 17h16"/>
+          </svg>
+        </button>
         <h1>Hemma<span class="ver"></span></h1>
         <div class="spacer"></div>
       </div>
@@ -959,9 +999,27 @@ class HemmaPanel extends HTMLElement {
     const room = this._state && this._state.compact.rooms[this._room];
     if (!room) return;
     const pane = this.$("pane");
-    pane.querySelectorAll("section.card, datalist, .empty").forEach((n) => n.remove());
-    this._setBackdrop(room);
+    pane.innerHTML = "";
+    this._setBackdrop();
     const ids = Object.keys(this._hass.states);
+
+    const colA = document.createElement("div"); colA.className = "col";
+    const colB = document.createElement("div"); colB.className = "col";
+    pane.appendChild(colA); pane.appendChild(colB);
+
+    // Assign the tallest sections first so the columns come out even, then put
+    // each column back into declaration order so it still reads top to bottom.
+    const weigh = (sec) => sec.fields.length
+      + (sec.fields.some((f) => f.type === "image") ? 7 : 0)
+      + sec.fields.filter((f) => f.type === "list").length * 2;
+    const side = new Map();
+    let wA = 0, wB = 0;
+    SECTIONS.map((sec, i) => ({ sec, i, w: weigh(sec) }))
+      .sort((a, b) => b.w - a.w || a.i - b.i)
+      .forEach(({ sec, w }) => {
+        if (wA <= wB) { side.set(sec, colA); wA += w; }
+        else { side.set(sec, colB); wB += w; }
+      });
 
     SECTIONS.forEach((sec) => {
       const fs = document.createElement("section");
@@ -1020,22 +1078,16 @@ class HemmaPanel extends HTMLElement {
             input.appendChild(op);
           });
           input.value = String(cur);
+        } else if (f.domains) {
+          const c = this._combo(cur, this._entityList(f.domains),
+            f.domains.map((d) => d + ".").join(" / "),
+            (v) => { if (v === "") delete room.variables[f.key]; else room.variables[f.key] = v; });
+          row.appendChild(c.wrap);
+          fs.appendChild(row);
+          return;
         } else {
           input = document.createElement("input");
           input.value = String(cur);
-          if (f.domains) {
-            const listId = "dl-" + f.key;
-            let dl = this.shadowRoot.getElementById(listId);
-            if (!dl) {
-              dl = document.createElement("datalist");
-              dl.id = listId;
-              ids.filter((e) => f.domains.includes(e.split(".")[0])).sort()
-                 .forEach((e) => { const o = document.createElement("option"); o.value = e; dl.appendChild(o); });
-              pane.appendChild(dl);
-            }
-            input.setAttribute("list", listId);
-            input.placeholder = f.domains.map((d) => d + ".").join(" / ");
-          }
         }
 
         input.onchange = () => {
@@ -1053,18 +1105,121 @@ class HemmaPanel extends HTMLElement {
           fs.appendChild(h);
         }
       });
-      pane.appendChild(fs);
+      (side.get(sec) || colA).appendChild(fs);
     });
 
     this._renderTiles(room, this.$("tilespane"));
   }
 
+  // ── combobox ──────────────────────────────────────────────────────────────
+
+  _combo(value, list, placeholder, onChange) {
+    const wrap = document.createElement("div");
+    wrap.className = "combo";
+    const input = document.createElement("input");
+    input.value = value == null ? "" : String(value);
+    if (placeholder) input.placeholder = placeholder;
+    const menu = document.createElement("div");
+    menu.className = "combo-menu";
+    wrap.appendChild(input);
+    wrap.appendChild(menu);
+
+    let shown = [];
+    let active = -1;
+    let current = input.value;
+
+    const close = () => { menu.classList.remove("open"); active = -1; };
+
+    const commit = (v) => {
+      current = v;
+      input.value = v;
+      onChange(v);
+      close();
+    };
+
+    const paint = () => {
+      [...menu.children].forEach((el, i) => el.classList.toggle("active", i === active));
+      if (active >= 0 && menu.children[active]) {
+        menu.children[active].scrollIntoView({ block: "nearest" });
+      }
+    };
+
+    const open = () => {
+      const q = input.value.trim().toLowerCase();
+      shown = list.filter((o) => !q || o.toLowerCase().includes(q));
+      menu.innerHTML = "";
+
+      if (!shown.length) {
+        const e = document.createElement("div");
+        e.className = "combo-empty";
+        e.textContent = "No match";
+        menu.appendChild(e);
+        menu.classList.add("open");
+        active = -1;
+        return;
+      }
+
+      shown.slice(0, 300).forEach((o) => {
+        const d = document.createElement("div");
+        d.className = "combo-opt" + (o === current ? " sel" : "");
+        const tick = document.createElement("span");
+        tick.className = "tick";
+        tick.textContent = "\u2713";
+        const label = document.createElement("span");
+        label.textContent = o;
+        d.appendChild(tick);
+        d.appendChild(label);
+        // mousedown, because blur would close the menu before a click lands.
+        d.onmousedown = (ev) => { ev.preventDefault(); commit(o); };
+        menu.appendChild(d);
+      });
+
+      active = shown.indexOf(current);
+      menu.classList.add("open");
+      paint();
+    };
+
+    input.onfocus = open;
+    input.oninput = () => { open(); active = -1; paint(); };
+    input.onblur = () => { setTimeout(close, 120); if (input.value.trim() !== current) commit(input.value.trim()); };
+
+    input.onkeydown = (ev) => {
+      if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+        ev.preventDefault();
+        if (!menu.classList.contains("open")) open();
+        if (!shown.length) return;
+        active += ev.key === "ArrowDown" ? 1 : -1;
+        if (active < 0) active = Math.min(shown.length, 300) - 1;
+        if (active >= Math.min(shown.length, 300)) active = 0;
+        paint();
+      } else if (ev.key === "Enter") {
+        if (menu.classList.contains("open") && active >= 0 && shown[active]) {
+          ev.preventDefault();
+          commit(shown[active]);
+        }
+      } else if (ev.key === "Escape") {
+        close();
+      }
+    };
+
+    return { wrap, input };
+  }
+
+  _entityList(domains) {
+    return Object.keys(this._hass.states)
+      .filter((e) => domains.includes(e.split(".")[0]))
+      .sort();
+  }
+
   // ── room images ───────────────────────────────────────────────────────────
 
-  _setBackdrop(room) {
+  // Pinned to the dashboard's primary room so it does not shift while you work.
+  _setBackdrop() {
     const bg = this.$("bg");
     if (!bg) return;
-    const found = (this._imgs || []).find((i) => i.name === (room && room.variables.image));
+    const rooms = (this._state && this._state.compact.rooms) || [];
+    const home = rooms.find((r) => r.path === "home") || rooms[0];
+    const found = (this._imgs || []).find((i) => i.name === (home && home.variables.image));
     const url = found && found.day;
     if (!url) { bg.classList.remove("on"); return; }
     if (bg.dataset.src === url) { bg.classList.add("on"); return; }
@@ -1133,7 +1288,7 @@ class HemmaPanel extends HTMLElement {
       preview();
     };
 
-    sel.onchange = () => { room.variables.image = sel.value; preview(); this._setBackdrop(room); };
+    sel.onchange = () => { room.variables.image = sel.value; preview(); this._setBackdrop(); };
 
     const file = document.createElement("input");
     file.type = "file";
@@ -1179,7 +1334,7 @@ class HemmaPanel extends HTMLElement {
 
     fill();
     this._images()
-      .then(() => { fill(); this._setBackdrop(room); })
+      .then(() => { fill(); this._setBackdrop(); })
       .catch((e) => {
         this._log("could not list images: " + e.message, "warn");
         this._status("Image list unavailable. Restart Home Assistant to load the Hemma image endpoint.", "warn");
@@ -1187,16 +1342,6 @@ class HemmaPanel extends HTMLElement {
   }
 
   // ── tiles ─────────────────────────────────────────────────────────────────
-
-  _datalist(id, values, host) {
-    let dl = this.shadowRoot.getElementById(id);
-    if (dl) return id;
-    dl = document.createElement("datalist");
-    dl.id = id;
-    values.forEach((v) => { const o = document.createElement("option"); o.value = v; dl.appendChild(o); });
-    host.appendChild(dl);
-    return id;
-  }
 
   _renderTiles(room, pane) {
     pane.innerHTML = "";
@@ -1207,12 +1352,14 @@ class HemmaPanel extends HTMLElement {
     if (!room.tiles.length) {
       const e = document.createElement("div");
       e.className = "hint";
-      e.style.gridColumn = "1";
       e.textContent = "No tiles yet. Add one below.";
       fs.appendChild(e);
     }
 
-    room.tiles.forEach((tile, i) => fs.appendChild(this._tileCard(room, tile, i, pane)));
+    const grid = document.createElement("div");
+    grid.className = "tilegrid";
+    room.tiles.forEach((tile, i) => grid.appendChild(this._tileCard(room, tile, i, pane)));
+    fs.appendChild(grid);
 
     const bar = document.createElement("div");
     bar.className = "addbar";
@@ -1288,13 +1435,10 @@ class HemmaPanel extends HTMLElement {
     nameIn.onchange = () => { tile.name = nameIn.value.trim(); title.firstChild.textContent = (tile.name || "(unnamed)") + " "; };
     addRow("Name", nameIn);
 
-    const entIn = document.createElement("input");
-    entIn.value = tile.entity || "";
-    entIn.placeholder = type.domains.map((d) => d + ".").join(" / ");
-    entIn.setAttribute("list", this._datalist("dl-tile-" + type.id,
-      Object.keys(this._hass.states).filter((e) => type.domains.includes(e.split(".")[0])).sort(), pane));
-    entIn.onchange = () => { tile.entity = entIn.value.trim(); };
-    addRow("Entity", entIn);
+    const entCombo = this._combo(tile.entity || "", this._entityList(type.domains),
+      type.domains.map((d) => d + ".").join(" / "),
+      (v) => { tile.entity = v; });
+    addRow("Entity", entCombo.wrap);
 
     type.fields.forEach((f) => {
       const cur = (tile.variables || {})[f.key];
@@ -1320,16 +1464,26 @@ class HemmaPanel extends HTMLElement {
         });
         input.value = cur === undefined ? "" : String(cur);
       } else {
+        const set = (v) => {
+          if (v === "") {
+            if (tile.variables) delete tile.variables[f.key];
+            if (tile.variables && !Object.keys(tile.variables).length) delete tile.variables;
+            return;
+          }
+          if (!tile.variables) tile.variables = {};
+          tile.variables[f.key] = v;
+        };
+        if (f.type === "icon") {
+          addRow(f.label, this._combo(cur, HEMMA_ICONS, "hemma icon name", set).wrap);
+          return;
+        }
+        if (f.domains) {
+          addRow(f.label, this._combo(cur, this._entityList(f.domains),
+            f.domains.map((d) => d + ".").join(" / "), set).wrap);
+          return;
+        }
         input = document.createElement("input");
         input.value = cur === undefined ? "" : String(cur);
-        if (f.type === "icon") {
-          input.setAttribute("list", this._datalist("dl-icons", HEMMA_ICONS, pane));
-          input.placeholder = "hemma icon name";
-        } else if (f.domains) {
-          input.setAttribute("list", this._datalist("dl-tf-" + f.key,
-            Object.keys(this._hass.states).filter((e) => f.domains.includes(e.split(".")[0])).sort(), pane));
-          input.placeholder = f.domains.map((d) => d + ".").join(" / ");
-        }
       }
 
       input.onchange = () => {
