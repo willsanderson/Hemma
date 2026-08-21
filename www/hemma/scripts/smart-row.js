@@ -316,6 +316,10 @@ class HemmaSmartRow extends HTMLElement {
         wrapper.style.opacity = '0';
       }));
       setTimeout(() => {
+        // showWrapper can take a wrapper back mid-collapse (a conditional card
+        // that flips off and on inside 220ms); hiding it here would strand it
+        // off screen until the next 500ms sweep.
+        if (!this._animHiding.has(wrapper)) return;
         this._animHiding.delete(wrapper);
         wrapper.style.display = 'none';
         clearAnimStyles(wrapper);
@@ -332,6 +336,7 @@ class HemmaSmartRow extends HTMLElement {
       }
       if (wrapper.style.display !== 'none') return;
       wrapper.style.display = '';
+      if (wrapper.dataset.size === 'large') this._scheduleLargeFill(wrapper);
       if (!animate) return;
       this._animShowing.add(wrapper);
       const axis = horizontal ? 'width' : 'height';
@@ -368,6 +373,7 @@ class HemmaSmartRow extends HTMLElement {
         wrapper.style.opacity = '1';
       }));
       setTimeout(() => {
+        if (!this._animShowing.has(wrapper)) return;
         this._animShowing.delete(wrapper);
         clearAnimStyles(wrapper);
       }, DUR + 50);
@@ -466,6 +472,45 @@ class HemmaSmartRow extends HTMLElement {
     });
   }
 
+  _scheduleLargeFill(wrapper) {
+    const run = () => this._stampLargeFill(wrapper);
+    requestAnimationFrame(run);
+    setTimeout(run, 400);
+    setTimeout(run, 1200);
+  }
+
+  // A large tile's height comes from the two grid tracks its wrapper spans, and
+  // the card only inherits that if every element down to its ha-card has a
+  // definite height. The stylesheet reaches the wrapper's own child and stops at
+  // the first shadow boundary, so a wrapped card (conditional, auto-entities, a
+  // swipe card) has to be stamped by hand. Returns whether an ha-card was found
+  // below, so only elements on the path to one are touched.
+  _stampLargeFill(el, depth = 0) {
+    if (!el || depth > 16) return false;
+    if (el.tagName === 'HA-CARD') return true;
+    // Inline display, not computed: WebKit reports none for a whole hidden
+    // subtree, which would skip every card in a row that is merely off screen.
+    if (el.style && el.style.display === 'none') return false;
+
+    let onPath = false;
+    const roots = el.shadowRoot ? [el.shadowRoot, el] : [el];
+    for (const root of roots) {
+      for (const kid of root.children || []) {
+        if (this._stampLargeFill(kid, depth + 1)) onPath = true;
+      }
+    }
+
+    // Card elements only. A host card's own layout divs already size themselves,
+    // and stamping them would fight the stylesheet that owns them.
+    if (onPath && depth > 0 && el.tagName.includes('-')) {
+      if (getComputedStyle(el).display === 'inline') el.style.display = 'block';
+      el.style.height    = '100%';
+      el.style.flexGrow  = '1';
+      el.style.minHeight = '0';
+    }
+    return onPath;
+  }
+
   get hass() { return this._hass; }
 
   async _init() {
@@ -537,7 +582,10 @@ class HemmaSmartRow extends HTMLElement {
       wrapper.style.setProperty('--hemma-position-index', String(i));
       if (cardFlag(cfg, 'full_width')) wrapper.dataset.fullwidth = '1';
       if (cardFlag(cfg, 'collapsed_spacer')) wrapper.dataset.collapsedSpacer = '1';
-      if (getCardSize(cfg) === 'large') wrapper.dataset.size = 'large';
+      if (getCardSize(cfg) === 'large') {
+        wrapper.dataset.size = 'large';
+        this._scheduleLargeFill(wrapper);
+      }
       wrapper.style.setProperty('--hemma-init-play', 'paused');
       if (card) wrapper.appendChild(card);
       container.appendChild(wrapper);
@@ -858,8 +906,14 @@ class HemmaSmartRow extends HTMLElement {
            trick), but this grid's row-gap still applies above AND below
            that now-empty row regardless of its size — a phantom double gap
            before whatever comes next (e.g. Favorites). Cancel exactly one
-           gap's worth so the total space matches every other section gap. */
-        .card-wrapper:has([data-hemma-np-empty]) {
+           gap's worth so the total space matches every other section gap.
+
+           CHILD COMBINATOR LOAD-BEARING for the same reason as the rule below:
+           unscoped, it followed Now Playing into the media popup, where the
+           gap it cancels doesn't exist and its margin-top transition turned
+           filter-overlay's inline alignment stamps into visible half-second
+           glides. */
+        #container > .card-wrapper:has([data-hemma-np-empty]) {
           margin-top: -8px;
           transition: margin-top 0.5s cubic-bezier(0.32, 0.72, 0, 1);
         }
