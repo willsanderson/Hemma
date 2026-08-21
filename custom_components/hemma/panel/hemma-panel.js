@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.13.0";
+const PANEL_VERSION = "0.14.0";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -222,6 +222,52 @@ const SECTIONS = [
     ],
   },
 ];
+
+const FINGERPRINT_KEY = "hemma_template_fingerprint";
+
+const hashStr = (str) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(36);
+};
+
+const fingerprintOf = (templates) => {
+  const out = {};
+  Object.keys(templates || {}).forEach((k) => { out[k] = hashStr(stable(templates[k])); });
+  return out;
+};
+
+// Refresh the templates a dashboard carries, but never overwrite one that has
+// been edited. A template is only replaced when it still hashes to what the
+// panel last wrote; anything with no fingerprint or a changed one is left as is.
+function refreshTemplates(current, bundleTemplates, storedPrints) {
+  const prints = storedPrints || null;
+  const next = { ...(current || {}) };
+  const outPrints = {};
+  let updated = 0, added = 0, kept = 0;
+
+  Object.keys(bundleTemplates).forEach((k) => {
+    const mine = next[k];
+
+    if (mine === undefined) {
+      next[k] = bundleTemplates[k];
+      outPrints[k] = hashStr(stable(bundleTemplates[k]));
+      added += 1;
+      return;
+    }
+
+    // No fingerprint at all means this dashboard predates tracking, so adopt it.
+    const owned = prints === null || (prints[k] && prints[k] === hashStr(stable(mine)));
+    if (!owned) { kept += 1; return; }
+
+    if (stable(mine) !== stable(bundleTemplates[k])) updated += 1;
+    next[k] = bundleTemplates[k];
+    outPrints[k] = hashStr(stable(bundleTemplates[k]));
+  });
+
+  // Templates the dashboard has that the bundle does not are always left alone.
+  return { templates: next, prints: outPrints, updated, added, kept };
+}
 
 const slug = (s) =>
   String(s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "room";
@@ -891,7 +937,9 @@ class HemmaPanel extends HTMLElement {
       const images = rooms.map((r) => r.variables.image);
       rooms.forEach((r) => { r.variables.preload_rooms = images.slice(); });
 
-      const built = expandConfig({ rooms }, bundle.scaffold, {}, bundle.templates);
+      const extras = {};
+      extras[FINGERPRINT_KEY] = fingerprintOf(bundle.templates);
+      const built = expandConfig({ rooms }, bundle.scaffold, extras, bundle.templates);
 
       // Applied to the whole config so the copy inside hemma_room is caught too.
       const fixed = retargetRoutes(built, url_path, rooms);
@@ -980,7 +1028,25 @@ class HemmaPanel extends HTMLElement {
     const s = this._state;
     if (!s) return;
     const url_path = this.$("dash").value;
-    const built = expandConfig(s.compact, s.scaffold, s.extras, s.templates);
+
+    let templates = s.templates;
+    let extras = s.extras;
+    try {
+      const bundle = await this._bundleOnce();
+      const r = refreshTemplates(s.templates, bundle.templates, s.extras[FINGERPRINT_KEY]);
+      templates = r.templates;
+      extras = { ...s.extras };
+      extras[FINGERPRINT_KEY] = r.prints;
+      if (r.updated || r.added) {
+        this._log(`refreshed ${r.updated} template(s)` + (r.added ? `, added ${r.added}` : ""), "ok");
+      }
+      if (r.kept) this._log(`kept ${r.kept} template(s) you have modified`, "warn");
+      if (!s.extras[FINGERPRINT_KEY]) this._log("first refresh on this dashboard, adopted all templates", "warn");
+    } catch (e) {
+      this._log("could not refresh templates: " + e.message, "warn");
+    }
+
+    const built = expandConfig(s.compact, s.scaffold, extras, templates);
 
     // Nav routes are derived from the rooms, so re-deriving them on every save
     // repairs dashboards written before the whole-config retarget existed.
