@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.10.3";
+const PANEL_VERSION = "0.11.0";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -99,8 +99,8 @@ const SECTIONS = [
   {
     label: "Appearance",
     fields: [
-      { key: "__name", label: "Room name", type: "text" },
-      { key: "image", label: "Background image", type: "image" },
+      { key: "__name", label: "Room name", type: "text", always: true },
+      { key: "image", label: "Background image", type: "image", always: true },
     ],
   },
   {
@@ -395,6 +395,7 @@ class HemmaPanel extends HTMLElement {
     this._state = null;
     this._room = 0;
     this._bundle = null;
+    this._revealed = new Set();
   }
 
   set hass(hass) {
@@ -560,10 +561,20 @@ class HemmaPanel extends HTMLElement {
           box-shadow:var(--g-rim);
           border-radius:var(--r-xl); padding:6px 24px 20px;
         }
-        .card > h2 {
-          font-size:16px; font-weight:600; letter-spacing:-0.015em;
-          margin:20px 0 8px; color:var(--ink);
+        .card > .chead { display:flex; align-items:center; gap:10px; margin:20px 0 8px; }
+        .card > .chead h2 {
+          font-size:16px; font-weight:600; letter-spacing:-0.015em; margin:0; flex:1; color:var(--ink);
         }
+        .card > .chead .count { color:var(--ink-3); font-size:12px; font-weight:450; }
+        .plus {
+          width:26px; height:26px; padding:0; border-radius:50%; flex:0 0 26px;
+          display:flex; align-items:center; justify-content:center;
+          background:rgba(255,255,255,0.13); color:var(--ink);
+          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12);
+        }
+        .plus:hover:not(:disabled) { background:rgba(255,255,255,0.22); filter:none; }
+        .plus svg { width:15px; height:15px; display:block; }
+        .card > .empty-note { color:var(--ink-3); font-size:12.5px; padding:2px 0 12px; }
 
         .row {
           display:grid; grid-template-columns:minmax(120px,36%) 1fr; gap:14px; align-items:center;
@@ -1034,14 +1045,30 @@ class HemmaPanel extends HTMLElement {
     const colB = document.createElement("div"); colB.className = "col";
     pane.appendChild(colA); pane.appendChild(colB);
 
-    // Assign the tallest sections first so the columns come out even, then put
-    // each column back into declaration order so it still reads top to bottom.
-    const weigh = (sec) => sec.fields.length
-      + (sec.fields.some((f) => f.type === "image") ? 7 : 0)
-      + sec.fields.filter((f) => f.type === "list").length * 2;
+    // A field shows when it holds a value, when it is part of the room's
+    // identity, or when it was revealed with the section's + button.
+    const isSet = (f) => {
+      const v = f.key === "__name" ? room.name : room.variables[f.key];
+      return v !== undefined && v !== "" && !(Array.isArray(v) && !v.length);
+    };
+    const shownFields = (sec) => sec.fields.filter(
+      (f) => f.always || isSet(f) || this._revealed.has(room.path + "|" + f.key));
+
+    // Tallest first so the columns come out even, but Appearance is pinned to
+    // the top left, then each column is restored to declaration order.
+    const weigh = (sec) => {
+      const v = shownFields(sec);
+      return 2 + v.length
+        + (v.some((f) => f.type === "image") ? 7 : 0)
+        + v.filter((f) => f.type === "list").length * 2;
+    };
     const side = new Map();
     let wA = 0, wB = 0;
+    const pinned = SECTIONS[0];
+    side.set(pinned, colA);
+    wA += weigh(pinned);
     SECTIONS.map((sec, i) => ({ sec, i, w: weigh(sec) }))
+      .filter(({ sec }) => sec !== pinned)
       .sort((a, b) => b.w - a.w || a.i - b.i)
       .forEach(({ sec, w }) => {
         if (wA <= wB) { side.set(sec, colA); wA += w; }
@@ -1051,8 +1078,43 @@ class HemmaPanel extends HTMLElement {
     SECTIONS.forEach((sec) => {
       const fs = document.createElement("section");
       fs.className = "card";
-      fs.innerHTML = `<h2>${sec.label}</h2>`;
-      sec.fields.forEach((f) => {
+
+      const visible = shownFields(sec);
+      const hidden = sec.fields.filter((f) => !visible.includes(f));
+
+      const head = document.createElement("div");
+      head.className = "chead";
+      const h2 = document.createElement("h2");
+      h2.textContent = sec.label;
+      head.appendChild(h2);
+      if (visible.length && hidden.length) {
+        const c = document.createElement("span");
+        c.className = "count";
+        c.textContent = visible.length + "/" + sec.fields.length;
+        head.appendChild(c);
+      }
+      if (hidden.length) {
+        const add = document.createElement("button");
+        add.className = "plus";
+        add.title = "Add a field";
+        add.setAttribute("aria-label", "Add a field");
+        add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+        add.onclick = () => this._menuAt(add, hidden.map((f) => f.label), (label) => {
+          const f = hidden.find((x) => x.label === label);
+          if (f) { this._revealed.add(room.path + "|" + f.key); this._renderForm(); }
+        });
+        head.appendChild(add);
+      }
+      fs.appendChild(head);
+
+      if (!visible.length) {
+        const n = document.createElement("div");
+        n.className = "empty-note";
+        n.textContent = "Nothing set. Use + to add.";
+        fs.appendChild(n);
+      }
+
+      visible.forEach((f) => {
         const row = document.createElement("div");
         row.className = "row";
         const lab = document.createElement("label");
@@ -1136,6 +1198,57 @@ class HemmaPanel extends HTMLElement {
     });
 
     this._renderTiles(room, this.$("tilespane"));
+  }
+
+  // Shared popover for the section + buttons, same material as the combobox.
+  _menuAt(anchor, items, onPick) {
+    if (this._openCombo) this._openCombo();
+
+    const menu = document.createElement("div");
+    menu.className = "combo-menu";
+
+    const close = () => {
+      if (menu.parentNode) menu.parentNode.removeChild(menu);
+      document.removeEventListener("mousedown", away, true);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      if (this._openCombo === close) this._openCombo = null;
+    };
+    const away = (ev) => { if (!menu.contains(ev.composedPath ? ev.composedPath()[0] : ev.target)) close(); };
+
+    items.forEach((label) => {
+      const d = document.createElement("div");
+      d.className = "combo-opt";
+      const tick = document.createElement("span");
+      tick.className = "tick";
+      const t = document.createElement("span");
+      t.textContent = label;
+      d.appendChild(tick); d.appendChild(t);
+      d.onmouseenter = () => {
+        [...menu.children].forEach((el) => el.classList.remove("active"));
+        d.classList.add("active");
+      };
+      d.onmousedown = (ev) => { ev.preventDefault(); close(); onPick(label); };
+      menu.appendChild(d);
+    });
+
+    this._openCombo = close;
+    this.$("overlay").appendChild(menu);
+
+    const r = anchor.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom - 12;
+    const above = r.top - 12;
+    const drop = below >= 180 || below >= above;
+    const width = 240;
+    menu.style.width = width + "px";
+    menu.style.left = Math.max(10, Math.min(r.right - width, window.innerWidth - width - 10)) + "px";
+    menu.style.maxHeight = Math.max(120, Math.min(320, drop ? below : above)) + "px";
+    if (drop) { menu.style.top = r.bottom + 6 + "px"; menu.style.bottom = "auto"; }
+    else { menu.style.bottom = window.innerHeight - r.top + 6 + "px"; menu.style.top = "auto"; }
+
+    setTimeout(() => document.addEventListener("mousedown", away, true), 0);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
   }
 
   // ── combobox ──────────────────────────────────────────────────────────────
