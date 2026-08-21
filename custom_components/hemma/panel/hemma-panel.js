@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.6.0";
+const PANEL_VERSION = "0.7.0";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -100,7 +100,7 @@ const SECTIONS = [
     label: "Appearance",
     fields: [
       { key: "__name", label: "Room name", type: "text" },
-      { key: "image", label: "Background image", type: "text", hint: "filename in www/hemma/rooms, no extension" },
+      { key: "image", label: "Background image", type: "image" },
     ],
   },
   {
@@ -134,6 +134,98 @@ SECTIONS.push(
     fields: [
       { key: "weather_entity", label: "Weather", domains: ["weather"] },
       { key: "weather_temp_sensor", label: "Outdoor temperature", domains: ["sensor"] },
+    ],
+  }
+);
+
+
+const E = (key, label, domains) => ({ key, label, domains });
+const T = (key, label) => ({ key, label, type: "text" });
+const LIST = (key, label, domains) => ({ key, label, type: "list", domains });
+
+SECTIONS.push(
+  {
+    label: "Media",
+    fields: [
+      E("media_player_1", "Media player 1", ["media_player"]),
+      E("media_player_2", "Media player 2", ["media_player"]),
+      E("media_player_3", "Media player 3", ["media_player"]),
+      E("media_player_4", "Media player 4", ["media_player"]),
+      E("media_player_5", "Media player 5", ["media_player"]),
+      { key: "show_now_playing", label: "Now Playing panel", type: "bool" },
+    ],
+  },
+  {
+    label: "Presence",
+    fields: [
+      E("presence_entity_1", "Person 1", ["sensor", "person"]),
+      E("presence_entity_2", "Person 2", ["sensor", "person"]),
+      E("presence_entity_3", "Person 3", ["sensor", "person"]),
+      E("presence_entity_4", "Person 4", ["sensor", "person"]),
+    ],
+  },
+  {
+    label: "Air quality",
+    fields: [
+      T("aqi_room_name", "Popup title"),
+      E("aqi_entity_pm25", "PM2.5", ["sensor"]),
+      E("aqi_entity_pm10", "PM10", ["sensor"]),
+      E("aqi_entity_voc", "VOC", ["sensor"]),
+      E("aqi_entity_co2", "CO2", ["sensor"]),
+      E("aqi_entity_temp", "Temperature", ["sensor"]),
+      E("aqi_entity_humidity", "Humidity", ["sensor"]),
+    ],
+  },
+  {
+    label: "Security",
+    fields: [
+      E("security_entity_1", "Badge entity 1", ["lock", "binary_sensor", "camera"]),
+      T("security_label_1", "Badge label 1"),
+      E("security_entity_2", "Badge entity 2", ["lock", "binary_sensor", "camera"]),
+      T("security_label_2", "Badge label 2"),
+      E("security_lock_entity", "Primary lock", ["lock"]),
+      LIST("security_locks", "Locks", ["lock"]),
+      LIST("security_door_sensors", "Door / window sensors", ["binary_sensor"]),
+      LIST("security_cameras", "Cameras", ["camera"]),
+      LIST("security_lock_batteries", "Lock batteries", ["sensor"]),
+    ],
+  },
+  {
+    label: "Energy",
+    fields: [
+      E("energy_power_entity", "Current power", ["sensor"]),
+      E("energy_usage_today", "Usage today", ["sensor"]),
+      E("energy_usage_month", "Usage this month", ["sensor"]),
+      E("energy_cost_today", "Cost today", ["sensor"]),
+      E("energy_cost_month", "Cost this month", ["sensor"]),
+    ],
+  },
+  {
+    label: "Energy badge items",
+    fields: [
+      E("energy_entity_1", "Item 1 entity", ["sensor"]),
+      T("energy_label_1", "Item 1 label"),
+      { key: "energy_unit_1", label: "Item 1 unit", type: "select", options: ["", "cost", "power", "energy"] },
+      E("energy_entity_2", "Item 2 entity", ["sensor"]),
+      T("energy_label_2", "Item 2 label"),
+      { key: "energy_unit_2", label: "Item 2 unit", type: "select", options: ["", "cost", "power", "energy"] },
+    ],
+  },
+  {
+    label: "Energy popup devices",
+    fields: [
+      T("energy_popup_name_1", "Device 1 name"),
+      E("energy_popup_power_1", "Device 1 power", ["sensor"]),
+      E("energy_popup_today_1", "Device 1 today", ["sensor"]),
+      E("energy_popup_month_1", "Device 1 month", ["sensor"]),
+      E("energy_popup_cost_today_1", "Device 1 cost today", ["sensor"]),
+      E("energy_popup_cost_month_1", "Device 1 cost month", ["sensor"]),
+      T("energy_popup_name_2", "Device 2 name"),
+      E("energy_popup_power_2", "Device 2 power", ["sensor"]),
+      E("energy_popup_today_2", "Device 2 today", ["sensor"]),
+      E("energy_popup_month_2", "Device 2 month", ["sensor"]),
+      E("energy_popup_cost_today_2", "Device 2 cost today", ["sensor"]),
+      E("energy_popup_cost_month_2", "Device 2 cost month", ["sensor"]),
     ],
   }
 );
@@ -222,12 +314,65 @@ const TILE_TYPES = [
     domains: ["humidifier"], fields: [ICON_FIELD] },
   { id: "updates", label: "Updates", template: "hemma_updates",
     domains: ["sensor"], fields: [] },
+  { id: "plant", label: "Plant", template: "hemma_plant",
+    domains: ["sensor"], fields: [
+      { key: "sensors", label: "Plant sensors", type: "list", domains: ["sensor"] },
+    ] },
+  { id: "energy_tile", label: "Energy", template: "hemma_energy",
+    domains: ["sensor"], fields: [
+      { key: "room_name", label: "Popup title", type: "text" },
+      { key: "entity_power", label: "Current power", domains: ["sensor"] },
+      { key: "entity_usage_today", label: "Usage today", domains: ["sensor"] },
+      { key: "entity_usage_month", label: "Usage this month", domains: ["sensor"] },
+      { key: "entity_cost_today", label: "Cost today", domains: ["sensor"] },
+      { key: "entity_cost_month", label: "Cost this month", domains: ["sensor"] },
+    ] },
+  { id: "battery", label: "Batteries", template: "hemma_battery",
+    domains: ["sensor"], fields: [
+      { key: "room_name", label: "Popup title", type: "text" },
+      { key: "batteries", label: "Battery sensors", type: "list", domains: ["sensor"] },
+    ] },
+  { id: "network", label: "Network", template: "hemma_network",
+    domains: ["sensor", "binary_sensor"], fields: [
+      { key: "room_name", label: "Popup title", type: "text" },
+      { key: "entity_status", label: "Internet status", domains: ["binary_sensor"] },
+      { key: "entity_ping", label: "Ping", domains: ["sensor"] },
+      { key: "entity_upload", label: "Upload speed", domains: ["sensor"] },
+      { key: "entity_stat_1", label: "Stat 1", domains: ["sensor"] },
+      { key: "entity_stat_2", label: "Stat 2", domains: ["sensor"] },
+      { key: "entity_stat_3", label: "Stat 3", domains: ["sensor"] },
+      { key: "entity_stat_4", label: "Stat 4", domains: ["sensor"] },
+      { key: "action_1_entity", label: "Action 1 button", domains: ["button", "switch", "script"] },
+      { key: "action_1_status", label: "Action 1 status", domains: ["binary_sensor", "sensor"] },
+      { key: "action_2_entity", label: "Action 2 button", domains: ["button", "switch", "script"] },
+      { key: "action_2_status", label: "Action 2 status", domains: ["binary_sensor", "sensor"] },
+    ] },
+  { id: "plex", label: "Plex recently added", template: "hemma_plex_recently_added",
+    domains: ["sensor"], fields: [] },
+  { id: "lock_group", label: "Lock group", template: ["hemma_lock", "hemma_popup_lock"],
+    domains: ["lock"], fields: [
+      { key: "room_name", label: "Popup title", type: "text" },
+      { key: "locks", label: "Locks", type: "list", domains: ["lock"] },
+      { key: "door_sensors", label: "Door sensors", type: "list", domains: ["binary_sensor"] },
+      { key: "battery_entities", label: "Lock batteries", type: "list", domains: ["sensor"] },
+    ] },
+  { id: "cover_group", label: "Cover group", template: ["hemma_cover", "hemma_popup_cover"],
+    domains: ["cover"], fields: [
+      { key: "room_name", label: "Popup title", type: "text" },
+      { key: "covers", label: "Covers", type: "list", domains: ["cover"] },
+    ] },
 ];
 
-const tileTypeOf = (tile) =>
-  typeof tile.template === "string"
-    ? TILE_TYPES.find((t) => t.template === tile.template) || null
-    : null;
+const tileTypeOf = (tile) => {
+  const t = tile.template;
+  if (typeof t === "string") return TILE_TYPES.find((x) => x.template === t) || null;
+  if (Array.isArray(t)) {
+    return TILE_TYPES.find(
+      (x) => Array.isArray(x.template) && stable(x.template) === stable(t)
+    ) || null;
+  }
+  return null;
+};
 
 const tileLabel = (tile) => {
   const t = tile.template;
@@ -332,6 +477,17 @@ class HemmaPanel extends HTMLElement {
         .tbody { margin-top:8px; }
         .tbody .row { grid-template-columns:150px 1fr; margin:6px 0; }
         .addbar { display:flex; gap:8px; align-items:center; margin-top:12px; flex-wrap:wrap; }
+        textarea { font:inherit; font-family:ui-monospace,Menlo,monospace; font-size:12px;
+                   border-radius:9px; border:1px solid #3a3a3c; background:#2c2c2e; color:#f2f2f7;
+                   padding:8px 10px; width:100%; box-sizing:border-box; min-height:66px; resize:vertical; }
+        .roombar { display:flex; gap:6px; align-items:center; margin:6px 0 16px; flex-wrap:wrap; }
+        .shots { display:flex; gap:10px; margin-top:8px; }
+        .shot { flex:1; }
+        .shot img { width:100%; height:96px; object-fit:cover; border-radius:9px;
+                    border:1px solid #3a3a3c; background:#2c2c2e; display:block; }
+        .shot .cap { color:#8e8e93; font-size:11px; margin:4px 0 0; display:flex; gap:8px; align-items:center; }
+        .shot .none { height:96px; border-radius:9px; border:1px dashed #3a3a3c; display:flex;
+                      align-items:center; justify-content:center; color:#636366; font-size:11.5px; }
         .empty { border:1px dashed #3a3a3c; border-radius:14px; padding:36px 28px; text-align:center; }
         .empty h2 { margin:0 0 8px; font-size:18px; font-weight:600; }
         .empty p { margin:0 0 20px; color:#8e8e93; font-size:13.5px; line-height:1.6; }
@@ -607,6 +763,47 @@ class HemmaPanel extends HTMLElement {
     const pane = this.$("pane");
     const old = pane.querySelector(".tabs");
     if (old) old.replaceWith(el); else pane.prepend(el);
+
+    const bar = document.createElement("div");
+    bar.className = "roombar";
+    const mk = (label, fn, danger) => {
+      const b = document.createElement("button");
+      b.className = "mini" + (danger ? " danger" : "");
+      b.textContent = label;
+      b.onclick = fn;
+      return b;
+    };
+    const rooms = this._state.compact.rooms;
+    const move = (d) => {
+      const j = this._room + d;
+      if (j < 0 || j >= rooms.length) return;
+      const [x] = rooms.splice(this._room, 1);
+      rooms.splice(j, 0, x);
+      this._room = j;
+      this._renderTabs(); this._renderForm();
+    };
+    bar.appendChild(mk("Add room", () => {
+      const name = prompt("Room name");
+      if (!name || !name.trim()) return;
+      const path = slug(name);
+      if (rooms.some((r) => r.path === path)) return this._status(`a room with path "${path}" already exists`, "err");
+      rooms.push(blankRoom(name.trim(), path, "home-demo"));
+      this._room = rooms.length - 1;
+      this._renderTabs(); this._renderForm();
+    }));
+    bar.appendChild(mk("\u2190", () => move(-1)));
+    bar.appendChild(mk("\u2192", () => move(1)));
+    bar.appendChild(mk("Delete room", () => {
+      const r = rooms[this._room];
+      if (rooms.length < 2) return this._status("a dashboard needs at least one room", "err");
+      if (!confirm(`Delete "${r.name || r.path}" and everything in it?`)) return;
+      rooms.splice(this._room, 1);
+      this._room = Math.max(0, this._room - 1);
+      this._renderTabs(); this._renderForm();
+    }, true));
+
+    const oldBar = pane.querySelector(".roombar");
+    if (oldBar) oldBar.replaceWith(bar); else el.after(bar);
   }
 
   _renderForm() {
@@ -628,6 +825,41 @@ class HemmaPanel extends HTMLElement {
 
         const cur = f.key === "__name" ? (room.name ?? "") : (room.variables[f.key] ?? "");
         let input;
+
+        if (f.type === "image") {
+          this._imageField(room, row, fs, pane);
+          return;
+        }
+
+        if (f.type === "list") {
+          input = document.createElement("textarea");
+          input.value = Array.isArray(cur) ? cur.join("\n") : (cur ? String(cur) : "");
+          input.placeholder = "one entity id per line";
+          input.onchange = () => {
+            const items = input.value.split("\n").map((x) => x.trim()).filter(Boolean);
+            if (items.length) room.variables[f.key] = items;
+            else delete room.variables[f.key];
+          };
+          row.appendChild(input);
+          fs.appendChild(row);
+          return;
+        }
+
+        if (f.type === "bool") {
+          input = document.createElement("select");
+          [["", "(default)"], ["true", "yes"], ["false", "no"]].forEach(([v, t]) => {
+            const o = document.createElement("option"); o.value = v; o.textContent = t; input.appendChild(o);
+          });
+          input.value = cur === "" || cur === undefined ? "" : String(cur);
+          input.onchange = () => {
+            const raw = input.value;
+            if (raw === "") delete room.variables[f.key];
+            else room.variables[f.key] = raw === "true";
+          };
+          row.appendChild(input);
+          fs.appendChild(row);
+          return;
+        }
 
         if (f.type === "select") {
           input = document.createElement("select");
@@ -674,6 +906,114 @@ class HemmaPanel extends HTMLElement {
     });
 
     this._renderTiles(room, pane);
+  }
+
+  // ── room images ───────────────────────────────────────────────────────────
+
+  async _images(force) {
+    if (this._imgs && !force) return this._imgs;
+    const res = await this._hass.fetchWithAuth
+      ? await this._hass.fetchWithAuth("/api/hemma/images")
+      : await fetch("/api/hemma/images");
+    if (!res.ok) throw new Error(`images ${res.status}`);
+    const data = await res.json();
+    this._imgs = data.images || [];
+    return this._imgs;
+  }
+
+  _imageField(room, row, fs, pane) {
+    const sel = document.createElement("select");
+    row.appendChild(sel);
+    fs.appendChild(row);
+
+    const shots = document.createElement("div");
+    shots.className = "shots";
+    fs.appendChild(shots);
+
+    const upRow = document.createElement("div");
+    upRow.className = "addbar";
+    fs.appendChild(upRow);
+
+    const preview = () => {
+      const chosen = (this._imgs || []).find((i) => i.name === room.variables.image);
+      shots.innerHTML = "";
+      [["Day", chosen && chosen.day], ["Night", chosen && chosen.night]].forEach(([label, url]) => {
+        const w = document.createElement("div");
+        w.className = "shot";
+        w.innerHTML = url
+          ? `<img src="${url}" alt=""><div class="cap">${label}</div>`
+          : `<div class="none">no ${label.toLowerCase()} image</div><div class="cap">${label}</div>`;
+        shots.appendChild(w);
+      });
+    };
+
+    const fill = () => {
+      sel.innerHTML = "";
+      const list = this._imgs || [];
+      if (!list.some((i) => i.name === room.variables.image) && room.variables.image) {
+        const o = document.createElement("option");
+        o.value = room.variables.image;
+        o.textContent = room.variables.image + "  (missing)";
+        sel.appendChild(o);
+      }
+      list.forEach((i) => {
+        const o = document.createElement("option");
+        o.value = i.name;
+        o.textContent = i.name + (i.night ? "" : "  (no night image)");
+        sel.appendChild(o);
+      });
+      sel.value = room.variables.image || "";
+      preview();
+    };
+
+    sel.onchange = () => { room.variables.image = sel.value; preview(); };
+
+    const file = document.createElement("input");
+    file.type = "file";
+    file.accept = ".jpg,.jpeg,.png,.webp";
+    file.style.maxWidth = "230px";
+    const variant = document.createElement("select");
+    [["day", "Day"], ["night", "Night"]].forEach(([v, t]) => {
+      const o = document.createElement("option"); o.value = v; o.textContent = t; variant.appendChild(o);
+    });
+    const up = document.createElement("button");
+    up.className = "mini";
+    up.textContent = "Upload";
+    up.onclick = async () => {
+      if (!file.files || !file.files[0]) return this._status("choose a file first", "err");
+      const name = (prompt("Image name (lowercase, no extension)", room.variables.image || slug(room.name)) || "").trim();
+      if (!name) return;
+      const body = new FormData();
+      body.append("name", name);
+      body.append("variant", variant.value);
+      body.append("file", file.files[0]);
+      up.disabled = true;
+      this._status("uploading...");
+      try {
+        const res = this._hass.fetchWithAuth
+          ? await this._hass.fetchWithAuth("/api/hemma/images", { method: "POST", body })
+          : await fetch("/api/hemma/images", { method: "POST", body });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || res.status);
+        this._imgs = data.images || [];
+        room.variables.image = name;
+        this._status(`uploaded ${name} (${variant.value})`, "ok");
+        this._log(`uploaded ${name} ${variant.value}`, "ok");
+        fill();
+      } catch (e) {
+        this._status("upload failed: " + e.message, "err");
+        this._log("upload failed: " + e.message, "err");
+      }
+      up.disabled = false;
+    };
+    upRow.appendChild(file);
+    upRow.appendChild(variant);
+    upRow.appendChild(up);
+
+    fill();
+    this._images()
+      .then(fill)
+      .catch((e) => this._log("could not list images: " + e.message, "warn"));
   }
 
   // ── tiles ─────────────────────────────────────────────────────────────────
@@ -787,6 +1127,19 @@ class HemmaPanel extends HTMLElement {
     type.fields.forEach((f) => {
       const cur = (tile.variables || {})[f.key];
       let input;
+
+      if (f.type === "list") {
+        input = document.createElement("textarea");
+        input.value = Array.isArray(cur) ? cur.join("\n") : (cur ? String(cur) : "");
+        input.placeholder = "one entity id per line";
+        input.onchange = () => {
+          const items = input.value.split("\n").map((x) => x.trim()).filter(Boolean);
+          if (items.length) { if (!tile.variables) tile.variables = {}; tile.variables[f.key] = items; }
+          else if (tile.variables) delete tile.variables[f.key];
+        };
+        addRow(f.label, input);
+        return;
+      }
 
       if (f.type === "bool") {
         input = document.createElement("select");
