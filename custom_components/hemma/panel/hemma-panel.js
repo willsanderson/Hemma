@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.7.0";
+const PANEL_VERSION = "0.7.1";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -918,6 +918,7 @@ class HemmaPanel extends HTMLElement {
     if (!res.ok) throw new Error(`images ${res.status}`);
     const data = await res.json();
     this._imgs = data.images || [];
+    this._imgsLoaded = true;
     return this._imgs;
   }
 
@@ -953,7 +954,8 @@ class HemmaPanel extends HTMLElement {
       if (!list.some((i) => i.name === room.variables.image) && room.variables.image) {
         const o = document.createElement("option");
         o.value = room.variables.image;
-        o.textContent = room.variables.image + "  (missing)";
+        // Only call it missing once we know what is actually on disk.
+        o.textContent = room.variables.image + (this._imgsLoaded ? "  (not on disk)" : "");
         sel.appendChild(o);
       }
       list.forEach((i) => {
@@ -1013,7 +1015,10 @@ class HemmaPanel extends HTMLElement {
     fill();
     this._images()
       .then(fill)
-      .catch((e) => this._log("could not list images: " + e.message, "warn"));
+      .catch((e) => {
+        this._log("could not list images: " + e.message, "warn");
+        this._status("Image list unavailable. Restart Home Assistant to load the Hemma image endpoint.", "warn");
+      });
   }
 
   // ── tiles ─────────────────────────────────────────────────────────────────
