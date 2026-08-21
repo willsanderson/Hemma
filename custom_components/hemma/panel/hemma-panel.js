@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.20.1";
+const PANEL_VERSION = "0.20.2";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -358,7 +358,7 @@ function retargetRoutes(root, urlPath, rooms) {
 // untouched and shown read-only, so unknown tiles can be reordered but not
 // edited into something the template does not understand.
 
-const HEMMA_ICONS = ["access_point","apple","apple_tv","aqi-high","aqi-low","aqi-medium","arrow-down","arrow-up","backward","battery","bedroom","clock","close","console","cooling","curtain-closed","curtain-open","decrease","default","door-closed","door-open","doorbell","electric","energy","fan","forward","fridge","gas","heating","home","homepod","hot_water","humidifier","humidity","increase","kitchen","lamp","light","living-room","lock","lock-fill","lock-open","lock-open-fill","lock-unlocking","lock-unlocking-fill","media","menu","motion","music","mute","pause","pendant-light","pendent","person","plant","play","play-next","plex","plug","power_off","power_on","ps5","ps5_off","purifier","scenes","skip_next","skip_previous","sony","speaker","temp-high","temp-low","temp-medium","thermostat","tv","tv-play","unmute","updates","vacuum","vacuum-charge","vacuum-clean","weather","wifi"];
+const HEMMA_ICONS = ["access_point","apple","apple_tv","aqi-high","aqi-low","aqi-medium","arrow-down","arrow-up","backward","battery","bedroom","clock","close","console","cooling","curtain-closed","curtain-open","decrease","default","door-closed","door-open","doorbell","electric","energy","fan","forward","fridge","gas","heating","home","homepod","hot_water","humidifier","humidity","increase","kitchen","lamp","light","living-room","lock","lock-fill","lock-open","lock-open-fill","lock-unlocking","lock-unlocking-fill","media","menu","motion","music","mute","pause","pendant-light","pendent","person","plant","play","play-next","plex","plug","power_off","power_on","ps5","ps5_off","purifier","scenes","skip_next","skip_previous","sony","speaker","temp-high","temp-low","temp-medium","thermostat","tile","tv","tv-play","unmute","updates","vacuum","vacuum-charge","vacuum-clean","weather","wifi"];
 
 const ICON_FIELD = { key: "icon", label: "Icon", type: "icon" };
 
@@ -2005,7 +2005,7 @@ class HemmaPanel extends HTMLElement {
     fs.className = "card";
     fs.dataset.k = "__tiles";
     fs.innerHTML = '<div class="chead">'
-      + '<span class="sicon" style="--i:url(\'' + iconUrl("menu") + '\'); --sc:var(--ink)"></span>'
+      + '<span class="sicon" style="--i:url(\'' + iconUrl("tile") + '\'); --sc:var(--ink)"></span>'
       + "<h2>Tiles</h2></div>";
 
     if (!room.tiles.length) {
