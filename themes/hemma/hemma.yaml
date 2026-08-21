@@ -613,19 +613,21 @@ Hemma:
   hemma-hover-overlay-opacity: 0.06
   hemma-entity-text-shadow: none
   hemma-entity-header-buffer: 220px
-  hemma-entity-height-desktop: clamp(200px, calc(var(--hemma-u, 10px) * 20), 220px)
+  # Height tracks the screen's short axis: the row is bottom-anchored in a
+  # 100svh layout, so vertical space is what it competes for.
+  hemma-entity-height-h: clamp(160px, 18svh, 200px)
+  hemma-entity-height-desktop: var(--hemma-entity-height-h)
   hemma-entity-col-width-desktop: clamp(290px, calc(var(--hemma-u, 10px) * 29), 319px)
   hemma-entity-inner-pad-desktop: calc(var(--hemma-u, 10px) * 2)
   hemma-entity-name-font-desktop: calc(var(--hemma-u, 10px) * 1.8)
   hemma-entity-state-font-desktop: calc(var(--hemma-u, 10px) * 1.5)
   hemma-entity-icon-size-desktop: calc(var(--hemma-u, 10px) * 3.4)
-  hemma-entity-height-tablet: 160px
+  hemma-entity-height-tablet: var(--hemma-entity-height-h)
   hemma-entity-col-width-tablet: 220px
   # Landscape tablets solve tile width so exactly this much of the next card shows.
   hemma-tile-peek-tablet: 60px
   hemma-entity-col-width-tablet-landscape: calc((100vw - var(--hemma-rail-left, 3vw) - var(--hemma-tile-peek-tablet, 60px) - 40px) / 5)
   hemma-entity-col-width-tablet-landscape-sm: calc((100vw - var(--hemma-rail-left, 3vw) - var(--hemma-tile-peek-tablet, 60px) - 32px) / 4)
-  hemma-entity-height-tablet-lg: 185px
   hemma-entity-col-width-tablet-lg: 260px
   hemma-entity-icon-size-tablet-lg: 32px
   hemma-entity-name-font-tablet-lg: 16px
@@ -1298,7 +1300,6 @@ Hemma:
         :host,
         ha-app-layout {
           --hemma-entity-col-width-current: var(--hemma-entity-col-width-tablet-lg, 260px);
-          --hemma-entity-height-current: var(--hemma-entity-height-tablet-lg, 185px);
           --hemma-entity-icon-size-current: var(--hemma-entity-icon-size-tablet-lg, 32px);
           --hemma-entity-name-font-current: var(--hemma-entity-name-font-tablet-lg, 16px);
           --hemma-entity-state-font-current: var(--hemma-entity-state-font-tablet-lg, 14px);
