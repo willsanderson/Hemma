@@ -49,7 +49,7 @@ A dedicated phone experience inspired on the Apple Home app:
 
 #### Home Assistant
 - Lovelace dashboards enabled, and **keep Lovelace in `storage` mode** (so you can still use the UI editor for other dashboards).
-- **A time sensor** — the clock on each room's hero card reads `sensor.time`, which is *not* part of `default_config`. Either add it under Settings → Devices & Services → **Add Integration → Date & time** (enable the "Time" sensor), **or** use the `sensor.current_time` template sensor included in this repo's `sensors.yaml` and point `hemma_time` at it with `time_entity: sensor.current_time`. Without one of the two, the clock renders blank.
+- **A time sensor** — the clock on each room's hero card reads `sensor.time`, which is *not* part of `default_config`. Either add it under Settings → Devices & Services → **Add Integration → Date & time** (enable the "Time" sensor), **or** use the `sensor.current_time` template sensor included in this repo's `sensors.yaml` and set `time_entity: sensor.current_time` in a room's `variables:`. Without one of the two, the clock renders blank.
 - **Packages enabled** — `packages/hemma_helpers.yaml` is loaded via `homeassistant: packages: !include_dir_named packages` in `configuration.yaml`.
 
 #### Custom cards (required)
@@ -761,7 +761,21 @@ Hemma also keeps an inline copy of every icon inside `hemma-icons.js` (`window.H
 
 ### Time
 
-You can switch from 12hr to 24hr time by switching the variables in `hemma_time.yaml`, example below:
+Set the clock's sensor, format and suffix in a room's `variables:`. Each room view renders its own clock, so
+set the same values on every room, or use the Hemma config panel, which writes them to all rooms at once:
+
+```yaml
+variables:
+  time_entity: sensor.time
+
+  # false gives 24h
+  use_12h: false
+
+  # optional label after the time, e.g. "UHR", "HRS"
+  time_suffix: "UHR"
+```
+
+The defaults in `hemma_time.yaml` still apply when a room sets nothing:
 
 ```yaml
 hemma_time:

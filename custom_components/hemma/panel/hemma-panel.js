@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.17.0";
+const PANEL_VERSION = "0.18.0";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -125,6 +125,15 @@ const SECTIONS = [
     fields: [
       E("weather_entity", "Weather", ["weather"]),
       E("weather_temp_sensor", "Outdoor temperature", ["sensor"]),
+    ],
+  },
+  {
+    label: "Time", group: "room", scope: "dashboard",
+    desc: "The clock in the top corner. Shared by every room, like the navigation.",
+    fields: [
+      E("time_entity", "Time sensor", ["sensor"]),
+      { key: "use_12h", label: "12-hour clock", type: "bool" },
+      T("time_suffix", "Suffix after the time"),
     ],
   },
   {
@@ -645,6 +654,7 @@ class HemmaPanel extends HTMLElement {
         @media (max-width:1080px) { .cols { flex-direction:column; } }
 
         .card > .cdesc { color:var(--ink-3); font-size:12px; margin:-2px 0 10px; }
+        .card > .cdesc.drift { color:#ffd60a; }
 
         .map { margin:0 0 26px; padding:24px 24px 22px; display:flex; gap:24px; align-items:center; flex-wrap:wrap; }
         .map svg { width:300px; height:158px; flex:0 0 auto; }
@@ -1327,12 +1337,33 @@ class HemmaPanel extends HTMLElement {
         fs.appendChild(d);
       }
 
+      if (sec.scope === "dashboard") {
+        const rooms = this._state.compact.rooms;
+        const drifted = sec.fields.filter((f) =>
+          new Set(rooms.map((r) => JSON.stringify(r.variables[f.key] ?? null))).size > 1);
+        if (drifted.length) {
+          const w = document.createElement("div");
+          w.className = "cdesc drift";
+          w.textContent = "Rooms disagree on " + drifted.map((f) => f.label.toLowerCase()).join(", ")
+            + ". Changing it here sets every room.";
+          fs.appendChild(w);
+        }
+      }
+
       if (!visible.length) {
         const n = document.createElement("div");
         n.className = "empty-note";
         n.textContent = "Nothing set. Use + to add.";
         fs.appendChild(n);
       }
+
+      // A dashboard-scoped section writes to every room, so one clock cannot
+      // drift between views. Reads come from the room on screen.
+      const targets = () => (sec.scope === "dashboard" ? this._state.compact.rooms : [room]);
+      const setVar = (key, value) => targets().forEach((r) => {
+        if (value === undefined || value === "" || (Array.isArray(value) && !value.length)) delete r.variables[key];
+        else r.variables[key] = value;
+      });
 
       visible.forEach((f) => {
         const row = document.createElement("div");
@@ -1351,8 +1382,7 @@ class HemmaPanel extends HTMLElement {
 
         if (f.type === "list") {
           row.appendChild(this._chipPicker(cur, f.domains || ["sensor"], (items) => {
-            if (items.length) room.variables[f.key] = items;
-            else delete room.variables[f.key];
+            setVar(f.key, items);
           }));
           fs.appendChild(row);
           return;
@@ -1366,8 +1396,8 @@ class HemmaPanel extends HTMLElement {
           input.value = cur === "" || cur === undefined ? "" : String(cur);
           input.onchange = () => {
             const raw = input.value;
-            if (raw === "") delete room.variables[f.key];
-            else room.variables[f.key] = raw === "true";
+            if (raw === "") setVar(f.key, undefined);
+            else setVar(f.key, raw === "true");
           };
           row.appendChild(input);
           fs.appendChild(row);
@@ -1385,7 +1415,7 @@ class HemmaPanel extends HTMLElement {
         } else if (f.domains) {
           const c = this._combo(cur, this._entityList(f.domains),
             f.domains.map((d) => d + ".").join(" / "),
-            (v) => { if (v === "") delete room.variables[f.key]; else room.variables[f.key] = v; });
+            (v) => setVar(f.key, v));
           row.appendChild(c.wrap);
           fs.appendChild(row);
           return;
@@ -1397,8 +1427,7 @@ class HemmaPanel extends HTMLElement {
         input.onchange = () => {
           const v = input.value.trim();
           if (f.key === "__name") { room.name = v; return; }
-          if (v === "") delete room.variables[f.key];
-          else room.variables[f.key] = v;
+          setVar(f.key, v);
         };
 
         row.appendChild(input);
