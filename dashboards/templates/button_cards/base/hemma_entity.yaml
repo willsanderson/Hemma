@@ -194,7 +194,7 @@ hemma_entity:
        card. Unitless: a wrapper span scales, the SVG keeps its natural box. On :host so it
        also reaches cards whose root element the ha-card selector does not match. */
     :host {
-      --hemma-toggle-scale: calc(var(--hemma-u, 10px) / 10px);
+      --hemma-toggle-scale: calc(var(--hemma-entity-height-current, 200px) / 200px);
     }
 
     ha-card {
@@ -204,7 +204,7 @@ hemma_entity:
          literal, so it tracks the card automatically. Visible ring is 32/36 of this (r14 +
          stroke 4 in a 36 viewBox), i.e. ~0.8x the icon circle. */
       --hemma-progress-size-mq: calc(var(--hemma-icon-circle-size, 44px) * var(--hemma-progress-icon-ratio, 0.9));
-      --hemma-icon-circle-size: calc(var(--hemma-u, 10px) * 4.4);  /* hemma_thermostat's temp puck reads this too */
+      --hemma-icon-circle-size: calc(var(--hemma-entity-height-current, 200px) * var(--hemma-icon-circle-ratio, 0.22));  /* hemma_thermostat's temp puck reads this too */
       --hemma-entity-active-tint-current: var(--hemma-entity-active-tint, rgba(255,255,255,0.94));
       --hemma-icon-fallback-color: rgba(50,50,50,0.85);
       --hemma-toggle-off-color-active: var(--hemma-toggle-off-fill-active, rgba(0,0,0,0.55));
@@ -262,6 +262,7 @@ hemma_entity:
       ha-card {
         --hemma-height-mq: 100%;  /* the grid track owns the height */
         --hemma-icon-circle-size: 42px;
+        --hemma-toggle-scale: 1;  /* height-current is not this tier's tile height */
         --hemma-tile-areas-mq: "i n" "i s";
         --hemma-tile-cols-mq: auto minmax(0, 1fr);
         --hemma-tile-rows-mq: auto auto;
@@ -546,6 +547,16 @@ hemma_entity:
             :host {
               width: calc(40px * var(--hemma-toggle-scale, 1)) !important;
               height: calc(26px * var(--hemma-toggle-scale, 1)) !important;
+            }
+          }
+          /* Visual size stays; a transparent halo brings the tap target to 44pt. */
+          @media (pointer: coarse) {
+            #container { position: relative !important; }
+            #container::after {
+              content: "";
+              position: absolute;
+              inset: -12px;
+              border-radius: 9999px;
             }
           }
           ha-card, #container {
