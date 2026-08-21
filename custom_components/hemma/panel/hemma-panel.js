@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.18.0";
+const PANEL_VERSION = "0.20.0";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -102,7 +102,7 @@ const LIST = (key, label, domains) => ({ key, label, type: "list", domains });
 // Groups follow the anatomy of a room card rather than the variable prefixes,
 // so the panel reads in the order you meet things on the dashboard.
 const GROUPS = [
-  { id: "room", label: "The room", desc: "The photo, the name and the weather at the top." },
+  { id: "room", label: "Room", desc: "The photo, the name and the weather at the top." },
   { id: "badges", label: "Badges", desc: "The pills under the room name. Tap one on the dashboard to open its popup." },
   { id: "tiles", label: "Tiles", desc: "The row of cards along the bottom of the room." },
 ];
@@ -112,7 +112,7 @@ const GROUPS = [
 // menuGroup puts popup detail under its own heading in the + menu.
 const SECTIONS = [
   {
-    label: "Appearance", group: "room",
+    label: "Appearance", icon: "home", iconColor: "var(--ink)", group: "room",
     desc: "Room name and the background photo behind it.",
     fields: [
       { key: "__name", label: "Room name", type: "text", always: true },
@@ -120,7 +120,7 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Weather", group: "room",
+    label: "Weather", icon: "temp-medium", iconColor: "var(--hemma-color-teal, #00C3D0)", group: "room",
     desc: "Temperature and conditions shown above the room name.",
     fields: [
       E("weather_entity", "Weather", ["weather"]),
@@ -128,7 +128,7 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Time", group: "room", scope: "dashboard",
+    label: "Time", icon: "clock", iconColor: "var(--ink)", group: "room", scope: "dashboard",
     desc: "The clock in the top corner. Shared by every room, like the navigation.",
     fields: [
       E("time_entity", "Time sensor", ["sensor"]),
@@ -137,7 +137,7 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Climate", group: "badges",
+    label: "Climate", icon: "fan", iconColor: "var(--hemma-badge-climate-color, var(--hemma-color-teal, #00C3D0))", group: "badges",
     desc: "The Climate pill. Its popup shows air quality detail.",
     fields: [
       E("climate_entity_1", "Thermostat 1", ["climate"]),
@@ -158,7 +158,7 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Lights", group: "badges",
+    label: "Lights", icon: "light", iconColor: "var(--hemma-badge-light-color, var(--hemma-color-yellow, #FFCC00))", group: "badges",
     desc: "The Lights pill, and which lights its popup controls.",
     fields: [
       E("light_group_entity", "Room light group", ["light"]),
@@ -168,7 +168,7 @@ const SECTIONS = [
     ],
   },
   {
-    label: "People", group: "badges",
+    label: "People", icon: "person", iconColor: "var(--hemma-color-green, #30D158)", group: "badges",
     desc: "The People pill. One entry per person you want shown.",
     fields: [
       E("presence_entity_1", "Person 1", ["sensor", "person"]),
@@ -178,7 +178,7 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Security", group: "badges",
+    label: "Security", icon: "lock-fill", iconColor: "var(--hemma-color-blue, #0088FF)", group: "badges",
     desc: "The Security pill. Its popup lists locks, doors and cameras.",
     fields: [
       { ...E("security_entity_1", "Entity", ["lock", "binary_sensor", "camera"]), unit: "b1", unitLabel: "Badge 1" },
@@ -193,7 +193,7 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Energy", group: "badges",
+    label: "Energy", icon: "energy", iconColor: "var(--hemma-badge-energy-color, var(--hemma-color-green, #30D158))", group: "badges",
     desc: "The Energy pill, what it totals, and the devices in its popup.",
     fields: [
       E("energy_power_entity", "Current power", ["sensor"]),
@@ -222,7 +222,7 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Media", group: "badges",
+    label: "Media", icon: "media", iconColor: "var(--hemma-color-teal, #00C3D0)", group: "badges",
     desc: "Players shown as a media pill, or as the Now Playing panel.",
     fields: [
       E("media_player_1", "Media player 1", ["media_player"]),
@@ -323,6 +323,12 @@ const ROOM_ICONS = {
 
 const roomIcon = (name) => ROOM_ICONS[String(name || "").toLowerCase().trim()] || "mdi:home-variant";
 
+const ICON_DEFAULT = "Default";
+const iconUrl = (name) => {
+  const n = String(name || "").trim();
+  return "/local/hemma/icons/" + (!n || n === ICON_DEFAULT ? "default" : n) + ".svg";
+};
+
 // The shipped nav has absolute links to the author's own dashboard, and it is
 // embedded twice: as the view's nav card and again inside the hemma_room
 // template. Rewrite every route list, keeping non-link routes (Scenes) as-is.
@@ -352,7 +358,7 @@ function retargetRoutes(root, urlPath, rooms) {
 // untouched and shown read-only, so unknown tiles can be reordered but not
 // edited into something the template does not understand.
 
-const HEMMA_ICONS = ["access_point","apple","apple_tv","aqi-high","aqi-low","aqi-medium","arrow-down","arrow-up","backward","battery","bedroom","clock","close","console","cooling","curtain-closed","curtain-open","decrease","default","door-closed","door-open","doorbell","electric","energy","fan","forward","fridge","gas","heating","home","homepod","hot_water","humidifier","humidity","increase","kitchen","lamp","light","living-room","lock-fill","lock-open-fill","lock-open","lock-unlocking-fill","lock-unlocking","lock","media","menu","motion","music","mute","pause","pendant-light","pendent","person","plant","play-next","play","plex","plug","power_off","power_on","ps5","ps5_off","purifier","scenes","skip_next","skip_previous","sony","speaker","temp-high","temp-low","temp-medium","thermostat","tv-play","tv","unmute","updates","vacuum-charge","vacuum-clean","vacuum","wifi","youtube.png"];
+const HEMMA_ICONS = ["access_point","apple","apple_tv","aqi-high","aqi-low","aqi-medium","arrow-down","arrow-up","backward","battery","bedroom","clock","close","console","cooling","curtain-closed","curtain-open","decrease","default","door-closed","door-open","doorbell","electric","energy","fan","forward","fridge","gas","heating","home","homepod","hot_water","humidifier","humidity","increase","kitchen","lamp","light","living-room","lock","lock-fill","lock-open","lock-open-fill","lock-unlocking","lock-unlocking-fill","media","menu","motion","music","mute","pause","pendant-light","pendent","person","plant","play","play-next","plex","plug","power_off","power_on","ps5","ps5_off","purifier","scenes","skip_next","skip_previous","sony","speaker","temp-high","temp-low","temp-medium","thermostat","tv","tv-play","unmute","updates","vacuum","vacuum-charge","vacuum-clean","wifi"];
 
 const ICON_FIELD = { key: "icon", label: "Icon", type: "icon" };
 
@@ -370,13 +376,13 @@ const TILE_TYPES = [
   { id: "fan", label: "Fan", template: "hemma_fan",
     domains: ["fan"], fields: [ICON_FIELD] },
   { id: "cover", label: "Cover", template: "hemma_cover",
-    domains: ["cover"], fields: [ICON_FIELD] },
+    domains: ["cover"], fields: [] },
   { id: "vacuum", label: "Vacuum", template: "hemma_vacuum",
-    domains: ["vacuum"], fields: [ICON_FIELD] },
+    domains: ["vacuum"], fields: [] },
   { id: "air_purifier", label: "Air purifier", template: "hemma_air_purifier",
     domains: ["fan"], fields: [ICON_FIELD] },
   { id: "humidifier", label: "Humidifier", template: "hemma_humidifier",
-    domains: ["humidifier"], fields: [ICON_FIELD] },
+    domains: ["humidifier"], fields: [] },
   { id: "updates", label: "Updates", template: "hemma_updates",
     domains: ["sensor"], fields: [] },
   { id: "plant", label: "Plant", template: "hemma_plant",
@@ -578,13 +584,13 @@ class HemmaPanel extends HTMLElement {
 
         select, input[type=text], input:not([type]), textarea {
           font:inherit; color:var(--ink);
-          background:rgba(0,0,0,0.24);
+          background-color:rgba(0,0,0,0.24);
           border:1px solid rgba(255,255,255,0.10);
-          border-radius:13px; padding:9px 12px;
+          border-radius:13px; padding:9px 12px; line-height:1.25;
           transition:border-color .16s ease, background .16s ease;
         }
         select:focus, input:focus, textarea:focus {
-          outline:none; border-color:rgba(10,132,255,0.9); background:rgba(0,0,0,0.30);
+          outline:none; border-color:rgba(10,132,255,0.9); background-color:rgba(0,0,0,0.30);
         }
         input::placeholder, textarea::placeholder { color:var(--ink-3); }
 
@@ -620,9 +626,9 @@ class HemmaPanel extends HTMLElement {
         .bar > select, .bar > button {
           height:40px; box-sizing:border-box; display:inline-flex; align-items:center;
         }
-        .bar > select { min-width:230px; border-radius:999px; padding:0 16px; }
+        .bar > select { min-width:230px; border-radius:999px; padding:0 34px 0 16px; }
         .combo > input { border-radius:13px; }
-        .bar > button { padding:0 20px; }
+        .bar > button { padding:0 20px; justify-content:center; }
         .status { min-height:20px; font-size:12.5px; margin:13px 2px 22px; color:var(--ink-2); }
         .status.ok { color:#30d158; } .status.err { color:#ff453a; } .status.warn { color:#ffd60a; }
 
@@ -642,12 +648,12 @@ class HemmaPanel extends HTMLElement {
            unpredictable places, so sections go to whichever column is shorter. */
         #pane { display:block; }
         .band { margin:0 0 30px; scroll-margin-top:92px; }
-        .bandhead { margin:0 0 12px; padding:0 2px; }
+        .bandhead { margin:0 0 14px; padding:0 2px; }
         .bandhead h3 {
-          margin:0; font-size:12px; font-weight:600; letter-spacing:0.07em;
-          text-transform:uppercase; color:var(--ink-2);
+          margin:0; font-size:17px; font-weight:600; letter-spacing:-0.015em;
+          color:var(--ink);
         }
-        .bandhead p { margin:4px 0 0; font-size:12.5px; color:var(--ink-3); }
+        .bandhead p { margin:3px 0 0; font-size:13px; color:var(--ink-2); }
         .cols { display:flex; gap:var(--gap); align-items:stretch; }
         .col { flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:var(--gap); }
         .col > .card:last-child { flex:1 1 auto; }
@@ -656,7 +662,7 @@ class HemmaPanel extends HTMLElement {
         .card > .cdesc { color:var(--ink-3); font-size:12px; margin:-2px 0 10px; }
         .card > .cdesc.drift { color:#ffd60a; }
 
-        .map { margin:0 0 26px; padding:24px 24px 22px; display:flex; gap:24px; align-items:center; flex-wrap:wrap; }
+        .card.map { margin:0 0 26px; padding:26px 24px 24px; display:flex; gap:24px; align-items:center; flex-wrap:wrap; }
         .map svg { width:300px; height:158px; flex:0 0 auto; }
         .map .legend { display:flex; flex-direction:column; gap:9px; min-width:230px; }
         .map .leg {
@@ -679,6 +685,12 @@ class HemmaPanel extends HTMLElement {
           border-radius:var(--r-xl); padding:6px 24px 20px;
         }
         .card > .chead { display:flex; align-items:center; gap:10px; margin:20px 0 8px; }
+        .sicon {
+          width:22px; height:22px; flex:0 0 22px;
+          background-color:var(--sc, var(--ink));
+          -webkit-mask:var(--i) center/contain no-repeat;
+          mask:var(--i) center/contain no-repeat;
+        }
         .card > .chead h2 {
           font-size:16px; font-weight:600; letter-spacing:-0.015em; margin:0; flex:1; color:var(--ink);
         }
@@ -702,7 +714,7 @@ class HemmaPanel extends HTMLElement {
         .row input, .row select, .row textarea { width:100%; box-sizing:border-box; }
         .row > select, .row > input, .row > .combo > input { height:38px; }
         .row > textarea { height:auto; }
-        .addbar > select { height:34px; box-sizing:border-box; padding:0 16px; border-radius:999px; }
+        .addbar > select { height:36px; box-sizing:border-box; padding:0 32px 0 16px; border-radius:999px; }
         .addbar > .mini { height:34px; box-sizing:border-box; }
         .hint { color:var(--ink-3); font-size:11.5px; padding:2px 0 12px; }
 
@@ -760,6 +772,16 @@ class HemmaPanel extends HTMLElement {
         .combo-sep { height:1px; margin:5px 8px; background:rgba(255,255,255,0.11); }
         :host(.is-light) .combo-sep { background:rgba(0,0,0,0.10); }
         .combo-empty { padding:6px 9px; color:var(--ink-3); font-size:12.5px; }
+        .glyph {
+          width:17px; height:17px; flex:0 0 17px; background-color:currentColor;
+          -webkit-mask:var(--i) center/contain no-repeat; mask:var(--i) center/contain no-repeat;
+        }
+        .combo.hasicon { position:relative; }
+        .combo.hasicon > input { padding-left:36px; }
+        .combo.hasicon > .glyph {
+          position:absolute; left:12px; top:50%; transform:translateY(-50%); pointer-events:none;
+          color:var(--ink-2);
+        }
         .combo-head {
           padding:7px 10px 3px; font-size:11px; font-weight:600; letter-spacing:0.05em;
           text-transform:uppercase; color:var(--ink-3);
@@ -1306,6 +1328,13 @@ class HemmaPanel extends HTMLElement {
 
       const head = document.createElement("div");
       head.className = "chead";
+      if (sec.icon) {
+        const g = document.createElement("span");
+        g.className = "sicon";
+        g.style.setProperty("--i", "url('" + iconUrl(sec.icon) + "')");
+        if (sec.iconColor) g.style.setProperty("--sc", sec.iconColor);
+        head.appendChild(g);
+      }
       const h2 = document.createElement("h2");
       h2.textContent = sec.label;
       head.appendChild(h2);
@@ -1557,9 +1586,10 @@ class HemmaPanel extends HTMLElement {
 
   // ── combobox ──────────────────────────────────────────────────────────────
 
-  _combo(value, list, placeholder, onChange) {
+  _combo(value, list, placeholder, onChange, opts) {
+    const iconMode = !!(opts && opts.icon);
     const wrap = document.createElement("div");
-    wrap.className = "combo";
+    wrap.className = "combo" + (iconMode ? " hasicon" : "");
     const input = document.createElement("input");
     input.value = value == null ? "" : String(value);
     if (placeholder) input.placeholder = placeholder;
@@ -1591,8 +1621,9 @@ class HemmaPanel extends HTMLElement {
 
     const commit = (v) => {
       current = v;
-      input.value = v;
-      onChange(v);
+      input.value = v === ICON_DEFAULT ? "" : v;
+      onChange(v === ICON_DEFAULT ? "" : v);
+      if (wrap._paintLead) wrap._paintLead();
       close();
     };
 
@@ -1629,9 +1660,15 @@ class HemmaPanel extends HTMLElement {
         const tick = document.createElement("span");
         tick.className = "tick";
         tick.textContent = "\u2713";
+        d.appendChild(tick);
+        if (iconMode) {
+          const g = document.createElement("span");
+          g.className = "glyph";
+          g.style.setProperty("--i", "url('" + iconUrl(o) + "')");
+          d.appendChild(g);
+        }
         const label = document.createElement("span");
         label.textContent = o;
-        d.appendChild(tick);
         d.appendChild(label);
         // mousedown, because blur would close the menu before a click lands.
         d.onmousedown = (ev) => { ev.preventDefault(); commit(o); };
@@ -1646,6 +1683,16 @@ class HemmaPanel extends HTMLElement {
       place();
       paint();
     };
+
+    let lead = null;
+    if (iconMode) {
+      lead = document.createElement("span");
+      lead.className = "glyph";
+      wrap.appendChild(lead);
+      const paintLead = () => lead.style.setProperty("--i", "url('" + iconUrl(current) + "')");
+      paintLead();
+      wrap._paintLead = paintLead;
+    }
 
     input.onfocus = open;
     input.oninput = () => { open(); active = -1; paint(); };
@@ -1822,11 +1869,22 @@ class HemmaPanel extends HTMLElement {
     const html = b.innerHTML;
     b.style.width = b.offsetWidth + "px";
     b.classList.add("ok");
-    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+    // The tick is drawn rather than appearing, the way Apple's confirmations do:
+    // the stroke is dashed to its own length and the offset animated to zero.
+    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8"'
+      + ' stroke-linecap="round" stroke-linejoin="round">'
+      + '<path d="M20 6 9 17l-5-5" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></svg>';
     b.animate(
       [{ transform: "scale(1)" }, { transform: "scale(1.14)" }, { transform: "scale(1)" }],
       { duration: 460, easing: "cubic-bezier(.34,1.5,.5,1)" }
     );
+    const tick = b.querySelector("svg path");
+    if (tick && tick.animate) {
+      tick.animate(
+        [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }],
+        { duration: 340, delay: 60, easing: "cubic-bezier(.62,.03,.36,1)", fill: "forwards" }
+      );
+    }
     setTimeout(() => {
       b.classList.remove("ok");
       b.innerHTML = html;
@@ -1940,7 +1998,9 @@ class HemmaPanel extends HTMLElement {
     const fs = document.createElement("section");
     fs.className = "card";
     fs.dataset.k = "__tiles";
-    fs.innerHTML = "<h2>Tiles</h2>";
+    fs.innerHTML = '<div class="chead">'
+      + '<span class="sicon" style="--i:url(\'' + iconUrl("menu") + '\'); --sc:var(--ink)"></span>'
+      + "<h2>Tiles</h2></div>";
 
     if (!room.tiles.length) {
       const e = document.createElement("div");
@@ -1988,7 +2048,10 @@ class HemmaPanel extends HTMLElement {
     head.className = "thead";
     const title = document.createElement("div");
     title.className = "grow";
-    title.innerHTML = `${tile.name || "(unnamed)"} <span class="kind">${type ? type.label : tileLabel(tile) + " - not editable here"}</span>`;
+    const kind = type
+      ? (tile.name && tile.name.trim().toLowerCase() === type.label.toLowerCase() ? "" : type.label)
+      : tileLabel(tile) + " - not editable here";
+    title.innerHTML = `${tile.name || "(unnamed)"}${kind ? ` <span class="kind">${kind}</span>` : ""}`;
     head.appendChild(title);
 
     const mk = (label, fn, danger) => {
@@ -2074,7 +2137,11 @@ class HemmaPanel extends HTMLElement {
           tile.variables[f.key] = v;
         };
         if (f.type === "icon") {
-          addRow(f.label, this._combo(cur, HEMMA_ICONS, "hemma icon name", set).wrap);
+          addRow(f.label, this._combo(
+            cur, [ICON_DEFAULT].concat(HEMMA_ICONS), "default",
+            (v) => set(v === ICON_DEFAULT ? "" : v),
+            { icon: true }
+          ).wrap);
           return;
         }
         if (f.domains) {
