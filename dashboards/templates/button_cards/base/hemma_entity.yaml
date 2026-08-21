@@ -262,6 +262,7 @@ hemma_entity:
       ha-card {
         --hemma-height-mq: 100%;  /* the grid track owns the height */
         --hemma-icon-circle-size: 42px;
+        --hemma-toggle-scale: 1;  /* height-current is not this tier's tile height */
         --hemma-tile-areas-mq: "i n" "i s";
         --hemma-tile-cols-mq: auto minmax(0, 1fr);
         --hemma-tile-rows-mq: auto auto;
