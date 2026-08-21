@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.20.0";
+const PANEL_VERSION = "0.20.1";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -120,7 +120,7 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Weather", icon: "temp-medium", iconColor: "var(--hemma-color-teal, #00C3D0)", group: "room",
+    label: "Weather", icon: "weather", iconRaw: true, group: "room",
     desc: "Temperature and conditions shown above the room name.",
     fields: [
       E("weather_entity", "Weather", ["weather"]),
@@ -178,7 +178,7 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Security", icon: "lock-fill", iconColor: "var(--hemma-color-blue, #0088FF)", group: "badges",
+    label: "Security", icon: "lock-fill", iconColor: "var(--hemma-color-teal, #00C3D0)", group: "badges",
     desc: "The Security pill. Its popup lists locks, doors and cameras.",
     fields: [
       { ...E("security_entity_1", "Entity", ["lock", "binary_sensor", "camera"]), unit: "b1", unitLabel: "Badge 1" },
@@ -222,7 +222,7 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Media", icon: "media", iconColor: "var(--hemma-color-teal, #00C3D0)", group: "badges",
+    label: "Media", icon: "media", iconColor: "var(--hemma-color-pink, #ff4d70)", group: "badges",
     desc: "Players shown as a media pill, or as the Now Playing panel.",
     fields: [
       E("media_player_1", "Media player 1", ["media_player"]),
@@ -358,7 +358,7 @@ function retargetRoutes(root, urlPath, rooms) {
 // untouched and shown read-only, so unknown tiles can be reordered but not
 // edited into something the template does not understand.
 
-const HEMMA_ICONS = ["access_point","apple","apple_tv","aqi-high","aqi-low","aqi-medium","arrow-down","arrow-up","backward","battery","bedroom","clock","close","console","cooling","curtain-closed","curtain-open","decrease","default","door-closed","door-open","doorbell","electric","energy","fan","forward","fridge","gas","heating","home","homepod","hot_water","humidifier","humidity","increase","kitchen","lamp","light","living-room","lock","lock-fill","lock-open","lock-open-fill","lock-unlocking","lock-unlocking-fill","media","menu","motion","music","mute","pause","pendant-light","pendent","person","plant","play","play-next","plex","plug","power_off","power_on","ps5","ps5_off","purifier","scenes","skip_next","skip_previous","sony","speaker","temp-high","temp-low","temp-medium","thermostat","tv","tv-play","unmute","updates","vacuum","vacuum-charge","vacuum-clean","wifi"];
+const HEMMA_ICONS = ["access_point","apple","apple_tv","aqi-high","aqi-low","aqi-medium","arrow-down","arrow-up","backward","battery","bedroom","clock","close","console","cooling","curtain-closed","curtain-open","decrease","default","door-closed","door-open","doorbell","electric","energy","fan","forward","fridge","gas","heating","home","homepod","hot_water","humidifier","humidity","increase","kitchen","lamp","light","living-room","lock","lock-fill","lock-open","lock-open-fill","lock-unlocking","lock-unlocking-fill","media","menu","motion","music","mute","pause","pendant-light","pendent","person","plant","play","play-next","plex","plug","power_off","power_on","ps5","ps5_off","purifier","scenes","skip_next","skip_previous","sony","speaker","temp-high","temp-low","temp-medium","thermostat","tv","tv-play","unmute","updates","vacuum","vacuum-charge","vacuum-clean","weather","wifi"];
 
 const ICON_FIELD = { key: "icon", label: "Icon", type: "icon" };
 
@@ -690,6 +690,12 @@ class HemmaPanel extends HTMLElement {
           background-color:var(--sc, var(--ink));
           -webkit-mask:var(--i) center/contain no-repeat;
           mask:var(--i) center/contain no-repeat;
+        }
+        /* Multi-colour icons are drawn, not masked, or they flatten to one tint. */
+        .sicon.raw {
+          background-color:transparent;
+          -webkit-mask:none; mask:none;
+          background:var(--i) center/contain no-repeat;
         }
         .card > .chead h2 {
           font-size:16px; font-weight:600; letter-spacing:-0.015em; margin:0; flex:1; color:var(--ink);
@@ -1330,7 +1336,7 @@ class HemmaPanel extends HTMLElement {
       head.className = "chead";
       if (sec.icon) {
         const g = document.createElement("span");
-        g.className = "sicon";
+        g.className = "sicon" + (sec.iconRaw ? " raw" : "");
         g.style.setProperty("--i", "url('" + iconUrl(sec.icon) + "')");
         if (sec.iconColor) g.style.setProperty("--sc", sec.iconColor);
         head.appendChild(g);
