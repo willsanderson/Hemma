@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.10.1";
+const PANEL_VERSION = "0.10.2";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -587,7 +587,7 @@ class HemmaPanel extends HTMLElement {
         /* Lives in #overlay, outside any card. A card's own backdrop-filter
            becomes the backdrop root for its descendants, which leaves a nested
            backdrop-filter with nothing to sample. */
-        #overlay { position:fixed; inset:0; z-index:60; pointer-events:none; }
+        #overlay { position:fixed; inset:0; z-index:200; pointer-events:none; }
         .combo-menu {
           position:fixed; pointer-events:auto;
           max-height:300px; overflow-y:auto; overscroll-behavior:contain;
@@ -702,7 +702,6 @@ class HemmaPanel extends HTMLElement {
         <h1>Hemma<span class="ver"></span></h1>
         <div class="spacer"></div>
       </div>
-      <div id="overlay"></div>
       <div class="body">
         <div class="bar">
           <select id="dash"></select>
@@ -718,7 +717,8 @@ class HemmaPanel extends HTMLElement {
           <summary>Details</summary>
           <div id="log"></div>
         </details>
-      </div>`;
+      </div>
+      <div id="overlay"></div>`;
 
     this.shadowRoot.querySelector(".ver").textContent = "v" + PANEL_VERSION;
     this.$("burger").onclick = () =>
