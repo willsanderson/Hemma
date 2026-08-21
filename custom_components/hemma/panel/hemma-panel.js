@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.10.2";
+const PANEL_VERSION = "0.10.3";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -588,28 +588,37 @@ class HemmaPanel extends HTMLElement {
            becomes the backdrop root for its descendants, which leaves a nested
            backdrop-filter with nothing to sample. */
         #overlay { position:fixed; inset:0; z-index:200; pointer-events:none; }
+        /* macOS menu material: mostly transparent, heavy blur, and saturation
+           pushed well past 100% so the backdrop's colour comes through rather
+           than being flattened by a grey fill. */
         .combo-menu {
           position:fixed; pointer-events:auto;
           max-height:300px; overflow-y:auto; overscroll-behavior:contain;
-          padding:5px; border-radius:11px;
-          background:rgba(46,46,48,0.58);
-          backdrop-filter:blur(50px) saturate(180%); -webkit-backdrop-filter:blur(50px) saturate(180%);
+          padding:6px; border-radius:14px;
+          background:rgba(28,28,32,0.34);
+          backdrop-filter:blur(64px) saturate(210%) brightness(1.06);
+          -webkit-backdrop-filter:blur(64px) saturate(210%) brightness(1.06);
           box-shadow:
-            0 0 0 0.5px rgba(255,255,255,0.16),
-            0 1px 1px rgba(0,0,0,0.10),
-            0 12px 34px rgba(0,0,0,0.46);
+            inset 0 1px 0 rgba(255,255,255,0.16),
+            inset 0 0 0 0.5px rgba(255,255,255,0.14),
+            0 2px 6px rgba(0,0,0,0.16),
+            0 18px 48px rgba(0,0,0,0.44);
         }
         :host(.is-light) .combo-menu {
-          background:rgba(246,246,248,0.62); color:#1d1d1f;
+          background:rgba(250,250,252,0.50);
+          backdrop-filter:blur(64px) saturate(200%) brightness(1.02);
+          -webkit-backdrop-filter:blur(64px) saturate(200%) brightness(1.02);
           box-shadow:
-            0 0 0 0.5px rgba(0,0,0,0.10),
-            0 12px 34px rgba(0,0,0,0.20);
+            inset 0 1px 0 rgba(255,255,255,0.70),
+            inset 0 0 0 0.5px rgba(0,0,0,0.09),
+            0 2px 6px rgba(0,0,0,0.08),
+            0 18px 48px rgba(0,0,0,0.22);
         }
         .combo-opt {
-          padding:5px 9px; border-radius:5px; cursor:default; font-size:13.5px;
-          display:flex; align-items:center; gap:7px; color:var(--ink);
+          padding:6px 10px; border-radius:7px; cursor:default; font-size:13.5px;
+          display:flex; align-items:center; gap:8px; color:var(--ink);
           white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-          line-height:1.35;
+          line-height:1.4; letter-spacing:-0.005em;
         }
         :host(.is-light) .combo-opt { color:#1d1d1f; }
         .combo-opt.active { background:var(--accent); color:#fff; }
