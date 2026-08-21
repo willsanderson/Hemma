@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.10.0";
+const PANEL_VERSION = "0.10.1";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -583,25 +583,42 @@ class HemmaPanel extends HTMLElement {
            fields use a real listbox instead. */
         .combo { position:relative; }
         .combo > input { width:100%; box-sizing:border-box; }
+
+        /* Lives in #overlay, outside any card. A card's own backdrop-filter
+           becomes the backdrop root for its descendants, which leaves a nested
+           backdrop-filter with nothing to sample. */
+        #overlay { position:fixed; inset:0; z-index:60; pointer-events:none; }
         .combo-menu {
-          display:none; position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:40;
-          max-height:264px; overflow-y:auto; padding:6px;
-          border-radius:var(--r-md);
-          background:rgba(38,38,44,0.86);
-          backdrop-filter:blur(30px) saturate(180%); -webkit-backdrop-filter:blur(30px) saturate(180%);
-          box-shadow:0 18px 44px rgba(0,0,0,0.52), inset 0 0 0 1px rgba(255,255,255,0.13);
+          position:fixed; pointer-events:auto;
+          max-height:300px; overflow-y:auto; overscroll-behavior:contain;
+          padding:5px; border-radius:11px;
+          background:rgba(46,46,48,0.58);
+          backdrop-filter:blur(50px) saturate(180%); -webkit-backdrop-filter:blur(50px) saturate(180%);
+          box-shadow:
+            0 0 0 0.5px rgba(255,255,255,0.16),
+            0 1px 1px rgba(0,0,0,0.10),
+            0 12px 34px rgba(0,0,0,0.46);
         }
-        .combo-menu.open { display:block; }
+        :host(.is-light) .combo-menu {
+          background:rgba(246,246,248,0.62); color:#1d1d1f;
+          box-shadow:
+            0 0 0 0.5px rgba(0,0,0,0.10),
+            0 12px 34px rgba(0,0,0,0.20);
+        }
         .combo-opt {
-          padding:8px 11px; border-radius:9px; cursor:pointer; font-size:13px;
-          display:flex; align-items:center; gap:8px; color:var(--ink);
+          padding:5px 9px; border-radius:5px; cursor:default; font-size:13.5px;
+          display:flex; align-items:center; gap:7px; color:var(--ink);
           white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+          line-height:1.35;
         }
-        .combo-opt:hover { background:rgba(255,255,255,0.13); }
+        :host(.is-light) .combo-opt { color:#1d1d1f; }
         .combo-opt.active { background:var(--accent); color:#fff; }
-        .combo-opt .tick { width:13px; flex:0 0 13px; opacity:0; font-size:12px; }
-        .combo-opt.sel .tick { opacity:.9; }
-        .combo-empty { padding:9px 11px; color:var(--ink-3); font-size:12.5px; }
+        :host(.is-light) .combo-opt.active { color:#fff; }
+        .combo-opt .tick { width:12px; flex:0 0 12px; opacity:0; font-size:11px; }
+        .combo-opt.sel .tick { opacity:.85; }
+        .combo-sep { height:1px; margin:5px 8px; background:rgba(255,255,255,0.11); }
+        :host(.is-light) .combo-sep { background:rgba(0,0,0,0.10); }
+        .combo-empty { padding:6px 9px; color:var(--ink-3); font-size:12.5px; }
 
         .empty {
           text-align:center; padding:60px 34px; margin-bottom:var(--gap);
@@ -685,6 +702,7 @@ class HemmaPanel extends HTMLElement {
         <h1>Hemma<span class="ver"></span></h1>
         <div class="spacer"></div>
       </div>
+      <div id="overlay"></div>
       <div class="body">
         <div class="bar">
           <select id="dash"></select>
@@ -1122,13 +1140,28 @@ class HemmaPanel extends HTMLElement {
     const menu = document.createElement("div");
     menu.className = "combo-menu";
     wrap.appendChild(input);
-    wrap.appendChild(menu);
 
     let shown = [];
     let active = -1;
     let current = input.value;
 
-    const close = () => { menu.classList.remove("open"); active = -1; };
+    const close = () => {
+      if (menu.parentNode) menu.parentNode.removeChild(menu);
+      active = -1;
+      if (this._openCombo === close) this._openCombo = null;
+    };
+
+    const place = () => {
+      const r = input.getBoundingClientRect();
+      const below = window.innerHeight - r.bottom - 12;
+      const above = r.top - 12;
+      const drop = below >= 180 || below >= above;
+      menu.style.left = r.left + "px";
+      menu.style.width = r.width + "px";
+      menu.style.maxHeight = Math.max(120, Math.min(300, drop ? below : above)) + "px";
+      if (drop) { menu.style.top = r.bottom + 5 + "px"; menu.style.bottom = "auto"; }
+      else { menu.style.bottom = window.innerHeight - r.top + 5 + "px"; menu.style.top = "auto"; }
+    };
 
     const commit = (v) => {
       current = v;
@@ -1138,7 +1171,9 @@ class HemmaPanel extends HTMLElement {
     };
 
     const paint = () => {
-      [...menu.children].forEach((el, i) => el.classList.toggle("active", i === active));
+      [...menu.children].forEach((el, i) => {
+        if (el.classList.contains("combo-opt")) el.classList.toggle("active", i === active);
+      });
       if (active >= 0 && menu.children[active]) {
         menu.children[active].scrollIntoView({ block: "nearest" });
       }
@@ -1154,7 +1189,10 @@ class HemmaPanel extends HTMLElement {
         e.className = "combo-empty";
         e.textContent = "No match";
         menu.appendChild(e);
-        menu.classList.add("open");
+        if (this._openCombo && this._openCombo !== close) this._openCombo();
+        this._openCombo = close;
+        if (!menu.parentNode) this.$("overlay").appendChild(menu);
+        place();
         active = -1;
         return;
       }
@@ -1171,11 +1209,15 @@ class HemmaPanel extends HTMLElement {
         d.appendChild(label);
         // mousedown, because blur would close the menu before a click lands.
         d.onmousedown = (ev) => { ev.preventDefault(); commit(o); };
+        d.onmouseenter = () => { active = [...menu.children].indexOf(d); paint(); };
         menu.appendChild(d);
       });
 
       active = shown.indexOf(current);
-      menu.classList.add("open");
+      if (this._openCombo && this._openCombo !== close) this._openCombo();
+      this._openCombo = close;
+      if (!menu.parentNode) this.$("overlay").appendChild(menu);
+      place();
       paint();
     };
 
@@ -1201,6 +1243,11 @@ class HemmaPanel extends HTMLElement {
         close();
       }
     };
+
+    // A fixed menu would drift away from its input, so dismiss on scroll.
+    const dismiss = () => { if (menu.parentNode) close(); };
+    window.addEventListener("scroll", dismiss, true);
+    window.addEventListener("resize", dismiss);
 
     return { wrap, input };
   }
