@@ -655,7 +655,13 @@
       if (config.filter_category === 'room_scenes' && !config.sections) {
         config = { ...config, sections: [{
           full_width: true,
-          cards: [{ type: 'custom:button-card', template: 'hemma_scene_row', variables: { layout: 'grid' } }],
+          // A static grid gets _appendEntityGrid's inset; the scrolling row bleeds instead.
+          cards: [{
+            type: 'custom:button-card',
+            template: 'hemma_scene_row',
+            variables: { layout: 'grid' },
+            styles: { card: [{ padding: `0 calc(var(--hemma-rail-left, 16px) + ${LANDSCAPE_GUTTER_CALC}) 0 calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + ${LANDSCAPE_GUTTER_CALC})` }] },
+          }],
         }] };
       }
       this._config = config;

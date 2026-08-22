@@ -14,7 +14,8 @@ hemma_scene_row:
     scene_icons: {}
     scene_colors: {}
     scene_transition: 4
-    chip_width: 41vw
+    # 41vw is tuned for portrait; landscape is ~2x wider, so cap it.
+    chip_width: min(41vw, 176px)
 
   show_icon: false
   show_name: false
@@ -72,7 +73,7 @@ hemma_scene_row:
         if (SC.noteColors) SC.noteColors(variables.scene_colors);
         const opts = {
           transition: variables.scene_transition == null ? 4 : variables.scene_transition,
-          width: variables.chip_width || '41vw',
+          width: variables.chip_width || 'min(41vw, 176px)',
           grid: grid,
         };
 
