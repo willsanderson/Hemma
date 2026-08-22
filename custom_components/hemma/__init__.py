@@ -13,6 +13,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from .images import HemmaImagesView
 from .const import (
     DOMAIN,
     PANEL_ICON,
@@ -47,6 +48,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return 0
 
     stamp = await hass.async_add_executor_job(_stamp)
+
+    if not hass.data.get(f"{DOMAIN}_views"):
+        hass.http.register_view(HemmaImagesView())
+        hass.data[f"{DOMAIN}_views"] = True
 
     # Remove first so a version bump re-registers cleanly instead of being skipped.
     async_remove_panel(hass, PANEL_URL, warn_if_unknown=False)

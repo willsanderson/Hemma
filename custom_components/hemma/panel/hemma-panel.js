@@ -1,7 +1,7 @@
 // Hemma config panel.
 // Generator and form schema carried over verbatim from the tested slice.
 
-const PANEL_VERSION = "0.21.0";
+const PANEL_VERSION = "0.33.0";
 const TEMPLATES_URL = "/hemma_panel/hemma-templates.json";
 
 
@@ -110,6 +110,10 @@ const GROUPS = [
 // A "unit" is a set of fields you add together. Picking Badge 1 reveals its
 // entity and its label at once, rather than making you find each separately.
 // menuGroup puts popup detail under its own heading in the + menu.
+// A repeat is a family of numbered slots. The + offers the family once and
+// reveals the next free slot, rather than listing Light 1 through Light 10.
+const R = (id, label, max, fields, menuGroup) => ({ id, label, max, fields, menuGroup: menuGroup || null });
+
 const SECTIONS = [
   {
     label: "Appearance", icon: "home", iconColor: "var(--ink)", group: "room",
@@ -117,6 +121,10 @@ const SECTIONS = [
     fields: [
       { key: "__name", label: "Room name", type: "text", always: true },
       { key: "image", label: "Background image", type: "image", always: true },
+      { ...T("image_night", "Night image name"), hint: "defaults to the day name with -night" },
+      { ...T("image_position", "Image position"), hint: "CSS background-position, default center center" },
+      { ...T("room_name", "Popup heading"), advanced: true, hint: "follows the room name unless you set it" },
+      { ...T("aqi_room_name", "Popup heading (legacy)"), advanced: true, hint: "older alias for the above" },
     ],
   },
   {
@@ -137,63 +145,62 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Climate", icon: "fan", iconColor: "var(--hemma-badge-climate-color, var(--hemma-color-teal, #00C3D0))", group: "badges",
+    label: "Climate", icon: "fan", toggle: "show_climate",
+    iconColor: "var(--hemma-badge-climate-color, var(--hemma-color-teal, #00C3D0))", group: "badges",
     desc: "The Climate pill. Its popup shows air quality detail.",
     fields: [
-      E("climate_entity_1", "Thermostat 1", ["climate"]),
-      E("climate_entity_2", "Thermostat 2", ["climate"]),
-      E("temp_sensor_1", "Temperature 1", ["sensor"]),
-      E("temp_sensor_2", "Temperature 2", ["sensor"]),
-      E("temp_sensor_3", "Temperature 3", ["sensor"]),
       E("humidity_sensor", "Humidity", ["sensor"]),
       E("quality_sensor", "Air quality", ["sensor"]),
       { key: "temp_unit", label: "Unit", type: "select", options: ["", "F", "C"] },
-      { ...T("aqi_room_name", "Heading"), unit: "aqi", unitLabel: "Air quality popup", menuGroup: "Popup detail" },
-      { ...E("aqi_entity_pm25", "PM2.5", ["sensor"]), unit: "aqi" },
+      { key: "show_climate_inline", label: "Show inline, not as a pill", type: "bool" },
+      { ...E("aqi_entity_pm25", "PM2.5", ["sensor"]), unit: "aqi", unitLabel: "Air quality popup", menuGroup: "Popup detail" },
       { ...E("aqi_entity_pm10", "PM10", ["sensor"]), unit: "aqi" },
       { ...E("aqi_entity_voc", "VOC", ["sensor"]), unit: "aqi" },
       { ...E("aqi_entity_co2", "CO2", ["sensor"]), unit: "aqi" },
       { ...E("aqi_entity_temp", "Temperature", ["sensor"]), unit: "aqi" },
       { ...E("aqi_entity_humidity", "Humidity reading", ["sensor"]), unit: "aqi" },
     ],
+    repeats: [
+      R("thermostat", "Thermostat", 3, [E("climate_entity_%", "Thermostat %", ["climate"])]),
+      R("temp", "Temperature sensor", 5, [E("temp_sensor_%", "Temperature %", ["sensor"])]),
+    ],
   },
   {
-    label: "Lights", icon: "light", iconColor: "var(--hemma-badge-light-color, var(--hemma-color-yellow, #FFCC00))", group: "badges",
+    label: "Lights", icon: "light", toggle: "show_lights",
+    iconColor: "var(--hemma-badge-light-color, var(--hemma-color-yellow, #FFCC00))", group: "badges",
     desc: "The Lights pill, and which lights its popup controls.",
-    fields: [
-      E("light_group_entity", "Room light group", ["light"]),
-      E("light_entity_1", "Light 1", ["light"]),
-      E("light_entity_2", "Light 2", ["light"]),
-      E("light_entity_3", "Light 3", ["light"]),
-    ],
+    fields: [E("light_group_entity", "Room light group", ["light"])],
+    repeats: [R("light", "Light", 10, [E("light_entity_%", "Light %", ["light"])])],
   },
   {
-    label: "People", icon: "person", iconColor: "var(--hemma-color-green, #30D158)", group: "badges",
+    label: "People", icon: "person", toggle: "show_people", iconColor: "var(--hemma-color-green, #30D158)", group: "badges",
     desc: "The People pill. One entry per person you want shown.",
-    fields: [
-      E("presence_entity_1", "Person 1", ["sensor", "person"]),
-      E("presence_entity_2", "Person 2", ["sensor", "person"]),
-      E("presence_entity_3", "Person 3", ["sensor", "person"]),
-      E("presence_entity_4", "Person 4", ["sensor", "person"]),
-    ],
+    fields: [],
+    repeats: [R("person", "Person", 4, [E("presence_entity_%", "Person %", ["sensor", "person"])])],
   },
   {
-    label: "Security", icon: "lock-fill", iconColor: "var(--hemma-color-teal, #00C3D0)", group: "badges",
+    label: "Security", icon: "lock-fill", toggle: "show_security", iconColor: "var(--hemma-color-teal, #00C3D0)", group: "badges",
     desc: "The Security pill. Its popup lists locks, doors and cameras.",
     fields: [
-      { ...E("security_entity_1", "Entity", ["lock", "binary_sensor", "camera"]), unit: "b1", unitLabel: "Badge 1" },
-      { ...T("security_label_1", "Label"), unit: "b1" },
-      { ...E("security_entity_2", "Entity", ["lock", "binary_sensor", "camera"]), unit: "b2", unitLabel: "Badge 2" },
-      { ...T("security_label_2", "Label"), unit: "b2" },
-      E("security_lock_entity", "Primary lock", ["lock"]),
+      E("security_lock_entity", "Sub-badge lock", ["lock"]),
+      E("security_lock_entity_2", "Sub-badge lock 2", ["lock"]),
       { ...LIST("security_locks", "Locks", ["lock"]), menuGroup: "Popup detail" },
+      { ...T("security_locks_label", "Locks heading"), advanced: true, menuGroup: "Popup detail" },
       { ...LIST("security_door_sensors", "Door and window sensors", ["binary_sensor"]), menuGroup: "Popup detail" },
       { ...LIST("security_cameras", "Cameras", ["camera"]), menuGroup: "Popup detail" },
+      { ...T("security_cameras_label", "Cameras heading"), advanced: true, menuGroup: "Popup detail" },
       { ...LIST("security_lock_batteries", "Lock batteries", ["sensor"]), menuGroup: "Popup detail" },
+    ],
+    repeats: [
+      R("secbadge", "Badge", 8, [
+        E("security_entity_%", "Entity", ["lock", "binary_sensor", "camera"]),
+        { ...T("security_label_%", "Label"), advanced: true },
+      ]),
     ],
   },
   {
-    label: "Energy", icon: "energy", iconColor: "var(--hemma-badge-energy-color, var(--hemma-color-green, #30D158))", group: "badges",
+    label: "Energy", icon: "energy", toggle: "show_energy",
+    iconColor: "var(--hemma-badge-energy-color, var(--hemma-color-green, #30D158))", group: "badges",
     desc: "The Energy pill, what it totals, and the devices in its popup.",
     fields: [
       E("energy_power_entity", "Current power", ["sensor"]),
@@ -201,46 +208,71 @@ const SECTIONS = [
       E("energy_usage_month", "Usage this month", ["sensor"]),
       E("energy_cost_today", "Cost today", ["sensor"]),
       E("energy_cost_month", "Cost this month", ["sensor"]),
-      { ...E("energy_entity_1", "Entity", ["sensor"]), unit: "i1", unitLabel: "Badge item 1" },
-      { ...T("energy_label_1", "Label"), unit: "i1" },
-      { key: "energy_unit_1", label: "Unit", type: "select", options: ["", "cost", "power", "energy"], unit: "i1" },
-      { ...E("energy_entity_2", "Entity", ["sensor"]), unit: "i2", unitLabel: "Badge item 2" },
-      { ...T("energy_label_2", "Label"), unit: "i2" },
-      { key: "energy_unit_2", label: "Unit", type: "select", options: ["", "cost", "power", "energy"], unit: "i2" },
-      { ...T("energy_popup_name_1", "Name"), unit: "d1", unitLabel: "Popup device 1", menuGroup: "Popup detail" },
-      { ...E("energy_popup_power_1", "Power", ["sensor"]), unit: "d1" },
-      { ...E("energy_popup_today_1", "Today", ["sensor"]), unit: "d1" },
-      { ...E("energy_popup_month_1", "This month", ["sensor"]), unit: "d1" },
-      { ...E("energy_popup_cost_today_1", "Cost today", ["sensor"]), unit: "d1" },
-      { ...E("energy_popup_cost_month_1", "Cost this month", ["sensor"]), unit: "d1" },
-      { ...T("energy_popup_name_2", "Name"), unit: "d2", unitLabel: "Popup device 2", menuGroup: "Popup detail" },
-      { ...E("energy_popup_power_2", "Power", ["sensor"]), unit: "d2" },
-      { ...E("energy_popup_today_2", "Today", ["sensor"]), unit: "d2" },
-      { ...E("energy_popup_month_2", "This month", ["sensor"]), unit: "d2" },
-      { ...E("energy_popup_cost_today_2", "Cost today", ["sensor"]), unit: "d2" },
-      { ...E("energy_popup_cost_month_2", "Cost this month", ["sensor"]), unit: "d2" },
+    ],
+    repeats: [
+      R("enitem", "Badge item", 6, [
+        E("energy_entity_%", "Entity", ["sensor"]),
+        { ...T("energy_label_%", "Label"), advanced: true },
+        { key: "energy_unit_%", label: "Unit", type: "select", options: ["", "cost", "power", "energy"] },
+        E("energy_cost_%", "Cost entity", ["sensor"]),
+      ]),
+      R("endev", "Popup device", 6, [
+        { ...T("energy_popup_name_%", "Name"), advanced: true },
+        E("energy_popup_power_%", "Power", ["sensor"]),
+        E("energy_popup_today_%", "Today", ["sensor"]),
+        E("energy_popup_month_%", "This month", ["sensor"]),
+        E("energy_popup_cost_today_%", "Cost today", ["sensor"]),
+        E("energy_popup_cost_month_%", "Cost this month", ["sensor"]),
+      ], "Popup detail"),
     ],
   },
   {
-    label: "Media", icon: "media", iconColor: "var(--hemma-color-pink, #ff4d70)", group: "badges",
+    label: "Media", icon: "media", toggle: "show_media", iconColor: "var(--ink)", group: "badges",
     desc: "Players shown as a media pill, or as the Now Playing panel.",
     fields: [
-      E("media_player_1", "Media player 1", ["media_player"]),
-      E("media_player_2", "Media player 2", ["media_player"]),
-      E("media_player_3", "Media player 3", ["media_player"]),
-      E("media_player_4", "Media player 4", ["media_player"]),
-      E("media_player_5", "Media player 5", ["media_player"]),
       { key: "show_now_playing", label: "Use Now Playing panel", type: "bool" },
+      { key: "now_playing_panel", label: "Panel style", type: "select", options: ["", "0", "1"],
+        hint: "0 floating tiles, 1 glass panel" },
+      { ...T("pause_timeout_minutes", "Hide paused after (minutes)"), hint: "default 10" },
+    ],
+    repeats: [
+      R("player", "Media player", 10, [E("media_player_%", "Media player %", ["media_player"])]),
+      R("plex", "Plex stream", 2, [E("plex_stream_%", "Plex stream %", ["sensor"])]),
+      R("psn", "PlayStation", 2, [E("psn_%", "PlayStation %", ["sensor"])]),
     ],
   },
 ];
+
+// Repeats are flattened once per section; visibility then works on units as before.
+function sectionFields(sec) {
+  if (sec._flat) return sec._flat;
+  const out = (sec.fields || []).slice();
+  (sec.repeats || []).forEach((rep) => {
+    for (let n = 1; n <= rep.max; n++) {
+      rep.fields.forEach((f) => {
+        out.push({
+          ...f,
+          key: f.key.replace("%", n),
+          label: f.label.replace("%", n),
+          unit: rep.id + "#" + n,
+          unitLabel: rep.label + " " + n,
+          repeatOf: rep.id,
+          repeatLabel: rep.label,
+          menuGroup: f.menuGroup || rep.menuGroup || null,
+        });
+      });
+    }
+  });
+  sec._flat = out;
+  return out;
+}
 
 const unitOf = (f) => f.unit || f.key;
 
 // One entry per unit, in declaration order, for the + menu.
 const unitsOf = (sec) => {
   const seen = new Map();
-  sec.fields.forEach((f) => {
+  sectionFields(sec).forEach((f) => {
     const id = unitOf(f);
     if (!seen.has(id)) seen.set(id, { id, label: f.unitLabel || f.label, group: f.menuGroup || null, fields: [] });
     seen.get(id).fields.push(f);
@@ -322,6 +354,32 @@ const ROOM_ICONS = {
 };
 
 const roomIcon = (name) => ROOM_ICONS[String(name || "").toLowerCase().trim()] || "mdi:home-variant";
+
+// macOS menus scale up out of the control that opened them, and contract back.
+const MENU_IN = [{ opacity: 0, transform: "scale(0.92)" }, { opacity: 1, transform: "none" }];
+const MENU_OUT = [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(0.96)" }];
+// macOS decelerates into place and never travels past the target.
+const EASE = "cubic-bezier(.32,.72,0,1)";
+const MENU_IN_T = { duration: 160, easing: EASE };
+const MENU_OUT_T = { duration: 110, easing: "cubic-bezier(.4,0,1,1)" };
+const menuStill = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const playMenuIn = (menu, dropDown, fromRight) => {
+  menu.style.transformOrigin = (fromRight ? "right " : "left ") + (dropDown ? "top" : "bottom");
+  if (!menuStill()) menu.animate(MENU_IN, MENU_IN_T);
+};
+
+const closeMenu = (menu, after) => {
+  if (!menu.parentNode || menu._closing) return;
+  menu._closing = true;
+  const done = () => {
+    if (menu.parentNode) menu.parentNode.removeChild(menu);
+    menu._closing = false;
+    if (after) after();
+  };
+  if (menuStill()) return done();
+  menu.animate(MENU_OUT, MENU_OUT_T).finished.then(done, done);
+};
 
 const ICON_DEFAULT = "Default";
 const iconUrl = (name) => {
@@ -467,6 +525,7 @@ class HemmaPanel extends HTMLElement {
     this._room = 0;
     this._bundle = null;
     this._revealed = new Set();
+    this._advOpen = new Set();
     // Keyed off the object itself, so nothing is written into the saved config.
     this._tileKeys = new WeakMap();
     this._tileSeq = 0;
@@ -526,9 +585,31 @@ class HemmaPanel extends HTMLElement {
             inset 0 3px 6px -3px rgba(255,255,255,0.20),
             inset 0 -3px 6px -3px rgba(255,255,255,0.12),
             0 2px 8px rgba(0,0,0,0.18));
-          --ink:#f5f5f7; --ink-2:rgba(235,235,245,0.66); --ink-3:rgba(235,235,245,0.38);
-          --hair:rgba(255,255,255,0.10);
+          --ease:cubic-bezier(.32,.72,0,1);
+
+          /* One material in both modes: a neutral grey glass carrying light
+             text. Light and dark change how deep it sits, not what it is. */
+          --ink:#ffffff;
+          --ink-2:rgba(255,255,255,0.70);
+          --ink-3:rgba(255,255,255,0.46);
+          --hair:rgba(255,255,255,0.12);
           --accent:#0a84ff;
+
+          --pane:linear-gradient(to bottom, rgba(142,142,152,0.30), rgba(122,122,132,0.24) 46%, rgba(112,112,122,0.22));
+          --nested:rgba(255,255,255,0.09);
+          --chip:rgba(255,255,255,0.15);
+          --chip-hi:rgba(255,255,255,0.24);
+          --chip-rim:rgba(255,255,255,0.18);
+          /* Fields read as pressed into the glass, controls as lifted off it. */
+          --field:rgba(0,0,0,0.20);
+          --field-hi:rgba(0,0,0,0.26);
+          --field-rim:rgba(255,255,255,0.14);
+          --lift:linear-gradient(to bottom, rgba(96,96,106,0.62), rgba(78,78,88,0.68));
+          --sw-off:rgba(0,0,0,0.30);
+          --shadow:0 12px 34px rgba(0,0,0,0.34);
+          --scrim-top:rgba(8,8,12,0.44); --scrim-bot:rgba(8,8,12,0.72);
+          --photo:.55;
+
           --r-xl:30px; --r-lg:22px; --r-md:15px; --r-sm:11px;
           --gap:18px;
           color:var(--ink);
@@ -537,26 +618,36 @@ class HemmaPanel extends HTMLElement {
           background:var(--primary-background-color,#0c0c0f);
         }
 
+        /* HA reports darkMode from its own theme choice, which need not match
+           how the panel reads. The palette above stands in both; only the
+           depth cues move, so the panel never becomes a second design. */
+        :host(.is-light) {
+          --pane:linear-gradient(to bottom, rgba(128,128,140,0.40), rgba(108,108,120,0.34) 46%, rgba(98,98,110,0.32));
+          --chip:rgba(255,255,255,0.18);
+          --chip-hi:rgba(255,255,255,0.28);
+          --chip-rim:rgba(255,255,255,0.22);
+          --field:rgba(0,0,0,0.17);
+          --field-hi:rgba(0,0,0,0.23);
+          --lift:linear-gradient(to bottom, rgba(104,104,116,0.68), rgba(86,86,98,0.74));
+          --shadow:0 10px 28px rgba(0,0,0,0.22);
+          --scrim-top:rgba(8,8,12,0.34); --scrim-bot:rgba(8,8,12,0.62);
+          --photo:.68;
+        }
+
         /* Blurred room photo behind the glass. Sibling, never an ancestor, so it
            cannot break backdrop-filter on the cards. Overhangs to keep the blur
            from darkening at the edges. */
         .bg, .bgtint { position:fixed; inset:-160px; z-index:0; pointer-events:none; }
         .bg {
           width:calc(100% + 320px); height:calc(100% + 320px);
-          object-fit:cover; filter:blur(16px) saturate(118%);
+          object-fit:cover; filter:blur(8px) saturate(118%);
           opacity:0; transition:opacity .5s ease;
         }
-        .bg.on { opacity:.55; }
+        .bg.on { opacity:var(--photo); }
         .bgtint {
           background:
-            radial-gradient(1100px 620px at 15% -12%, rgba(120,150,220,0.14), transparent 62%),
-            linear-gradient(to bottom, rgba(8,8,12,0.44), rgba(8,8,12,0.72));
-        }
-        :host(.is-light) .bg.on { opacity:.68; }
-        :host(.is-light) .bgtint {
-          background:
-            radial-gradient(1100px 620px at 15% -12%, rgba(120,150,220,0.10), transparent 62%),
-            linear-gradient(to bottom, rgba(8,8,12,0.30), rgba(8,8,12,0.58));
+            radial-gradient(1100px 620px at 15% -12%, rgba(120,150,220,0.13), transparent 62%),
+            linear-gradient(to bottom, var(--scrim-top), var(--scrim-bot));
         }
         .top, .body { position:relative; z-index:1; }
 
@@ -570,40 +661,29 @@ class HemmaPanel extends HTMLElement {
         .top h1 { font-size:21px; font-weight:600; margin:0; letter-spacing:-0.022em; }
         .ver { font-size:11px; color:var(--ink-3); font-weight:450; margin-left:7px; letter-spacing:0; }
         .burger {
-          background:rgba(255,255,255,0.12); border:0; color:var(--ink); cursor:pointer;
+          background:var(--chip); border:0; color:var(--ink); cursor:pointer;
           width:38px; height:38px; border-radius:50%; padding:0;
           display:flex; align-items:center; justify-content:center;
           box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10);
           transition:background .18s ease;
         }
         .burger svg { width:20px; height:20px; display:block; }
-        .burger:hover { background:rgba(255,255,255,0.20); }
+        .burger:hover { background:var(--chip-hi); }
         .spacer { flex:1; }
 
         .body { padding:28px; max-width:1320px; margin:0 auto; box-sizing:border-box; }
 
         select, input[type=text], input:not([type]), textarea {
           font:inherit; color:var(--ink);
-          background-color:rgba(0,0,0,0.24);
-          border:1px solid rgba(255,255,255,0.10);
-          border-radius:13px; padding:9px 12px; line-height:1.25;
+          background-color:var(--field);
+          border:1px solid var(--field-rim);
+          border-radius:13px; padding:9px 12px;
           transition:border-color .16s ease, background .16s ease;
         }
-        select:focus, input:focus, textarea:focus {
-          outline:none; border-color:rgba(10,132,255,0.9); background-color:rgba(0,0,0,0.30);
+        input:focus, textarea:focus {
+          outline:none; border-color:rgba(10,132,255,0.9); background-color:var(--field-hi);
         }
         input::placeholder, textarea::placeholder { color:var(--ink-3); }
-
-        /* appearance:menulist ignores border-radius, so the chevron is drawn. */
-        select {
-          -webkit-appearance:none; appearance:none;
-          background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='16' viewBox='0 0 10 16'%3E%3Cpath d='M5 1.6 8.2 5.4H1.8z' fill='%23b6b6c0'/%3E%3Cpath d='M5 14.4 1.8 10.6h6.4z' fill='%23b6b6c0'/%3E%3C/svg%3E");
-          background-repeat:no-repeat; background-position:right 12px center;
-          padding-right:32px;
-        }
-        :host(.is-light) select {
-          background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='16' viewBox='0 0 10 16'%3E%3Cpath d='M5 1.6 8.2 5.4H1.8z' fill='%236b6b73'/%3E%3Cpath d='M5 14.4 1.8 10.6h6.4z' fill='%236b6b73'/%3E%3C/svg%3E");
-        }
 
         button {
           font:inherit; font-weight:590; cursor:pointer; color:#fff;
@@ -613,11 +693,11 @@ class HemmaPanel extends HTMLElement {
         button:hover:not(:disabled) { filter:brightness(1.12); }
         button:active:not(:disabled) { transform:scale(0.97); }
         button.ghost {
-          background:rgba(255,255,255,0.13); color:var(--ink);
-          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.13);
+          background:var(--chip); color:var(--ink);
+          box-shadow:inset 0 0 0 1px var(--chip-rim);
           backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
         }
-        button.ghost:hover:not(:disabled) { background:rgba(255,255,255,0.20); filter:none; }
+        button.ghost:hover:not(:disabled) { background:var(--chip-hi); filter:none; }
         button:disabled { opacity:.35; cursor:default; }
         button.ok { background:#30d158; }
         button.ok svg { width:19px; height:19px; display:block; }
@@ -627,9 +707,19 @@ class HemmaPanel extends HTMLElement {
           height:36px; box-sizing:border-box; display:inline-flex;
           align-items:center; justify-content:center; font-size:13.5px;
         }
-        .top > select { min-width:180px; border-radius:999px; padding:0 32px 0 15px; }
+        .top > button.picker {
+          min-width:180px; border-radius:999px; padding:0 14px 0 16px;
+          gap:10px; justify-content:space-between; font-weight:500;
+        }
+        .top > button.picker .pname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .top > button.picker svg { width:12px; height:12px; flex:0 0 12px; opacity:.7; }
         .top > button:not(.burger) { padding:0 18px; }
-        .top > button.icon { width:36px; padding:0; }
+        .top > button.icon {
+          width:36px; padding:0; border-radius:50%;
+          background:var(--chip); box-shadow:inset 0 0 0 1px var(--chip-rim); color:var(--ink-2);
+          transition:background .14s ease, color .14s ease;
+        }
+        .top > button.icon:hover { background:var(--chip-hi); color:var(--ink); filter:none; }
         .top > button.icon svg { width:18px; height:18px; display:block; }
         .status { min-height:20px; font-size:12.5px; margin:13px 2px 22px; color:var(--ink-2); }
         .status.ok { color:#30d158; } .status.err { color:#ff453a; } .status.warn { color:#ffd60a; }
@@ -638,24 +728,38 @@ class HemmaPanel extends HTMLElement {
         .tab {
           display:inline-flex; align-items:center; gap:7px; touch-action:none;
           padding:9px 16px; border-radius:999px; cursor:pointer; font-size:13.5px; font-weight:520;
-          background:rgba(255,255,255,0.11); box-shadow:inset 0 0 0 1px rgba(255,255,255,0.11);
+          background:var(--chip); box-shadow:inset 0 0 0 1px var(--chip-rim);
           backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
           transition:background .16s ease;
           user-select:none; -webkit-user-select:none;
         }
-        .tab:hover { background:rgba(255,255,255,0.18); }
+        .tab:hover { background:var(--chip-hi); }
         .tab.on { background:var(--accent); box-shadow:none; }
-        .tab.dragging { z-index:5; opacity:.94; cursor:grabbing; box-shadow:0 10px 26px rgba(0,0,0,0.4); }
-        .tab .caret { width:15px; height:15px; flex:0 0 15px; opacity:.7; margin-right:-3px; display:grid; place-items:center; }
+        .tab.dragging {
+          z-index:5; opacity:1; cursor:grabbing;
+          background:var(--lift);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.16),
+            inset 0 0 0 1px var(--chip-rim),
+            0 10px 26px rgba(0,0,0,0.36);
+        }
+        .tab.on.dragging {
+          background:linear-gradient(to bottom, #2b90ff, #0a7ae8);
+          box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 26px rgba(0,0,0,0.44);
+        }
+        .tab .caret {
+          width:15px; height:15px; flex:0 0 15px; opacity:.7; margin-right:-3px;
+          display:grid; place-items:center; overflow:hidden;
+        }
         .tab .caret svg { width:11px; height:11px; display:block; }
         .tab .caret:hover { opacity:1; }
         .tabadd {
           width:34px; height:34px; padding:0; border-radius:50%;
           display:inline-flex; align-items:center; justify-content:center;
-          background:rgba(255,255,255,0.11); color:var(--ink);
-          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.11);
+          background:var(--chip); color:var(--ink);
+          box-shadow:inset 0 0 0 1px var(--chip-rim);
         }
-        .tabadd:hover { background:rgba(255,255,255,0.20); filter:none; }
+        .tabadd:hover { background:var(--chip-hi); filter:none; }
         .tabadd svg { width:16px; height:16px; display:block; }
 
         /* Two columns packed in JS. Browser column balancing put tall cards in
@@ -673,9 +777,10 @@ class HemmaPanel extends HTMLElement {
         .col > .card:last-child { flex:1 1 auto; }
         @media (max-width:1080px) { .cols { flex-direction:column; } }
 
-        .card > .cdesc { color:var(--ink-3); font-size:12px; margin:-2px 0 10px; }
+        .card > .chead + * { margin-top:14px; }
         .card > .cdesc.drift { color:#ffd60a; }
 
+        .card.noheader { padding-top:28px; }
         .card.map { margin:0 0 26px; padding:26px 24px 24px; display:flex; gap:24px; align-items:center; flex-wrap:wrap; }
         .map svg { width:300px; height:158px; flex:0 0 auto; }
         .map .legend { display:flex; flex-direction:column; gap:9px; min-width:230px; }
@@ -689,54 +794,128 @@ class HemmaPanel extends HTMLElement {
         .map .zone { cursor:pointer; }
         .map .zone rect, .map .zone circle { transition:opacity .15s ease; }
         .map .zone:hover .hit { opacity:.30; }
+        .map .live {
+          flex:1 1 240px; min-width:210px; display:flex; flex-wrap:wrap;
+          align-content:center; gap:8px;
+        }
+        /* Stand-ins for the real badges: same pill, same tinted glyph. */
+        .pbadge {
+          display:inline-flex; align-items:center; gap:7px; max-width:100%;
+          padding:7px 13px 7px 10px; border-radius:999px; box-sizing:border-box;
+          background:rgba(0,0,0,0.38);
+          box-shadow:inset 0 0 0 .5px rgba(255,255,255,0.15), 0 1px 3px rgba(0,0,0,0.22);
+          font-size:12.5px; line-height:1;
+        }
+        .pbadge.dim { opacity:.60; }
+        .pbadge.clip { min-width:0; }
+        .pglyph {
+          width:19px; height:15px; flex:0 0 19px; background-color:var(--sc, var(--ink));
+          -webkit-mask:var(--i) center / auto 14px no-repeat;
+          mask:var(--i) center / auto 14px no-repeat;
+        }
+        .ptext { color:var(--ink); font-weight:520; font-variant-numeric:tabular-nums; }
+        .pbadge.clip .ptext { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .map .live .lnone { color:var(--ink-3); font-size:12.5px; }
 
         .card {
           width:100%; box-sizing:border-box;
-          background:
-            linear-gradient(to bottom, rgba(255,255,255,0.13), rgba(255,255,255,0.06) 44%, rgba(255,255,255,0.045));
+          background:var(--pane);
           backdrop-filter:var(--g-blur); -webkit-backdrop-filter:var(--g-blur);
           box-shadow:var(--g-rim);
           border-radius:var(--r-xl); padding:6px 24px 20px;
         }
-        .card > .chead { display:flex; align-items:center; gap:10px; margin:20px 0 8px; }
+        .card > .chead {
+          display:grid; grid-template-columns:34px 1fr auto auto auto; column-gap:10px;
+          align-items:center; margin:20px 0 4px;
+        }
+        .card > .chead .sicon { grid-column:1; grid-row:1 / span 2; align-self:center; }
+        .card > .chead .cdesc {
+          grid-column:2 / -1; grid-row:2; color:var(--ink-3); font-size:12px; margin:2px 0 0;
+        }
         /* Constrain height only. These icons range from 0.57:1 to 1.43:1, and
            fitting them to a square box makes the wide ones look half-size. */
         .sicon {
-          width:30px; height:22px; flex:0 0 30px;
+          width:34px; height:26px; flex:0 0 34px;
           background-color:var(--sc, var(--ink));
-          -webkit-mask:var(--i) center / auto 20px no-repeat;
-          mask:var(--i) center / auto 20px no-repeat;
+          -webkit-mask:var(--i) center / auto 24px no-repeat;
+          mask:var(--i) center / auto 24px no-repeat;
         }
         /* Multi-colour icons are drawn, not masked, or they flatten to one tint. */
         .sicon.raw {
           background-color:transparent;
           -webkit-mask:none; mask:none;
-          background:var(--i) center / auto 20px no-repeat;
+          background:var(--i) center / auto 24px no-repeat;
         }
-        .card > .chead h2 {
+        .card > .chead h2 { grid-column:2;
           font-size:16px; font-weight:600; letter-spacing:-0.015em; margin:0; flex:1; color:var(--ink);
         }
-        .card > .chead .count { color:var(--ink-3); font-size:12px; font-weight:450; }
+        .card > .chead .count { grid-column:3; color:var(--ink-3); font-size:12px; font-weight:450; }
+        .card > .chead .plus { grid-column:4; }
+        .card > .chead .sw { grid-column:5; }
+
+        /* A group needs its entities and its switch. Off dims the card so the
+           setup underneath still reads, rather than hiding or clearing it. */
+        .sw {
+          position:relative; width:40px; height:24px; flex:0 0 40px; padding:0; border:0;
+          border-radius:999px; cursor:pointer; background:var(--sw-off);
+          box-shadow:inset 0 0 0 .5px var(--chip-rim);
+          transition:background .24s var(--ease);
+        }
+        .sw::after {
+          content:""; position:absolute; top:2px; left:2px; width:20px; height:20px;
+          border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.28);
+          transition:transform .24s var(--ease);
+        }
+        .sw[aria-checked="true"] { background:#30d158; }
+        .sw[aria-checked="true"]::after { transform:translateX(16px); }
+        .sw:hover { filter:brightness(1.08); }
+        .sw:active::after { width:24px; }
+        .card.off > .chead .sicon, .card.off > .row, .card.off > .hint,
+        .card.off > .empty-note, .card.off > .adv { opacity:.42; }
+        .card.off > .chead h2 { color:var(--ink-2); }
+
+        /* Optional overrides with working defaults, kept out of the setup flow. */
+        .adv { margin-top:6px; }
+        .advsum {
+          display:flex; align-items:center; gap:6px; width:100%; padding:10px 0;
+          background:none; border:0; color:var(--ink-2); font-size:12.5px; font-weight:560;
+          border-top:1px solid var(--hair); border-radius:0; justify-content:flex-start;
+        }
+        .advsum:hover:not(:disabled) { color:var(--ink); filter:none; }
+        .advsum:active:not(:disabled) { transform:none; }
+        .advsum svg { width:13px; height:13px; flex:0 0 13px; transition:transform .22s var(--ease); }
+        .adv.open .advsum svg { transform:rotate(90deg); }
+        .advbody { display:none; }
+        .adv.open .advbody { display:block; }
         .plus {
           width:26px; height:26px; padding:0; border-radius:50%; flex:0 0 26px;
           display:flex; align-items:center; justify-content:center;
-          background:rgba(255,255,255,0.13); color:var(--ink);
-          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12);
+          background:var(--chip); color:var(--ink);
+          box-shadow:inset 0 0 0 1px var(--chip-rim);
         }
-        .plus:hover:not(:disabled) { background:rgba(255,255,255,0.22); filter:none; }
+        .plus:hover:not(:disabled) { background:var(--chip-hi); filter:none; }
         .plus svg { width:15px; height:15px; display:block; }
         .card > .empty-note { color:var(--ink-3); font-size:12.5px; padding:2px 0 12px; }
 
         .row {
-          display:grid; grid-template-columns:minmax(120px,36%) 1fr; gap:14px; align-items:center;
+          display:grid; grid-template-columns:minmax(110px,33%) 1fr 22px; gap:14px; align-items:center;
           padding:12px 0; border-top:1px solid var(--hair);
         }
+        .row .drop {
+          width:22px; height:22px; padding:0; border-radius:50%; box-shadow:none;
+          background:var(--chip); color:var(--ink-2);
+          opacity:.45; transition:opacity .14s ease, background .14s ease, color .14s ease;
+          display:grid; place-items:center;
+        }
+        .row .drop svg { width:13px; height:13px; display:block; }
+        .row:hover .drop { opacity:1; }
+        .row .drop:hover { background:#ff453a; color:#fff; opacity:1; filter:none; }
         .row:first-of-type { border-top:0; }
         .row label { color:var(--ink-2); font-size:13.5px; }
         .row input, .row select, .row textarea { width:100%; box-sizing:border-box; }
         .row > select, .row > input, .row > .combo > input { height:38px; }
         .row > textarea { height:auto; }
-        .addbar > select { height:36px; box-sizing:border-box; padding:0 32px 0 16px; border-radius:999px; }
+        .addbar > select { height:36px; box-sizing:border-box; padding:0 34px 0 16px; border-radius:999px; min-width:120px; }
         .addbar > .mini { height:34px; box-sizing:border-box; }
         .hint { color:var(--ink-3); font-size:11.5px; padding:2px 0 12px; }
 
@@ -744,6 +923,7 @@ class HemmaPanel extends HTMLElement {
           font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12px;
           min-height:72px; resize:vertical; line-height:1.5;
         }
+        select { line-height:normal; }
 
         /* Native datalist and select popups cannot be styled, so entity and icon
            fields use a real listbox instead. */
@@ -770,30 +950,49 @@ class HemmaPanel extends HTMLElement {
             0 2px 6px rgba(0,0,0,0.16),
             0 18px 48px rgba(0,0,0,0.44);
         }
-        :host(.is-light) .combo-menu {
-          background:rgba(250,250,252,0.50);
-          backdrop-filter:blur(64px) saturate(200%) brightness(1.02);
-          -webkit-backdrop-filter:blur(64px) saturate(200%) brightness(1.02);
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,0.70),
-            inset 0 0 0 0.5px rgba(0,0,0,0.09),
-            0 2px 6px rgba(0,0,0,0.08),
-            0 18px 48px rgba(0,0,0,0.22);
-        }
         .combo-opt {
           padding:6px 10px; border-radius:9px; cursor:default; font-size:13.5px;
           display:flex; align-items:center; gap:8px; color:var(--ink);
           white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
           line-height:1.4; letter-spacing:-0.005em;
         }
-        :host(.is-light) .combo-opt { color:#1d1d1f; }
         .combo-opt.active { background:var(--accent); color:#fff; }
-        :host(.is-light) .combo-opt.active { color:#fff; }
+        .combo-opt .lbl { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; }
         .combo-opt .tick { width:12px; flex:0 0 12px; opacity:0; font-size:11px; }
         .combo-opt.sel .tick { opacity:.85; }
+        .combo-menu.noticks .combo-opt .tick { display:none; }
         .combo-sep { height:1px; margin:5px 8px; background:rgba(255,255,255,0.11); }
-        :host(.is-light) .combo-sep { background:rgba(0,0,0,0.10); }
         .combo-empty { padding:6px 9px; color:var(--ink-3); font-size:12.5px; }
+        .scrim {
+          position:fixed; inset:0; z-index:300; display:grid; place-items:center;
+          background:rgba(0,0,0,0.42);
+          backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+        }
+        .dialog {
+          width:min(420px, calc(100vw - 48px)); box-sizing:border-box;
+          padding:24px 24px 20px; border-radius:22px;
+          background:linear-gradient(to bottom, rgba(58,58,66,0.86), rgba(40,40,46,0.90));
+          backdrop-filter:blur(50px) saturate(180%); -webkit-backdrop-filter:blur(50px) saturate(180%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.16),
+            inset 0 0 0 0.5px rgba(255,255,255,0.14),
+            0 24px 60px rgba(0,0,0,0.52);
+        }
+        .dialog h3 { margin:0 0 6px; font-size:16px; font-weight:600; letter-spacing:-0.01em; }
+        .dialog p { margin:0 0 16px; font-size:13px; color:var(--ink-2); line-height:1.5; }
+        .dialog input { width:100%; box-sizing:border-box; margin:0 0 18px; height:38px; }
+        .dialog .acts { display:flex; gap:10px; justify-content:flex-end; }
+        .dialog .acts button { height:34px; padding:0 18px; font-size:13.5px; }
+        .dialog .acts button.danger { background:#ff453a; color:#fff; }
+        /* The dialog is itself a backdrop root, so a nested blur here would be
+           inert. A translucent fill plus a rim reads as glass instead. */
+        .dialog .acts button.ghost {
+          background:rgba(255,255,255,0.14);
+          color:var(--ink);
+          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.16);
+        }
+        .dialog .acts button.ghost:hover { background:rgba(255,255,255,0.22); }
+
         .glyph {
           width:17px; height:17px; flex:0 0 17px; background-color:currentColor;
           -webkit-mask:var(--i) center/contain no-repeat; mask:var(--i) center/contain no-repeat;
@@ -808,13 +1007,12 @@ class HemmaPanel extends HTMLElement {
           padding:7px 10px 3px; font-size:11px; font-weight:600; letter-spacing:0.05em;
           text-transform:uppercase; color:var(--ink-3);
         }
-        :host(.is-light) .combo-head { color:rgba(0,0,0,0.45); }
 
         .chips { display:flex; flex-wrap:wrap; gap:7px; margin:0 0 8px; }
         .chip {
           display:inline-flex; align-items:center; gap:7px; font-size:12.5px;
-          background:rgba(255,255,255,0.12); border-radius:999px; padding:5px 6px 5px 12px;
-          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.11);
+          background:var(--chip); border-radius:999px; padding:5px 6px 5px 12px;
+          box-shadow:inset 0 0 0 1px var(--chip-rim);
         }
         .chip button {
           width:18px; height:18px; padding:0; border-radius:50%; flex:0 0 18px;
@@ -836,11 +1034,11 @@ class HemmaPanel extends HTMLElement {
         .areas { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin:10px 0 18px; text-align:left; }
         .area {
           display:flex; align-items:center; gap:10px; font-size:13.5px; cursor:pointer;
-          background:rgba(255,255,255,0.09); border-radius:var(--r-md); padding:12px 15px;
-          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.09);
+          background:var(--chip); border-radius:var(--r-md); padding:12px 15px;
+          box-shadow:inset 0 0 0 1px var(--chip-rim);
           transition:background .16s ease;
         }
-        .area:hover { background:rgba(255,255,255,0.15); }
+        .area:hover { background:var(--chip-hi); }
 
         .shots { display:flex; gap:12px; padding:6px 0 14px; }
         .shot { flex:1; }
@@ -858,23 +1056,43 @@ class HemmaPanel extends HTMLElement {
         /* Glass on glass: nested surfaces sit brighter than the card. */
         .tile {
           border-radius:var(--r-lg); padding:13px 16px; margin:0;
-          background:rgba(255,255,255,0.07);
-          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.09);
+          background:var(--nested);
+          box-shadow:inset 0 0 0 1px var(--chip-rim);
         }
         .tile.locked { opacity:.6; }
-        .thead { display:flex; align-items:center; gap:9px; }
+        .thead { display:flex; align-items:center; gap:9px; cursor:grab; touch-action:none; }
+        .tile.dragging {
+          z-index:6; opacity:1;
+          background:var(--lift);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.15),
+            inset 0 0 0 1px var(--chip-rim),
+            0 18px 42px rgba(0,0,0,0.42);
+        }
+        .tile.dragging .thead { cursor:grabbing; }
+        /* Drag states stay dark in both modes: the panel's own surfaces are dark
+           whatever HA reports, so a light lift would leave light text on white. */
+        .tile.dragging, .tab.dragging { color:var(--ink); }
         .thead .grow { flex:1; font-size:13.5px; font-weight:560; }
         .thead .kind { color:var(--ink-3); font-size:11.5px; font-weight:400; margin-left:6px; }
         .mini {
           padding:6px 13px; font-size:12px; font-weight:530; border-radius:999px;
-          background:rgba(255,255,255,0.13); color:var(--ink);
-          box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12);
+          background:var(--chip); color:var(--ink);
+          box-shadow:inset 0 0 0 1px var(--chip-rim);
         }
-        .mini:hover:not(:disabled) { background:rgba(255,255,255,0.20); filter:none; }
+        .mini:hover:not(:disabled) { background:var(--chip-hi); filter:none; }
         .mini.danger { color:#ff453a; }
+        .mini.icon {
+          width:28px; height:28px; padding:0; border-radius:50%;
+          display:inline-flex; align-items:center; justify-content:center;
+          background:var(--chip); box-shadow:inset 0 0 0 1px var(--chip-rim); color:var(--ink-2);
+          transition:background .14s ease, color .14s ease;
+        }
+        .mini.icon:hover { background:var(--chip-hi); color:var(--ink); filter:none; }
+        .mini.icon svg { width:16px; height:16px; display:block; }
         .tbody { margin-top:6px; }
-        .tbody .row { grid-template-columns:minmax(110px,30%) 1fr; padding:10px 0; }
-        .addbar { display:flex; gap:10px; align-items:center; margin-top:15px; flex-wrap:wrap; }
+        .tbody .row { grid-template-columns:minmax(100px,30%) 1fr; padding:10px 0; }
+        .addbar { display:flex; gap:10px; align-items:center; margin:0 0 16px; flex-wrap:wrap; }
         #tilespane { margin-top:var(--gap); }
         .tilegrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(330px,1fr)); gap:12px; }
         .addbar select { border-radius:999px; padding:9px 15px; }
@@ -905,7 +1123,10 @@ class HemmaPanel extends HTMLElement {
         </button>
         <h1>Hemma<span class="ver"></span></h1>
         <div class="spacer"></div>
-        <select id="dash"></select>
+        <button id="dash" class="ghost picker">
+          <span class="pname"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
         <button id="open" class="ghost">Open</button>
         <button id="save" disabled>Save changes</button>
         <button id="more" class="ghost icon" title="More" aria-label="More">
@@ -931,40 +1152,96 @@ class HemmaPanel extends HTMLElement {
       const p = this.$("dash").value;
       if (p) window.location.assign("/" + p);
     };
-    this.$("more").onclick = () => this._menuAt(this.$("more"),
-      [{ id: "create", label: "Create dashboard\u2026" }],
-      (id) => { if (id === "create") this._createForm(); });
+    this.$("more").onclick = () => this._menuAt(this.$("more"), [
+      { id: "create", label: "Create new dashboard\u2026" },
+      { id: "delete", label: "Delete this dashboard\u2026" },
+    ], (id) => {
+      if (id === "create") return this._createForm();
+      if (id === "delete") return this._deleteDashboard();
+    });
     this.$("save").onclick = () => this._save();
-    this.$("dash").onchange = () => { this._remember(this.$("dash").value); this._load(); };
+    this.$("dash").onclick = () => {
+      const items = (this._dashList || []).map((d) => ({
+        id: d.url_path, label: d.title, checked: d.url_path === this.$("dash").value,
+      }));
+      if (!items.length) return;
+      this._menuAt(this.$("dash"), items, (id) => {
+        this._setDash(id);
+        this._remember(id);
+        this._load();
+      });
+    };
 
     await this._refreshDashboards();
+  }
+
+  // Whether a dashboard is a Hemma one is only knowable from its config, so the
+  // others are pruned in the background once the panel is already usable.
+  async _pruneDashboards(list) {
+    for (const d of list) {
+      if (d.url_path === this.$("dash").value) continue;
+      let hemma = false;
+      try {
+        const cfg = await this._hass.callWS({ type: "lovelace/config", url_path: d.url_path });
+        hemma = (cfg.views || []).some((v) => ((v.cards || [])[0] || {}).template === "hemma_room");
+      } catch (e) {
+        hemma = false;
+      }
+      if (hemma) continue;
+      this._dashList = (this._dashList || []).filter((x) => x.url_path !== d.url_path);
+      this._log(`hid "${d.url_path}", not a Hemma dashboard`);
+    }
+  }
+
+  _setDash(url_path) {
+    const btn = this.$("dash");
+    btn.value = url_path;
+    const entry = (this._dashList || []).find((d) => d.url_path === url_path);
+    btn.querySelector(".pname").textContent = entry ? entry.title : (url_path || "No dashboards yet");
   }
 
   _remember(url_path) {
     try { if (url_path) localStorage.setItem(LAST_DASH_KEY, url_path); } catch (e) { /* private mode */ }
   }
 
+  async _deleteDashboard() {
+    const url_path = this.$("dash").value;
+    const entry = (this._dashList || []).find((d) => d.url_path === url_path);
+    if (!entry) return this._status("pick a dashboard first", "err");
+
+    const yes = await this._ask({
+      title: 'Delete "' + entry.title + '"?',
+      message: "The dashboard and everything configured in it is removed. Your entities are untouched. This cannot be undone.",
+      confirmLabel: "Delete", destructive: true,
+    });
+    if (!yes) return;
+
+    try {
+      await this._hass.callWS({ type: "lovelace/dashboards/delete", dashboard_id: entry.id });
+      this._log(`deleted dashboard "${url_path}"`, "ok");
+      this._status(`Deleted "${entry.title}"`, "ok");
+      await this._refreshDashboards();
+    } catch (e) {
+      this._status("delete failed: " + e.message, "err");
+      this._log("delete failed: " + e.message, "err");
+    }
+  }
+
   async _refreshDashboards(select) {
-    const sel = this.$("dash");
-    sel.innerHTML = "";
     let list = [];
     try {
       list = (await this._hass.callWS({ type: "lovelace/dashboards/list" }))
         .filter((d) => d.mode === "storage");
+      this._dashList = list;
     } catch (e) {
       this._status("could not list dashboards: " + e.message, "err");
       return;
     }
     if (!list.length) {
-      sel.innerHTML = "<option value=''>no dashboards yet</option>";
+      this._setDash("");
       this._firstRun();
       return;
     }
-    list.forEach((d) => {
-      const o = document.createElement("option");
-      o.value = d.url_path; o.textContent = d.title;
-      sel.appendChild(o);
-    });
 
     // Prefer an explicit choice, then the last one used, then anything that
     // looks like a Hemma dashboard, rather than whatever HA happens to list first.
@@ -978,11 +1255,12 @@ class HemmaPanel extends HTMLElement {
       const looksHemma = list.find((d) => /hemma/i.test(d.url_path) || /hemma/i.test(d.title || ""));
       pick = looksHemma ? looksHemma.url_path : list[0].url_path;
     }
-    sel.value = pick;
+    this._setDash(pick);
     this._remember(pick);
 
     this._log(`${list.length} storage dashboard(s)`);
     await this._load();
+    this._pruneDashboards(list);
   }
 
   _firstRun() {
@@ -1144,8 +1422,7 @@ class HemmaPanel extends HTMLElement {
         });
       } else {
         this.$("save").disabled = false;
-        const n = this._state.compact.rooms.length;
-        this._status(`${n} room${n === 1 ? "" : "s"}`, "");
+        this._status("");
       }
 
       this._renderTabs();
@@ -1205,6 +1482,8 @@ class HemmaPanel extends HTMLElement {
 
   _renderTabs() {
     const rooms = this._state.compact.rooms;
+    const before = this._tabRects();
+    const prevSel = this._prevSel;
     const el = document.createElement("div");
     el.className = "tabs";
 
@@ -1229,10 +1508,33 @@ class HemmaPanel extends HTMLElement {
       // Drag to reorder. A press that never moves is treated as a tap.
       t.onpointerdown = (ev) => {
         if (ev.button) return;
+        const tabs = [...el.querySelectorAll(".tab")];
+        const rects = tabs.map((p2) => p2.getBoundingClientRect());
         const startX = ev.clientX;
-        const rects = [...el.querySelectorAll(".tab")].map((p2) => p2.getBoundingClientRect());
-        let moved = false;
-        let target = i;
+        let moved = false, target = i, shown = i;
+
+        // Tabs are different widths, so a slot has no fixed position. The
+        // projected row is accumulated from the widths in the new order.
+        const rowTops = new Set(rects.map((r) => Math.round(r.top)));
+        const gap = rects.length > 1
+          ? Math.max(0, rects[1].left - (rects[0].left + rects[0].width))
+          : 8;
+
+        const shiftTo = (to) => {
+          if (to === shown || rowTops.size > 1) return;
+          shown = to;
+          const order = tabs.map((_, k) => k).filter((k) => k !== i);
+          order.splice(to, 0, i);
+          let x = rects[0].left;
+          const left = [];
+          order.forEach((orig) => { left[orig] = x; x += rects[orig].width + gap; });
+          order.forEach((orig) => {
+            if (orig === i) return;
+            const el2 = tabs[orig];
+            el2.style.transition = "transform .18s " + EASE;
+            el2.style.transform = "translateX(" + (left[orig] - rects[orig].left) + "px)";
+          });
+        };
 
         const onMove = (e2) => {
           const dx = e2.clientX - startX;
@@ -1246,18 +1548,31 @@ class HemmaPanel extends HTMLElement {
           target = rects.reduce(
             (n, r2, k) => (k !== i && e2.clientX > r2.left + r2.width / 2 ? n + 1 : n), 0);
           target = Math.max(0, Math.min(rooms.length - 1, target));
+          shiftTo(target);
         };
 
         const onUp = () => {
           window.removeEventListener("pointermove", onMove);
           window.removeEventListener("pointerup", onUp);
           t.classList.remove("dragging");
-          t.style.transform = "";
+
           if (!moved) {
             if (i !== this._room) { this._room = i; this._renderTabs(); this._renderForm(); }
             return;
           }
-          this._moveRoom(i, target);
+
+          // Measure with the shifts still applied, so the rebuild starts from
+          // the gap instead of snapping back first.
+          const before = this._tabRects();
+          tabs.forEach((p2) => { p2.style.transition = ""; p2.style.transform = ""; });
+
+          if (target === i) { requestAnimationFrame(() => this._playTabs(before)); return; }
+          const [x] = rooms.splice(i, 1);
+          rooms.splice(target, 0, x);
+          this._room = target;
+          this._renderTabs();
+          this._renderForm();
+          requestAnimationFrame(() => this._playTabs(before));
         };
 
         window.addEventListener("pointermove", onMove);
@@ -1278,6 +1593,34 @@ class HemmaPanel extends HTMLElement {
     const host = this.$("rooms");
     const old = host.querySelector(".tabs");
     if (old) old.replaceWith(el); else host.prepend(el);
+
+    // Selecting a room grows its tab by the caret's width; grow into it rather
+    // than snapping, and slide the rest along.
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && before.size) {
+      const spring = { duration: 300, easing: EASE };
+      el.querySelectorAll(".tab[data-k]").forEach((t) => {
+        const b = before.get(t.dataset.k);
+        if (!b) return;
+        const a = t.getBoundingClientRect();
+        const dx = b.left - a.left;
+        const sx = b.width / Math.max(1, a.width);
+        if (Math.abs(dx) < 1 && Math.abs(sx - 1) < 0.01) return;
+        t.style.transformOrigin = "left center";
+        t.animate(
+          [{ transform: "translateX(" + dx + "px) scaleX(" + sx + ")" }, { transform: "none" }],
+          spring
+        );
+        const label = t.firstElementChild;
+        // Counter-scale the label so the text does not stretch as the pill grows.
+        if (label && Math.abs(sx - 1) > 0.01) {
+          label.animate(
+            [{ transform: "scaleX(" + (1 / sx) + ")" }, { transform: "none" }],
+            spring
+          );
+        }
+      });
+    }
+    this._prevSel = this._room;
   }
 
   _tabRects() {
@@ -1294,7 +1637,7 @@ class HemmaPanel extends HTMLElement {
       const dx = b.left - c.getBoundingClientRect().left;
       if (Math.abs(dx) < 1) return;
       c.animate([{ transform: "translateX(" + dx + "px)" }, { transform: "none" }],
-        { duration: 340, easing: "cubic-bezier(.34,1.42,.5,1)" });
+        { duration: 300, easing: EASE });
     });
   }
 
@@ -1310,10 +1653,10 @@ class HemmaPanel extends HTMLElement {
     requestAnimationFrame(() => this._playTabs(before));
   }
 
-  _addRoom() {
+  async _addRoom() {
     const rooms = this._state.compact.rooms;
-    const name = prompt("Room name");
-    if (!name || !name.trim()) return;
+    const name = await this._ask({ title: "New room", value: "", placeholder: "Kitchen", confirmLabel: "Add" });
+    if (!name) return;
     const path = slug(name);
     if (rooms.some((r) => r.path === path)) {
       return this._status('a room with path "' + path + '" already exists', "err");
@@ -1329,23 +1672,45 @@ class HemmaPanel extends HTMLElement {
     this._menuAt(anchor, [
       { id: "rename", label: "Rename\u2026" },
       { id: "delete", label: "Delete room", group: null },
-    ], (id) => {
+    ], async (id) => {
       const r = rooms[i];
       if (id === "rename") {
-        const name = prompt("Room name", r.name || r.path);
-        if (!name || !name.trim()) return;
-        r.name = name.trim();
+        const name = await this._ask({ title: "Rename room", value: r.name || r.path, confirmLabel: "Rename" });
+        if (!name) return;
+        r.name = name;
         this._renderTabs();
         this._renderForm();
         return;
       }
       if (id === "delete") {
         if (rooms.length < 2) return this._status("a dashboard needs at least one room", "err");
-        if (!confirm('Delete "' + (r.name || r.path) + '" and everything in it?')) return;
-        rooms.splice(i, 1);
-        this._room = Math.max(0, i - 1);
-        this._renderTabs();
-        this._renderForm();
+        const yes = await this._ask({
+          title: 'Delete "' + (r.name || r.path) + '"?',
+          message: "Its badges and tiles are removed with it. This cannot be undone.",
+          confirmLabel: "Delete", destructive: true,
+        });
+        if (!yes) return;
+
+        const done = () => {
+          rooms.splice(i, 1);
+          this._room = Math.max(0, i - 1);
+          this._renderTabs();
+          this._renderForm();
+        };
+
+        const tab = this.shadowRoot.querySelector('.tab[data-k="room-' + r.path + '"]');
+        if (!tab || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
+
+        // Collapse to nothing, so the tabs after it close the gap.
+        tab.style.transformOrigin = "left center";
+        tab.style.overflow = "hidden";
+        tab.animate(
+          [
+            { transform: "scale(1)", opacity: 1, maxWidth: tab.offsetWidth + "px" },
+            { transform: "scale(0.82)", opacity: 0, maxWidth: "0px" },
+          ],
+          { duration: 260, easing: "cubic-bezier(.4,0,.9,.6)" }
+        ).finished.then(done, done);
       }
     });
   }
@@ -1371,7 +1736,7 @@ class HemmaPanel extends HTMLElement {
       || this._revealed.has(room.path + "|" + u.id);
     const shownFields = (sec) => {
       const live = new Set(unitsOf(sec).filter(unitLive).map((u) => u.id));
-      return sec.fields.filter((f) => live.has(unitOf(f)));
+      return sectionFields(sec).filter((f) => live.has(unitOf(f)));
     };
 
     const weigh = (sec) => {
@@ -1453,33 +1818,68 @@ class HemmaPanel extends HTMLElement {
       const h2 = document.createElement("h2");
       h2.textContent = sec.label;
       head.appendChild(h2);
-      if (visible.length && hiddenUnits.length) {
+      // Only the next free slot of a repeat is offered, so ten light slots
+      // read as one "Light" entry.
+      const offered = [];
+      const seenRepeat = new Set();
+      hiddenUnits.forEach((u) => {
+        const f0 = u.fields[0];
+        if (f0.repeatOf) {
+          if (seenRepeat.has(f0.repeatOf)) return;
+          seenRepeat.add(f0.repeatOf);
+          offered.push({ id: u.id, label: f0.repeatLabel, group: u.group });
+        } else {
+          offered.push({ id: u.id, label: u.label, group: u.group });
+        }
+      });
+
+      if (sec.toggle) {
+        const on = room.variables[sec.toggle] !== false;
+        const sw = document.createElement("button");
+        sw.className = "sw";
+        sw.type = "button";
+        sw.setAttribute("role", "switch");
+        sw.setAttribute("aria-checked", on ? "true" : "false");
+        sw.setAttribute("aria-label", "Show " + sec.label + " on the dashboard");
+        sw.title = on ? "Shown on the dashboard" : "Hidden on the dashboard";
+        sw.onclick = () => {
+          // On is the default, so it is stored by absence rather than as true.
+          if (room.variables[sec.toggle] === false) delete room.variables[sec.toggle];
+          else room.variables[sec.toggle] = false;
+          this._renderForm();
+        };
+        head.appendChild(sw);
+        fs.classList.toggle("off", !on);
+      }
+
+      const liveCount = units.length - hiddenUnits.length;
+      if (liveCount && offered.length) {
         const c = document.createElement("span");
         c.className = "count";
-        c.textContent = (units.length - hiddenUnits.length) + "/" + units.length;
+        c.textContent = (sec.repeats && sec.repeats.length)
+          ? String(liveCount)
+          : liveCount + "/" + units.length;
         head.appendChild(c);
       }
-      if (hiddenUnits.length) {
+      if (offered.length) {
         const add = document.createElement("button");
         add.className = "plus";
         add.title = "Add a field";
         add.setAttribute("aria-label", "Add a field");
         add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
-        add.onclick = () => this._menuAt(
-          add,
-          hiddenUnits.map((u) => ({ id: u.id, label: u.label, group: u.group })),
-          (id) => { this._revealed.add(room.path + "|" + id); this._renderForm(); }
-        );
+        add.onclick = () => this._menuAt(add, offered, (id) => {
+          this._revealed.add(room.path + "|" + id);
+          this._renderForm();
+        });
         head.appendChild(add);
       }
-      fs.appendChild(head);
-
       if (sec.desc) {
         const d = document.createElement("div");
         d.className = "cdesc";
         d.textContent = sec.desc;
-        fs.appendChild(d);
+        head.appendChild(d);
       }
+      fs.appendChild(head);
 
       if (sec.scope === "dashboard") {
         const rooms = this._state.compact.rooms;
@@ -1509,7 +1909,25 @@ class HemmaPanel extends HTMLElement {
         else r.variables[key] = value;
       });
 
-      visible.forEach((f) => {
+      const unitSeen = new Set();
+      const addDrop = (row, f) => {
+        const cell = document.createElement("button");
+        cell.className = "drop";
+        const u = unitOf(f);
+        if (f.always || unitSeen.has(u)) { cell.style.visibility = "hidden"; row.appendChild(cell); return; }
+        unitSeen.add(u);
+        cell.title = "Remove";
+        cell.setAttribute("aria-label", "Remove");
+        cell.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg>';
+        cell.onclick = () => {
+          sectionFields(sec).filter((x) => unitOf(x) === u).forEach((x) => setVar(x.key, undefined));
+          this._revealed.delete(room.path + "|" + u);
+          this._renderForm();
+        };
+        row.appendChild(cell);
+      };
+
+      const renderField = (f, fs) => {
         const row = document.createElement("div");
         row.className = "row";
         const lab = document.createElement("label");
@@ -1528,39 +1946,38 @@ class HemmaPanel extends HTMLElement {
           row.appendChild(this._chipPicker(cur, f.domains || ["sensor"], (items) => {
             setVar(f.key, items);
           }));
+          addDrop(row, f);
           fs.appendChild(row);
           return;
         }
 
         if (f.type === "bool") {
-          input = document.createElement("select");
-          [["", "(default)"], ["true", "yes"], ["false", "no"]].forEach(([v, t]) => {
-            const o = document.createElement("option"); o.value = v; o.textContent = t; input.appendChild(o);
-          });
-          input.value = cur === "" || cur === undefined ? "" : String(cur);
-          input.onchange = () => {
-            const raw = input.value;
-            if (raw === "") setVar(f.key, undefined);
-            else setVar(f.key, raw === "true");
-          };
-          row.appendChild(input);
+          const c = this._combo(
+            cur === "" || cur === undefined ? "" : String(cur),
+            ["", "true", "false"], "",
+            (v) => setVar(f.key, v === "" ? undefined : v === "true"),
+            { fixed: true, labels: { "": "Default", "true": "Yes", "false": "No" } }
+          );
+          row.appendChild(c.wrap);
+          addDrop(row, f);
           fs.appendChild(row);
           return;
         }
 
         if (f.type === "select") {
-          input = document.createElement("select");
-          f.options.forEach((o) => {
-            const op = document.createElement("option");
-            op.value = o; op.textContent = o === "" ? "(default)" : o;
-            input.appendChild(op);
-          });
-          input.value = String(cur);
-        } else if (f.domains) {
+          const c = this._combo(String(cur), f.options, "",
+            (v) => setVar(f.key, v), { fixed: true, labels: { "": "Default" } });
+          row.appendChild(c.wrap);
+          addDrop(row, f);
+          fs.appendChild(row);
+          return;
+        }
+        if (f.domains) {
           const c = this._combo(cur, this._entityList(f.domains),
             f.domains.map((d) => d + ".").join(" / "),
             (v) => setVar(f.key, v));
           row.appendChild(c.wrap);
+          addDrop(row, f);
           fs.appendChild(row);
           return;
         } else {
@@ -1570,18 +1987,53 @@ class HemmaPanel extends HTMLElement {
 
         input.onchange = () => {
           const v = input.value.trim();
-          if (f.key === "__name") { room.name = v; return; }
+          if (f.key === "__name") {
+            room.name = v;
+            // Popups read room_name, which has no fallback to the card's name,
+            // so keep it in step rather than making people set a heading twice.
+            setVar("room_name", v);
+            return;
+          }
           setVar(f.key, v);
         };
 
         row.appendChild(input);
+        addDrop(row, f);
         fs.appendChild(row);
         if (f.hint) {
           const h = document.createElement("div");
           h.className = "hint"; h.textContent = f.hint;
           fs.appendChild(h);
         }
-      });
+      };
+
+      visible.filter((f) => !f.advanced).forEach((f) => renderField(f, fs));
+
+      const advanced = visible.filter((f) => f.advanced);
+      if (advanced.length) {
+        const det = document.createElement("div");
+        det.className = "adv";
+        const sum = document.createElement("button");
+        sum.className = "advsum";
+        sum.type = "button";
+        sum.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"'
+          + ' stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg><span>Advanced</span>';
+        const body = document.createElement("div");
+        body.className = "advbody";
+        advanced.forEach((f) => renderField(f, body));
+        const key = room.path + "|adv|" + sec.label;
+        const open = this._advOpen.has(key);
+        det.classList.toggle("open", open);
+        sum.setAttribute("aria-expanded", open ? "true" : "false");
+        sum.onclick = () => {
+          const now = !det.classList.contains("open");
+          det.classList.toggle("open", now);
+          sum.setAttribute("aria-expanded", now ? "true" : "false");
+          if (now) this._advOpen.add(key); else this._advOpen.delete(key);
+        };
+        det.appendChild(sum); det.appendChild(body);
+        fs.appendChild(det);
+      }
       (side.get(sec) || colA).appendChild(fs);
     });
 
@@ -1591,20 +2043,30 @@ class HemmaPanel extends HTMLElement {
 
   // Shared popover for the section + buttons, same material as the combobox.
   _menuAt(anchor, items, onPick) {
+    // Pressing the same control again should shut the menu, not reopen it.
+    if (this._openAnchor === anchor) { this._openCombo(); return; }
     if (this._openCombo) this._openCombo();
 
     const menu = document.createElement("div");
     menu.className = "combo-menu";
 
     const close = () => {
-      if (menu.parentNode) menu.parentNode.removeChild(menu);
       document.removeEventListener("mousedown", away, true);
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("resize", close);
       if (this._openCombo === close) this._openCombo = null;
+      if (this._openAnchor === anchor) this._openAnchor = null;
+      closeMenu(menu);
     };
-    const away = (ev) => { if (!menu.contains(ev.composedPath ? ev.composedPath()[0] : ev.target)) close(); };
+    // Ignore presses on the anchor, so its own click handler can do the toggle
+    // rather than this closing first and the click reopening.
+    const away = (ev) => {
+      const t = ev.composedPath ? ev.composedPath()[0] : ev.target;
+      if (menu.contains(t) || anchor.contains(t) || anchor === t) return;
+      close();
+    };
 
+    if (!items.some((it) => typeof it !== "string" && it.checked)) menu.classList.add("noticks");
     let lastGroup;
     items.forEach((it) => {
       const item = typeof it === "string" ? { id: it, label: it, group: null } : it;
@@ -1623,6 +2085,7 @@ class HemmaPanel extends HTMLElement {
       const tick = document.createElement("span");
       tick.className = "tick";
       const t = document.createElement("span");
+      t.className = "lbl";
       t.textContent = item.label;
       d.appendChild(tick); d.appendChild(t);
       d.onmouseenter = () => {
@@ -1634,18 +2097,24 @@ class HemmaPanel extends HTMLElement {
     });
 
     this._openCombo = close;
+    this._openAnchor = anchor;
     this.$("overlay").appendChild(menu);
 
     const r = anchor.getBoundingClientRect();
     const below = window.innerHeight - r.bottom - 12;
     const above = r.top - 12;
     const drop = below >= 180 || below >= above;
-    const width = 240;
-    menu.style.width = width + "px";
-    menu.style.left = Math.max(10, Math.min(r.right - width, window.innerWidth - width - 10)) + "px";
+    // Sized to its content, so a single "Remove tile" is not 240px wide.
+    menu.style.width = "auto";
+    menu.style.minWidth = "148px";
+    menu.style.maxWidth = "320px";
+    const width = Math.ceil(menu.getBoundingClientRect().width);
+    const left = Math.max(10, Math.min(r.right - width, window.innerWidth - width - 10));
+    menu.style.left = left + "px";
     menu.style.maxHeight = Math.max(120, Math.min(320, drop ? below : above)) + "px";
-    if (drop) { menu.style.top = r.bottom + 6 + "px"; menu.style.bottom = "auto"; }
-    else { menu.style.bottom = window.innerHeight - r.top + 6 + "px"; menu.style.top = "auto"; }
+    if (drop) { menu.style.top = r.bottom + 10 + "px"; menu.style.bottom = "auto"; }
+    else { menu.style.bottom = window.innerHeight - r.top + 10 + "px"; menu.style.top = "auto"; }
+    playMenuIn(menu, drop, left + width > r.right - 2);
 
     setTimeout(() => document.addEventListener("mousedown", away, true), 0);
     window.addEventListener("scroll", close, true);
@@ -1699,10 +2168,91 @@ class HemmaPanel extends HTMLElement {
     return wrap;
   }
 
+  // A styled stand-in for prompt() and confirm(), which cannot be themed.
+  _ask(opts) {
+    return new Promise((resolve) => {
+      const scrim = document.createElement("div");
+      scrim.className = "scrim";
+      const box = document.createElement("div");
+      box.className = "dialog";
+      scrim.appendChild(box);
+
+      const h = document.createElement("h3");
+      h.textContent = opts.title;
+      box.appendChild(h);
+
+      if (opts.message) {
+        const m = document.createElement("p");
+        m.textContent = opts.message;
+        box.appendChild(m);
+      }
+
+      let input = null;
+      if (opts.value !== undefined) {
+        input = document.createElement("input");
+        input.value = opts.value || "";
+        if (opts.placeholder) input.placeholder = opts.placeholder;
+        box.appendChild(input);
+      }
+
+      const acts = document.createElement("div");
+      acts.className = "acts";
+      const cancel = document.createElement("button");
+      cancel.className = "ghost";
+      cancel.textContent = "Cancel";
+      const ok = document.createElement("button");
+      if (opts.destructive) ok.className = "danger";
+      ok.textContent = opts.confirmLabel || "OK";
+      acts.appendChild(cancel);
+      acts.appendChild(ok);
+      box.appendChild(acts);
+
+      let settled = false;
+      const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        document.removeEventListener("keydown", onKey, true);
+        const done = () => { if (scrim.parentNode) scrim.parentNode.removeChild(scrim); resolve(result); };
+        if (menuStill()) return done();
+        scrim.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: "ease-in" })
+          .finished.then(done, done);
+      };
+
+      const onKey = (ev) => {
+        if (ev.key === "Escape") { ev.preventDefault(); finish(null); }
+        else if (ev.key === "Enter" && input) { ev.preventDefault(); ok.click(); }
+      };
+
+      cancel.onclick = () => finish(null);
+      ok.onclick = () => {
+        if (!input) return finish(true);
+        const v = input.value.trim();
+        if (!v) { input.focus(); return; }
+        finish(v);
+      };
+      scrim.onmousedown = (ev) => { if (ev.target === scrim) finish(null); };
+      document.addEventListener("keydown", onKey, true);
+
+      this.shadowRoot.appendChild(scrim);
+      if (!menuStill()) {
+        scrim.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 140, easing: "ease-out" });
+        box.animate(
+          [{ opacity: 0, transform: "scale(0.94)" }, { opacity: 1, transform: "none" }],
+          { duration: 220, easing: EASE }
+        );
+      }
+      if (input) setTimeout(() => { input.focus(); input.select(); }, 30);
+    });
+  }
+
   // ── combobox ──────────────────────────────────────────────────────────────
 
   _combo(value, list, placeholder, onChange, opts) {
     const iconMode = !!(opts && opts.icon);
+    // A fixed list is a chooser, not a text field: no typing, no filtering.
+    const fixed = !!(opts && opts.fixed);
+    const labels = (opts && opts.labels) || null;
+    const show = (v) => (labels && labels[v] !== undefined ? labels[v] : v);
     const wrap = document.createElement("div");
     wrap.className = "combo" + (iconMode ? " hasicon" : "");
     const input = document.createElement("input");
@@ -1717,9 +2267,9 @@ class HemmaPanel extends HTMLElement {
     let current = input.value;
 
     const close = () => {
-      if (menu.parentNode) menu.parentNode.removeChild(menu);
       active = -1;
-      if (this._openCombo === close) this._openCombo = null;
+      if (this._openCombo === close) { this._openCombo = null; this._openAnchor = null; }
+      closeMenu(menu);
     };
 
     const place = () => {
@@ -1727,16 +2277,22 @@ class HemmaPanel extends HTMLElement {
       const below = window.innerHeight - r.bottom - 12;
       const above = r.top - 12;
       const drop = below >= 180 || below >= above;
-      menu.style.left = r.left + "px";
-      menu.style.width = r.width + "px";
+      // Entity ids run far wider than the field they sit under, so the menu
+      // grows past the input rather than cutting its own rows off.
+      menu.style.width = "auto";
+      menu.style.minWidth = r.width + "px";
+      menu.style.maxWidth = Math.max(r.width, Math.min(560, window.innerWidth - 20)) + "px";
+      const w = Math.ceil(menu.getBoundingClientRect().width);
+      menu.style.left = Math.max(10, Math.min(r.left, window.innerWidth - w - 10)) + "px";
       menu.style.maxHeight = Math.max(120, Math.min(300, drop ? below : above)) + "px";
-      if (drop) { menu.style.top = r.bottom + 5 + "px"; menu.style.bottom = "auto"; }
-      else { menu.style.bottom = window.innerHeight - r.top + 5 + "px"; menu.style.top = "auto"; }
+      if (drop) { menu.style.top = r.bottom + 6 + "px"; menu.style.bottom = "auto"; }
+      else { menu.style.bottom = window.innerHeight - r.top + 6 + "px"; menu.style.top = "auto"; }
+      return drop;
     };
 
     const commit = (v) => {
       current = v;
-      input.value = v === ICON_DEFAULT ? "" : v;
+      input.value = v === ICON_DEFAULT ? "" : show(v);
       onChange(v === ICON_DEFAULT ? "" : v);
       if (wrap._paintLead) wrap._paintLead();
       close();
@@ -1752,8 +2308,8 @@ class HemmaPanel extends HTMLElement {
     };
 
     const open = () => {
-      const q = input.value.trim().toLowerCase();
-      shown = list.filter((o) => !q || o.toLowerCase().includes(q));
+      const q = fixed ? "" : input.value.trim().toLowerCase();
+      shown = list.filter((o) => !q || String(o).toLowerCase().includes(q));
       menu.innerHTML = "";
 
       if (!shown.length) {
@@ -1763,8 +2319,8 @@ class HemmaPanel extends HTMLElement {
         menu.appendChild(e);
         if (this._openCombo && this._openCombo !== close) this._openCombo();
         this._openCombo = close;
-        if (!menu.parentNode) this.$("overlay").appendChild(menu);
-        place();
+        if (!menu.parentNode) { menu._closing = false; this.$("overlay").appendChild(menu); playMenuIn(menu, place(), false); }
+        else place();
         active = -1;
         return;
       }
@@ -1783,7 +2339,8 @@ class HemmaPanel extends HTMLElement {
           d.appendChild(g);
         }
         const label = document.createElement("span");
-        label.textContent = o;
+        label.className = "lbl";
+        label.textContent = show(o);
         d.appendChild(label);
         // mousedown, because blur would close the menu before a click lands.
         d.onmousedown = (ev) => { ev.preventDefault(); commit(o); };
@@ -1794,8 +2351,8 @@ class HemmaPanel extends HTMLElement {
       active = shown.indexOf(current);
       if (this._openCombo && this._openCombo !== close) this._openCombo();
       this._openCombo = close;
-      if (!menu.parentNode) this.$("overlay").appendChild(menu);
-      place();
+      if (!menu.parentNode) { menu._closing = false; this.$("overlay").appendChild(menu); playMenuIn(menu, place(), false); }
+      else place();
       paint();
     };
 
@@ -1809,9 +2366,18 @@ class HemmaPanel extends HTMLElement {
       wrap._paintLead = paintLead;
     }
 
-    input.onfocus = open;
-    input.oninput = () => { open(); active = -1; paint(); };
-    input.onblur = () => { setTimeout(close, 120); if (input.value.trim() !== current) commit(input.value.trim()); };
+    if (fixed) {
+      input.readOnly = true;
+      input.style.cursor = "pointer";
+      input.value = show(current);
+      input.onfocus = open;
+      input.onclick = open;
+      input.onblur = () => setTimeout(close, 120);
+    } else {
+      input.onfocus = open;
+      input.oninput = () => { open(); active = -1; paint(); };
+      input.onblur = () => { setTimeout(close, 120); if (input.value.trim() !== current) commit(input.value.trim()); };
+    }
 
     input.onkeydown = (ev) => {
       if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
@@ -1855,7 +2421,8 @@ class HemmaPanel extends HTMLElement {
     const rooms = (this._state && this._state.compact.rooms) || [];
     const home = rooms.find((r) => r.path === "home") || rooms[0];
     const found = (this._imgs || []).find((i) => i.name === (home && home.variables.image));
-    const url = found && found.day;
+    const dark = !this.classList.contains("is-light");
+    const url = found && ((dark && found.night) || found.day);
     if (!url) { bg.classList.remove("on"); return; }
     if (bg.dataset.src === url) { bg.classList.add("on"); return; }
     bg.dataset.src = url;
@@ -1878,7 +2445,7 @@ class HemmaPanel extends HTMLElement {
   }
 
   _imageField(room, row, fs, pane) {
-    const sel = document.createElement("select");
+    const sel = document.createElement("div");
     row.appendChild(sel);
     fs.appendChild(row);
 
@@ -1903,46 +2470,53 @@ class HemmaPanel extends HTMLElement {
       });
     };
 
+    // Rebuilt rather than repopulated, because the list arrives asynchronously.
     const fill = () => {
-      sel.innerHTML = "";
       const list = this._imgs || [];
-      if (!list.some((i) => i.name === room.variables.image) && room.variables.image) {
-        const o = document.createElement("option");
-        o.value = room.variables.image;
+      const names = list.map((i) => i.name);
+      const labels = {};
+      list.forEach((i) => { labels[i.name] = i.name + (i.night ? "" : "   no night image"); });
+
+      const cur = room.variables.image || "";
+      if (cur && !names.includes(cur)) {
+        names.unshift(cur);
         // Only call it missing once we know what is actually on disk.
-        o.textContent = room.variables.image + (this._imgsLoaded ? "  (not on disk)" : "");
-        sel.appendChild(o);
+        labels[cur] = cur + (this._imgsLoaded ? "   not on disk" : "");
       }
-      list.forEach((i) => {
-        const o = document.createElement("option");
-        o.value = i.name;
-        o.textContent = i.name + (i.night ? "" : "  (no night image)");
-        sel.appendChild(o);
-      });
-      sel.value = room.variables.image || "";
+
+      sel.innerHTML = "";
+      sel.appendChild(this._combo(cur, names, "", (v) => {
+        room.variables.image = v;
+        preview();
+        this._setBackdrop();
+      }, { fixed: true, labels }).wrap);
       preview();
     };
-
-    sel.onchange = () => { room.variables.image = sel.value; preview(); this._setBackdrop(); };
 
     const file = document.createElement("input");
     file.type = "file";
     file.accept = ".jpg,.jpeg,.png,.webp";
     file.style.maxWidth = "230px";
-    const variant = document.createElement("select");
-    [["day", "Day"], ["night", "Night"]].forEach(([v, t]) => {
-      const o = document.createElement("option"); o.value = v; o.textContent = t; variant.appendChild(o);
-    });
+    let variantValue = "day";
+    const variant = this._combo("day", ["day", "night"], "",
+      (v) => { variantValue = v; },
+      { fixed: true, labels: { day: "Day", night: "Night" } }).wrap;
+    variant.style.width = "116px";
     const up = document.createElement("button");
     up.className = "mini";
     up.textContent = "Upload";
     up.onclick = async () => {
       if (!file.files || !file.files[0]) return this._status("choose a file first", "err");
-      const name = (prompt("Image name (lowercase, no extension)", room.variables.image || slug(room.name)) || "").trim();
+      const name = await this._ask({
+        title: "Image name",
+        message: "Lowercase letters, digits and hyphens. Uploading the same name replaces it.",
+        value: room.variables.image || slug(room.name),
+        confirmLabel: "Upload",
+      });
       if (!name) return;
       const body = new FormData();
       body.append("name", name);
-      body.append("variant", variant.value);
+      body.append("variant", variantValue);
       body.append("file", file.files[0]);
       up.disabled = true;
       this._status("uploading...");
@@ -1954,8 +2528,8 @@ class HemmaPanel extends HTMLElement {
         if (!res.ok) throw new Error(data.message || res.status);
         this._imgs = data.images || [];
         room.variables.image = name;
-        this._status(`uploaded ${name} (${variant.value})`, "ok");
-        this._log(`uploaded ${name} ${variant.value}`, "ok");
+        this._status(`uploaded ${name} (${variantValue})`, "ok");
+        this._log(`uploaded ${name} ${variantValue}`, "ok");
         fill();
       } catch (e) {
         this._status("upload failed: " + e.message, "err");
@@ -1990,8 +2564,8 @@ class HemmaPanel extends HTMLElement {
       + ' stroke-linecap="round" stroke-linejoin="round">'
       + '<path d="M20 6 9 17l-5-5" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></svg>';
     b.animate(
-      [{ transform: "scale(1)" }, { transform: "scale(1.14)" }, { transform: "scale(1)" }],
-      { duration: 460, easing: "cubic-bezier(.34,1.5,.5,1)" }
+      [{ transform: "scale(1)" }, { transform: "scale(1.06)", offset: 0.4 }, { transform: "scale(1)" }],
+      { duration: 420, easing: EASE }
     );
     const tick = b.querySelector("svg path");
     if (tick && tick.animate) {
@@ -2006,6 +2580,102 @@ class HemmaPanel extends HTMLElement {
       b.style.width = "";
       delete b.dataset.flash;
     }, 1600);
+  }
+
+  // What the room's badges will actually read, from the entities assigned to it.
+  // A snapshot at render time, so picking a wrong entity shows up here rather
+  // than after a save and a trip to the dashboard.
+  // Live stand-ins for the badges themselves, so the third column shows what
+  // the room card will actually carry rather than describing it in words. A
+  // group with its switch off is absent here too, the way it will be absent
+  // on the dashboard.
+  _roomStatus(host) {
+    const room = this._state && this._state.compact.rooms[this._room];
+    if (!room) return;
+    const V = room.variables || {};
+    const st = (id) => (id && this._hass.states[id]) || null;
+    const num = (id) => { const e = st(id); const n = e && parseFloat(e.state); return Number.isFinite(n) ? n : null; };
+    const on = (key) => V[key] !== false;
+    const badges = [];
+
+    const unit = V.temp_unit === "C" ? "\u00b0C" : "\u00b0";
+    const temp = num(V.temp_sensor_1) ?? (st(V.climate_entity_1) || {}).attributes?.current_temperature;
+    const hum = num(V.humidity_sensor);
+    if (on("show_climate") && (temp != null || hum != null)) {
+      badges.push({
+        icon: "fan", color: "var(--hemma-badge-climate-color, var(--hemma-color-teal, #00C3D0))",
+        text: [temp != null ? Math.round(temp) + unit : null,
+               hum != null ? Math.round(hum) + "%" : null].filter(Boolean).join("  "),
+      });
+    }
+
+    const lights = [V.light_group_entity].concat(
+      Array.from({ length: 10 }, (_, k) => V["light_entity_" + (k + 1)])).filter(Boolean);
+    if (on("show_lights") && lights.length) {
+      const lit = lights.filter((e) => (st(e) || {}).state === "on").length;
+      badges.push({
+        icon: "light", color: "var(--hemma-badge-light-color, var(--hemma-color-yellow, #FFCC00))",
+        text: lit ? lit + " on" : "Off", dim: !lit,
+      });
+    }
+
+    const people = Array.from({ length: 4 }, (_, k) => V["presence_entity_" + (k + 1)]).filter(Boolean);
+    if (on("show_people") && people.length) {
+      const home = people.filter((e) => /^(home|on)$/i.test((st(e) || {}).state || "")).length;
+      badges.push({
+        icon: "person", color: "var(--hemma-color-green, #30D158)",
+        text: home + " of " + people.length,
+      });
+    }
+
+    const locks = (Array.isArray(V.security_locks) ? V.security_locks : [])
+      .concat([V.security_lock_entity, V.security_entity_1]).filter(Boolean);
+    if (on("show_security") && locks.length) {
+      const open = locks.filter((e) => /^(unlocked|on|open)$/i.test((st(e) || {}).state || "")).length;
+      badges.push({
+        icon: open ? "lock-open-fill" : "lock-fill", color: "var(--hemma-color-teal, #00C3D0)",
+        text: open ? open + " open" : "Secure",
+      });
+    }
+
+    const watts = num(V.energy_power_entity);
+    if (on("show_energy") && watts != null) {
+      badges.push({
+        icon: "energy", color: "var(--hemma-badge-energy-color, var(--hemma-color-green, #30D158))",
+        text: watts >= 1000 ? (watts / 1000).toFixed(1) + " kW" : Math.round(watts) + " W",
+      });
+    }
+
+    const players = Array.from({ length: 10 }, (_, k) => V["media_player_" + (k + 1)]).filter(Boolean);
+    if (on("show_media") && players.length) {
+      const live = players.map(st).find((e) => e && e.state === "playing");
+      badges.push({
+        icon: "media", color: "var(--ink)",
+        text: live ? (live.attributes.media_title || "Playing") : "Idle", dim: !live, clip: true,
+      });
+    }
+
+    host.innerHTML = "";
+    if (!badges.length) {
+      const n = document.createElement("div");
+      n.className = "lnone";
+      n.textContent = "Nothing configured for this room yet.";
+      host.appendChild(n);
+      return;
+    }
+    badges.forEach((b) => {
+      const pill = document.createElement("span");
+      pill.className = "pbadge" + (b.dim ? " dim" : "") + (b.clip ? " clip" : "");
+      const g = document.createElement("span");
+      g.className = "pglyph";
+      g.style.setProperty("--i", "url('" + iconUrl(b.icon) + "')");
+      g.style.setProperty("--sc", b.color);
+      const t = document.createElement("span");
+      t.className = "ptext";
+      t.textContent = b.text;
+      pill.appendChild(g); pill.appendChild(t);
+      host.appendChild(pill);
+    });
   }
 
   // ── layout animation ──────────────────────────────────────────────────────
@@ -2033,11 +2703,10 @@ class HemmaPanel extends HTMLElement {
       if (!b) {
         c.animate(
           [
-            { opacity: 0, transform: "scale(0.88)" },
-            { opacity: 1, transform: "scale(1.03)", offset: 0.7 },
+            { opacity: 0, transform: "scale(0.94)" },
             { opacity: 1, transform: "none" },
           ],
-          { duration: 420, easing: "cubic-bezier(.34,1.42,.5,1)" }
+          { duration: 380, easing: EASE }
         );
         return;
       }
@@ -2048,7 +2717,7 @@ class HemmaPanel extends HTMLElement {
 
       c.animate(
         [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }],
-        { duration: 420, easing: "cubic-bezier(.34,1.42,.5,1)" }
+        { duration: 380, easing: EASE }
       );
     });
   }
@@ -2095,10 +2764,14 @@ class HemmaPanel extends HTMLElement {
         </g>
       </svg>
       <div class="legend">
-        <div class="leg" data-jump="room"><b>The room</b><span>photo, name, weather</span></div>
+        <div class="leg" data-jump="room"><b>Room</b><span>photo, name, weather</span></div>
         <div class="leg" data-jump="badges"><b>Badges</b><span>the pills under the name</span></div>
         <div class="leg" data-jump="tiles"><b>Tiles</b><span>the cards along the bottom</span></div>
-      </div>`;
+      </div>
+      <div class="live"></div>`;
+
+    const live = card.querySelector(".live");
+    this._roomStatus(live);
 
     card.querySelectorAll("[data-jump]").forEach((el) => {
       el.onclick = () => jump(el.dataset.jump);
@@ -2113,9 +2786,7 @@ class HemmaPanel extends HTMLElement {
     const fs = document.createElement("section");
     fs.className = "card";
     fs.dataset.k = "__tiles";
-    fs.innerHTML = '<div class="chead">'
-      + '<span class="sicon" style="--i:url(\'' + iconUrl("tile") + '\'); --sc:var(--ink)"></span>'
-      + "<h2>Tiles</h2></div>";
+    fs.classList.add("noheader", "noicon");
 
     if (!room.tiles.length) {
       const e = document.createElement("div");
@@ -2127,21 +2798,20 @@ class HemmaPanel extends HTMLElement {
     const grid = document.createElement("div");
     grid.className = "tilegrid";
     room.tiles.forEach((tile, i) => grid.appendChild(this._tileCard(room, tile, i, pane)));
-    fs.appendChild(grid);
 
     const bar = document.createElement("div");
     bar.className = "addbar";
-    const sel = document.createElement("select");
-    TILE_TYPES.forEach((t) => {
-      const o = document.createElement("option");
-      o.value = t.id; o.textContent = t.label;
-      sel.appendChild(o);
-    });
+    let pickType = TILE_TYPES[0].id;
+    const typeLabels = {};
+    TILE_TYPES.forEach((t) => { typeLabels[t.id] = t.label; });
+    const sel = this._combo(pickType, TILE_TYPES.map((t) => t.id), "",
+      (v) => { pickType = v; }, { fixed: true, labels: typeLabels }).wrap;
+    sel.style.width = "190px";
     const add = document.createElement("button");
     add.className = "mini";
     add.textContent = "Add tile";
     add.onclick = () => {
-      const type = TILE_TYPES.find((t) => t.id === sel.value);
+      const type = TILE_TYPES.find((t) => t.id === pickType);
       if (!type) return;
       room.tiles.push(newTile(type));
       this._renderForm();
@@ -2149,6 +2819,7 @@ class HemmaPanel extends HTMLElement {
     bar.appendChild(sel);
     bar.appendChild(add);
     fs.appendChild(bar);
+    fs.appendChild(grid);
 
     pane.appendChild(fs);
   }
@@ -2169,23 +2840,7 @@ class HemmaPanel extends HTMLElement {
     title.innerHTML = `${tile.name || "(unnamed)"}${kind ? ` <span class="kind">${kind}</span>` : ""}`;
     head.appendChild(title);
 
-    const mk = (label, fn, danger) => {
-      const b = document.createElement("button");
-      b.className = "mini" + (danger ? " danger" : "");
-      b.textContent = label;
-      b.onclick = fn;
-      return b;
-    };
-    const move = (d) => {
-      const j = i + d;
-      if (j < 0 || j >= room.tiles.length) return;
-      const [x] = room.tiles.splice(i, 1);
-      room.tiles.splice(j, 0, x);
-      this._renderForm();
-    };
-    head.appendChild(mk("\u2191", () => move(-1)));
-    head.appendChild(mk("\u2193", () => move(1)));
-    head.appendChild(mk("Remove", () => {
+    const removeTile = () => {
       const done = () => { room.tiles.splice(i, 1); this._renderForm(); };
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
       box.style.transformOrigin = "50% 30%";
@@ -2196,7 +2851,87 @@ class HemmaPanel extends HTMLElement {
         ],
         { duration: 230, easing: "cubic-bezier(.4,0,.9,.6)" }
       ).finished.then(done, done);
-    }, true));
+    };
+
+    const dots = document.createElement("button");
+    dots.className = "mini icon";
+    dots.title = "More";
+    dots.setAttribute("aria-label", "More");
+    dots.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>';
+    dots.onpointerdown = (ev) => ev.stopPropagation();
+    dots.onclick = () => this._menuAt(dots, [{ id: "remove", label: "Remove tile" }],
+      (id) => { if (id === "remove") removeTile(); });
+    head.appendChild(dots);
+    // Drag the header to reorder. Presses on the buttons are left alone.
+    head.onpointerdown = (ev) => {
+      if (ev.button || ev.target.closest("button")) return;
+      const grid = box.parentNode;
+      if (!grid) return;
+
+      const startX = ev.clientX, startY = ev.clientY;
+      const cards = [...grid.children];
+      const rects = cards.map((c) => c.getBoundingClientRect());
+      let moved = false, target = i, shown = i;
+
+      // The grid's slots are uniform, so slot k always sits at rects[k]. Shifting
+      // the others into the projected order opens a real gap under the pointer.
+      const shiftTo = (t) => {
+        if (t === shown) return;
+        shown = t;
+        const order = cards.map((_, k) => k).filter((k) => k !== i);
+        order.splice(t, 0, i);
+        order.forEach((orig, slot) => {
+          if (orig === i) return;
+          const el = cards[orig];
+          const from = rects[orig], to = rects[slot];
+          el.style.transition = "transform .18s " + EASE;
+          el.style.transform = "translate(" + (to.left - from.left) + "px," + (to.top - from.top) + "px)";
+        });
+      };
+
+      const onMove = (e2) => {
+        const dx = e2.clientX - startX, dy = e2.clientY - startY;
+        if (!moved) {
+          if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+          moved = true;
+          box.classList.add("dragging");
+          try { head.setPointerCapture(ev.pointerId); } catch (err) { /* not captured */ }
+        }
+        box.style.transform = "translate(" + dx + "px," + dy + "px)";
+
+        // Nearest centre, since the grid wraps onto several rows.
+        let best = i, bestD = Infinity;
+        rects.forEach((r, k) => {
+          const d = Math.hypot(e2.clientX - (r.left + r.width / 2), e2.clientY - (r.top + r.height / 2));
+          if (d < bestD) { bestD = d; best = k; }
+        });
+        target = best;
+        shiftTo(target);
+      };
+
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        box.classList.remove("dragging");
+
+        if (!moved) return;
+
+        // Capture where everything actually looks right now, transforms included,
+        // so the rebuild animates from the gap rather than jumping.
+        const before = this._captureCards();
+        cards.forEach((c) => { c.style.transition = ""; c.style.transform = ""; });
+
+        if (target === i) { requestAnimationFrame(() => this._playCards(before)); return; }
+        const [x] = room.tiles.splice(i, 1);
+        room.tiles.splice(target, 0, x);
+        this._renderForm();
+        requestAnimationFrame(() => this._playCards(before));
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    };
+
     box.appendChild(head);
 
     if (!type) return box;
@@ -2236,12 +2971,18 @@ class HemmaPanel extends HTMLElement {
       }
 
       if (f.type === "bool") {
-        input = document.createElement("select");
-        [["", "(default)"], ["true", "yes"], ["false", "no"]].forEach(([v, t]) => {
-          const o = document.createElement("option"); o.value = v; o.textContent = t; input.appendChild(o);
-        });
-        input.value = cur === undefined ? "" : String(cur);
-      } else {
+        addRow(f.label, this._combo(
+          cur === undefined ? "" : String(cur), ["", "true", "false"], "",
+          (v) => {
+            if (v === "") { if (tile.variables) delete tile.variables[f.key]; return; }
+            if (!tile.variables) tile.variables = {};
+            tile.variables[f.key] = v === "true";
+          },
+          { fixed: true, labels: { "": "Default", "true": "Yes", "false": "No" } }
+        ).wrap);
+        return;
+      }
+      {
         const set = (v) => {
           if (v === "") {
             if (tile.variables) delete tile.variables[f.key];
