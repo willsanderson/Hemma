@@ -205,6 +205,14 @@ hemma_entity:
          stroke 4 in a 36 viewBox), i.e. ~0.8x the icon circle. */
       --hemma-progress-size-mq: calc(var(--hemma-icon-circle-size, 44px) * var(--hemma-progress-icon-ratio, 0.9));
       --hemma-icon-circle-size: calc(var(--hemma-entity-height-current, 200px) * var(--hemma-icon-circle-ratio, 0.22));  /* hemma_thermostat's temp puck reads this too */
+      --hemma-toggle-width: calc(46px * var(--hemma-toggle-scale, 1));
+      --hemma-toggle-height: calc(26px * var(--hemma-toggle-scale, 1));
+      /* Every top-corner extra centers on this, so the toggle, the progress ring and
+         the thermostat's rail stay in line with the icon circle at every tile size. */
+      --hemma-icon-center-y: calc(
+        var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
+        + var(--hemma-tile-icon-mt, -2px)
+        + var(--hemma-icon-circle-size, 44px) / 2);
       --hemma-entity-active-tint-current: var(--hemma-entity-active-tint, rgba(255,255,255,0.94));
       --hemma-icon-fallback-color: rgba(50,50,50,0.85);
       --hemma-toggle-off-color-active: var(--hemma-toggle-off-fill-active, rgba(0,0,0,0.55));
@@ -286,6 +294,7 @@ hemma_entity:
 
     @media (max-width: 767px), (max-height: 600px) {
       ha-card {
+        --hemma-toggle-width: calc(40px * var(--hemma-toggle-scale, 1));
         --hemma-progress-icon-ratio: 0.8;
         --hemma-entity-active-tint-current: var(--hemma-entity-active-tint-mobile, var(--hemma-entity-active-tint, rgba(255,255,255,1)));
       }
@@ -531,8 +540,8 @@ hemma_entity:
           @keyframes hemma-thumb-off-m{from{transform:translateX(12px)}to{transform:translateX(0)}}
           :host {
             display: block !important;
-            width: calc(46px * var(--hemma-toggle-scale, 1)) !important;
-            height: calc(26px * var(--hemma-toggle-scale, 1)) !important;
+            width: var(--hemma-toggle-width, calc(46px * var(--hemma-toggle-scale, 1))) !important;
+            height: var(--hemma-toggle-height, calc(26px * var(--hemma-toggle-scale, 1))) !important;
             overflow: visible !important;
             cursor: pointer;
           }
@@ -542,12 +551,6 @@ hemma_entity:
             overflow: visible !important;
             width: 100% !important;
             height: 100% !important;
-          }
-          @media (max-width: 767px), (max-height: 600px) {
-            :host {
-              width: calc(40px * var(--hemma-toggle-scale, 1)) !important;
-              height: calc(26px * var(--hemma-toggle-scale, 1)) !important;
-            }
           }
           /* Visual size stays; a transparent halo brings the tap target to 44pt. */
           @media (pointer: coarse) {
@@ -959,7 +962,7 @@ hemma_entity:
     custom_fields:
       toggle:
         - position: absolute
-        - top: calc(var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px)) + (var(--hemma-entity-icon-size-current, var(--hemma-entity-icon-size-desktop, 34px)) - 20px) / 2)
+        - top: calc(var(--hemma-icon-center-y) - var(--hemma-toggle-height) / 2)
         - right: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
         - z-index: 2
         - line-height: 0
@@ -986,7 +989,7 @@ hemma_entity:
 
       progress:
         - position: absolute
-        - top: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
+        - top: calc(var(--hemma-icon-center-y) - var(--hemma-progress-size-mq) / 2)
         - right: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
         - width: var(--hemma-progress-size-mq)
         - height: var(--hemma-progress-size-mq)

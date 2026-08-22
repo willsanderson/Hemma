@@ -392,14 +392,10 @@ hemma_thermostat:
       - --thermo-pad: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px))
       - --thermo-rail-top: calc(var(--thermo-pad) - 2px)
       - --thermo-btn-h: "calc((100% - 2 * var(--thermo-pad) + 4px - 2 * var(--thermo-btn-gap, 6px)) / 3)"
-      - --thermo-toggle-top: calc(var(--thermo-pad) + (var(--hemma-entity-icon-size-current, var(--hemma-entity-icon-size-desktop, 34px)) - 20px) / 2)
-      - --thermo-toggle-h: 26px
-      - --thermo-toggle-r: 13px
-      - --thermo-toggle-w: |
-          [[[
-            const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-            return isMobile ? '40px' : '46px';
-          ]]]
+      - --thermo-toggle-top: calc(var(--hemma-icon-center-y) - var(--thermo-toggle-h, 26px) / 2)
+      - --thermo-toggle-h: var(--hemma-toggle-height, 26px)
+      - --thermo-toggle-r: calc(var(--thermo-toggle-h, 26px) / 2)
+      - --thermo-toggle-w: var(--hemma-toggle-width, 46px)
       - --thermo-btn-gap: |
           [[[
             const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;

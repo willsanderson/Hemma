@@ -53,11 +53,15 @@
   };
 
   // Scroll-header mode tunables.
+  // Once the popup is on screen a sub-pixel Now Playing nudge reads as a twitch,
+  // not as an alignment fix, so late passes ignore anything under this.
+  const NP_LATE_DEAD_ZONE  = 1.25;
   const COMPACT_BAR_HEIGHT = 44; // compact nav title content height, below the safe-area inset
   const BADGE_LOCK_GAP     = 6;  // gap between compact bar bottom and the pinned badge row
   // Inactive pill background while the popup is open. Mirrors the themes'
   // badge-background — update both together.
   const BADGE_INACTIVE_BG  = 'rgba(46,48,56,0.78)';
+
 
   let _movedBadgeRow = null; // { owner, wrapper, el, parent, sibling }
   // The dashboard badge row's resting top, so the adopted row lands on the same
@@ -84,15 +88,32 @@
 
   // Folds the measured drift into the wrapper's margin. Guarded so a bad
   // measurement leaves the hand-tuned fallback margin in place.
-  function _alignAdoptedBadgeRow(badgeW, badgeEl, natural, maxShift = 12) {
+  function _alignAdoptedBadgeRow(badgeW, badgeEl, natural, maxShift = 12, dead = 0.1) {
     if (!badgeW || !badgeEl || !natural) return;
     const card  = badgeEl.shadowRoot?.querySelector('ha-card') || badgeEl;
     const rect  = card.getBoundingClientRect();
     if (!rect.height) return;
-    const shift = natural.top - rect.top;
-    if (Math.abs(shift) <= 0.1 || Math.abs(shift) > maxShift) return;
-    const cur = parseFloat(badgeW.style.getPropertyValue('margin-top')) || 0;
-    badgeW.style.setProperty('margin-top', `${(cur + shift).toFixed(2)}px`, 'important');
+    _alignAdoptedEl(badgeW, natural.top, maxShift, dead, rect.top);
+  }
+
+  // Same fold against a wrapper's own top edge, for Now Playing.
+  function _alignAdoptedEl(w, naturalTop, maxShift = 12, dead = 0.05, measuredTop) {
+    if (!w || naturalTop == null) return 0;
+    const top = measuredTop != null ? measuredTop : w.getBoundingClientRect().top;
+    const shift = naturalTop - top;
+    if (Math.abs(shift) <= dead || Math.abs(shift) > maxShift) return 0;
+    const cur = parseFloat(w.style.getPropertyValue('margin-top')) || 0;
+    w.style.setProperty('margin-top', `${(cur + shift).toFixed(2)}px`, 'important');
+    return shift;
+  }
+
+  // button-card renders on lit's microtask, which lands after the callback that
+  // set hass but still inside the frame it paints. Anything measuring a moved
+  // row has to force that render down first or it reads the pre-render height.
+  function _flushRender(el) {
+    try {
+      if (el && typeof el.performUpdate === 'function') el.performUpdate();
+    } catch (_) {}
   }
   // iOS decides a pan gesture's fate at touchstart, and mutating layout inside
   // the scroller while a finger is down kills it until the finger lifts.
@@ -1578,6 +1599,7 @@
           w.style.removeProperty('width');
           w.style.removeProperty('margin-top');
           w.style.removeProperty('padding-left');
+          w.style.removeProperty('transition');
           if (parent) {
             if (sibling && sibling.parentNode === parent) parent.insertBefore(w, sibling);
             else parent.appendChild(w);
@@ -1981,33 +2003,17 @@
           };
           this._npWrapper.style.setProperty('width', '100%', 'important');
           this._npWrapper.style.setProperty('padding-left', LANDSCAPE_GUTTER_CALC, 'important');
+          this._npWrapper.style.removeProperty('margin-top');
+          // The alignment below stamps margin-top; a transition on it from any
+          // stylesheet turns that stamp into a visible glide.
+          this._npWrapper.style.setProperty('transition', 'none', 'important');
           this._contentEl.insertBefore(this._npWrapper, this._subBadgesWrapper.nextSibling);
-          if (!isLandscapePhone()) {
-            const shift = npNaturalTop - this._npWrapper.getBoundingClientRect().top;
-            if (Math.abs(shift) > 0.1 && Math.abs(shift) <= 160) {
-              this._npWrapper.style.setProperty('margin-top', `${shift.toFixed(2)}px`, 'important');
-            }
-            requestAnimationFrame(() => {
-              if (!this._showing || this._npWrapper?.parentNode !== this._contentEl) return;
-              const resid = npNaturalTop - this._npWrapper.getBoundingClientRect().top;
-              if (Math.abs(resid) > 0.1 && Math.abs(resid) <= 12) {
-                const cur = parseFloat(this._npWrapper.style.getPropertyValue('margin-top')) || 0;
-                this._npWrapper.style.setProperty('margin-top', `${(cur + resid).toFixed(2)}px`, 'important');
-              }
-            });
-          }
         }
 
-        if (badgeNaturalTop && _movedBadgeRow?.owner === this &&
-            this._badgeRowWrapper?.parentNode === this._contentEl) {
-          const badgeW  = this._badgeRowWrapper;
-          const badgeEl = this._badgeRowEl;
-          _alignAdoptedBadgeRow(badgeW, badgeEl, badgeNaturalTop);
-          requestAnimationFrame(() => {
-            if (!this._showing || badgeW.parentNode !== this._contentEl) return;
-            if (_movedBadgeRow?.owner !== this) return;
-            _alignAdoptedBadgeRow(badgeW, badgeEl, badgeNaturalTop, 4);
-          });
+        const badgeAdopted = !!(badgeNaturalTop && _movedBadgeRow?.owner === this &&
+          this._badgeRowWrapper?.parentNode === this._contentEl);
+        if (badgeAdopted) {
+          _alignAdoptedBadgeRow(this._badgeRowWrapper, this._badgeRowEl, badgeNaturalTop);
         }
 
         for (const w of [this._subBadgesWrapper, this._npWrapper]) {
@@ -2017,7 +2023,30 @@
             w.style.removeProperty('pointer-events');
           }
           const bc = this._getBC(w);
-          if (bc && this._hass) { try { bc.hass = this._hass; } catch (_) {} }
+          if (bc && this._hass) {
+            try { bc.hass = this._hass; } catch (_) {}
+            _flushRender(bc);
+          }
+        }
+
+        // Both of the above move what sits over Now Playing, so its offset is
+        // measured only once nothing above it can still shift this frame.
+        const npAdopted = seamlessNp && !isLandscapePhone() &&
+          this._npWrapper?.parentNode === this._contentEl;
+        if (npAdopted) _alignAdoptedEl(this._npWrapper, npNaturalTop, 160);
+
+        if (badgeAdopted || npAdopted) {
+          requestAnimationFrame(() => {
+            if (!this._showing) return;
+            if (badgeAdopted && _movedBadgeRow?.owner === this &&
+                this._badgeRowWrapper?.parentNode === this._contentEl) {
+              _alignAdoptedBadgeRow(this._badgeRowWrapper, this._badgeRowEl,
+                badgeNaturalTop, 4, NP_LATE_DEAD_ZONE);
+            }
+            if (npAdopted && this._npWrapper?.parentNode === this._contentEl) {
+              _alignAdoptedEl(this._npWrapper, npNaturalTop, 12, NP_LATE_DEAD_ZONE);
+            }
+          });
         }
 
         if (seamlessNp) {
@@ -2308,7 +2337,10 @@
       // reconnect.
       for (const w of [this._subBadgesWrapper, this._npWrapper]) {
         const bc = w && this._getBC(w);
-        if (bc && this._hass) { try { bc.hass = this._hass; } catch (_) {} }
+        if (bc && this._hass) {
+          try { bc.hass = this._hass; } catch (_) {}
+          _flushRender(bc);
+        }
       }
 
       if (this._npNaturalTop != null && this._npWrapper?.parentNode === contentEl) {
@@ -2316,12 +2348,7 @@
           if (!this._showing || overlayEl.scrollTop > 1) return;
           if (this._npWrapper?.parentNode !== contentEl) return;
           if (isLandscapePhone()) return;
-          for (let i = 0; i < 2; i++) {
-            const resid = this._npNaturalTop - this._npWrapper.getBoundingClientRect().top;
-            if (Math.abs(resid) <= 0.1 || Math.abs(resid) > 12) break;
-            const cur = parseFloat(this._npWrapper.style.getPropertyValue('margin-top')) || 0;
-            this._npWrapper.style.setProperty('margin-top', `${(cur + resid).toFixed(2)}px`, 'important');
-          }
+          _alignAdoptedEl(this._npWrapper, this._npNaturalTop, 12, NP_LATE_DEAD_ZONE);
         };
         fixNp();
         setTimeout(fixNp, 350);
