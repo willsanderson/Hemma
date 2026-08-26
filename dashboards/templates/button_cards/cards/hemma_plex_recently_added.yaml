@@ -56,10 +56,10 @@ hemma_plex_recently_added:
   extra_styles: |
     #img-cell::before { opacity: 0 !important; }
     #img-cell img {
-      width: 50% !important;
-      height: 50% !important;
-      max-width: 50% !important;
-      max-height: 50% !important;
+      width: 57% !important;
+      height: 57% !important;
+      max-width: 57% !important;
+      max-height: 57% !important;
       object-fit: contain !important;
       flex: none !important;
     }
