@@ -1,0 +1,14 @@
+{
+  "filter.all": "Hem",
+  "filter.climate": "Klimat",
+  "filter.energy": "Energi",
+  "filter.lights": "Lampor",
+  "filter.media": "Media",
+  "filter.presence": "Personer",
+  "filter.security": "Säkerhet",
+  "presence.all_away": "Alla är borta",
+  "presence.all_home": "Alla är hemma",
+  "presence.group.title": "Personer",
+  "presence.n_away": "{n} Borta",
+  "presence.person": "Person"
+}

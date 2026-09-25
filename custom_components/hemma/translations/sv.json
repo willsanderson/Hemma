@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hemma",
+        "description": "Lägger till Hemma-konfigurationspanelen i sidofältet."
+      }
+    },
+    "abort": {
+      "already_configured": "Hemma är redan konfigurerad."
+    }
+  }
+}
