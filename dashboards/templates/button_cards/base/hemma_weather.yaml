@@ -271,9 +271,15 @@ hemma_weather:
       const condKey = String(entity?.state || '').toLowerCase().trim();
       if (!condKey || ['unknown', 'unavailable'].includes(condKey)) return '';
 
+      // Modern Home Assistant translation key
       if (hass?.localize) {
-        const loc = hass.localize(`state.weather.${condKey}`);
-        if (loc && !loc.includes(`state.weather.${condKey}`)) return loc;
+        const loc = hass.localize(
+          `component.weather.entity_component._.state.${condKey}`
+        );
+
+        if (loc && !loc.includes(`component.weather.entity_component._.state.${condKey}`)) {
+          return loc;
+        }
       }
 
       const fallbackMap = {
