@@ -15629,8 +15629,9 @@ class HemmaPanel extends HTMLElement {
       t.textContent = deg + "\u00b0";
       const c = document.createElement("span");
       c.className = "mp-wcond";
-      const cond = went ? String(went.state).replace(/[-_]/g, " ") : "";
-      c.textContent = cond ? cond.charAt(0).toUpperCase() + cond.slice(1) : "";
+      c.textContent = went && typeof this._hass.formatEntityState === "function"
+        ? this._hass.formatEntityState(went)
+        : (rawCond ? prettyCond.charAt(0).toUpperCase() + prettyCond.slice(1) : "");
       w.appendChild(t); w.appendChild(c);
       const file = WEATHER_SVG[String((went && went.state) || "").toLowerCase()];
       const wg = document.createElement("img");
