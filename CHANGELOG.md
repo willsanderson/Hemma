@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.1
+
+### Fixes
+
+- **Switching between Overview and Focus is instant.** After saving the change in Hemma Studio, the page to the right of the sidebar could stay empty for several seconds before it appeared.
+- **Now Playing keeps its width in Focus without controls.** A source that offers no playback controls, like Spotify on some speakers, Plex or PlayStation, made the tile shrink to its title. It is now as wide as a tile with controls.
+
 ## 2.3.0
 
 **After updating, restart Home Assistant, then clear your browser's cache if Hemma looks unchanged.** On the iOS app that means clearing the app cache; in a desktop browser a hard reload usually does it. The new options and template changes also need one Save in Hemma Studio.

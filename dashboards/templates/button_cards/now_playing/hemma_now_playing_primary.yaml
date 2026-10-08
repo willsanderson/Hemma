@@ -665,7 +665,8 @@ hemma_now_playing_primary:
     grid:
       - display: grid !important
       - grid-template-areas: '"art meta" "art ctl"'
-      - grid-template-columns: max-content minmax(0, 1fr)
+      # The text column keeps the transport row's width, so a source without controls is no narrower than one with them.
+      - grid-template-columns: max-content minmax(calc(var(--hemma-u-np, 10px) * 14.2), 1fr)
       - grid-template-rows: >
           [[[
             const c = variables.hold_src?.controls;

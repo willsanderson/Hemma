@@ -5511,6 +5511,14 @@ window.hemmaMenuGlass = {
       if (!on && this._baseMode) {
         this._baseMode = false;
         if (vh) ['--hemma-page-chrome', '--hemma-anim-name', '--hero-img-blur', '--hemma-hero-anim-dur', '--hemma-hero-anim-delay'].forEach((k) => vh.style.removeProperty(k));
+        // A room card drawn by the save that switched to Focus still read the Overview boot mark and hid its chrome.
+        const rooms = [];
+        try { walkFind(vh || document, 'button-card', rooms, 0); } catch (_) {}
+        rooms.forEach((el) => {
+          if ([].concat((el._config || {}).template || []).indexOf('hemma_room') < 0) return;
+          const card = el.shadowRoot && el.shadowRoot.querySelector('ha-card');
+          if (card && card.style.getPropertyValue('--hemma-boot-ov') === 'hidden') card.style.setProperty('--hemma-boot-ov', 'visible');
+        });
         this._closeCat(true);
         this._fxRelease();
         this._shelfMap = null;
@@ -5722,11 +5730,13 @@ window.hemmaMenuGlass = {
     }
 
     _statusVars() {
-      if (this._sVars && this._sVarsAt > Date.now() - 5000) return this._sVars;
+      // A save rebuilds the room card, so a cached answer from the old one would keep the old layout.
+      const live = this._sRoom && this._sRoom.isConnected && (this._sRoom._config || {}).variables === this._sVars;
+      if (this._sVars && live && this._sVarsAt > Date.now() - 5000) return this._sVars;
       const found = [];
       try { walkFind(this._viewHost() || document, 'button-card', found, 0); } catch (_) {}
       const room = found.find((el) => [].concat((el._config || {}).template || []).indexOf('hemma_room') >= 0);
-      if (room) { this._sVars = (room._config && room._config.variables) || {}; this._sVarsAt = Date.now(); }
+      if (room) { this._sRoom = room; this._sVars = (room._config && room._config.variables) || {}; this._sVarsAt = Date.now(); }
       return this._sVars || {};
     }
 
