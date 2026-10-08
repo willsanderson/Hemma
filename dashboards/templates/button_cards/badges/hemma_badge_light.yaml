@@ -38,7 +38,7 @@ hemma_badge_light:
       const SVG_URL  = window.hemmaIconUrl('light');
       const ICON_PCT = 90;
 
-      return `
+      return (variables?.hide_host ? ':host{display:none !important}' : '') + `
         #img-cell, .img-cell{ position: relative; }
 
         #img-cell #icon, .img-cell #icon{
@@ -56,7 +56,17 @@ hemma_badge_light:
           mask: url('${SVG_URL}') no-repeat center / auto ${ICON_PCT}%;
           transform: translateZ(0);
         }
-      `;
+      ` + (variables?.bare ? `
+        ha-card.button-card-main, ha-card.button-card-main:hover, ha-card.button-card-main:active,
+        :host(:hover) ha-card, :host(:active) ha-card {
+          background: transparent !important;
+          box-shadow: none !important;
+          filter: none !important;
+          -webkit-filter: none !important;
+          -webkit-tap-highlight-color: transparent !important;
+        }
+        ha-ripple, mwc-ripple { display: none !important; }
+      ` : '');
     ]]]
 
   styles:

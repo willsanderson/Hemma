@@ -17,6 +17,7 @@ from .assets import HemmaAssetsView
 from .images import HemmaImagesView
 from .templates import HemmaTemplatesView, rebuild_if_stale
 from .i18n import rebuild_if_stale as rebuild_translations_if_stale
+from .notify import async_setup_notify
 from .const import (
     ASSETS_DIR,
     DOMAIN,
@@ -173,6 +174,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.debug("Hemma: %s is already served", url)
 
     await _sync_script_resources(hass, scripts_dir)
+    await async_setup_notify(hass)
 
     def _stamp() -> int:
         try:

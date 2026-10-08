@@ -6,6 +6,34 @@ hemma_time:
     time_entity: sensor.time
     use_12h: true
     time_suffix:
+    show_date: false
+    date_style: ''
+    show_weather: false
+    show_temp_unit: false
+    weather_entity: ''
+    weather_temp_sensor: ''
+    date_fit:
+      force_eval: true
+      value: |
+        [[[
+          const el = this;
+          if (!el._hemmaDateFit) {
+            el._hemmaDateFit = () => {
+              const sp = el.shadowRoot && el.shadowRoot.querySelector('.hemma-date, .hemma-twx');
+              if (!sp || !sp.parentElement) { el.removeAttribute('data-date-hidden'); return; }
+              el.removeAttribute('data-date-hidden');
+              const edge = window._hemmaNavEdge;
+              const box = sp.parentElement.getBoundingClientRect();
+              const span = window._hemmaNavSpan;
+              const sameRow = !span || (box.bottom > span[0] && box.top < span[1]);
+              if (typeof edge === 'number' && sameRow && box.right > edge - 24) el.setAttribute('data-date-hidden', '');
+            };
+            window.addEventListener('hemma-nav-edge', () => el._hemmaDateFit());
+            window.addEventListener('resize', () => requestAnimationFrame(() => el._hemmaDateFit()));
+          }
+          requestAnimationFrame(() => el._hemmaDateFit());
+          return true;
+        ]]]
 
   name: >
     [[[
@@ -41,9 +69,34 @@ hemma_time:
       }
 
       if (suffix) display = `${display} ${suffix}`;
-
-      return display.toUpperCase();
+      display = display.toUpperCase();
+      const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      let out = esc(display);
+      if (variables.show_date === true && window.hemmaDate) {
+        const date = window.hemmaDate(hass, variables.date_style === 'long' ? 'long' : 'short');
+        if (date) out += '<span class="hemma-date">' + esc(date) + '</span>';
+      }
+      if (variables.show_weather === true && variables.weather_entity) {
+        const w = states[variables.weather_entity];
+        let deg = null;
+        const t = variables.weather_temp_sensor && states[variables.weather_temp_sensor];
+        if (t && Number.isFinite(Number(t.state)) && t.state !== '') deg = Math.round(Number(t.state));
+        if (deg === null && w && Number.isFinite(Number(w.attributes.temperature))) deg = Math.round(Number(w.attributes.temperature));
+        let unit = '';
+        if (variables.show_temp_unit === true) {
+          const u = (t && t.attributes.unit_of_measurement) || (w && w.attributes.temperature_unit) || hass.config?.unit_system?.temperature || '';
+          unit = esc(String(u).replace('°', '').trim());
+        }
+        if (deg !== null) out += '<span class="hemma-twx">' + deg + '°' + (unit ? '&nbsp;' + unit : '') + '</span>';
+      }
+      return out;
     ]]]
+
+  extra_styles: |
+    .hemma-date { text-transform: none; font-weight: 500; letter-spacing: var(--hemma-time-sub-spacing, .2px); }
+    .hemma-twx { font-weight: 500; letter-spacing: var(--hemma-time-sub-spacing, .2px); }
+    .hemma-date::before, .hemma-twx::before { content: "\00b7"; margin: 0 .4em; }
+    :host([data-date-hidden]) .hemma-date, :host([data-date-hidden]) .hemma-twx { display: none; }
 
   show_icon: false
   show_state: false
@@ -76,7 +129,7 @@ hemma_time:
     name:
       - color: var(--primary-text-color)
       - opacity: var(--hemma-time-opacity, 1)
-      - letter-spacing: 1px
+      - letter-spacing: var(--hemma-time-letter-spacing, 1px)
       - font-size: var(--hemma-chrome-font-size, 18px)
       - line-height: 1
       - text-transform: "[[[ return String(hass.language || 'en').startsWith('en') ? 'uppercase' : 'none'; ]]]"
@@ -86,3 +139,6 @@ hemma_time:
       - align-self: center
       - padding: 0
       - margin: 0
+      # button-card clips its name box, so descenders (the date's "p") need room below the one-line box.
+      - padding-block: 0.16em
+      - margin-block: -0.16em

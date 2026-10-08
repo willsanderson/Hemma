@@ -4,6 +4,15 @@ hemma_settings_button:
   variables:
     shown: false
     assist_available: false
+    hemma_ui_managed: true
+    # Tells hemma-core this menu carries Home Assistant, so the sidebar can drop its fallback button.
+    menu_has_ha:
+      force_eval: true
+      value: |
+        [[[
+          if (!window._hemmaMenuHA) { window._hemmaMenuHA = true; window.dispatchEvent(new Event('hemma-menu-ha')); }
+          return true;
+        ]]]
 
   tap_action:
     action: javascript
@@ -18,8 +27,9 @@ hemma_settings_button:
         const host = this;
         const PHONE = window.matchMedia(
           '(max-width: 767px), (max-height: 500px)').matches;
+        const CAPSULE = getComputedStyle(host).getPropertyValue('--hemma-chrome-capsule').trim() === '1';
         const lift = function (on) {
-          if (PHONE) return;
+          if (PHONE || CAPSULE) return;
           if (on) {
             host.style.setProperty('--hemma-settings-fill', '#fff');
             host.style.setProperty('--hemma-settings-ink', '#1c1c20');
@@ -32,6 +42,7 @@ hemma_settings_button:
 
         const card = host.shadowRoot && host.shadowRoot.querySelector('ha-card');
         let r = (card || host).getBoundingClientRect();
+        const r0 = r;
         for (let up = host, i = 0; up && i < 6; i++) {
           const rootNode = up.getRootNode && up.getRootNode();
           up = rootNode && rootNode.host;
@@ -39,6 +50,11 @@ hemma_settings_button:
           if (tpl && [].concat(tpl).indexOf('hemma_mobile_chrome') >= 0) {
             const cap = up.shadowRoot && up.shadowRoot.querySelector('ha-card');
             if (cap) r = cap.getBoundingClientRect();
+            break;
+          }
+          if (CAPSULE && tpl && [].concat(tpl).indexOf('hemma_room') >= 0) {
+            const cap = up.shadowRoot && up.shadowRoot.querySelector('#chrome_pill');
+            if (cap && cap.getBoundingClientRect().width) r = cap.getBoundingClientRect();
             break;
           }
         }
@@ -84,6 +100,18 @@ hemma_settings_button:
               + (dash ? '?dash=' + encodeURIComponent(dash) : ''));
           } },
         ];
+        // A YAML dashboard isn't Hemma Studio's to edit.
+        if (variables.hemma_ui_managed === false) ITEMS.splice(1, 1);
+
+        // Hemma hides HA's own menu button; on a tablet or desktop this is the way back to it.
+        if (!PHONE) {
+          ITEMS.push({ label: T('nav.home_assistant', 'Home Assistant'), icon: 'mdi:home-assistant', run: function () {
+            // Overview's buttons live in hemma-nav-bar on <body>, outside HA, so the event must start from the nav.
+            const nav = document.querySelector('hemma-nav-bar');
+            if (nav && nav._openHaMenu) nav._openHaMenu();
+            else host.dispatchEvent(new Event('hass-toggle-menu', { bubbles: true, composed: true }));
+          } });
+        }
 
         if (overflowAssist) {
           ITEMS.unshift({ label: T('menu.assist', 'Assist'), glyph: 'assist-fill', run: function () {
@@ -102,7 +130,7 @@ hemma_settings_button:
         Object.assign(item.style, {
           display: 'flex', alignItems: 'center', gap: '14px',
           width: '100%', textAlign: 'left', border: '0',
-          background: 'transparent', color: '#fff', font: 'inherit',
+          background: 'transparent', color: 'var(--hemma-menu-ink, #fff)', font: 'inherit',
           fontSize: '14px', fontWeight: '500', letterSpacing: '-0.01em',
           lineHeight: '1.35', padding: '9px 13px',
           // Concentric: the panel's radius less the 6px it sits inside.
@@ -114,7 +142,7 @@ hemma_settings_button:
           const u = (typeof window.hemmaIconUrl === 'function'
             ? window.hemmaIconUrl(spec.glyph)
             : '/local/hemma/icons/' + spec.glyph + '.svg');
-          gl.style.background = 'rgba(255,255,255,0.92)';
+          gl.style.background = 'var(--hemma-menu-ink, rgba(255,255,255,0.92))';
           gl.style.setProperty('-webkit-mask', 'url("' + u + '") no-repeat center / contain');
           gl.style.setProperty('mask', 'url("' + u + '") no-repeat center / contain');
         } else {
@@ -122,7 +150,7 @@ hemma_settings_button:
         }
         Object.assign(gl.style, {
           width: '21px', height: '21px',
-          color: 'rgba(255,255,255,0.92)', flex: 'none',
+          color: 'var(--hemma-menu-ink, rgba(255,255,255,0.92))', flex: 'none',
         });
         // A custom property never lands through Object.assign.
         gl.style.setProperty('--mdc-icon-size', '21px');
@@ -132,7 +160,7 @@ hemma_settings_button:
         item.appendChild(gl);
         item.appendChild(tx);
         const lit = function (on) {
-          item.style.background = on ? 'rgba(255,255,255,0.18)' : 'transparent';
+          item.style.background = on ? 'var(--hemma-menu-lit, rgba(255,255,255,0.18))' : 'transparent';
         };
         item.onmouseenter = function () { lit(true); };
         item.onmouseleave = function () { lit(false); };
@@ -146,9 +174,10 @@ hemma_settings_button:
         document.body.appendChild(menu);
 
         const w = menu.offsetWidth;
-        menu.style.top = (window.hemmaMenuGlass && window.hemmaMenuGlass.dropTop
-          ? window.hemmaMenuGlass.dropTop(r, 10)
-          : Math.round(r.bottom + 10)) + 'px';
+        menu.style.top = (CAPSULE ? Math.round(r0.top + 49)
+          : window.hemmaMenuGlass && window.hemmaMenuGlass.dropTop
+            ? window.hemmaMenuGlass.dropTop(r, 10)
+            : Math.round(r.bottom + 10)) + 'px';
         menu.style.left = Math.round(Math.max(12, Math.min(r.right - w, window.innerWidth - w - 12))) + 'px';
         if (window.hemmaMenuGlass) window.hemmaMenuGlass.enter(menu);
 

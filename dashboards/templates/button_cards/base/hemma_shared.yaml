@@ -12,7 +12,7 @@ hemma_shared:
   styles:
     grid:
       - grid-template-columns: 1fr max-content
-      - grid-template-areas: '"n n" "badges badges" "badges_climate badges_climate" "badges_presence badges_presence" "badges_media badges_media" "badges_lights badges_lights" "badges_security badges_security" "badges_energy badges_energy" "now_playing now_playing"'
+      - grid-template-areas: '"n n" "badges badges" "now_playing now_playing"'
       - grid-template-rows: min-content min-content min-content min-content min-content min-content
       - row-gap: 0
       - align-content: start
@@ -48,7 +48,7 @@ hemma_shared:
         // One at a time on idle, so warming other rooms never competes with the current paint.
         const queue = rooms.map(r => `${basePath}/${r}${isDark ? suffix : ''}${ext}`);
         const idle = window.requestIdleCallback
-          ? (fn) => window.requestIdleCallback(fn, { timeout: 3000 })
+          ? (fn) => window.requestIdleCallback(fn, { timeout: 500 })
           : (fn) => setTimeout(fn, 300);
         const step = () => {
           const next = queue.shift();
@@ -296,7 +296,7 @@ hemma_shared:
            (max-width: 767px) and (orientation: portrait) and (hover: none) {
       :host .button-card-content,
       :host .grid {
-        grid-template-areas: "n weather" "badges badges" "badges_climate badges_climate" "badges_presence badges_presence" "badges_media badges_media" "badges_lights badges_lights" "badges_security badges_security" "badges_energy badges_energy" "now_playing now_playing" !important;
+        grid-template-areas: "n weather" "badges badges" "now_playing now_playing" !important;
         grid-template-rows: min-content min-content min-content min-content min-content min-content !important;
       }
 

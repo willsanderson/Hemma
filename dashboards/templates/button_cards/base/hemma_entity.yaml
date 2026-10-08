@@ -162,8 +162,8 @@ hemma_entity:
        is CSS Values 4 and Firefox drops the whole declaration. On :host so it also
        reaches cards whose root element the ha-card selector does not match. */
     :host {
-      --hemma-toggle-width: calc(var(--hemma-entity-height-current, 200px) * 0.23);
-      --hemma-toggle-height: calc(var(--hemma-entity-height-current, 200px) * 0.13);
+      --hemma-toggle-width: 44px;
+      --hemma-toggle-height: 25px;
     }
 
     ha-card {
@@ -192,24 +192,24 @@ hemma_entity:
       --hemma-tile-cols-mq: 1fr;
       --hemma-tile-rows-mq: 1fr min-content min-content;
       --hemma-tile-gap-mq: 4px 0;
-      --hemma-tile-name-mb-mq: -2px;
+      --hemma-tile-name-mb-mq: var(--hemma-name-gap-adjust, -2px);
       --hemma-tile-align-content-mq: start;
       --hemma-tile-icon-align-mq: start;
       --hemma-tile-icon-mt-mq: -2px;
       --hemma-tile-extras-mq: block;
-      --hemma-tile-radius-mq: var(--ha-card-border-radius, 28px);
+      --hemma-tile-radius-mq: var(--hemma-tile-corner, var(--ha-card-border-radius, 28px));
       --hemma-tile-state-inset-mq: 0px;
 
       --hemma-tile-areas-lg: "i" "n" "s";
       --hemma-tile-cols-lg: 1fr;
       --hemma-tile-rows-lg: 1fr min-content min-content;
       --hemma-tile-gap-lg: 4px 0;
-      --hemma-tile-name-mb-lg: -2px;
+      --hemma-tile-name-mb-lg: var(--hemma-name-gap-adjust, -2px);
       --hemma-tile-align-content-lg: start;
       --hemma-tile-icon-align-lg: start;
       --hemma-tile-icon-mt-lg: -2px;
       --hemma-tile-extras-lg: block;
-      --hemma-tile-radius-lg: var(--ha-card-border-radius, 28px);
+      --hemma-tile-radius-lg: var(--hemma-tile-corner, var(--ha-card-border-radius, 28px));
       --hemma-tile-state-inset-lg: 0px;
 
       /* Defaults, so first paint is correct before styles.card stamps these
@@ -230,6 +230,18 @@ hemma_entity:
     /* 100cqi for the auto-fitting state text = the card's content box. */
     ha-card { container-type: inline-size; }
 
+    /* Apple's rhythm on wide screens: name to state is one 1.15 line, nothing added or pulled. */
+    @media (min-width: 768px) and (min-height: 501px) {
+      ha-card {
+        --hemma-tile-gap-mq: 0 0;
+        --hemma-tile-gap-lg: 0 0;
+        --hemma-tile-name-mb-mq: 0px;
+        --hemma-tile-name-mb-lg: 0px;
+        --hemma-thermo-row-gap: 0px;
+        --hemma-thermo-name-mb: -0.16em;
+      }
+    }
+
     /* Media list must match the one hemma-smart-row switches its grid on. */
     @media (max-width: 767px) and (orientation: portrait),
            (max-height: 500px) and (orientation: portrait),
@@ -237,8 +249,6 @@ hemma_entity:
       ha-card {
         --hemma-height-mq: 100%;  /* the grid track owns the height */
         --hemma-icon-circle-size: 42px;
-        --hemma-toggle-width: 46px;   /* height-current is not this tier's tile height */
-        --hemma-toggle-height: 26px;
         --hemma-tile-areas-mq: "i n" "i s";
         --hemma-tile-cols-mq: auto minmax(0, 1fr);
         --hemma-tile-rows-mq: auto auto;
@@ -264,11 +274,40 @@ hemma_entity:
       ha-card {
         /* Phone tiles stay flat: drop the desktop rim, not just dim it. */
         --hemma-box-shadow-mq: var(--hemma-tile-glass-rim, inset 0 1px 0 -0.5px rgba(255,255,255,0.10), 0 2px 8px rgba(0,0,0,0.10));
-        --hemma-toggle-width: 40px;
         --hemma-progress-icon-ratio: 0.8;
         --hemma-entity-active-tint-current: var(--hemma-entity-active-tint-mobile, var(--hemma-entity-active-tint, rgba(255,255,255,1)));
       }
     }
+
+    :host(.hemma-compact) ha-card {
+      --hemma-height-mq: 100%;
+      --hemma-icon-circle-size: 42px;
+      /* The icon spans the text rows; spacer rows take its extra height, or it stretches the gap between them. */
+      --hemma-tile-areas-mq: "i ." "i n" "i s" "i .";
+      --hemma-tile-cols-mq: auto minmax(0, 1fr);
+      --hemma-tile-rows-mq: 1fr min-content min-content 1fr;
+      --hemma-tile-gap-mq: 0 10px;
+      --hemma-tile-name-mb-mq: 0px;
+      --hemma-tile-name-mb-lg: 0px;
+      --hemma-tile-gap-lg: 0 0;
+      --hemma-tile-align-content-mq: center;
+      --hemma-tile-icon-align-mq: center;
+      --hemma-tile-icon-mt-mq: 0px;
+      --hemma-tile-icon-mt-lg: 0px;
+      --hemma-tile-extras-mq: none;
+      --hemma-tile-radius-mq: var(--hemma-tile-radius-phone, 26px);
+      --hemma-tile-radius-lg: var(--hemma-tile-radius-phone, 26px);
+      --hemma-tile-state-inset-mq: calc(42px + 10px);
+    }
+    :host(.hemma-compact) ha-card {
+      --hemma-box-shadow-mq: var(--hemma-tile-glass-rim, inset 0 1px 0 -0.5px rgba(255,255,255,0.10), 0 2px 8px rgba(0,0,0,0.10));
+      --hemma-progress-icon-ratio: 0.8;
+      --hemma-entity-active-tint-current: var(--hemma-entity-active-tint-mobile, var(--hemma-entity-active-tint, rgba(255,255,255,1)));
+    }
+    :host(.hemma-compact) {
+      --ha-card-border-radius: var(--hemma-tile-radius-phone, 26px);
+    }
+    :host(.hemma-compact) #img-cell ha-icon { --mdc-icon-size: 24px !important; }
 
     #toggle {
       opacity: var(--hemma-toggle-opacity, 0.65);
@@ -465,9 +504,7 @@ hemma_entity:
                 s.id = KF_ID;
                 s.textContent = [
                   '@keyframes hemma-thumb-on-d{from{transform:translateX(0)}to{transform:translateX(18px)}}',
-                  '@keyframes hemma-thumb-off-d{from{transform:translateX(18px)}to{transform:translateX(0)}}',
-                  '@keyframes hemma-thumb-on-m{from{transform:translateX(0)}to{transform:translateX(12px)}}',
-                  '@keyframes hemma-thumb-off-m{from{transform:translateX(12px)}to{transform:translateX(0)}}'
+                  '@keyframes hemma-thumb-off-d{from{transform:translateX(18px)}to{transform:translateX(0)}}'
                 ].join('');
                 document.head.appendChild(s);
               }
@@ -476,14 +513,12 @@ hemma_entity:
               const activeStates = ["on","open","opening","playing","unlocked","unlocking","cleaning","returning","cool","heat"];
               const extraStates = Array.isArray(variables.active_states) ? variables.active_states.map(v => String(v).toLowerCase()) : [];
               const isOn = [...activeStates, ...extraStates].includes(toggleState);
-              const mob = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-              const W = mob ? 38 : 44, H = mob ? 26 : 26, r = mob ? 8 : 9, cx0 = mob ? 14 : 14;
+              const W = 44, H = 26, r = 9, cx0 = 14, travel = 18;
               const SW = W + 2;
-              const travel = mob ? 12 : 18;
               const stateKey = '_hemma_toggle_' + (entity?.entity_id || '');
               const shouldAnimate = window[stateKey] !== undefined && window[stateKey] !== isOn;
               window[stateKey] = isOn;
-              const anim = isOn ? (mob ? 'hemma-thumb-on-m' : 'hemma-thumb-on-d') : (mob ? 'hemma-thumb-off-m' : 'hemma-thumb-off-d');
+              const anim = isOn ? 'hemma-thumb-on-d' : 'hemma-thumb-off-d';
               const animStyle = shouldAnimate ? `animation:${anim} 0.2s ease forwards;` : '';
               const circleCx = (!shouldAnimate && isOn) ? cx0 + travel : cx0;
               const mid = 'htm-' + (entity?.entity_id || '').replace(/[^a-z0-9]/gi, '-');
@@ -520,12 +555,10 @@ hemma_entity:
         extra_styles: |
           @keyframes hemma-thumb-on-d{from{transform:translateX(0)}to{transform:translateX(18px)}}
           @keyframes hemma-thumb-off-d{from{transform:translateX(18px)}to{transform:translateX(0)}}
-          @keyframes hemma-thumb-on-m{from{transform:translateX(0)}to{transform:translateX(12px)}}
-          @keyframes hemma-thumb-off-m{from{transform:translateX(12px)}to{transform:translateX(0)}}
           :host {
             display: block !important;
-            width: var(--hemma-toggle-width, 46px) !important;
-            height: var(--hemma-toggle-height, 26px) !important;
+            width: var(--hemma-toggle-width, 44px) !important;
+            height: var(--hemma-toggle-height, 25px) !important;
             overflow: visible !important;
             cursor: pointer;
           }

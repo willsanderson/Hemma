@@ -12,6 +12,7 @@ hemma_popup_battery:
     hemma_popup:
       title: "[[[ const T = window._hemmaT || ((k, en, v) => { let s = String(en); if (v) for (const p in v) s = s.split('{' + p + '}').join(String(v[p])); return s; }); return T('battery.title', 'Batteries'); ]]]"
       dismiss_on_background: true
+      frameless: true
       style: |
         [[[
           /* 500 for the main list plus the card's own 26px gutters. The
@@ -98,8 +99,8 @@ hemma_popup_battery:
           /* Lifted, not slabbed: one wide soft pass carries the height, one
              short contact pass keeps the edge from dissolving into the room. */
           --hemma-popup-plate-shadow:
-            0 18px 40px -22px rgba(0, 0, 0, 0.50),
-            0 2px 8px -5px rgba(0, 0, 0, 0.28);
+            0 10px 24px -14px rgba(0, 0, 0, 0.32),
+            0 2px 6px -4px rgba(0, 0, 0, 0.22);
 
           /* visionOS puts nothing bare on the room: the only chrome outside a
              window is its close control, and that control is itself a glass
@@ -212,8 +213,8 @@ hemma_popup_battery:
           };
 
           const ICON_BINARY_CLASS = {
-            motion: 'motion',
-            occupancy: 'motion',
+            motion: 'person-walking-motion',
+            occupancy: 'person-walking-motion',
             presence: 'person',
             door: 'door-closed',
             opening: 'door-closed',
@@ -518,6 +519,7 @@ hemma_popup_battery:
     hemma_popup:
       title: "[[[ const T = window._hemmaT || ((k, en, v) => { let s = String(en); if (v) for (const p in v) s = s.split('{' + p + '}').join(String(v[p])); return s; }); return T('battery.title', 'Batteries'); ]]]"
       dismiss_on_background: true
+      frameless: true
       style: |
         [[[
           /* 500 for the main list plus the card's own 26px gutters. The
@@ -602,8 +604,8 @@ hemma_popup_battery:
           /* Lifted, not slabbed: one wide soft pass carries the height, one
              short contact pass keeps the edge from dissolving into the room. */
           --hemma-popup-plate-shadow:
-            0 18px 40px -22px rgba(0, 0, 0, 0.50),
-            0 2px 8px -5px rgba(0, 0, 0, 0.28);
+            0 10px 24px -14px rgba(0, 0, 0, 0.32),
+            0 2px 6px -4px rgba(0, 0, 0, 0.22);
 
           /* visionOS puts nothing bare on the room: the only chrome outside a
              window is its close control, and that control is itself a glass
@@ -716,8 +718,8 @@ hemma_popup_battery:
           };
 
           const ICON_BINARY_CLASS = {
-            motion: 'motion',
-            occupancy: 'motion',
+            motion: 'person-walking-motion',
+            occupancy: 'person-walking-motion',
             presence: 'person',
             door: 'door-closed',
             opening: 'door-closed',

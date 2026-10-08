@@ -8,11 +8,20 @@ window.hemmaMenuGlass = {
     st.textContent = '.hemma-menu-glass,.hemma-menu-glass *{'
       + 'scrollbar-width:none;-ms-overflow-style:none;}'
       + '.hemma-menu-glass ::-webkit-scrollbar{display:none;width:0;height:0;}'
+      + '.hemma-menu-glass::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:2;'
+      + 'background:linear-gradient(to bottom, rgba(255,255,255,0.40), rgba(255,255,255,0.10) 22%,'
+      + ' rgba(255,255,255,0.04) 50%, rgba(255,255,255,0.07) 78%, rgba(255,255,255,0.20));'
+      + '-webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);-webkit-mask-composite:xor;'
+      + 'mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);mask-composite:exclude;}'
+      + '.hemma-menu-glass.light [role=menuitem], .hemma-menu-glass.light [role=menuitem] > ha-icon{color:var(--hemma-menu-ink) !important;}'
+      + '.hemma-menu-glass.light [role=menuitem] > span:first-child:not(:last-child){background:var(--hemma-menu-ink) !important;}'
+      + '.hemma-menu-glass.light::before{background:linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(255,255,255,0.3) 22%,'
+      + ' rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.18) 78%, rgba(255,255,255,0.45));}'
       // The panel's menus, not the card radius: a dropdown is chrome and reads as
       // a different object from the cards it floats over.
       + '.hemma-menu-glass{--hemma-menu-radius:'
       + ' var(--hemma-menu-radius-desktop, 22px);'
-      + '--hemma-menu-pane-auto: rgba(30,33,38,0.30);'
+      + '--hemma-menu-pane-auto: rgba(150,152,158,0.08);'
       + '--hemma-popup-chev-opacity: .35;'
       + '--hemma-menu-shadow: var(--hemma-elevation-floating, 0 8px 20px rgba(0,0,0,0.13));}'
       + '@media (max-width: 767px), (max-height: 500px){'
@@ -47,25 +56,25 @@ window.hemmaMenuGlass = {
   },
 
   apply: function (el) {
-    var b = 'blur(40px) saturate(170%)';
+    var b = 'var(--hemma-perf-none, blur(32px) saturate(1.1))';
     this._ensure();
     el.classList.add('hemma-menu-glass');
     this._theme(el);
     el.style.borderRadius = this.radius;
-    el.style.color = '#fff';
-    el.style.backgroundColor = 'var(--hemma-menu-pane,'
-      + ' var(--hemma-menu-pane-auto, rgba(30,33,38,0.30)))';
+    var ha = document.querySelector('home-assistant');
+    var themes = ha && ha.hass && ha.hass.themes;
+    var light = themes && typeof themes.darkMode === 'boolean' ? !themes.darkMode
+      : !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    el.classList.toggle('light', light);
+    el.style.setProperty('--hemma-menu-ink', light ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.92)');
+    el.style.setProperty('--hemma-menu-lit', light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.18)');
+    el.style.color = light ? 'rgba(0,0,0,0.85)' : '#fff';
+    el.style.backgroundColor = light ? 'var(--hemma-perf-pill, rgba(250,250,252,0.46))'
+      : 'var(--hemma-perf-pill, var(--hemma-menu-pane, var(--hemma-menu-pane-auto, rgba(150,152,158,0.08))))';
     el.style.backgroundImage = 'none';
-    el.style.backdropFilter = b;
-    el.style.webkitBackdropFilter = b;
-    var edge = 'var(--hemma-menu-edge, rgba(0,0,0,0.11))';
-    var rimT = 'var(--hemma-menu-rim-top, rgba(255,255,255,0.26))';
-    var rimB = 'var(--hemma-menu-rim-bottom, rgba(255,255,255,0.16))';
-    el.style.boxShadow = 'inset 0 1px 0 ' + rimT + ','
-      + ' inset 0 -1px 0 ' + rimB + ','
-      + ' inset 1px 0 0 ' + edge + ','
-      + ' inset -1px 0 0 ' + edge + ','
-      + ' var(--hemma-menu-shadow, 0 8px 20px rgba(0,0,0,0.13))';
+    el.style.backdropFilter = light ? 'var(--hemma-perf-none, blur(32px) saturate(1.2))' : b;
+    el.style.webkitBackdropFilter = el.style.backdropFilter;
+    el.style.boxShadow = '0 0 0 0.5px rgba(0,0,0,0.42), var(--hemma-menu-shadow, 0 8px 20px rgba(0,0,0,0.13))';
   },
 
   enter: function (el) {
@@ -237,7 +246,9 @@ window.hemmaMenuGlass = {
   window._hemmaHeaderHide = true;
 
   var ID = 'hemma-header-hide';
-  var CSS = '.header { display: none !important; }';
+  // kiosk-mode's rule can land late or never on a cold start, leaving the hidden header's 56px of padding.
+  var CSS = '.header { display: none !important; }'
+    + ' #view { padding-top: calc(var(--safe-area-inset-top, 0px) + var(--view-container-padding-top, 0px)) !important; }';
   var OFF = /[?&](hemma_header=1|disable_km)/.test(location.search);
   // kiosk-mode's breakpoint, so one dashboard reads the same under either.
   var NARROW = window.matchMedia('(max-width: 812px)');
@@ -314,6 +325,22 @@ window.hemmaMenuGlass = {
   NARROW.addEventListener('change', apply);
 })();
 
+// The last answer for this dashboard is applied before the first paint, so a load never shows Focus first.
+(function () {
+  try {
+    var seg = String(location.pathname.split('/')[1] || '');
+    if (!seg || localStorage.getItem('hemma_ov_boot') !== seg) return;
+    var st = document.documentElement.style;
+    st.setProperty('--hemma-page-chrome', 'hidden');
+    st.setProperty('--hemma-fx-vis', 'hidden');
+    st.setProperty('--hemma-anim-name', 'none');
+    st.setProperty('--hero-img-blur', '7px');
+    st.setProperty('--hemma-hero-anim-dur', '0s');
+    st.setProperty('--hemma-hero-anim-delay', '0s');
+    window._hemmaOvBoot = true;
+  } catch (e) {}
+})();
+
 (function () {
   if (window._hemmaEnergyOn) return;
   window._hemmaEnergyOn = function (V) {
@@ -366,6 +393,10 @@ window.hemmaMenuGlass = {
     + '--hero-img-blur-mobile:0px!important;'
     + '--hemma-mobile-hero-blur:0px!important;'
     + '--hemma-card-will-change:auto!important;'
+    // The nav bar's own blurs and rims (category page, veils, round buttons); the page's scrim turns solid without its blur.
+    + '--hemma-perf-none:none!important;'
+    + '--hemma-perf-scrim:rgba(14,16,20,0.9)!important;'
+    + '--hemma-perf-pill:var(--hemma-perf-pill-fill,rgb(38,40,46))!important;'
     // Entrances stay. Every one of them animates transform and opacity only,
     // which the compositor handles without a repaint, so they cost nothing once
     // the blur above is gone. Suppressing them raced with the delays smart-row
@@ -490,11 +521,75 @@ window.hemmaMenuGlass = {
     var u = String(unit || '').trim();
     return (window.hemmaNum(n, d, d) + (u ? ' ' + u : '')).trim();
   };
+  // style 'short' is the top bar ("Tue Sep 29"), 'long' sits above the room name ("Tuesday, September 29").
+  window.hemmaDate = function (hass, style, when) {
+    var h = hass || hassNow() || {};
+    var loc = h.locale || {};
+    var lang = loc.language || h.language || 'en';
+    var long = style === 'long';
+    var opts = long ? { weekday: 'long', month: 'long', day: 'numeric' }
+      : { weekday: 'short', month: 'short', day: 'numeric' };
+    if (loc.time_zone === 'server' && h.config && h.config.time_zone) opts.timeZone = h.config.time_zone;
+    var d = when || new Date();
+    var df = loc.date_format || 'language';
+    var out = '';
+    try {
+      if (df === 'DMY' || df === 'MDY' || df === 'YMD') {
+        var parts = new Intl.DateTimeFormat(lang, opts).formatToParts(d);
+        var pick = function (t) { var p = parts.filter(function (x) { return x.type === t; })[0]; return p ? p.value : ''; };
+        out = df === 'DMY' ? pick('weekday') + ' ' + pick('day') + ' ' + pick('month')
+          : pick('weekday') + ' ' + pick('month') + ' ' + pick('day');
+      } else {
+        out = new Intl.DateTimeFormat(df === 'system' ? undefined : lang, opts).format(d);
+      }
+    } catch (e) { return ''; }
+    if (!long) out = out.replace(/,/g, '');
+    return out.replace(/\s+/g, ' ').trim();
+  };
   window.hemmaCurrencySymbol = function (unit) {
     var cur = window.hemmaCurrency(unit);
     var f = cur ? formatter(0, 0, cur) : null;
     var part = f && f.formatToParts ? f.formatToParts(1).filter(function (x) { return x.type === 'currency'; })[0] : null;
     return part ? part.value : (String(unit || '').trim() || '$');
+  };
+})();
+
+(function () {
+  var _hemmaT = function (k, en, v) {
+    if (typeof window._hemmaT === 'function') return window._hemmaT(k, en, v);
+    var s = String(en);
+    if (v) for (var p in v) s = s.split('{' + p + '}').join(String(v[p]));
+    return s;
+  };
+  // Reads through button-card's `states` so the title re-renders with the clock and the person.
+  window.hemmaGreeting = function (hass, states, variables) {
+    return String(greeting(hass, states, variables)).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  };
+  var greeting = function (hass, states, variables) {
+    var h = hass || {};
+    var st = states || h.states || {};
+    var all = h.states || {};
+    void st[(variables && variables.time_entity) || 'sensor.time'];
+    var uid = h.user && h.user.id;
+    var pid = uid ? Object.keys(all).filter(function (id) {
+      return id.indexOf('person.') === 0 && all[id].attributes && all[id].attributes.user_id === uid;
+    })[0] : null;
+    var person = pid ? st[pid] : null;
+    var name = person ? String(person.attributes.friendly_name || '').trim().split(/\s+/)[0] : '';
+    var v = name ? { name: name } : null;
+    var arrived = person && person.state === 'home' && person.last_changed
+      && Date.now() - Date.parse(person.last_changed) < 10 * 60 * 1000;
+    if (arrived) return name ? _hemmaT('greeting.welcome_name', 'Welcome home, {name}', v) : _hemmaT('greeting.welcome', 'Welcome home');
+    var hour = new Date().getHours();
+    try {
+      var loc = h.locale || {};
+      if (loc.time_zone === 'server' && h.config && h.config.time_zone) {
+        hour = Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: h.config.time_zone }).format(new Date())) % 24;
+      }
+    } catch (e) { /* keep the device hour */ }
+    if (hour >= 5 && hour < 12) return name ? _hemmaT('greeting.morning_name', 'Good morning, {name}', v) : _hemmaT('greeting.morning', 'Good morning');
+    if (hour >= 12 && hour < 17) return name ? _hemmaT('greeting.afternoon_name', 'Good afternoon, {name}', v) : _hemmaT('greeting.afternoon', 'Good afternoon');
+    return name ? _hemmaT('greeting.evening_name', 'Good evening, {name}', v) : _hemmaT('greeting.evening', 'Good evening');
   };
 })();
 
@@ -550,6 +645,79 @@ window.hemmaMenuGlass = {
   var wxDash = function () {
     return (window.location.pathname || '').split('/').filter(Boolean)[0] || '';
   };
+  // Read from the raw states: button-card's proxy would subscribe the card to every entity.
+  const roomSensorsMemo = new Map();
+  let roomSensorsFor = null;
+  window.hemmaRoomSensors = function (hass, key, chips) {
+    const ents = (hass && hass.entities) || {};
+    if (roomSensorsFor !== ents) { roomSensorsMemo.clear(); roomSensorsFor = ents; }
+    const c = (chips && chips[key]) || {};
+    const memoKey = key + '|' + (c.motion_entity || '') + '|' + (c.occupancy_entity || '');
+    if (roomSensorsMemo.has(memoKey)) return roomSensorsMemo.get(memoKey);
+    const ha = document.querySelector('home-assistant');
+    const S = (ha && ha.hass && ha.hass.states) || {};
+    const cls = (id) => ((S[id] || {}).attributes || {}).device_class;
+    const slug = (t) => String(t || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const want = String(key || '').replace(/^room_/, '');
+    const areas = (hass && hass.areas) || {};
+    const devs = (hass && hass.devices) || {};
+    const aids = new Set(Object.keys(areas).filter((a) => slug((areas[a] || {}).name) === want));
+    const cams = new Set(Object.keys(ents).filter((id) => id.indexOf('camera.') === 0).map((id) => (ents[id] || {}).device_id).filter(Boolean));
+    const isCam = (id) => cams.has((ents[id] || {}).device_id);
+    const own = (ok) => Object.keys(ents).filter((id) => {
+      if (id.indexOf('binary_sensor.') !== 0 && id.indexOf('event.') !== 0) return false;
+      const e = ents[id] || {};
+      if (!S[id] || e.hidden || e.hidden_by || e.disabled_by || !ok(id)) return false;
+      return aids.has(e.area_id || (devs[e.device_id] || {}).area_id);
+    }).sort();
+    const set = c.motion_entity && S[c.motion_entity] ? c.motion_entity : null;
+    const motion = set && isCam(set) ? [set] : own((id) => isCam(id) && cls(id) === 'motion');
+    const occupancy = c.occupancy_entity ? [c.occupancy_entity] : set && !isCam(set) ? [set]
+      : own((id) => !isCam(id) && id.indexOf('binary_sensor.') === 0 && ['motion', 'occupancy', 'presence'].indexOf(cls(id)) >= 0);
+    const out = { motion, occupancy };
+    roomSensorsMemo.set(memoKey, out);
+    return out;
+  };
+  // Detected or not: an event (a doorbell's motion) counts for a minute after it fires.
+  window.hemmaSensorsOn = function (states, ids) {
+    let seen = false;
+    for (const id of ids || []) {
+      const s = states && states[id];
+      if (!s) continue;
+      if (id.indexOf('event.') === 0) {
+        const t = Date.parse(s.state);
+        seen = true;
+        if (Number.isFinite(t) && Date.now() - t < 60000) return true;
+      } else if (s.state === 'on') return true;
+      else if (s.state === 'off') seen = true;
+    }
+    return seen ? false : null;
+  };
+  window.hemmaBatterySvg = function (states, id) {
+    var s = id && states && states[id];
+    var lvl = s ? Math.round(Number(s.state)) : NaN;
+    if (!Number.isFinite(lvl)) return '';
+    var pct = Math.max(0, Math.min(100, lvl));
+    var st = String((states[id.replace(/_battery_level$/, '_battery_state')] || {}).state || '').toLowerCase();
+    var charging = (s.attributes && s.attributes.is_charging === true) || (st.indexOf('charging') >= 0 && st.indexOf('not') < 0);
+    var fill = charging ? '#34C759' : (pct <= 20 ? '#FF3B30' : '#fff');
+    var w = (24.5 * pct / 100).toFixed(2);
+    // As iOS draws it: the bolt is cut out of the body beside the digits, which move left to make room.
+    var bolt = charging ? '<path d="M20.9 2.4 17.6 7.3h2.2l-.8 3.9 3.3-5.1h-2.2z" fill="#000"/>' : '';
+    var vw = 27.3;
+    var tx = charging ? (pct >= 100 ? 9.4 : 10.2) : 12.25;
+    var fs = charging && pct >= 100 ? 9.4 : 11.4;
+    var u = pct + (charging ? 'c' : '');
+    return '<svg viewBox="0 0 ' + vw + ' 13" width="' + (vw * 14 / 13).toFixed(2) + '" height="14" aria-label="' + pct + '%">'
+      + '<defs><clipPath id="hbc' + u + '"><rect x="0" y="0" width="24.5" height="13" rx="4.2"/></clipPath>'
+      + '<mask id="hbm' + u + '"><rect width="34" height="13" fill="#fff"/>'
+      + '<text x="' + tx + '" y="10.6" text-anchor="middle" font-size="' + fs + '" font-weight="700" letter-spacing="-0.3"'
+      + ' font-family="-apple-system, SF Pro Rounded, system-ui, sans-serif" fill="#000">' + pct + '</text>' + bolt + '</mask></defs>'
+      + '<g mask="url(#hbm' + u + ')" clip-path="url(#hbc' + u + ')">'
+      + '<rect x="0" y="0" width="24.5" height="13" fill="rgba(255,255,255,0.36)"/>'
+      + '<rect x="0" y="0" width="' + w + '" height="13" fill="' + fill + '"/></g>'
+      + '<rect x="25.4" y="4.3" width="1.9" height="4.4" rx="0.95" fill="rgba(255,255,255,0.4)"/></svg>';
+  };
   window.hemmaWx = function (variables, which) {
     var v = variables || {};
     var name = which === 'temp' ? 'weather_temp_sensor' : 'weather_entity';
@@ -587,8 +755,8 @@ window.hemmaMenuGlass = {
     media_player: 'speaker', lock: 'lock-fill', cover: 'curtain-open',
     vacuum: 'vacuum', script: 'scenes', scene: 'scenes',
     automation: 'scenes', button: 'power_on', input_button: 'power_on',
-    binary_sensor: 'motion', remote: 'tv', water_heater: 'hot_water',
-    valve: 'curtain-open', siren: 'motion',
+    binary_sensor: 'person-walking-motion', remote: 'tv', water_heater: 'hot_water',
+    valve: 'curtain-open', siren: 'person-walking-motion',
   };
 
   window.hemmaDomainGlyph = function (eid) {
@@ -1175,8 +1343,42 @@ window.hemmaMenuGlass = {
       hemma_cameras:       'security',
       hemma_vacuum:        'unfiltered',
       hemma_plant:         'unfiltered',
+      hemma_entity_actions: 'by_entity',
     };
   }
+  // A light group's tile becomes one tile per member, room name dropped; a member that is a group itself stays one tile.
+  window.hemmaExpandLights = function (st, room, list) {
+    const members = (id) => {
+      const kids = st[id] && st[id].attributes && st[id].attributes.entity_id;
+      return Array.isArray(kids) && kids.length ? kids : [id];
+    };
+    const pre = String(room || '').toLowerCase() + ' ';
+    const cards = [];
+    const used = new Set();
+    list.forEach((c) => {
+      const ids = c.entity ? members(c.entity).filter((x) => x.indexOf('light.') === 0) : [];
+      if (ids.length <= 1 && !(ids[0] && ids[0] !== c.entity)) { cards.push(c); return; }
+      ids.forEach((id) => {
+        if (used.has(id)) return;
+        used.add(id);
+        const fn = String((st[id] && st[id].attributes && st[id].attributes.friendly_name) || '');
+        const card = { type: 'custom:button-card', template: 'hemma_light', entity: id, variables: { as_light: true },
+          tap_action: { action: 'more-info' }, hold_action: { action: 'more-info' } };
+        if (fn.toLowerCase().indexOf(pre) === 0 && fn.length > pre.length) card.name = fn.slice(pre.length);
+        cards.push(card);
+      });
+    });
+    return cards;
+  };
+
+  // A tile that takes any entity (Entity Actions) files under its entity's kind; 'by_entity' in the table above.
+  window.hemmaEntityCategory = function (id) {
+    return ({
+      light: 'lights', media_player: 'media', remote: 'media',
+      climate: 'climate', fan: 'climate', humidifier: 'climate', cover: 'climate', water_heater: 'climate',
+      lock: 'security', alarm_control_panel: 'security', camera: 'security',
+    })[String(id || '').split('.')[0]] || null;
+  };
 
   if (typeof window._hemmaSameGame !== 'function') {
     window._hemmaSameGame = function (x, y) {
@@ -1610,7 +1812,7 @@ window.hemmaMenuGlass = {
     };
   }
 
-  // Memoised per render pass - avoids re-running the sweep for every consumer.
+  // Memoized per render pass, so each consumer reuses one sweep.
   if (typeof window._hemmaNP !== 'function') {
     window._hemmaNP = function (states, V) {
       const artSig = (u) => {
@@ -2787,6 +2989,15 @@ window.hemmaMenuGlass = {
     }
   `;
 
+  // The theme writes its vars inline on <html>, so the override sits on body.
+  if (!document.getElementById('hemma-tablet-dialog-css')) {
+    const el = document.createElement('style');
+    el.id = 'hemma-tablet-dialog-css';
+    el.textContent = '@media (hover: none) and (pointer: coarse) and (min-width: 768px) and (min-height: 501px) {'
+      + ' body { --dialog-surface-margin-top: initial; } }';
+    document.head.appendChild(el);
+  }
+
   function ensureMenuCss() {
     if (document.getElementById('hemma-nav-menu-css')) return;
     const el = document.createElement('style');
@@ -2844,6 +3055,28 @@ window.hemmaMenuGlass = {
     }));
   }
 
+  // Stroked so its weight can match the desktop labels' text.
+  const SIDEBAR_LINE_SVG = '<svg viewBox="0 0 24 19" fill="none" stroke="currentColor" stroke-width="2.3"'
+    + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.4" y="1.4" width="21.2" height="16.2" rx="4.2"/>'
+    + '<path d="M8.6 1.4v16.2"/></svg>';
+
+  // The tablet navbar's: a touch over the labels' cap height (12px), with their 17px medium stem (~1.8px).
+  const SIDEBAR_TAB_SVG = '<svg viewBox="0 0 24 19" fill="none" stroke="currentColor" stroke-width="2.65"'
+    + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.45" y="1.45" width="21.1" height="16.1" rx="4.4"/>'
+    + '<path d="M8.6 1.45v16.1"/></svg>';
+
+  // Will's Apple glyphs from hemma-icons.js when loaded, else the drawn fallback.
+  const navGlyph = (name, fallback) => {
+    const d = window.HEMMA_ICONS && (window.HEMMA_ICONS[name] || (name === 'navbar' && window.HEMMA_ICONS.sidebar));
+    return d ? '<i class="gl" style="--g:url(&quot;' + d + '&quot;)"></i>' : fallback;
+  };
+
+  const FX_EASE = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+  const FX_SPRING = 'cubic-bezier(0.32, 0.72, 0, 1)';
+  // Opacity below 1 makes an element the backdrop root of everything inside it, so glass would blur nothing.
+  const FX_TEXT = (el) => el.id === 'name' || el.id === 'temperature';
+  // The gap between the open sidebar and the content, on the dashboard and on category pages alike.
+
   class HemmaNavBar extends HTMLElement {
     constructor() {
       super();
@@ -2856,7 +3089,22 @@ window.hemmaMenuGlass = {
       this._path    = normalize(location.pathname);
       this._menu    = null;
       this._onRoute  = () => this._syncRoute();
-      this._onResize = () => { this._syncHeaderOffset(); this._placeIndicator(true); };
+      this._onResize = () => {
+        this._fold(); this._syncHeaderOffset(); this._placeIndicator(true);
+        this._pushEdge = null;
+        if (this._sideOpen) this._pushView(true, true);
+        else this._placeClock(0);
+        setTimeout(() => this._sortSoon(true), 500);
+        this._syncCatPush();
+        setTimeout(() => this._fitNP(), 450);
+        clearTimeout(this._repaintT);
+        this._repaintT = setTimeout(() => this._repaintPhotos(), 400);
+      };
+      this._onVis = () => {
+        if (document.hidden) return;
+        // Again once a room Return to Home switched to while asleep has drawn and its photo settled.
+        [300, 1200, 2500].forEach((t) => setTimeout(() => this._repaintPhotos(), t));
+      };
     }
 
     static getStubConfig() { return { variant: 'desktop', routes: [] }; }
@@ -2868,18 +3116,34 @@ window.hemmaMenuGlass = {
       this._config  = config;
       this._variant = config.variant === 'tablet' ? 'tablet' : 'desktop';
       this._routes  = config.routes.slice();
-      this._sig     = JSON.stringify([this._variant, this._routes]);
+      this._sig     = HemmaNavBar._sigOf(config);
+      // A rebuild drops the page and the sidebar with the old shadow root; reset, so Overview opens them again.
+      if (this._built) {
+        this._closeCat(true);
+        this._baseMode = false;
+        this._sideOpen = false;
+        clearInterval(this._statusTick);
+      }
       this._built   = false;
       this.shadowRoot.innerHTML = '';
-      if (this.isConnected) this._build();
+      if (this.isConnected) { this._build(); if (this._hass) this._syncOverview(); }
+    }
+
+    // A room's motion dot arrives already evaluated, so it would change the config on every motion; it is not layout.
+    static _sigOf(c) {
+      return JSON.stringify([c.variant === 'tablet' ? 'tablet' : 'desktop',
+        c.routes.map((r) => (r && r.badge ? { ...r, badge: { ...r.badge, show: undefined } } : r))]);
     }
 
     updateConfig(config) {
       if (!config || !Array.isArray(config.routes)) return;
-      const sig = JSON.stringify([
-        config.variant === 'tablet' ? 'tablet' : 'desktop', config.routes,
-      ]);
-      if (sig === this._sig) return;
+      if (HemmaNavBar._sigOf(config) === this._sig) {
+        this._config = config;
+        this._routes = config.routes.slice();
+        (this._els || []).forEach((el, i) => { el.route = this._routes[i] || el.route; });
+        if (this._built) this._syncBadges();
+        return;
+      }
       this.setConfig(config);
       if (this.isConnected && !this._built) this._build();
       this._syncRoute();
@@ -2888,7 +3152,41 @@ window.hemmaMenuGlass = {
     set hass(hass) {
       this._hass = hass;
       if (!this._built) return;
+      const vh = this._vh && this._vh.isConnected ? this._vh : null;
+      if (vh && vh.style.userSelect !== 'none') {
+        vh.style.webkitUserSelect = 'none';
+        vh.style.userSelect = 'none';
+        vh.style.webkitTouchCallout = 'none';
+      }
+      if (!this._sideAuto && this._side && this._sVars) {
+        this._sideAuto = true;
+        const want = this._sideWanted();
+        try {
+          const seg = String(location.pathname.split('/')[1] || '');
+          if (this._sVars.sidebar_open === true) localStorage.setItem(this._sideBootKey(), seg);
+          else if (localStorage.getItem(this._sideBootKey()) === seg) localStorage.removeItem(this._sideBootKey());
+        } catch (_) {}
+        if (want && !this._sideOpen) setTimeout(() => { if (!this._sideOpen) this._openSide(true); }, 0);
+        else if (!want && this._sideOpen && this._sideBooted) this._closeSide();
+      }
       this._syncBadges();
+      this._renderStatus();
+      this._syncOverview();
+      this._preloadPhotos();
+      if (this._cat === 'home' && (this._titleStale || Date.now() - (this._titleAt || 0) > 30000)) {
+        this._titleAt = Date.now();
+        this._syncBaseTitle();
+      }
+      if (this._baseMode && !this._badgeVars) {
+        this._readBadgeVars(this._heroBadgeRow());
+        const pills = this._catPage && this._catPage.querySelector('.cat-pills');
+        if (pills) this._applyBadgeVars(pills);
+      }
+      if (this._sideOpen) this._syncSideMotion();
+      if (this._catEls) this._catHass();
+      else if (this._warmBadge) { try { this._warmBadge.hass = window._hemmaFilter ? window._hemmaFilter.apply(hass) : hass; } catch (_) {} }
+      if (!this._warmBadge && this._side) this._warmBadges();
+      if (!this._npFitT) this._npFitT = setTimeout(() => { this._npFitT = 0; this._fitNP(); }, 2000);
       if (this._menu) this._menu._refresh && this._menu._refresh();
     }
 
@@ -2900,6 +3198,10 @@ window.hemmaMenuGlass = {
       window.addEventListener('location-changed', this._onRoute, true);
       window.addEventListener('popstate', this._onRoute, true);
       window.addEventListener('resize', this._onResize);
+      document.addEventListener('visibilitychange', this._onVis);
+      window.addEventListener('pageshow', this._onVis);
+      window.addEventListener('focus', this._onVis);
+      if (this._onCategory) window.addEventListener('ll-custom', this._onCategory, true);
       if (this._config && !this._built) this._build();
       this._syncRoute();
       this._syncHeaderOffset();
@@ -2920,7 +3222,12 @@ window.hemmaMenuGlass = {
       window.removeEventListener('location-changed', this._onRoute, true);
       window.removeEventListener('popstate', this._onRoute, true);
       window.removeEventListener('resize', this._onResize);
+      document.removeEventListener('visibilitychange', this._onVis);
+      window.removeEventListener('pageshow', this._onVis);
+      window.removeEventListener('focus', this._onVis);
+      if (this._onCategory) window.removeEventListener('ll-custom', this._onCategory, true);
       this._closeMenu();
+      this._closeSide();
     }
 
 
@@ -2942,6 +3249,7 @@ window.hemmaMenuGlass = {
         const rim = document.createElement('div');
         rim.className = 'rim';
         bar.appendChild(rim);
+        bar.appendChild(Object.assign(document.createElement('div'), { className: 'rim-in' }));
       }
       const scroller = document.createElement('div');
       scroller.className = 'scroller';
@@ -2967,6 +3275,21 @@ window.hemmaMenuGlass = {
       this._scroller  = scroller;
       this._indicator = indicator;
       this._els       = [];
+
+      {
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'route toggle';
+        toggle.setAttribute('aria-label', _hemmaT('nav.sidebar', 'Sidebar'));
+        toggle.innerHTML = '<span class="label">' + (this._variant === 'tablet' ? SIDEBAR_TAB_SVG : SIDEBAR_LINE_SVG) + '</span>';
+        toggle.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this._toggleSide();
+        });
+        scroller.appendChild(toggle);
+        this._toggle = toggle;
+      }
 
       this._routes.forEach((route, i) => {
         const btn = document.createElement('button');
@@ -2996,9 +3319,2575 @@ window.hemmaMenuGlass = {
         this._els.push({ btn: btn, label: label, badge: badge, route: route });
       });
 
+      if (this._variant !== 'tablet') {
+        this._buildSide();
+        const status = document.createElement('div');
+        status.className = 'status';
+        root.appendChild(status);
+        this._status = status;
+        if (!this._onShortcut) {
+          this._onShortcut = (e) => {
+            if (!this.isConnected || !e.ctrlKey || !e.metaKey || String(e.key).toLowerCase() !== 's') return;
+            e.preventDefault();
+            this._toggleSide();
+          };
+          window.addEventListener('keydown', this._onShortcut);
+        }
+      }
+      if (!this._onCategory) {
+        this._onCategory = (ev) => {
+          const d = ev.detail || {};
+          const k = d.hemma_category;
+          // The phone's badge row carries its own filter; button-card merges the template's category into it.
+          if (!k || 'hemma_filter' in d || !this.isConnected || !this.getClientRects().length) return;
+          ev.stopPropagation();
+          const here = this._activeIdx > 0 && this._els[this._activeIdx];
+          const room = here ? String(here.route.label || here.label.textContent || '') : null;
+          if (this._cat !== k || (this._catRoom || null) !== room) this._openCat(k, room, true);
+        };
+        window.addEventListener('ll-custom', this._onCategory, true);
+      }
+      if (this._variant === 'tablet') {
+        this._buildSide();
+        const status = document.createElement('div');
+        status.className = 'status';
+        root.appendChild(status);
+        this._status = status;
+        this._renderStatus();
+      }
+
       this._built = true;
       this._syncRoute();
       this._syncBadges();
+      // The setting lives on the room card, which draws after this; the last answer opens it before the first paint.
+      try {
+        const seg = String(location.pathname.split('/')[1] || '');
+        if (this._side && !this._sideOpen && seg && localStorage.getItem(this._sideBootKey()) === seg && this._sideRoom()) {
+          this._sideBooted = true;
+          this._openSide(true);
+        }
+      } catch (_) {}
+    }
+
+    // ── Tablet sidebar ───────────────────────────────────────────────────────
+    _buildSide() {
+      // The idle return to Home asks these, so a sidebar or category page left open is reset with the view.
+      window._hemmaNavBusy = () => !!(this.isConnected && (this._cat || this._sideOpen !== this._sideWanted()));
+      window._hemmaNavReset = () => {
+        if (this._cat) this._closeCat();
+        const want = this._sideWanted();
+        if (this._sideOpen && !want) this._closeSide();
+        else if (!this._sideOpen && want) this._openSide();
+      };
+      const side = document.createElement('nav');
+      side.className = 'side';
+      side.setAttribute('aria-label', _hemmaT('nav.sidebar', 'Sidebar'));
+      const glass = document.createElement('div');
+      glass.className = 'side-glass';
+      side.appendChild(glass);
+      this._sideGlass = glass;
+      try {
+        const saved = parseInt(localStorage.getItem('hemma-side-w'), 10);
+        if (saved > 0) this.style.setProperty('--side-w', 'min(' + saved + 'px, 45vw)');
+      } catch (_) {}
+      const grip = document.createElement('div');
+      grip.className = 'side-grip';
+      side.appendChild(grip);
+      this._sideGrip = grip;
+      // iOS hands a touch to the scroll views under the edge before the grip, so the edge is caught on the document.
+      const onEdge = (x) => {
+        if (!this._sideOpen || !this._pushed) return false;
+        return Math.abs(x - this._side.getBoundingClientRect().right) <= 16;
+      };
+      this._edgeTouch = (ev) => {
+        const t = ev.touches && ev.touches[0];
+        if (t && ev.touches.length === 1 && onEdge(t.clientX)) ev.preventDefault();
+      };
+      this._edgeDown = (ev) => {
+        if (ev.isPrimary === false || !onEdge(ev.clientX)) return;
+        this._dragSide(ev, grip);
+      };
+      const head = document.createElement('div');
+      head.className = 'side-head';
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'side-close';
+      close.setAttribute('aria-label', _hemmaT('nav.sidebar', 'Sidebar'));
+      close.innerHTML = '<svg viewBox="0 0 25 19.5" fill="none" stroke="currentColor" stroke-width="2"'
+        + ' stroke-linecap="round" aria-hidden="true"><rect x="1" y="1" width="23" height="17.5" rx="4"/><path d="M7.4 5.1h10.2"/></svg>';
+      close.addEventListener('click', (e) => { e.stopPropagation(); this._closeSide(); });
+      this._bloom(close);
+      head.appendChild(close);
+      side.appendChild(head);
+      this._sideHead = head;
+      document.documentElement.style.setProperty('--hemma-ha-menu', 'none');
+      const list = document.createElement('div');
+      list.className = 'side-list';
+      list.addEventListener('scroll', () => list.classList.toggle('scrolled', list.scrollTop > 2), { passive: true });
+      side.appendChild(list);
+      // Until the ... menu with Home Assistant in it has drawn (templates saved before it existed), HA stays reachable here.
+      const foot = document.createElement('div');
+      foot.className = 'side-foot';
+      foot.hidden = !!window._hemmaMenuHA;
+      foot.appendChild(this._sideItem('mdi:home-assistant', _hemmaT('nav.home_assistant', 'Home Assistant'), false, () => this._openHaMenu()));
+      side.appendChild(foot);
+      window.addEventListener('hemma-menu-ha', () => { foot.hidden = true; });
+      this.shadowRoot.appendChild(side);
+      const back = document.createElement('button');
+      back.type = 'button';
+      back.className = 'side-back';
+      back.setAttribute('aria-label', _hemmaT('nav.back', 'Back'));
+      back.innerHTML = '<svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4"'
+        + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.4 1.6 1.8 10l8.6 8.4"/></svg>';
+      back.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._closeCat();
+      });
+      this._bloom(back);
+      this.shadowRoot.appendChild(back);
+      this._sideBack = back;
+      this._side = side;
+      this._sideList = list;
+      this._onAway = (ev) => {
+        // Landscape makes room for the page, so the page stays usable; only portrait's overlay dismisses.
+        if (this._pushed) return;
+        const path = ev.composedPath();
+        if (path.indexOf(this._side) >= 0 || path.indexOf(this._toggle) >= 0) return;
+        this._closeSide();
+      };
+      this._onKey = (ev) => { if (ev.key === 'Escape') this._closeSide(); };
+    }
+
+    _dragSide(e, grip) {
+      if (!this._sideOpen || !this._pushed) return;
+      e.preventDefault();
+      e.stopPropagation();
+      try { grip.setPointerCapture(e.pointerId); } catch (_) {}
+      grip.classList.add('drag');
+      const id = e.pointerId;
+      const x0 = e.clientX;
+      const w0 = this._side.getBoundingClientRect().width;
+      const max = Math.max(w0, Math.min(300, window.innerWidth * 0.45));
+      const labels = [...this._side.querySelectorAll('.side-item > span:not(.side-motion)')].filter((l) => l.getClientRects().length);
+      const range = document.createRange();
+      // Fractional, with a margin: clientWidth rounds, and a label a fraction too narrow already shows its ellipsis.
+      const slack = labels.reduce((m, l) => {
+        range.selectNodeContents(l);
+        return Math.min(m, l.getBoundingClientRect().width - range.getBoundingClientRect().width);
+      }, Infinity);
+      const min = Math.min(w0, Math.max(200, Math.ceil(w0 - (Number.isFinite(slack) ? Math.max(0, slack) : 0) + 4)));
+      let w = w0;
+      const els = this._pushed ? [...(this._pushedSet || [])] : [];
+      els.forEach((el) => { el.style.transition = 'none'; });
+      const move = (ev) => {
+        if (ev.pointerId !== id) return;
+        ev.preventDefault();
+        w = Math.round(Math.max(min, Math.min(max, w0 + ev.clientX - x0)));
+        this.style.setProperty('--side-w', w + 'px');
+        const P = this._pushShift(w);
+        this._setPushVars(P);
+        els.forEach((el) => this._setPush(el, P));
+        this._syncBack();
+      };
+      const up = (ev) => {
+        if (ev && ev.pointerId !== id) return;
+        window.removeEventListener('pointermove', move, true);
+        window.removeEventListener('pointerup', up, true);
+        window.removeEventListener('pointercancel', up, true);
+        grip.classList.remove('drag');
+        try { localStorage.setItem('hemma-side-w', String(w)); } catch (_) {}
+        this.style.setProperty('--side-w', 'min(' + w + 'px, 45vw)');
+      };
+      window.addEventListener('pointermove', move, { capture: true, passive: false });
+      window.addEventListener('pointerup', up, true);
+      window.addEventListener('pointercancel', up, true);
+    }
+
+    // HA listens for its menu toggle from inside the dashboard view, which this layer is not.
+    _openHaMenu() {
+      const src = this._heroCardFor(this._activeIdx) || this._viewHost() || this;
+      if (!this._pushed) this._closeSide();
+      src.dispatchEvent(new Event('hass-toggle-menu', { bubbles: true, composed: true }));
+    }
+
+    _sideItem(icon, label, active, onTap, badge) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'side-item' + (active ? ' on' : '');
+      const data = window.HEMMA_ICONS && window.HEMMA_ICONS[icon];
+      if (data) {
+        const g = document.createElement('i');
+        g.className = 'side-glyph';
+        g.style.setProperty('--g', 'url("' + data + '")');
+        b.appendChild(g);
+      } else if (!window.HEMMA_ICONS && String(icon || '').indexOf(':') < 0) {
+        // hemma-icons.js can load after the sidebar first fills: hold the glyph's place, _fillSide redraws it.
+        const g = document.createElement('i');
+        g.className = 'side-glyph';
+        g.style.visibility = 'hidden';
+        b.appendChild(g);
+      } else {
+        const ic = document.createElement('ha-icon');
+        ic.setAttribute('icon', String(icon || '').indexOf(':') > 0 ? icon : 'mdi:circle-small');
+        b.appendChild(ic);
+      }
+      const t = document.createElement('span');
+      t.textContent = label;
+      b.appendChild(t);
+      if (badge !== undefined) {
+        const m = document.createElement('span');
+        m.className = 'side-motion' + (badge ? ' on' : '');
+        const url = typeof window.hemmaIconUrl === 'function' ? window.hemmaIconUrl('person-walking-motion') : '/local/hemma/icons/person-walking-motion.svg';
+        m.innerHTML = '<img src="' + url + '" alt="">';
+        b.appendChild(m);
+        b._motion = m;
+      }
+      b.addEventListener('click', (e) => { e.stopPropagation(); onTap(b); });
+      return b;
+    }
+
+    _sideSection(list, key, text) {
+      const store = 'hemma-side-shut-' + key;
+      let shut = false;
+      try { shut = localStorage.getItem(store) === '1'; } catch (_) {}
+      const h = document.createElement('button');
+      h.type = 'button';
+      h.className = 'side-heading';
+      h.innerHTML = '<span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"'
+        + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+      h.firstChild.textContent = text;
+      const g = document.createElement('div');
+      g.className = 'side-group';
+      const paint = () => {
+        h.setAttribute('aria-expanded', shut ? 'false' : 'true');
+        g.classList.toggle('shut', shut);
+      };
+      paint();
+      h.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const from = g.offsetHeight;
+        shut = !shut;
+        try { localStorage.setItem(store, shut ? '1' : '0'); } catch (_) {}
+        paint();
+        const to = g.offsetHeight;
+        if (!g.animate || from === to || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (shut) g.classList.remove('shut');
+        g.style.overflow = 'clip';
+        const a = g.animate([{ height: from + 'px' }, { height: to + 'px' }],
+          { duration: 260, easing: 'cubic-bezier(.32,.72,0,1)' });
+        const done = () => { g.style.overflow = ''; g.classList.toggle('shut', shut); };
+        a.finished.then(done, done);
+      });
+      list.appendChild(h);
+      list.appendChild(g);
+      return g;
+    }
+
+    async _mobileConfig() {
+      if (this._mobCfg && Date.now() - this._mobCfgAt < 60000) return this._mobCfg;
+      const seg = String(location.pathname.split('/')[1] || '');
+      const path = seg.replace(/[-_]mobile$/i, '') + '-mobile';
+      let cfg = null;
+      try { cfg = await this._hass.callWS({ type: 'lovelace/config', url_path: path }); } catch (_) {}
+      this._mobCfg = cfg;
+      this._mobCfgAt = Date.now();
+      return cfg;
+    }
+
+    // The phone popup's own rule: an overlay's explicit sections, else every room's tiles in the category.
+    _catSections(cfg, k) {
+      const cats = window.HEMMA_FILTER_CATEGORIES || {};
+      const catOf = (c) => {
+        const d = c && c.variables && c.variables.mobile_filter_category;
+        if (d !== null && d !== undefined) return d;
+        for (const t of [].concat((c && c.template) || [])) if (t && cats[t]) return cats[t] === 'by_entity' ? window.hemmaEntityCategory(c.entity) : cats[t];
+        return null;
+      };
+      const isHeader = (c) => [].concat((c && c.template) || []).indexOf('hemma_mobile_header') >= 0;
+      let explicit = null;
+      let favs = null;
+      const rooms = [];
+      let pending = null;
+      const walk = (list) => {
+        (list || []).forEach((c) => {
+          if (!c || typeof c !== 'object') return;
+          if (c.type === 'custom:hemma-filter-overlay') {
+            if (c.filter_category === k && Array.isArray(c.sections) && c.sections.length) explicit = c.sections;
+            return;
+          }
+          if (isHeader(c)) { pending = c.name; return; }
+          if (k === 'home' && pending && [].concat(c.template || []).indexOf('hemma_scene_row') >= 0) {
+            rooms.push({ name: pending, scenes: true });
+            pending = null;
+            return;
+          }
+          if (c.type === 'custom:hemma-smart-row' && pending) {
+            const cards = (c.cards || []).filter((x) => k === 'home' || catOf(x) === k);
+            if (pending === 'Favorites') { if (k !== 'lights' && cards.length) favs = cards; }
+            else if (cards.length) rooms.push({ name: pending, cards });
+            pending = null;
+            return;
+          }
+          if (Array.isArray(c.cards)) walk(c.cards);
+          if (c.card) walk([c.card]);
+        });
+      };
+      ((cfg && cfg.views) || []).forEach((v) => walk(v.cards));
+      if (explicit) return explicit;
+      if (favs) rooms.unshift({ name: _hemmaT('mobile.favorites', 'Favorites'), cards: favs, fav: true });
+      if (k !== 'lights') return rooms;
+      return rooms.map((r) => ({ name: r.name, cards: this._expandLights(r.name, r.cards) }));
+    }
+
+    _expandLights(room, list) {
+      return window.hemmaExpandLights((this._hass && this._hass.states) || {}, room, list);
+    }
+
+    async _openCat(k, room, fromBadge, base) {
+      if (this._cat === k && (room || null) === (this._catRoom || null)) { this._closeCat(); return; }
+      const fv = k === 'scenes' ? 'room_scenes' : k === 'home' ? 'all' : k;
+      if (this._catPage) {
+        this._cat = k;
+        this._catRoom = room || null;
+        this._catLift = false;
+        this._markSide();
+        this._syncBack();
+        if (window._hemmaFilter) window._hemmaFilter.set(fv);
+        this._fillCat(k);
+        return;
+      }
+      const R = this.shadowRoot;
+      if (this._catDefer) this._dropDeferred();
+      this._closeCat(true);
+      this._cat = k;
+      this._catRoom = room || null;
+      // From Home, or from a badge anywhere, the page lifts in; a sidebar category tapped in a room replaces it in place.
+      const lift = !base && (this._activeIdx === 0 || !!fromBadge) && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const fade = base === 'fade';
+      this._catFrom = this._activeIdx === 0 || base ? 'home' : 'room';
+      this._catLift = lift;
+      this._markSide();
+      const bg = document.createElement('div');
+      bg.className = 'cat-bg';
+      const page = document.createElement('div');
+      page.className = 'cat';
+      const veilWrap = document.createElement('div');
+      veilWrap.className = 'cat-veilwrap';
+      const veil = document.createElement('div');
+      veil.className = 'cat-veil';
+      veilWrap.appendChild(veil);
+      const mini = document.createElement('div');
+      mini.className = 'cat-mini';
+      const inner = document.createElement('div');
+      inner.className = 'cat-in';
+      const title = document.createElement('h1');
+      if (k === 'home') title.textContent = this._baseTitle();
+      inner.appendChild(title);
+      const pills = document.createElement('div');
+      pills.className = 'cat-pills';
+      inner.appendChild(pills);
+      const body = document.createElement('div');
+      body.className = 'cat-body';
+      if (lift) body.style.visibility = 'hidden';
+      // Held by opacity, never visibility: visibility is inherited and would hide the tiles from _pageDrawn.
+      if (base === 'still') { inner.style.opacity = '0'; this._bootReveal = inner; }
+      inner.appendChild(body);
+      page.appendChild(veilWrap);
+      page.appendChild(inner);
+      if (this._sideOpen && this._pushed) [bg, page, mini].forEach((n) => n.classList.add('pushed'));
+      [bg, page, mini].forEach((n) => R.appendChild(n));
+      this._catEls = [bg, page, mini];
+      // The badge row stays put while the page rises, so the page itself appears at once.
+      if (lift) [page, mini].forEach((n) => n.classList.add('still'));
+      else if (!fade) this._catEls.forEach((n) => n.classList.add('still'));
+      if (lift) {
+        this._glideStart();
+        this._fxOut();
+        title.animate([{ transform: 'translateY(24px)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+          { duration: 520, easing: FX_SPRING, fill: 'backwards' });
+      } else if (fade) this._fxOut();
+      else this._fxHold('none');
+      // HA runs a card's action only when hass-action reaches it from inside the dashboard view, which this layer is not.
+      page.addEventListener('hass-action', (e) => {
+        const src = this._heroCardFor(this._activeIdx) || this._viewHost();
+        if (!src || !src.isConnected) return;
+        e.stopPropagation();
+        src.dispatchEvent(new CustomEvent('hass-action', { detail: e.detail, bubbles: true, composed: true }));
+      });
+      this._catPage = page;
+      this._catCards = [];
+      page.addEventListener('scroll', () => {
+        const y = page.scrollTop;
+        if (y > 2 && !veil.classList.contains('on')) this._sizeVeil();
+        veil.classList.toggle('on', y > 2);
+        mini.classList.toggle('on', y > 40);
+        this.classList.toggle('under', y > 2 && !page.classList.contains('pushed'));
+      }, { passive: true });
+      this._syncCatPush();
+      this._syncBack();
+      const F = window._hemmaFilter;
+      if (F) {
+        F.set(fv);
+        this._catFilterOff = F.onChange((v) => {
+          this._catHass();
+          if (!this._cat) return;
+          v = v === 'people' ? 'presence' : v === 'room_scenes' ? 'scenes' : v;
+          if (v === 'all' || v === 'none') { if (this._cat !== 'home') this._closeCat(); return; }
+          if (v !== this._cat) {
+            if (this._baseMode) this._catSwap = 'rise';
+            this._cat = v; this._markSide(); this._syncBack(); this._fillCat(v);
+          }
+        });
+      }
+      if (lift || fade) requestAnimationFrame(() => this._catEls && this._catEls.forEach((n) => n.classList.add('show')));
+      else this._catEls.forEach((n) => n.classList.add('show'));
+      await this._fillCat(k);
+    }
+
+    // The veil holds no badges (they scroll, as in Apple Home): its height is the stylesheet's.
+    _sizeVeil() {
+      const veil = this._catPage && this._catPage.querySelector('.cat-veil');
+      if (veil) veil.style.removeProperty('height');
+    }
+
+    // The Media page's players, one Now Playing tile each, from the same list the phone's card reads.
+    _mountNP(box, cfg, np, helpers) {
+      const tpl = cfg && cfg.button_card_templates && cfg.button_card_templates.hemma_mobile_now_playing;
+      const src = tpl && tpl.variables && tpl.variables.cfg;
+      let V = null;
+      if (typeof src === 'string' && this._hass) {
+        try {
+          const body = src.trim().replace(/^\[\[\[/, '').replace(/\]\]\]$/, '');
+          V = new Function('variables', 'states', 'hass', 'user', body)(np.variables || {}, this._hass.states, this._hass, this._hass.user);
+        } catch (_) { V = null; }
+      }
+      if (!V || typeof window._hemmaNPView !== 'function') return;
+      window._hemmaCatNPV = V;
+      this._npBox = box;
+      this._npHelpers = helpers;
+      box._hemmaN = -1;
+      this._syncNP();
+    }
+
+    _syncNP() {
+      const box = this._npBox;
+      if (!box || !box.isConnected || !this._hass) return;
+      let n = 0;
+      try { n = window._hemmaNPView(this._hass.states, window._hemmaCatNPV).filter(Boolean).length; } catch (_) { n = 0; }
+      // Per box: a page back from the shelf holds the tiles of when it was left.
+      if (n === box._hemmaN) return;
+      box._hemmaN = n;
+      // In place: a page being built still holds this list.
+      for (let i = this._catCards.length - 1; i >= 0; i--) if (this._catCards[i]._hemmaNP) this._catCards.splice(i, 1);
+      box.innerHTML = '';
+      if (!n) return;
+      const h = document.createElement('h2');
+      h.textContent = _hemmaT('now_playing.title', 'Now Playing');
+      box.appendChild(h);
+      const row = document.createElement('div');
+      row.className = 'cat-np';
+      box.appendChild(row);
+      const F = window._hemmaFilter;
+      const hass = F ? F.apply(this._hass) : this._hass;
+      for (let i = 0; i < n; i++) {
+        let el = null;
+        try {
+          el = this._npHelpers.createCardElement({ type: 'custom:button-card', template: 'hemma_now_playing_primary',
+            variables: { entry_direction: 'vertical', np_count: 1,
+              src: '[[[ const L = (window._hemmaNPView && window._hemmaCatNPV) ? window._hemmaNPView(states, window._hemmaCatNPV).filter(Boolean) : []; return L[' + i + '] || null; ]]]' } });
+        } catch (_) {}
+        if (!el) continue;
+        el._hemmaNP = true;
+        try { el.hass = hass; } catch (_) {}
+        row.appendChild(el);
+        this._catCards.push(el);
+      }
+    }
+
+    _catHass(force) {
+      // State changes wait out a slide, as one update after it: every card re-rendering mid-slide costs frames.
+      const left = (this._slideUntil || 0) - performance.now();
+      if (left > 0 && !force) {
+        clearTimeout(this._catHassT);
+        this._catHassT = setTimeout(() => this._catHass(), left + 20);
+        return;
+      }
+      if (this._npBox) this._syncNP();
+      this._syncBattery();
+      this._edgeFade();
+      this._sortSoon();
+      const F = window._hemmaFilter;
+      const h = this._hass && F ? F.apply(this._hass) : this._hass;
+      if (!h) return;
+      (this._catHead || []).concat(this._catCards || [], this._catWx || [], this._catChrome || []).forEach((el) => { try { el.hass = h; } catch (_) {} });
+      if (this._catChips && this._roomKey) { try { this._catChips.hass = this._roomHass(h); } catch (_) {} }
+      if (this._catChips) this._fitChipRow();
+    }
+
+    _syncChips() {
+      if (!this._catChips || !this._hass) return;
+      const F = window._hemmaFilter;
+      const h = F ? F.apply(this._hass) : this._hass;
+      try { this._catChips.hass = this._roomKey ? this._roomHass(h) : h; } catch (_) {}
+      this._fitChipRow();
+    }
+
+    // The last measured inset goes on a new row at once; measured later, the row moved left after it showed.
+    _chipInset(ch) {
+      let off = this._chipOff;
+      if (!off) { try { off = parseInt(localStorage.getItem('hemma_chip_off_' + this._variant), 10) || 0; } catch (_) { off = 0; } }
+      if (off) {
+        this._chipOff = off;
+        ch._hemmaOff = off;
+        ch.style.setProperty('--hemma-rail-left', 'calc(var(--cat-gutter, 20px) - ' + off + 'px)');
+      } else {
+        ch._hemmaHold = true;
+        ch.style.opacity = '0';
+        setTimeout(() => { if (ch._hemmaHold) { ch._hemmaHold = false; ch.style.removeProperty('opacity'); } }, 1500);
+      }
+    }
+
+    // Safari sizes a chip row's inner grid short of its last chip; same fix as filter-overlay _fixRowWidths.
+    _fitChipRow() {
+      const ch = this._catChips;
+      if (!ch || !window._hemmaFixRowWidths) return;
+      if (!this._chipRO && window.ResizeObserver) {
+        this._chipRO = new ResizeObserver(() => this._fitChipRow());
+        this._chipRO.observe(ch);
+      }
+      clearTimeout(this._chipFitT);
+      this._chipFitT = setTimeout(() => {
+        const rows = [];
+        const walk = (n, d) => {
+          if (!n || d > 10) return;
+          if (n.id === 'rooms_row' || n.id === 'climate_row') rows.push(n);
+          if (n.shadowRoot) [...n.shadowRoot.children].forEach((c) => walk(c, d + 1));
+          [...(n.children || [])].forEach((c) => walk(c, d + 1));
+        };
+        walk(ch, 0);
+        rows.forEach((r) => { if (r.firstElementChild) r.firstElementChild.style.removeProperty('width'); });
+        // The row's inset gives back a bare chip's left padding, measured, since it varies with the badge size.
+        const row = rows.find((r) => r.clientWidth && getComputedStyle(r).display !== 'none');
+        if (row) {
+          const icons = [];
+          const find = (n, d) => {
+            if (!n || d > 10) return;
+            if (n.id === 'img-cell' && n.getBoundingClientRect().width) icons.push(n.getBoundingClientRect().left);
+            if (n.shadowRoot) [...n.shadowRoot.children].forEach((c) => find(c, d + 1));
+            [...(n.children || [])].forEach((c) => find(c, d + 1));
+          };
+          find(row, 0);
+          if (icons.length) {
+            const off = Math.round(Math.min(...icons) - row.getBoundingClientRect().left - (parseFloat(getComputedStyle(row).paddingLeft) || 0) + row.scrollLeft);
+            if (off > 0 && off < 40 && off !== ch._hemmaOff) {
+              this._chipOff = off;
+              ch._hemmaOff = off;
+              ch.style.setProperty('--hemma-rail-left', 'calc(var(--cat-gutter, 20px) - ' + off + 'px)');
+              try { localStorage.setItem('hemma_chip_off_' + this._variant, String(off)); } catch (_) {}
+            }
+          }
+        }
+        if (ch._hemmaHold && (!row || row.clientWidth)) { ch._hemmaHold = false; ch.style.removeProperty('opacity'); }
+        try { window._hemmaFixRowWidths(ch); } catch (_) {}
+      }, 150);
+    }
+
+    // The chip row reads its room from the phone's filter entity; this page's room, without touching the device's filter.
+    _roomHass(h) {
+      const c = this._roomHassC;
+      if (c && c.h === h && c.key === this._roomKey) return c.out;
+      const id = 'input_select.hemma_mobile_filter';
+      const st = Object.assign({ entity_id: id, attributes: {} }, h.states[id] || {}, { state: this._roomKey });
+      const out = Object.assign(Object.create(Object.getPrototypeOf(h)), h, { states: Object.assign({}, h.states, { [id]: st }) });
+      this._roomHassC = { h, key: this._roomKey, out };
+      return out;
+    }
+
+    // The phone's room view (filter-overlay's room mode): the room's scenes, then its tiles by category.
+    _roomSections(sec) {
+      if (!sec) return [];
+      const cats = window.HEMMA_FILTER_CATEGORIES || {};
+      const catOf = (c) => {
+        const d = c && c.variables && c.variables.mobile_filter_category;
+        if (d !== null && d !== undefined) return d;
+        for (const t of [].concat((c && c.template) || [])) if (t && cats[t]) return cats[t] === 'by_entity' ? window.hemmaEntityCategory(c.entity) : cats[t];
+        return null;
+      };
+      const ORDER = ['climate', 'lights', 'media', 'security', 'energy', 'presence', 'other'];
+      const EN = { climate: 'Climate', lights: 'Lights', media: 'Media', security: 'Security', energy: 'Energy', presence: 'People', other: 'Other' };
+      const buckets = new Map();
+      (sec.cards || []).forEach((c) => {
+        const k = EN[catOf(c)] ? catOf(c) : 'other';
+        if (!buckets.has(k)) buckets.set(k, []);
+        buckets.get(k).push(c);
+      });
+      const out = [];
+      let n = 0;
+      try { n = window._hemmaSC ? window._hemmaSC.list(this._hass.states, this._hass, Object.assign({}, this._scenePick, { room: sec.name })).length : 0; } catch (_) { n = 0; }
+      if (n) out.push({ scenes: true, room: sec.name, name: _hemmaT('nav.scenes', 'Scenes') });
+      // Lights lists every light in the room, as the Lights page does, not the room's one group tile.
+      if (buckets.has('lights')) buckets.set('lights', this._expandLights(sec.name, buckets.get('lights')));
+      ORDER.forEach((k) => { if (buckets.has(k)) out.push({ name: _hemmaT('filter.' + k, EN[k]), cards: buckets.get(k), bucket: true }); });
+      return out;
+    }
+
+    async _catHelpers() {
+      for (let i = 0; i < 100 && !window.loadCardHelpers; i++) await new Promise((r) => setTimeout(r, 50));
+      try { return window.loadCardHelpers ? await window.loadCardHelpers() : null; } catch (_) { return null; }
+    }
+
+    _catHeadCards(cfg) {
+      const out = {};
+      const walk = (list) => (list || []).forEach((c) => {
+        if (!c || typeof c !== 'object') return;
+        const t = [].concat(c.template || []);
+        if (t.indexOf('hemma_mobile_filter_badges') >= 0 && !out.badges) out.badges = c;
+        if (t.indexOf('hemma_mobile_sensor_chips') >= 0 && !out.chips) out.chips = c;
+        if (t.indexOf('hemma_mobile_now_playing') >= 0 && !out.np) out.np = c;
+        if (Array.isArray(c.cards)) walk(c.cards);
+        if (c.card) walk([c.card]);
+      });
+      ((cfg && cfg.views) || []).forEach((v) => walk(v.cards));
+      return out;
+    }
+
+    async _fillCat(k) {
+      const page = this._catPage;
+      if (!page) return;
+      const inner = page.querySelector('.cat-in');
+      const ICON = { climate: 'fan', lights: 'light', presence: 'person', media: 'media', security: 'lock-fill', energy: 'energy' };
+      const COLOR = { climate: 'var(--hemma-badge-climate-color, #00C3D0)', lights: 'var(--hemma-badge-light-color, #FFCC00)',
+        presence: 'var(--hemma-color-green, #30D158)', media: 'var(--hemma-color-blue, #0A84FF)',
+        security: 'var(--hemma-color-mint, #00C8B3)', energy: 'var(--hemma-color-green, #30D158)' };
+      const EN = { climate: 'Climate', lights: 'Lights', presence: 'People', media: 'Media', security: 'Security', energy: 'Energy' };
+      const name = (c) => (c === 'scenes' ? _hemmaT('nav.scenes', 'Scenes') : _hemmaT('filter.' + c, EN[c] || c));
+      const head1 = k === 'home' ? this._baseTitle() : name(k);
+      // A swap shows the new title with its page, not over the page it is leaving.
+      if (this._catSwap) this._swapTitle = head1;
+      else inner.querySelector('h1').textContent = head1;
+      page.classList.toggle('scenes', k === 'scenes');
+      page.classList.toggle('home', k === 'home');
+      const mini = this.shadowRoot.querySelector('.cat-mini');
+      if (mini) mini.classList.toggle('home', k === 'home');
+      // Overview on a desktop runs smaller, as Apple Home does on a Mac; the tablet keeps its touch sizes.
+      page.classList.toggle('compact', this._compact());
+      // A room has its sensors where Home has its badges, from the phone's chip row for that room.
+      page.classList.toggle('room', k === 'home' && !!this._catRoom);
+      this._roomKey = k === 'home' && this._catRoom ? 'room_' + String(this._catRoom).trim().toLowerCase().replace(/[^a-z0-9]+/g, '') : null;
+      // The chip row is one card and changes with the room, so it never waits for a slide as the tiles do.
+      this._syncChips();
+      this._catEls[0].classList.toggle('clear', k === 'home');
+      this._syncChrome();
+      this._catEls[2].textContent = this._miniTitle(k, head1);
+      const pills = inner.querySelector('.cat-pills');
+      const body = inner.querySelector('.cat-body');
+      const cfg = await this._mobileConfig();
+      const helpers = await this._catHelpers();
+      if (this._cat !== k || this._catPage !== page) return;
+      const head = this._catHeadCards(cfg);
+      if (helpers && head.badges && !this._catHead) {
+        this._catHead = [];
+        pills.innerHTML = '';
+        pills.classList.add('cards');
+        const mk = (c, cls) => {
+          let el = null;
+          try { el = helpers.createCardElement(JSON.parse(JSON.stringify(c))); } catch (_) {}
+          if (!el) return null;
+          el.classList.add(cls);
+          this._catHead.push(el);
+          return el;
+        };
+        let b = this._warmBadge || null;
+        if (b) this._catHead.push(b);
+        else b = mk(head.badges, 'cat-badgecard');
+        if (b) pills.appendChild(b);
+        if (!this._badgeVars) this._readBadgeVars(this._heroBadgeRow());
+        this._applyBadgeVars(pills);
+        if (b && this._glideFrom) { pills.style.visibility = 'hidden'; this._glideUp(b, pills); }
+        const chips = head.chips && mk(head.chips, 'cat-chipcard');
+        // A mouse wheel scrolls a room's chips sideways when they run past the page; a trackpad already does.
+        if (chips) chips.addEventListener('wheel', (e) => {
+          if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+          const row = e.composedPath().find((n) => n && (n.id === 'rooms_row' || n.id === 'climate_row'));
+          if (!row || row.scrollWidth <= row.clientWidth + 1) return;
+          const before = row.scrollLeft;
+          row.scrollLeft += e.deltaY;
+          if (row.scrollLeft !== before) e.preventDefault();
+        }, { passive: false });
+        if (chips) pills.after(chips);
+        if (chips) this._chipInset(chips);
+        if (chips && this._catLift) chips.style.visibility = 'hidden';
+        this._catChips = chips || null;
+        this._catHass(true);
+      }
+      if (helpers && !this._catWx) {
+        const wx = this._wxCard(helpers);
+        if (wx) {
+          const box = document.createElement('div');
+          box.className = 'cat-wx';
+          box.appendChild(wx);
+          inner.insertBefore(box, inner.firstChild);
+          this._catWx = wx;
+        }
+      }
+      if (!this._catHead) pills.innerHTML = '';
+      if (!this._catHead) this._sideCategories().forEach((c) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cat-pill' + (c === k ? ' on' : '');
+        const data = window.HEMMA_ICONS && window.HEMMA_ICONS[ICON[c]];
+        if (data) {
+          const g = document.createElement('i');
+          g.className = 'cat-glyph';
+          g.style.setProperty('--g', 'url("' + data + '")');
+          g.style.background = COLOR[c];
+          b.appendChild(g);
+        }
+        const t = document.createElement('span');
+        t.textContent = name(c);
+        b.appendChild(t);
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (c === this._cat) return;
+          this._cat = c;
+          this._markSide();
+          this._fillCat(c);
+        });
+        pills.appendChild(b);
+      });
+      const norm = (t) => String(t || '').trim().toLowerCase();
+      const scope = this._catRoom && norm(this._catRoom);
+      if (k === 'home' && !this._catRoom && !inner.querySelector('h1').textContent.trim()) setTimeout(() => this._syncBaseTitle(), 600);
+      // Moving a card out of the document and back would have UIX restyle it mid-slide, so panes are only hidden.
+      const shelf = this._shelf(page, cfg);
+      const swap = this._catSwap;
+      this._catSwap = null;
+      const prev = this._pane;
+      if (this._bodyKey && this._pane) shelf.set(this._bodyKey, { pane: this._pane, cards: this._catCards, np: this._npBox });
+      this._bodyKey = null;
+      this._pane = null;
+      const kept = new Set([...shelf.values()].map((v) => v.pane));
+      // The page being left stays up until the swap, so a category built for the first time never shows a blank.
+      [...body.children].forEach((c) => { if (swap && c === prev) return; if (kept.has(c) || c._hemmaPre) c.hidden = true; else c.remove(); });
+      page.scrollTop = 0;
+      const key = k + '|' + (scope || '');
+      const hit = shelf.get(key);
+      const reused = !!(hit && hit.pane.parentNode === body);
+      if (reused) {
+        shelf.delete(key);
+        hit.pane.hidden = false;
+        this._pane = hit.pane;
+        this._catCards = hit.cards;
+        this._npBox = hit.np;
+      } else {
+        shelf.delete(key);
+        const pane = body.appendChild(Object.assign(document.createElement('div'), { className: 'cat-pane', hidden: !!(swap && prev) }));
+        pane._hemmaSorted = k === 'home';
+        this._pane = pane;
+        this._catCards = [];
+        this._npBox = null;
+        const ok = await this._buildBody(pane, k, scope, cfg, helpers, head, page, this._catCards);
+        if (this._cat !== k || this._catPage !== page) return;
+        if (!ok) { if (swap) this._swapPanes(prev, this._pane, swap); this._filled(); return; }
+      }
+      this._bodyKey = key;
+      if (swap) this._swapPanes(prev, this._pane, swap, reused);
+      else if (prev && prev !== this._pane && prev.parentNode === body) prev.hidden = true;
+      // Its cards refresh a frame later, once the compositor is carrying the slide.
+      if (reused) {
+        const shown = this._pane;
+        // Built in the background, or packed at another width (the sidebar moved), it is packed before it shows.
+        const g = shown.querySelector('.cat-grid');
+        if (g && g.offsetWidth && shown._hemmaPackW !== g.offsetWidth) this._sortSig = null;
+        this._filled();
+        requestAnimationFrame(() => setTimeout(() => {
+          if (this._pane !== shown) return;
+          this._catHass();
+          this._sortSig = null;
+          this._sortFilledAt = Date.now();
+          this._sortSoon();
+        }, 0));
+      } else {
+        this._catHass(true);
+        this._sortSig = null;
+        this._sortFilledAt = Date.now();
+        this._sortSoon('fill');
+        this._filled();
+      }
+      if (k === 'home' && !scope) this._prebuild(cfg, helpers, page);
+      if (this._catLift) {
+        this._catLift = false;
+        body.style.visibility = '';
+        if (this._catChips) this._catChips.style.visibility = '';
+        const vh = window.innerHeight || 800;
+        [this._catChips].filter((c) => c && c.isConnected).concat([...body.children]).forEach((el, i) => {
+          if (el.animate) el.animate([{ transform: 'translateY(' + vh + 'px)' }, { transform: 'none' }],
+            { duration: 550, delay: i * 40, easing: FX_SPRING, fill: 'backwards' });
+        });
+      }
+    }
+
+    async _buildBody(body, k, scope, cfg, helpers, head, page, cards) {
+      const norm = (t) => String(t || '').trim().toLowerCase();
+      // The scenes picked in Studio live on the scene row's template; a count must see them as the row will.
+      const pick = (((cfg || {}).button_card_templates || {}).hemma_scene_row || {}).variables || {};
+      this._scenePick = { scenes: pick.scenes, scene_exclude: pick.scene_exclude, scene_order: pick.scene_order };
+      let sections = k === 'scenes' ? [{ scenes: true }]
+        : this._catSections(cfg, k).filter((sec) => !scope || norm(sec.name) === scope);
+      // Home is the phone's: Scenes, Favorites, then every room, so a wall tablet can reach everything from one screen.
+      if (k === 'home' && !scope) sections = sections.filter((sec) => sec.scenes).concat(sections.filter((sec) => sec.fav), sections.filter((sec) => !sec.scenes && !sec.fav));
+      if (k === 'home' && scope) sections = this._roomSections(sections[0]);
+      // A category page leads with the scenes that set anything of its kind, as a room page leads with its own.
+      if (k !== 'home' && k !== 'scenes' && !scope) {
+        let n = 0;
+        try { n = window._hemmaSC ? window._hemmaSC.list(this._hass.states, this._hass, Object.assign({}, this._scenePick, { category: k })).length : 0; } catch (_) { n = 0; }
+        if (n) sections = [{ scenes: true, category: k, name: _hemmaT('nav.scenes', 'Scenes') }].concat(sections);
+      }
+      const devices = k === 'energy' && helpers && !scope ? await this._energyDevices() : false;
+      if (this._cat !== k || this._catPage !== page) return false;
+      if ((!sections.length && !devices) || !helpers) {
+        body.style.visibility = '';
+        const empty = document.createElement('div');
+        empty.className = 'cat-empty';
+        empty.textContent = k === 'home' ? _hemmaT('nav.room_empty', 'Nothing in this room yet') : _hemmaT('nav.category_empty', 'Nothing in this category yet');
+        body.appendChild(empty);
+        return false;
+      }
+      const group = () => body.appendChild(Object.assign(document.createElement('div'), { className: 'cat-sec' }));
+      if ((k === 'media' || k === 'home') && !scope && head.np && cards === this._catCards) this._mountNP(group(), cfg, head.np, helpers);
+      sections.forEach((sec) => {
+        const box = group();
+        if (sec.name && (!(k === 'home' && scope) || sec.bucket || sec.scenes)) {
+          const h = document.createElement('h2');
+          h.textContent = sec.name;
+          box.appendChild(h);
+        }
+        if (sec.scenes) {
+          let el = null;
+          // Home keeps the phone's one scrolling row; the Scenes page lays them all out.
+          const sv = sec.category ? { category: sec.category } : k === 'home' ? (sec.room ? { room: sec.room } : {}) : { layout: 'grid' };
+          try { el = helpers.createCardElement({ type: 'custom:button-card', template: 'hemma_scene_row', variables: Object.assign(sv, this._compact() ? { chip_width: 'min(41vw, 150px)' } : {}) }); } catch (_) {}
+          if (!el) return;
+          el.classList.add('cat-scenes');
+          // The card pins its own width at 100% with !important, so the row reaches the edge through a wider wrapper.
+          if (k === 'home' || sec.category) box.appendChild(Object.assign(document.createElement('div'), { className: 'cat-scenes-row' })).appendChild(el);
+          else box.appendChild(el);
+          cards.push(el);
+          return;
+        }
+        const grid = document.createElement('div');
+        grid.className = 'cat-grid';
+        (sec.cards || []).forEach((cc) => {
+          let el = null;
+          try { el = helpers.createCardElement(JSON.parse(JSON.stringify(cc))); } catch (_) {}
+          if (!el) return;
+          el.classList.add('hemma-compact');
+          const size = (window.hemmaCardSize && window.hemmaCardSize(cc))
+            || (String((cc.variables && cc.variables.size) || '').toLowerCase() === 'large' ? 'large' : 'small');
+          if (size === 'large') el.dataset.hemmaSize = 'large';
+          grid.appendChild(el);
+          cards.push(el);
+        });
+        box.appendChild(grid);
+      });
+      if (devices) {
+        const box = group();
+        const h = document.createElement('h2');
+        h.textContent = _hemmaT('nav.energy_devices', 'Devices');
+        box.appendChild(h);
+        const row = document.createElement('div');
+        row.className = 'cat-cards';
+        box.appendChild(row);
+        this._drawEnergy(row, devices);
+      }
+      return true;
+    }
+
+    // Shown before its cards draw and pack, a new page's first frame jumps from the stylesheet's columns to the packed ones.
+    _swapPanes(prev, next, mode, reused) {
+      const drawn = (p) => [...p.querySelectorAll('.cat-grid')].every((g) => [...g.children].every((el) => el.hidden || (el.shadowRoot && el.shadowRoot.querySelector('ha-card'))));
+      if (!reused && prev && prev !== next && prev.isConnected && !drawn(next)) {
+        const t0 = performance.now();
+        const tok = this._swapWait = {};
+        const wait = () => {
+          if (this._swapWait !== tok || this._pane !== next) return;
+          if (!drawn(next) && performance.now() - t0 < 600) { requestAnimationFrame(wait); return; }
+          this._swapWait = null;
+          this._swapRun(prev, next, mode, true);
+        };
+        requestAnimationFrame(wait);
+        return;
+      }
+      this._swapRun(prev, next, mode, false);
+    }
+
+    _swapRun(prev, next, mode, late) {
+      next.hidden = false;
+      if (this._swapTitle != null) {
+        const h1 = this._catPage && this._catPage.querySelector('.cat-in > h1');
+        if (h1) h1.textContent = this._swapTitle;
+        this._swapTitle = null;
+      }
+      const g = next.querySelector('.cat-grid');
+      if (late || (g && g.offsetWidth && next._hemmaPackW !== g.offsetWidth)) { this._sortSig = null; this._sortSoon('fill'); }
+      if (!prev || prev === next || !prev.isConnected) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { prev.hidden = true; return; }
+      (this._swapAnims || []).forEach((a) => { try { a.cancel(); } catch (_) {} });
+      const anims = this._swapAnims = [];
+      const rise = mode === 'rise';
+      this._slideUntil = performance.now() + (rise ? 760 : 660);
+      prev.hidden = false;
+      Object.assign(prev.style, { position: 'absolute', left: '0', right: '0', top: '0', pointerEvents: 'none', zIndex: rise ? '0' : '2' });
+      Object.assign(next.style, { position: 'relative', zIndex: '1' });
+      const back = 'translateY(20px) scale(0.93)';
+      const out = rise
+        ? prev.animate([{ transform: 'none', opacity: 1 }, { transform: back, opacity: 0 }], { duration: 420, easing: FX_EASE, fill: 'forwards' })
+        : prev.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, easing: 'ease-out', fill: 'forwards' });
+      anims.push(out);
+      const vh = window.innerHeight || 800;
+      const inner = this._catPage && this._catPage.querySelector('.cat-in');
+      if (rise) [...next.children].forEach((el, i) => {
+        if (el.animate) anims.push(el.animate([{ transform: 'translateY(' + vh + 'px)' }, { transform: 'none' }], { duration: 550, delay: i * 40, easing: FX_SPRING, fill: 'backwards' }));
+      });
+      // An even ease-out: a spring spends its travel in the first, slowest frames and reads as no motion.
+      else if (inner && inner.animate) {
+        anims.push(inner.animate([{ transform: back, transformOrigin: '50% 30%' }, { transform: 'none', transformOrigin: '50% 30%' }],
+          { duration: 560, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }));
+      }
+      const h1 = this._catPage && this._catPage.querySelector('.cat-in > h1');
+      if (h1) anims.push(h1.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: 'ease-out' }));
+      const done = () => {
+        if (this._swapAnims !== anims) return;
+        if (prev !== this._pane) prev.hidden = true;
+        ['position', 'left', 'right', 'top', 'pointerEvents', 'zIndex'].forEach((p) => { prev.style[p] = ''; next.style[p] = ''; });
+        out.cancel();
+      };
+      out.finished.then(() => setTimeout(done, rise ? 340 : 400), done);
+    }
+
+    // Each Overview card's own ha-card takes the top-edge fade (tablet stylesheet), so its glass keeps blurring.
+    _edgeFade(tries) {
+      const page = this._catPage;
+      if (this._variant !== 'tablet' || !page) return;
+      if (!window._hemmaCatEdge) {
+        window._hemmaCatEdge = true;
+        try { CSS.registerProperty({ name: '--cat-edge', syntax: '<number>', inherits: true, initialValue: '1' }); } catch (_) {}
+      }
+      // A card's first render can replace what was put in its shadow root, so the style is checked for, not remembered.
+      let late = false;
+      page.querySelectorAll('.cat-pills > *, .cat-chipcard, .cat-grid > *, .cat-scenes, .cat-np > *').forEach((el) => {
+        const sr = el.shadowRoot;
+        if (!sr || !sr.querySelector('ha-card')) { late = true; return; }
+        if (sr.getElementById('hemma-edge')) return;
+        sr.appendChild(Object.assign(document.createElement('style'), { id: 'hemma-edge', textContent: 'ha-card{opacity:var(--cat-edge,1)}' }));
+      });
+      if (late && (tries || 0) < 20) setTimeout(() => this._edgeFade((tries || 0) + 1), 150);
+    }
+
+    _filled() {
+      const boot = this._bootReveal;
+      if (boot) {
+        this._bootReveal = null;
+        const t0 = performance.now();
+        // Shown once drawn and sorted: revealed a frame before Smart Sort, the tiles visibly reshuffle.
+        const wait = () => {
+          const page = this._catPage;
+          if (page && performance.now() - t0 < 1200) {
+            if (!this._pageDrawn(page) || !this._sceneIconsDrawn(page)) { requestAnimationFrame(wait); return; }
+            if (this._sortSig == null) { this._sortSoon('fill'); if (this._sortSig == null) { requestAnimationFrame(wait); return; } }
+          }
+          boot.style.removeProperty('opacity');
+        };
+        wait();
+      }
+      document.documentElement.style.removeProperty('--hemma-fx-vis');
+      this._edgeFade();
+      const f = this._afterFill;
+      this._afterFill = null;
+      if (f) f();
+    }
+
+    _shelf(page, cfg) {
+      if (this._shelfPage === page && this._shelfCfg === cfg && this._shelfMap) return this._shelfMap;
+      const sig = JSON.stringify((cfg && cfg.views) || []);
+      this._shelfCfg = cfg;
+      if (this._shelfPage === page && this._shelfSig === sig && this._shelfMap) return this._shelfMap;
+      this._shelfPage = page;
+      this._shelfSig = sig;
+      this._shelfMap = new Map();
+      this._bodyKey = null;
+      this._pane = null;
+      const body = page.querySelector('.cat-body');
+      if (body) body.replaceChildren();
+      return this._shelfMap;
+    }
+
+    // Every room's cards, built while nothing else is going on, so the first visit to a room is as quick as the next.
+    _prebuild(cfg, helpers, page) {
+      const shelf = this._shelfMap;
+      if (!helpers || !shelf || this._prebuilt === shelf) return;
+      this._prebuilt = shelf;
+      const norm = (t) => String(t || '').trim().toLowerCase();
+      const rooms = this._catSections(cfg, 'home').filter((sec) => sec.name && !sec.scenes && !sec.fav).map((sec) => norm(sec.name));
+      const body = page.querySelector('.cat-body');
+      const idle = (f) => (window.requestIdleCallback ? window.requestIdleCallback(f, { timeout: 2000 }) : setTimeout(f, 300));
+      const next = () => {
+        if (this._shelfMap !== shelf || this._catPage !== page) return;
+        if (!rooms.length) return;
+        const scope = rooms.shift();
+        const key = 'home|' + scope;
+        if (shelf.has(key) || this._bodyKey === key) { idle(next); return; }
+        const box = body.appendChild(Object.assign(document.createElement('div'), { className: 'cat-pane', hidden: true }));
+        box._hemmaPre = true;
+        box._hemmaSorted = true;
+        const cards = [];
+        const ok = this._buildBody(box, 'home', scope, cfg, helpers, this._catHeadCards(cfg), page, cards);
+        Promise.resolve(ok).then((built) => {
+          box._hemmaPre = false;
+          if (built && this._shelfMap === shelf && !shelf.has(key) && this._bodyKey !== key && box.parentNode === body) {
+            const F = window._hemmaFilter;
+            const h = this._hass && F ? F.apply(this._hass) : this._hass;
+            cards.forEach((el) => { try { el.hass = h; } catch (_) {} });
+            shelf.set(key, { pane: box, cards, np: null });
+          } else box.remove();
+          idle(next);
+        });
+      };
+      idle(next);
+    }
+
+    async _energyDevices() {
+      if (this._energyPrefs === undefined) {
+        try { this._energyPrefs = await this._hass.callWS({ type: 'energy/get_prefs' }); } catch (_) { this._energyPrefs = null; }
+      }
+      const p = this._energyPrefs;
+      const list = p && Array.isArray(p.device_consumption) ? p.device_consumption.filter((d) => d && d.stat_consumption) : [];
+      return list.length ? list : false;
+    }
+
+    // HA's Energy dashboard reads the same numbers: each device's hourly change in long-term statistics.
+    async _drawEnergy(row, devices) {
+      const COLORS = ['#4FA08F', '#C9A13B', '#4466B8', '#C0655C', '#8E6CC1', '#5BA3D0', '#D08A4E', '#6FA35A'];
+      const day = new Date(); day.setHours(0, 0, 0, 0);
+      let stats = {};
+      try {
+        stats = await this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: day.toISOString(),
+          period: 'hour', statistic_ids: devices.map((d) => d.stat_consumption), types: ['change'], units: { energy: 'kWh' } });
+      } catch (_) { stats = {}; }
+      if (!row.isConnected) return;
+      const st = (this._hass && this._hass.states) || {};
+      const devs = devices.map((d, i) => {
+        const id = d.stat_consumption;
+        const e = st[id];
+        const name = d.name || (e && e.attributes && e.attributes.friendly_name) || id;
+        const hours = new Array(24).fill(0);
+        (stats[id] || []).forEach((r) => {
+          const h = new Date(typeof r.start === 'number' ? r.start : Date.parse(r.start)).getHours();
+          if (h >= 0 && h < 24) hours[h] += Math.max(0, Number(r.change) || 0);
+        });
+        return { name, color: COLORS[i % COLORS.length], hours, total: hours.reduce((a, b) => a + b, 0) };
+      });
+      const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const kwh = (v) => (v >= 10 ? v.toFixed(1) : v.toFixed(2)) + ' kWh';
+      const per = devs[0].hours.map((_, h) => devs.reduce((a, d) => a + d.hours[h], 0));
+      const top = Math.max(0.01, ...per);
+      const step = [0.03, 0.06, 0.15, 0.3, 0.6, 1.5, 3, 6, 15, 30].find((s) => s * 3 >= top) || Math.ceil(top / 3);
+      const max = step * 3;
+      const W = 360, H = 190, X = 36, Y = 8, slot = W / 24;
+      let svg = '<svg viewBox="0 0 ' + (W + X + 6) + ' ' + (H + Y + 24) + '" width="100%">';
+      for (let i = 0; i <= 3; i++) {
+        const y = Y + H - (H * i) / 3;
+        svg += '<line x1="' + X + '" x2="' + (X + W) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="rgba(255,255,255,.12)"/>'
+          + '<text x="' + (X - 6) + '" y="' + (y + 4).toFixed(1) + '" text-anchor="end" fill="rgba(255,255,255,.55)" font-size="11">' + (step * i).toFixed(step < 0.1 ? 2 : 1) + '</text>';
+      }
+      for (let h = 0; h < 24; h++) {
+        let y = Y + H;
+        devs.forEach((d) => {
+          const v = d.hours[h];
+          if (!v) return;
+          const hh = (H * v) / max;
+          y -= hh;
+          svg += '<rect x="' + (X + h * slot + slot * 0.18).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + (slot * 0.64).toFixed(1) + '" height="' + hh.toFixed(1) + '" fill="' + d.color + '"/>';
+        });
+      }
+      const clock = (h) => { const d = new Date(day); d.setHours(h); return d.toLocaleTimeString(this._hass && this._hass.language, { hour: 'numeric' }); };
+      [0, 6, 12, 18].forEach((h) => { svg += '<text x="' + (X + h * slot + 2).toFixed(1) + '" y="' + (Y + H + 18) + '" fill="rgba(255,255,255,.55)" font-size="11">' + esc(clock(h)) + '</text>'; });
+      svg += '</svg>';
+      const big = Math.max(0.001, ...devs.map((d) => d.total));
+      const sorted = devs.slice().sort((a, b) => b.total - a.total);
+      row.innerHTML = '<div class="cat-en"><h3>' + esc(_hemmaT('nav.energy_usage', 'Usage today')) + '</h3><div class="sub">' + esc(_hemmaT('nav.energy_per_hour', 'kWh per hour')) + '</div>' + svg
+        + '<div class="lgs">' + devs.map((d) => '<span class="lg"><i style="background:' + d.color + '"></i>' + esc(d.name) + '</span>').join('') + '</div></div>'
+        + '<div class="cat-en"><h3>' + esc(_hemmaT('nav.energy_devices_title', 'Individual devices')) + '</h3><div class="sub">' + esc(_hemmaT('nav.energy_today', 'Today')) + '</div>'
+        + sorted.map((d) => '<div class="hb"><span class="hn">' + esc(d.name) + '</span><span class="hbar"><i style="width:' + Math.round((d.total / big) * 100) + '%;background:' + d.color + '"></i></span><span class="hv">' + kwh(d.total) + '</span></div>').join('')
+        + '</div>';
+      row.querySelectorAll('.cat-en').forEach((card) => {
+        card.addEventListener('click', () => {
+          if (window._hemmaOpenTarget) window._hemmaOpenTarget(['hemma_energy', 'hemma_badge_energy_group', 'hemma_badge_energy'], null);
+        });
+      });
+      clearTimeout(this._energyTick);
+      this._energyTick = setTimeout(() => { if (row.isConnected && this._cat === 'energy') this._drawEnergy(row, devices); }, 300000);
+    }
+
+    _closeCat(instant) {
+      this.classList.remove('under');
+      if (this._baseMode && !instant && this._catPage) {
+        if (this._cat !== 'home') { this._catSwap = 'return'; this._toBase(); }
+        return;
+      }
+      const els = this._catEls;
+      if (!els) { this._cat = null; return; }
+      this._catEls = null;
+      this._catPage = null;
+      this._catCards = [];
+      this._catHead = null;
+      this._catWx = null;
+      this._catChrome = null;
+      this._cat = null;
+      if (this._catFilterOff) { this._catFilterOff(); this._catFilterOff = null; }
+      if (window._hemmaFilter) window._hemmaFilter.set('all');
+      this._markSide();
+      this._syncBack();
+      this._catRoom = null;
+      if (instant) { this._parkBadge(els); els.forEach((n) => n.remove()); this._glideEnd(); return; }
+      // A page opened from a room stays over it until the next room has painted, so the old one never shows.
+      if (this._catFrom !== 'home' && Date.now() - (this._fxNoSlideAt || 0) < 50) {
+        this._glideEnd();
+        els.forEach((n) => { n.style.pointerEvents = 'none'; });
+        this._catDefer = els;
+        clearTimeout(this._catDeferT);
+        this._catDeferT = setTimeout(() => this._dropDeferred(), 1500);
+        return;
+      }
+      // The badges come forward with the rest of the header (_fxPlay), not down from the page's row.
+      this._glideEnd();
+      els.forEach((n) => n.classList.remove('still', 'show'));
+      // The badge card stays in the fading page: taken out now, its row collapses and the page jumps up.
+      setTimeout(() => { this._parkBadge(els); els.forEach((n) => n.remove()); }, 320);
+      // Leaving for another room waits for that room, so the depth plays on what you land on.
+      if (Date.now() - (this._fxNoSlideAt || 0) < 50) {
+        this._fxAwait = true;
+        this._fxAwaitT = setTimeout(() => { if (this._fxAwait) this._fxPlay(); }, 1500);
+      } else this._fxPlay();
+    }
+
+    // The badge row is one row in both places: the page's badges start over the dashboard's and rise into place.
+    _badgeMap(root) {
+      const MAP = { hemma_badge_climate_group: 'climate', hemma_badge_light_group: 'lights', hemma_badge_presence_group: 'presence',
+        hemma_badge_presence: 'presence', hemma_badge_media_group: 'media', hemma_badge_security_group: 'security',
+        hemma_badge_lock_group: 'security', hemma_badge_energy_group: 'energy' };
+      const found = [];
+      try { walkFind(root, 'button-card', found, 0); } catch (_) {}
+      const out = new Map();
+      found.forEach((el) => {
+        for (const t of [].concat((el._config || {}).template || [])) {
+          const k = MAP[t];
+          if (!k || out.has(k)) continue;
+          if (el.getBoundingClientRect().width) out.set(k, el);
+        }
+      });
+      return out;
+    }
+
+    // Building the page's badge row takes most of a second, so it is built once, parked out of sight, and moved in.
+    async _warmBadges() {
+      if (this._warmBadge || this._warming) return;
+      this._warming = true;
+      const cfg = await this._mobileConfig();
+      const helpers = await this._catHelpers();
+      const head = this._catHeadCards(cfg);
+      let el = null;
+      if (helpers && head.badges) { try { el = helpers.createCardElement(JSON.parse(JSON.stringify(head.badges))); } catch (_) {} }
+      if (!el || !this.isConnected) { this._warming = false; return; }
+      el.classList.add('cat-badgecard');
+      const hold = document.createElement('div');
+      hold.className = 'cat-warm';
+      hold.appendChild(el);
+      this.shadowRoot.appendChild(hold);
+      this._warmHold = hold;
+      this._warmBadge = el;
+      const h = this._hass && window._hemmaFilter ? window._hemmaFilter.apply(this._hass) : this._hass;
+      if (h) { try { el.hass = h; } catch (_) {} }
+    }
+
+    // Only from the page being removed: a page opened meanwhile has already taken the card.
+    _parkBadge(from) {
+      const el = this._warmBadge, hold = this._warmHold;
+      if (!el || !hold || el.parentNode === hold) return;
+      if (from && !from.some((n) => n.contains(el))) return;
+      hold.appendChild(el);
+    }
+
+    // The budget ends 16px above whatever sits under the column, so a long stack shrinks instead of overlapping it.
+    _fitNP() {
+      const card = this._heroCardFor(this._activeIdx);
+      const np = card && card.querySelector('#now_playing');
+      if (!np) return;
+      const found = [];
+      try { walkFind(np, 'button-card', found, 0); } catch (_) {}
+      const tpl = (el) => [].concat((el._config || {}).template || []);
+      const host = found.find((el) => tpl(el).indexOf('hemma_now_playing') >= 0);
+      const tile = found.find((el) => tpl(el).indexOf('hemma_now_playing_primary') >= 0 && el.getBoundingClientRect().height);
+      if (!host || !tile) return;
+      const col = tile.getBoundingClientRect();
+      const under = [];
+      ['#temperature', '#name'].forEach((sel) => { const e = card.querySelector(sel); if (e) under.push(e); });
+      const row = card.querySelector('#badges');
+      if (row) this._badgeMap(row).forEach((b) => under.push(b));
+      try { const rows = []; walkFind(this._viewHost() || document, 'hemma-smart-row', rows, 0); rows.forEach((r) => under.push(r)); } catch (_) {}
+      let floor = Infinity;
+      under.forEach((e) => {
+        const r = e.getBoundingClientRect();
+        if (r.height && r.right > col.left - 8 && r.left < col.right && r.top > col.top) floor = Math.min(floor, r.top);
+      });
+      const budget = Number.isFinite(floor) ? Math.max(120, Math.round(floor - col.top - 16)) : null;
+      if (host._npBudget === budget) return;
+      host._npBudget = budget;
+      if (budget == null) host.style.removeProperty('--np-stack-budget');
+      else host.style.setProperty('--np-stack-budget', budget + 'px');
+    }
+
+    _heroBadgeRow() {
+      const card = this._heroCardFor(this._activeIdx);
+      return (card && card.querySelector('#badges')) || null;
+    }
+
+    // The room card's badge sizes, so the row glides into a page unchanged.
+    _applyBadgeVars(pills) {
+      (this._badgeVars || []).forEach(([n, v]) => pills.style.setProperty(n, v));
+      if (!this._baseMode) return;
+      // The gap between badges only: --badge-col-gap-current is the icon-to-text gap inside each one.
+      pills.style.setProperty('--badge-gap-current', '11px');
+      if (!(this._badgeVars || []).some(([n]) => n === '--badge-col-gap-current')) pills.style.removeProperty('--badge-col-gap-current');
+      // layout-card gives every badge 4px either side as well.
+      pills.style.setProperty('--masonry-view-card-margin', '4px 0 8px');
+      // Plain px: Safari drops calc(clamp() * k), which is how the room card's own sizes are written.
+      if (this._compact()) [['--badge-padding-current', '3px 12px 3px 7px'], ['--badge-min-height-current', '40px'],
+        ['--badge-icon-size-current', '24px'], ['--badge-font-size-current', '12px'], ['--badge-btn-size-current', '18px']]
+        .forEach(([n, v]) => pills.style.setProperty(n, v));
+    }
+
+    _compact() {
+      return !!this._baseMode && this._variant !== 'tablet';
+    }
+
+    _readBadgeVars(row) {
+      if (!row) return;
+      const cs = getComputedStyle(row);
+      const vars = ['--badge-gap-current', '--badge-col-gap-current', '--badge-padding-current', '--badge-min-height-current',
+        '--badge-icon-size-current', '--badge-font-size-current', '--badge-btn-size-current']
+        .map((n) => [n, cs.getPropertyValue(n).trim()]).filter(([, v]) => v);
+      if (vars.length) this._badgeVars = vars;
+    }
+
+    _glideStart() {
+      const row = this._heroBadgeRow();
+      this._glideFrom = null;
+      this._glideRow = row;
+      if (!row) return;
+      this._readBadgeVars(row);
+      // Where the dashboard's row starts; the page's row starts there and rises with everything else.
+      const r = row.getBoundingClientRect();
+      this._glideFrom = { top: r.top, left: r.left };
+      // Held in place and in view until the page's row takes over; the depth hold would otherwise hide it.
+      row.style.visibility = 'visible';
+      row.style.transform = 'none';
+    }
+
+    // The page's row moves as one container, so it needs nothing inside it measured or even drawn yet.
+    _glideUp(card, pills) {
+      const from = this._glideFrom;
+      this._glideFrom = null;
+      const row = this._glideRow;
+      requestAnimationFrame(() => {
+        if (!pills.isConnected) return;
+        pills.style.visibility = '';
+        if (from && pills.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          const to = card.getBoundingClientRect();
+          const inset = parseFloat(getComputedStyle(pills).getPropertyValue('--hemma-rail-left')) || 0;
+          pills.animate([{ transform: 'translate(' + (from.left - to.left - inset) + 'px, ' + (from.top - to.top) + 'px)' }, { transform: 'none' }],
+            { duration: 550, easing: FX_SPRING });
+        }
+        if (row) row.style.visibility = 'hidden';
+      });
+    }
+
+    _glideEnd() {
+      const row = this._glideRow;
+      this._glideRow = null;
+      this._glideFrom = null;
+      if (row) { row.style.removeProperty('visibility'); row.style.removeProperty('transform'); }
+    }
+
+    // The view carries only a static start state, so a room HA builds mid-animation paints in place.
+    _fxTargets() {
+      const out = [];
+      const card = this._heroCardFor(this._activeIdx);
+      if (card) card.querySelectorAll('#name, #temperature, [id^="badges"], #now_playing').forEach((el) => { if (el !== this._glideRow) out.push(el); });
+      const rows = [];
+      try { walkFind(this._viewHost() || document, 'hemma-smart-row', rows, 0); } catch (_) {}
+      rows.forEach((r) => { if (r.isConnected && r.getBoundingClientRect().width) out.push(r); });
+      return { card, els: out, rows: rows.length };
+    }
+
+    _fxHold(xf) {
+      const host = this._viewHost();
+      if (!host) return;
+      host.style.setProperty('--hemma-fx-xf', xf);
+      host.style.setProperty('--hemma-fx-vis', 'hidden');
+    }
+
+    _fxRelease() {
+      cancelAnimationFrame(this._fxRaf);
+      clearTimeout(this._fxAwaitT);
+      this._fxAwait = false;
+      const host = this._viewHost();
+      if (!host) return;
+      host.style.removeProperty('--hemma-fx-xf');
+      host.style.removeProperty('--hemma-fx-vis');
+    }
+
+    _fxStop() {
+      (this._fxAnims || []).forEach((a) => { try { a.cancel(); } catch (_) {} });
+      this._fxAnims = [];
+    }
+
+    _slideIn() {
+      const dir = this._slideDir;
+      this._slideDir = 0;
+      if (!dir) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      // Overview hides the room card, so only the page slides; the card's photo still drifts on its own.
+      if (this._baseMode) { this._baseDir = dir; return; }
+      const W = this._sideOpen && this._pushed ? Math.round(this._side.getBoundingClientRect().width) : 0;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        this._pushTargets().forEach((el) => {
+          if (!el.animate || el.id === 'time') return;
+          const P = this._pushShift(W);
+          // The header fades in quickly, so it shows most of its travel; it moves less than the rows to look the same.
+          const d = el.tagName === 'HEMMA-SMART-ROW' ? 70 : 32;
+          el.animate([{ translate: (P + dir * d) + 'px 0px' }, { translate: P + 'px 0px' }],
+            { duration: 480, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' });
+          if (FX_TEXT(el)) el.animate([{ opacity: 0, offset: 0 }], { duration: 220, easing: 'ease-out' });
+        });
+      }));
+    }
+
+    // The photo a room's card will draw (hemma_room's --hero-img), worked out before HA has built that card.
+    _photoFor(idx) {
+      const el = this._els[idx];
+      const map = this._roomPhotos;
+      if (!el || !map || !el.route.url) return null;
+      const v = map[normalize(el.route.url).split('/').pop()];
+      if (!v) return null;
+      const t = this._hass && this._hass.themes;
+      const dark = t && typeof t.darkMode === 'boolean' ? t.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const base = v.image || 'default';
+      return { url: '/local/hemma/rooms/' + (dark ? (v.night || base + '-night') : base) + '.jpg', pos: v.pos || 'center center' };
+    }
+
+    // The arriving photo fades in over the leaving one and is dropped once that room's card shows the same photo.
+    _photoSwap(fromIdx, toIdx, drift) {
+      this._photoEnd();
+      const card = this._heroCardFor(fromIdx);
+      const ph = this._photoFor(toIdx);
+      if (!card || !card.isConnected || !ph) return false;
+      const r = card.getBoundingClientRect();
+      const cs = getComputedStyle(card, '::after');
+      if (!r.width || !/url\(/.test(cs.backgroundImage)) return false;
+      const box = document.createElement('div');
+      box.className = 'cat-xfade';
+      Object.assign(box.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: getComputedStyle(card).borderRadius });
+      const img = box.appendChild(document.createElement('div'));
+      ['backgroundSize', 'backgroundRepeat', 'filter', 'transform', 'transformOrigin'].forEach((k) => { img.style[k] = cs[k]; });
+      img.style.backgroundImage = cs.backgroundImage.replace(/url\([^)]*\)/g, 'url("' + ph.url + '")');
+      img.style.backgroundPosition = cs.backgroundPosition.split(',').map((p, i) => (i ? ph.pos : p)).join(',');
+      // The card's dither (::before) sits over its photo; without it the copy is a shade brighter and the hand-off shows.
+      const ds = getComputedStyle(card, '::before');
+      if (ds.backgroundImage && ds.backgroundImage !== 'none') {
+        const dith = box.appendChild(document.createElement('div'));
+        ['backgroundImage', 'backgroundSize', 'backgroundRepeat', 'backgroundPosition', 'opacity', 'mixBlendMode'].forEach((k) => { dith.style[k] = ds[k]; });
+      }
+      this.shadowRoot.appendChild(box);
+      this._xfade = box;
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        box.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
+        // Home to a room and back, the photo drifts in as Focus's does (hemmaRoomParallax), from the tap.
+        const xf = cs.transform === 'none' ? '' : cs.transform;
+        if (drift) img.animate([{ transform: xf + ' translateX(1.2%)' }, { transform: xf || 'none' }],
+          { duration: 500, delay: 50, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)', fill: 'backwards' });
+      }
+      this._xfadeT = setTimeout(() => this._photoEnd(), 4000);
+      return true;
+    }
+
+    // Two frames after the card is found, so its own photo has painted under the copy.
+    _photoDone() {
+      const box = this._xfade;
+      if (!box) return;
+      requestAnimationFrame(() => requestAnimationFrame(() => { if (this._xfade === box) this._photoEnd(); }));
+    }
+
+    _photoEnd() {
+      clearTimeout(this._xfadeT);
+      if (this._xfade) this._xfade.remove();
+      this._xfade = null;
+    }
+
+    // HA's switch to the room's view is the heaviest step; run on the tap, it held the first frame for a quarter second.
+    _baseGo(idx, to) {
+      const prev = this._activeIdx;
+      const fromCat = !!this._cat && this._cat !== 'home';
+      const dir = !fromCat && prev >= 0 && (prev === 0) !== (idx === 0) ? (idx === 0 ? -1 : 1) : 0;
+      if (fromCat) this._catSwap = 'return';
+      this._photoSwap(this._shownIdx, idx, !!dir);
+      this._els.forEach((el, i) => el.btn.classList.toggle('active', i === idx));
+      this._activeIdx = idx;
+      if (this._variant === 'tablet') { this._fold(); this._placeIndicator(); }
+      if (this._sideOpen) this._markSide();
+      this._earlyIdx = idx;
+      clearTimeout(this._navT);
+      const token = this._navTok = {};
+      const nav = () => { if (this._navTok === token) { this._navTok = null; navigate(to); } };
+      this._toBase();
+      if (dir && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        this._afterSlide = nav;
+        this._slidePage(dir);
+        this._navT = setTimeout(nav, 1800);
+      } else this._navT = setTimeout(nav, 120);
+    }
+
+    // Overview's page changes the frame the room's own card appears, so the photo and the page change together.
+    _baseSwap(idx) {
+      cancelAnimationFrame(this._baseRaf);
+      const dir = this._baseDir || 0;
+      this._baseDir = 0;
+      const t0 = performance.now();
+      const early = this._earlyIdx === idx;
+      this._earlyIdx = null;
+      const tick = () => {
+        if (this._activeIdx !== idx || !this._baseMode) return;
+        if (!this._heroCardFor(idx) && performance.now() - t0 < 600) { this._baseRaf = requestAnimationFrame(tick); return; }
+        // Moved already (_baseGo): only the photo was waiting for HA.
+        if (early) { this._photoDone(); return; }
+        this._toBase();
+        if (dir && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) this._slidePage(dir);
+      };
+      tick();
+    }
+
+    // The scene chips' ha-icons fetch their paths after the chips draw; shown before that, the row comes up without them.
+    _sceneIconsDrawn(page) {
+      const row = page.querySelector('.cat-scenes');
+      if (!row || !row.shadowRoot) return !row;
+      const icons = [];
+      const walk = (r) => r.querySelectorAll('*').forEach((e) => { if (e.tagName === 'HA-ICON') icons.push(e); else if (e.shadowRoot) walk(e.shadowRoot); });
+      walk(row.shadowRoot);
+      return icons.every((i) => {
+        const svg = i.shadowRoot && i.shadowRoot.querySelector('ha-svg-icon');
+        const path = svg && svg.shadowRoot && svg.shadowRoot.querySelector('path');
+        return !!(path && path.getAttribute('d'));
+      });
+    }
+
+    // The pane on show, not every unhidden one: mid-swap the outgoing pane is unhidden too, to animate out.
+    _pageDrawn(page) {
+      const pane = this._pane && page.contains(this._pane) ? this._pane : null;
+      // A card's ha-card exists a few frames before its first styles let it show.
+      const shown = (el) => {
+        const c = el.shadowRoot && el.shadowRoot.querySelector('ha-card');
+        if (!c) return false;
+        if (c._hemmaShown) return true;
+        return (c._hemmaShown = getComputedStyle(c).visibility !== 'hidden');
+      };
+      return [...(pane ? pane.querySelectorAll('.cat-grid') : [])].every((g) => [...g.children].every((el) => el.hidden || shown(el)));
+    }
+
+    // It starts with the page's own fill, so the photo and the cards change in the same frame.
+    _slidePage(dir) {
+      const page = this._catPage;
+      const inner = page && page.querySelector('.cat-in');
+      if (!inner) return;
+      (this._slideAnims || []).forEach((a) => { try { a.cancel(); } catch (_) {} });
+      this._slideAnims = [];
+      clearTimeout(this._slideT);
+      const token = this._slideTok = {};
+      inner.style.opacity = '0';
+      const go = () => {
+        if (this._slideTok !== token) return;
+        this._slideTok = null;
+        this._afterFill = null;
+        clearTimeout(this._slideT);
+        if (this._sortSig == null) this._sortSoon('fill');
+        inner.style.removeProperty('opacity');
+        if (this._catPage !== page) return;
+        this._slideUntil = performance.now() + 660;
+        // An even ease-out: the frames right after a room change are the slow ones, and a front-loaded curve jumps.
+        const ease = 'cubic-bezier(0.33, 1, 0.68, 1)';
+        const move = (el, d, fade) => {
+          if (!el.animate || !el.getClientRects().length) return;
+          this._slideAnims.push(el.animate([{ translate: dir * d + 'px 0px' }, { translate: '0px 0px' }], { duration: 640, easing: ease }));
+          if (fade) this._slideAnims.push(el.animate([{ opacity: 0, offset: 0 }], { duration: 320, easing: 'ease-out' }));
+        };
+        inner.querySelectorAll(':scope > h1, :scope > .cat-wx').forEach((el) => move(el, 32, true));
+        inner.querySelectorAll(':scope > .cat-pills, :scope > .cat-chipcard').forEach((el) => move(el, 32, false));
+        inner.querySelectorAll(':scope > .cat-body > .cat-pane:not([hidden]) > *').forEach((el) => move(el, 70, false));
+        const after = this._afterSlide;
+        this._afterSlide = null;
+        if (after) Promise.all(this._slideAnims.map((a) => a.finished)).then(after, after);
+      };
+      // A room built before is back at once; a new one waits until its cards have drawn, so none appear mid-slide.
+      this._afterFill = () => {
+        const t0 = performance.now();
+        const wait = () => {
+          if (this._slideTok !== token) return;
+          if (!this._pageDrawn(page) && performance.now() - t0 < 600) { requestAnimationFrame(wait); return; }
+          go();
+        };
+        wait();
+      };
+      this._slideT = setTimeout(go, 900);
+    }
+
+    // Two-row bands that never leave a hole before a later tile; a band with large tiles is only as wide as it fills.
+    _packGrid(g, list, w0) {
+      // Layout width, not the drawn one: a page coming back from a filter is still scaled down by its entrance.
+      const w = (w0 != null ? w0 : g.offsetWidth) + (this._packDW || 0);
+      if (!w) return;
+      const pane = g.closest('.cat-pane');
+      if (pane) pane._hemmaPackW = w;
+      const cols = Math.max(1, Math.floor((w + 10) / (this._compact() ? 175 : 200)));
+      g.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+      if (pane) pane.style.setProperty('--cat-two-tiles', (2 * (w - 10 * (cols - 1)) / cols + 10).toFixed(2) + 'px');
+      const big = (el) => el.dataset.hemmaSize === 'large';
+      const all = list || [...g.children];
+      all.forEach((el) => { el.style.gridColumn = ''; el.style.gridRow = ''; el.style.order = ''; });
+      const left = all.filter((el) => !el.hidden);
+      let row = 1;
+      while (left.length) {
+        const band = [];
+        let cells = 0;
+        left.forEach((el) => { const n = big(el) ? 2 : 1; if (cells + n <= 2 * cols) { band.push(el); cells += n; } });
+        if (!band.length) band.push(left[0]);
+        band.forEach((el) => left.splice(left.indexOf(el), 1));
+        const bigs = band.filter(big).length;
+        if (!bigs) {
+          band.forEach((el, i) => { el.style.gridColumn = String((i % cols) + 1); el.style.gridRow = String(row + Math.floor(i / cols)); });
+          row += Math.ceil(band.length / cols);
+          continue;
+        }
+        // A band that fits one row stays one row, large tiles first as Apple Home does; a wider one pairs smalls under each other.
+        const fits = band.length <= cols;
+        let top = (fits ? band.length : Math.min(cols, bigs + Math.ceil((band.length - bigs) / 2))) - bigs;
+        const row1 = [], row2 = [];
+        (fits ? band.filter(big).concat(band.filter((el) => !big(el))) : band).forEach((el) => { if (big(el)) row1.push(el); else if (top > 0) { row1.push(el); top--; } else row2.push(el); });
+        row1.forEach((el, c) => { el.style.gridColumn = String(c + 1); el.style.gridRow = big(el) ? row + ' / span 2' : String(row); });
+        const under = row1.map((el, c) => (big(el) ? -1 : c)).filter((c) => c >= 0);
+        row2.forEach((el, k) => { el.style.gridColumn = String(under[k] + 1); el.style.gridRow = String(row + 1); });
+        row += 2;
+      }
+    }
+
+    // Moved a moment after the change, never mid-tap.
+    _sortSoon(now) {
+      const page = this._catPage;
+      if (!page) return;
+      // Reading every tile's style mid-slide costs frames; the sort catches up once the page has landed.
+      if (now !== 'fill' && performance.now() < (this._slideUntil || 0)) {
+        clearTimeout(this._sortLateT);
+        this._sortLateT = setTimeout(() => this._sortSoon(), this._slideUntil - performance.now() + 20);
+        return;
+      }
+      // Only the pane on show, by its own rule: the outgoing one is unhidden mid-swap and was scrambled for the next visit.
+      const pane = this._pane;
+      if (!pane || !page.contains(pane)) return;
+      const sorted = !!pane._hemmaSorted;
+      const active = (el) => this._tileActive(el);
+      const grids = [...pane.querySelectorAll('.cat-grid')];
+      // Sorted before the cards draw, every tile reads as off, so the first sort waits for them and never animates.
+      const drawn = this._pageDrawn(page);
+      if (!drawn) {
+        clearTimeout(this._sortWaitT);
+        if (Date.now() - (this._sortWaitAt || (this._sortWaitAt = Date.now())) < 600) {
+          this._sortWaitT = setTimeout(() => this._sortSoon(now), 60);
+          return;
+        }
+      }
+      this._sortWaitAt = 0;
+      const sig = grids.map((g) => [...g.children].map((el) => (el.hidden ? 'h' : sorted && active(el) ? 1 : 0)).join('')).join('|')
+        + '@' + Math.round(page.getBoundingClientRect().width);
+      if (sig === this._sortSig) return;
+      const first = this._sortSig == null;
+      this._sortSig = sig;
+      clearTimeout(this._sortT);
+      const run = (quiet) => {
+        if (this._catPage !== page || this._pane !== pane) return;
+        const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches || first || quiet === true;
+        grids.forEach((g) => {
+          this._watchShowWhen(g, pane);
+          const kids = [...g.children];
+          const before = still ? null : new Map(kids.map((el) => [el, el.getBoundingClientRect()]));
+          this._packGrid(g, sorted ? kids.filter(active).concat(kids.filter((el) => !active(el))) : kids);
+          if (!before) return;
+          kids.forEach((el) => {
+            const a = before.get(el), b = el.getBoundingClientRect();
+            const dx = a.left - b.left, dy = a.top - b.top;
+            if ((dx || dy) && el.animate) el.animate([{ transform: 'translate(' + dx + 'px, ' + dy + 'px)' }, { transform: 'none' }],
+              { duration: 420, easing: FX_SPRING });
+          });
+        });
+      };
+      // A tile that shows only while active (Plex, Updates) appears a moment after the page: in place, not moved later.
+      const fresh = Date.now() - (this._sortFilledAt || 0) < 4000;
+      if (first || now || !sorted || fresh) run(fresh);
+      else this._sortT = setTimeout(run, 2500);
+    }
+
+    // Re-sorted in the same task, before paint, so a show_when tile first appears among the active tiles.
+    _watchShowWhen(g, pane) {
+      if (g._hemmaShowMO || !window.MutationObserver) return;
+      g._hemmaShowMO = new MutationObserver(() => {
+        if (this._pane !== pane || !g.isConnected) return;
+        const kids = [...g.children];
+        const active = (el) => this._tileActive(el);
+        this._packGrid(g, pane._hemmaSorted ? kids.filter(active).concat(kids.filter((el) => !active(el))) : kids);
+      });
+      g._hemmaShowMO.observe(g, { attributes: true, attributeFilter: ['hidden'], subtree: true });
+    }
+
+    _tileActive(el) {
+      if (el.hidden) return false;
+      // Shown at all means active, even before its card has drawn the active look.
+      if (((el._config || {}).variables || {}).show_when === 'active') return true;
+      const ha = el.shadowRoot && el.shadowRoot.querySelector('ha-card');
+      if (!ha) return false;
+      const v = ha.style.getPropertyValue('--hemma-active-overlay-opacity').trim()
+        || getComputedStyle(ha).getPropertyValue('--hemma-active-overlay-opacity').trim();
+      return v === '1';
+    }
+
+    // The page glides to its new edge, so its columns are counted for where it lands, as the sidebar starts to move.
+    _packFor(left) {
+      const page = this._catPage;
+      if (!page || this._sortSig == null) return;
+      const pane = this._pane;
+      if (!pane || !page.contains(pane)) return;
+      this._packDW = Math.round(page.getBoundingClientRect().left - left);
+      const sorted = !!pane._hemmaSorted;
+      // Every tile is read before any grid is written, or each grid's write forces the next read to restyle the page.
+      const plans = [...pane.querySelectorAll('.cat-grid')].map((g) => {
+        const kids = [...g.children];
+        const on = sorted ? new Set(kids.filter((el) => this._tileActive(el))) : null;
+        return [g, on ? [...on].concat(kids.filter((el) => !on.has(el))) : kids, g.offsetWidth];
+      });
+      plans.forEach(([g, list, w]) => this._packGrid(g, list, w));
+      this._packDW = 0;
+      this._sortSig = null;
+    }
+
+    // Every room's photo, fetched once, so a room change never waits on one.
+    async _preloadPhotos() {
+      if (this._photosAsked || !this._hass) return;
+      this._photosAsked = true;
+      const seg = String(location.pathname.split('/')[1] || '');
+      let cfg = null;
+      try { cfg = await this._hass.callWS({ type: 'lovelace/config', url_path: seg }); } catch (_) { return; }
+      const urls = new Set();
+      const rooms = this._roomPhotos = {};
+      let view = null;
+      const walk = (c) => {
+        if (!c || typeof c !== 'object') return;
+        if ([].concat(c.template || []).indexOf('hemma_room') >= 0) {
+          const v = c.variables || {};
+          if (view != null && !rooms[view]) rooms[view] = { image: v.image, night: v.image_night, pos: v.image_position };
+          const base = v.image || 'default';
+          urls.add('/local/hemma/rooms/' + base + '.jpg');
+          urls.add('/local/hemma/rooms/' + (v.image_night || base + '-night') + '.jpg');
+        }
+        (c.cards || []).forEach(walk);
+        if (c.card) walk(c.card);
+      };
+      ((cfg && cfg.views) || []).forEach((v, i) => { view = String(v.path || i); (v.cards || []).forEach(walk); });
+      this._photos = [...urls].map((u) => { const i = new Image(); i.src = u; if (i.decode) i.decode().catch(() => {}); return i; });
+    }
+
+    _dropDeferred() {
+      clearTimeout(this._catDeferT);
+      cancelAnimationFrame(this._catDeferRaf);
+      const els = this._catDefer;
+      this._catDefer = null;
+      if (els) { this._parkBadge(els); els.forEach((n) => n.remove()); }
+      if (!this._cat) this._fxRelease();
+    }
+
+    _dropDeferredWhenPainted() {
+      const tick = () => {
+        if (!this._catDefer) return;
+        if (this._heroCardFor(this._activeIdx)) { this._dropDeferred(); return; }
+        this._catDeferRaf = requestAnimationFrame(tick);
+      };
+      tick();
+    }
+
+    _fxOut() {
+      this._fxStop();
+      cancelAnimationFrame(this._fxRaf);
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { this._fxHold('none'); return; }
+      const xf = 'translateY(20px) scale(0.93)';
+      const anims = [];
+      this._fxTargets().els.forEach((el) => {
+        if (!el.animate) return;
+        if (FX_TEXT(el)) anims.push(el.animate([{ opacity: 0 }], { duration: 300, easing: FX_EASE, fill: 'forwards' }));
+        anims.push(el.animate([{ transform: xf }], { duration: 420, easing: FX_EASE, fill: 'forwards' }));
+      });
+      this._fxAnims = anims;
+      const settle = () => { if (this._fxAnims !== anims || !this._cat) return; this._fxHold(xf); this._fxStop(); };
+      if (!anims.length) settle();
+      else Promise.all(anims.map((a) => a.finished)).then(settle, () => {});
+    }
+
+    _fxPlay() {
+      this._fxStop();
+      cancelAnimationFrame(this._fxRaf);
+      clearTimeout(this._fxAwaitT);
+      this._fxAwait = false;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { this._fxRelease(); return; }
+      const from = 'translateY(20px) scale(0.93)';
+      this._fxHold(from);
+      const start = performance.now();
+      const go = () => {
+        const t = this._fxTargets();
+        const waited = performance.now() - start;
+        // Rows can land a frame or two after the hero card; starting without them would leave them to pop in.
+        if ((!t.card || (!t.rows && waited < 400)) && waited < 2000) { this._fxRaf = requestAnimationFrame(go); return; }
+        const anims = [];
+        t.els.forEach((el) => {
+          if (!el.animate) return;
+          if (FX_TEXT(el)) anims.push(el.animate([{ opacity: 0, offset: 0 }], { duration: 500, easing: FX_EASE }));
+          anims.push(el.animate([{ transform: from, offset: 0 }], { duration: 620, easing: FX_SPRING }));
+        });
+        this._fxAnims = anims;
+        this._fxRelease();
+      };
+      this._fxRaf = requestAnimationFrame(go);
+    }
+
+    // Pages start where the dashboard does, so Home Assistant's own docked sidebar stays reachable.
+    _syncCatLeft() {
+      const vh = this._viewHost();
+      const left = vh ? Math.max(0, Math.round(vh.getBoundingClientRect().left)) : 0;
+      if (left === this._catLeft) return;
+      this._catLeft = left;
+      this.shadowRoot.host.style.setProperty('--cat-left', left + 'px');
+    }
+
+    _syncCatPush(instant) {
+      this._syncCatLeft();
+      const vh = this._viewHost();
+      if (vh && window.ResizeObserver && this._catLeftHost !== vh) {
+        if (this._catLeftRO) this._catLeftRO.disconnect();
+        this._catLeftHost = vh;
+        this._catLeftRO = new ResizeObserver(() => this._syncCatLeft());
+        this._catLeftRO.observe(vh);
+      }
+      const pushed = !!(this._sideOpen && this._pushed);
+      (this._catEls || []).forEach((n) => {
+        if (instant && n.classList.contains('pushed') !== pushed) {
+          n.style.transition = 'none';
+          requestAnimationFrame(() => requestAnimationFrame(() => n.style.removeProperty('transition')));
+        }
+        n.classList.toggle('pushed', pushed);
+      });
+      const page = this._catPage;
+      if (!page) return;
+      const card = !pushed && this._heroCardFor(this._activeIdx);
+      const n = card && card.querySelector('#name');
+      const r = n && n.getBoundingClientRect();
+      // Overview without the sidebar keeps Apple Home's even margins: the left gutter is the right one.
+      const x = pushed ? this._sideGap() : this._baseMode ? 22 : r && r.width ? Math.round(r.left - (parseFloat(n.style.translate) || 0)) : 0;
+      const mini = this.shadowRoot.querySelector('.cat-mini');
+      [page, mini].forEach((el) => { if (!el) return; if (pushed || x > 20) el.style.setProperty('--cat-gutter', x + 'px'); else el.style.removeProperty('--cat-gutter'); });
+      this._syncBack();
+    }
+
+    _catHasContent(k) {
+      if (this._catSections(this._mobCfg, k).length) return true;
+      if (k !== 'energy') return false;
+      if (this._energyPrefs === undefined) {
+        if (!this._energyAsk && this._hass) {
+          this._energyAsk = true;
+          this._energyDevices().then((d) => { if (d && this._sideList) this._fillSide(); });
+        }
+        return false;
+      }
+      const p = this._energyPrefs;
+      return !!(p && Array.isArray(p.device_consumption) && p.device_consumption.some((d) => d && d.stat_consumption));
+    }
+
+    _sideCategories() {
+      const ALL = ['climate', 'lights', 'presence', 'media', 'security', 'energy'];
+      if (this._mobCfg) {
+        const b = this._catHeadCards(this._mobCfg).badges;
+        if (b) {
+          const order = (b.variables && Array.isArray(b.variables.badge_order) && b.variables.badge_order.length)
+            ? b.variables.badge_order : ALL;
+          const v = b.variables || {};
+          return order.map((k) => (k === 'people' ? 'presence' : k)).filter((k, i, a) => ALL.indexOf(k) >= 0 && a.indexOf(k) === i
+            && v['show_' + (k === 'presence' ? 'people' : k)] !== false && this._catHasContent(k));
+        }
+      } else if (this._hass && !this._mobCfgAsk) {
+        this._mobCfgAsk = true;
+        this._mobileConfig().then((c) => { if (c && this._sideList) this._fillSide(); });
+      }
+      const MAP = { climate_group: 'climate', light_group: 'lights', presence_group: 'presence',
+        media_group: 'media', security_group: 'security', lock_group: 'security', energy_group: 'energy' };
+      const found = [];
+      try { walkFind(document, 'button-card', found, 0); } catch (_) {}
+      const have = new Set();
+      found.forEach((el) => {
+        const t = [].concat((el._config || {}).template || []).join(' ');
+        for (const k in MAP) {
+          if (t.indexOf('hemma_badge_' + k) >= 0 && el.getBoundingClientRect().width > 0) have.add(MAP[k]);
+        }
+      });
+      return ['climate', 'lights', 'presence', 'media', 'security', 'energy'].filter((k) => have.has(k));
+    }
+
+    _sceneCount() {
+      if (!this._hass) return 0;
+      try { return this._menuItems({ menu: 'scenes' }).length; } catch (_) { return 0; }
+    }
+
+    _fillSide() {
+      if (!window.HEMMA_ICONS && !this._iconWait) {
+        const t0 = Date.now();
+        this._iconWait = setInterval(() => {
+          if (!window.HEMMA_ICONS && Date.now() - t0 < 10000) return;
+          clearInterval(this._iconWait);
+          if (window.HEMMA_ICONS && this._sideList) this._fillSide();
+        }, 100);
+      }
+      const list = this._sideList;
+      if (!list) return;
+      list.innerHTML = '';
+      const hass = this._hass;
+      // Apple Home keeps the sidebar open and swaps the room beside it.
+      const go = (idx) => () => {
+        const el = this._els[idx];
+        if (!el) return;
+        if (this._baseMode) {
+          if (!this._pushed) this._closeSide();
+          if (idx !== this._activeIdx) this._activate(el.route, el.btn);
+          else if (this._cat && this._cat !== 'home') this._closeCat();
+          else this._toBase();
+          return;
+        }
+        const was = !!this._cat;
+        if (was && idx !== this._activeIdx) this._fxNoSlideAt = Date.now();
+        this._closeCat();
+        if (idx === this._activeIdx) { if (was) this._markSide(); return; }
+        if (!this._pushed) {
+          // Portrait overlays the page: close and change room together.
+          this._closeSide();
+          this._activate(el.route, el.btn, true);
+          return;
+        }
+        this._activate(el.route, el.btn);
+        this._markSide();
+      };
+      const badgeOf = (route) => {
+        const cfg = route.badge;
+        if (!cfg) return undefined;
+        return !!(hass && resolve(cfg.show, hass, false));
+      };
+      this._sideRooms = [];
+      const rooms = [];
+      this._els.forEach((el, i) => {
+        if (i === 0 || this._isMenuRoute(el.route)) return;
+        rooms.push(i);
+      });
+      if (this._els[0]) {
+        const r = this._els[0].route;
+        const home = this._sideItem(r.glyph || 'home', this._els[0].label.textContent,
+          this._activeIdx === 0, go(0), badgeOf(r));
+        this._sideRooms.push({ idx: 0, btn: home });
+        list.appendChild(home);
+      }
+      // Overview has the scenes on Home and in every room, so the sidebar leaves them out.
+      if (this._sceneCount() && !(this._baseMode || this._overview())) {
+        const sc = this._sideItem('scenes', _hemmaT('nav.scenes', 'Scenes'), this._cat === 'scenes', () => {
+          if (!this._pushed) this._closeSide();
+          this._openCat('scenes');
+        });
+        sc.dataset.cat = 'scenes';
+        sc.classList.add('side-cat');
+        list.appendChild(sc);
+      }
+      if (rooms.length) {
+        const group = this._sideSection(list, 'rooms', _hemmaT('nav.rooms', 'Rooms'));
+        rooms.forEach((i) => {
+          const el = this._els[i];
+          const auto = { 'living room': 'living-room', kitchen: 'kitchen', bedroom: 'bedroom', office: 'desktop' };
+          const item = this._sideItem(el.route.glyph || auto[String(el.label.textContent).toLowerCase()]
+            || el.route.icon || 'default', el.label.textContent,
+            this._activeIdx === i, go(i), badgeOf(el.route));
+          this._sideRooms.push({ idx: i, btn: item });
+          group.appendChild(item);
+        });
+      }
+      const cats = this._sideCategories();
+      if (cats.length) {
+        const group = this._sideSection(list, 'categories', _hemmaT('nav.categories', 'Categories'));
+        const ICON = { climate: 'fan', lights: 'light', presence: 'person',
+          media: 'media', security: 'lock-fill', energy: 'energy' };
+        const EN = { climate: 'Climate', lights: 'Lights', presence: 'People', media: 'Media',
+          security: 'Security', energy: 'Energy' };
+        cats.forEach((k) => {
+          const cat = this._sideItem(ICON[k], _hemmaT('filter.' + k, EN[k]), this._cat === k, () => {
+            if (!this._pushed) this._closeSide();
+            this._openCat(k);
+          });
+          cat.dataset.cat = k;
+          cat.classList.add('side-cat');
+          group.appendChild(cat);
+        });
+      }
+    }
+
+    // Landscape folds rooms from the end once the pill reaches the chrome buttons' reserve.
+    _fold() {
+      if (this._variant !== 'tablet' || !this._scroller) return false;
+      const was = this._els.map((el) => el.btn.classList.contains('folded'));
+      const land = window.matchMedia('(orientation: landscape)').matches;
+      const keep = (i) => i === 0 || i === this._activeIdx || this._isMenuRoute(this._els[i].route);
+      this._els.forEach((el, i) => el.btn.classList.toggle('folded', !land && !keep(i)));
+      if (land) {
+        const sc = this._scroller;
+        for (let i = this._els.length - 1; i > 0 && sc.scrollWidth > sc.clientWidth + 1; i--) {
+          if (!keep(i)) this._els[i].btn.classList.add('folded');
+        }
+      }
+      // Hidden behind the sidebar the pill is shifted and scaled, so a tab animated there is measured wrong.
+      const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        || this._sideOpen || (this._bar && this._bar.classList.contains('away'));
+      if (!this._folded || still) { this._folded = true; requestAnimationFrame(() => this._placeIndicator(true)); return false; }
+      let moved = false;
+      this._els.forEach((el, i) => {
+        const now = el.btn.classList.contains('folded');
+        if (now === was[i] || !el.btn.animate) return;
+        moved = true;
+        const b = el.btn;
+        if (now) b.classList.remove('folded');
+        const w = b.getBoundingClientRect().width;
+        const shut = { maxWidth: '0px', opacity: 0, paddingLeft: '0px', paddingRight: '0px', marginLeft: '0px' };
+        const full = { maxWidth: w + 'px', opacity: 1 };
+        b.style.overflow = 'hidden';
+        const anim = b.animate(now ? [full, shut] : [shut, full], { duration: 240, easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)' });
+        const done = () => { b.style.overflow = ''; if (now) b.classList.add('folded'); this._placeIndicator(true); };
+        anim.finished.then(done, done);
+      });
+      if (moved) requestAnimationFrame(() => this._placeIndicator(true));
+      return moved;
+    }
+
+    // The view moves over and narrows, so right-anchored chrome stays put.
+    _viewHost() {
+      if (this._vh && this._vh.isConnected) return this._vh;
+      let found = null;
+      const walk = (root, d) => {
+        if (!root || d > 14 || found || !root.querySelector) return;
+        const hit = root.querySelector('hui-view-container') || root.querySelector('hui-view');
+        if (hit) { found = hit; return; }
+        root.querySelectorAll('*').forEach((el) => { if (!found && el.shadowRoot) walk(el.shadowRoot, d + 1); });
+      };
+      try { walk(this.getRootNode(), 0); } catch (_) {}
+      if (!found) { try { walk(document, 0); } catch (_) {} }
+      this._vh = found;
+      return found;
+    }
+
+    // WebKit can stop painting the photo at a 1024px tile edge after a resize; only a blur change forces a redraw.
+    _repaintPhotos() {
+      const found = [];
+      try { walkFind(this._viewHost() || document, 'button-card', found, 0); } catch (_) {}
+      found.forEach((el) => {
+        if ([].concat((el._config || {}).template || []).indexOf('hemma_room') < 0) return;
+        const hc = el.isConnected && el.shadowRoot && el.shadowRoot.querySelector('ha-card');
+        if (!hc) return;
+        // --hero-img-filter arrives resolved from the host, so it is replaced whole, a hundredth of a pixel softer.
+        const f = getComputedStyle(hc, '::after').filter;
+        hc.style.setProperty('--hero-img-scale-current', 'calc(var(--hero-img-scale, 1.08) + 0.0002)');
+        if (/blur\(/.test(f)) hc.style.setProperty('--hero-img-filter', f.replace(/blur\(([\d.]+)px\)/, (m, v) => 'blur(' + (+v + 0.01) + 'px)'));
+        setTimeout(() => {
+          hc.style.removeProperty('--hero-img-scale-current');
+          hc.style.removeProperty('--hero-img-filter');
+        }, 150);
+      });
+    }
+
+    _pushTargets() {
+      const out = [];
+      const card = this._heroCardFor(this._activeIdx);
+      if (card) card.querySelectorAll('#name, #temperature, [id^="badges"]').forEach((el) => out.push(el));
+      const rows = [];
+      try { walkFind(this._viewHost() || document, 'hemma-smart-row', rows, 0); } catch (_) {}
+      rows.forEach((r) => { if (r.isConnected && r.getBoundingClientRect().width) out.push(r); });
+      return out;
+    }
+
+    // Overview uses Apple Home's gap (20pt on an iPad, 15pt on a Mac); Focus is mostly photo and needs more.
+    _sideGap() {
+      if (!this._baseMode) return this._variant === 'tablet' ? 26 : 24;
+      return this._variant === 'tablet' ? 20 : 15;
+    }
+
+    _pushShift(w) {
+      if (!w) return 0;
+      if (this._pushEdge == null) {
+        const card = this._heroCardFor(this._activeIdx);
+        const n = card && card.querySelector('#name');
+        if (!n) return w;
+        // Measured at rest: read while pushed or mid-entrance, the header pushed the page too little, often not at all.
+        const st = n.style, keep = [st.translate, st.transform, st.transition];
+        st.transition = 'none'; st.translate = 'none'; st.transform = 'none';
+        const r = n.getBoundingClientRect();
+        st.translate = keep[0]; st.transform = keep[1];
+        void n.offsetWidth;
+        st.transition = keep[2];
+        if (!r.width) return w;
+        this._pushEdge = r.left;
+      }
+      return Math.max(0, Math.round(w - Math.max(0, this._pushEdge - this._sideGap())));
+    }
+
+    _setPush(el, px) {
+      el.style.translate = px + 'px 0px';
+      if (el.tagName === 'HEMMA-SMART-ROW') el.style.setProperty('--hemma-push-end', px + 'px');
+    }
+
+    // translate:none is the only value that leaves fixed descendants alone, so each is unset when idle.
+    _setPushVars(P) {
+      const vh = this._viewHost();
+      if (!vh) return;
+      const names = ['--hemma-side-push', '--hemma-side-shift', '--hemma-side-origin'];
+      if (!P) { names.forEach((n) => vh.style.removeProperty(n)); return; }
+      vh.style.setProperty('--hemma-side-push', P + 'px');
+      vh.style.setProperty('--hemma-side-shift', P + 'px 0px');
+      vh.style.setProperty('--hemma-side-origin', '0 0');
+    }
+
+    // The card's own clock stays hidden behind the nav's, which slides into the sidebar with it.
+    _placeClock(T, E) {
+      const st = this._status;
+      if (!st || this._variant === 'tablet') return;
+      const card = this._heroCardFor(this._activeIdx);
+      const t = card && card.querySelector('#time');
+      const r = t && t.getBoundingClientRect();
+      if (r && r.width) { this._clockX = Math.round(r.left - 22); this._clockY = Math.round(r.top); }
+      // Overview lines everything up on its own gap, the clock included.
+      if (this._baseMode && this._clockX != null) this._clockX = this._sideGap() - 22;
+      if (this._clockX == null) return;
+      const vh = this._viewHost();
+      if (vh) vh.style.setProperty('--hemma-side-time', 'hidden');
+      st.style.top = this._clockY + 'px';
+      st.style.transition = T ? 'transform ' + T + 'ms ' + E : 'none';
+      st.style.transform = this._sideOpen && this._pushed ? 'none' : 'translateX(' + this._clockX + 'px)';
+      st.classList.add('on');
+      this._fitClock();
+    }
+
+    // As the card's clock does, the date gives way rather than run into the first tab.
+    _fitClock() {
+      const st = this._status;
+      if (!st || this._clockX == null || this._variant === 'tablet') return;
+      st.classList.remove('tight');
+      const edge = window._hemmaNavEdge;
+      const span = window._hemmaNavSpan;
+      if (this._sideOpen && this._pushed || typeof edge !== 'number' || !st.querySelector('.extra')) return;
+      const r = st.getBoundingClientRect();
+      const sameRow = !span || (r.bottom > span[0] && r.top < span[1]);
+      if (sameRow && 22 + this._clockX + r.width > edge - 24) st.classList.add('tight');
+    }
+
+    _pushView(on, instant) {
+      const land = this._variant === 'tablet' ? window.matchMedia('(orientation: landscape)').matches : window.innerWidth >= 900;
+      const still = instant || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const T = still ? 0 : (on ? 520 : 480);
+      const E = 'cubic-bezier(0.32, 0.72, 0, 1)';
+      const W = on && land ? Math.round(this._side.getBoundingClientRect().width) : 0;
+      const seen = this._pushedSet || (this._pushedSet = new Set());
+      clearTimeout(this._pushClear);
+      // Every element ever pushed: HA keeps each room's view, so a room left while pushed would come back shifted.
+      const els = W ? this._pushTargets() : [...seen];
+      const P = this._pushShift(W);
+      els.forEach((el) => {
+        seen.add(el);
+        el.style.transition = T ? 'translate ' + T + 'ms ' + E : 'none';
+        if (W && !el.style.translate) { el.style.translate = '0px 0px'; void el.offsetWidth; }
+        this._setPush(el, P);
+      });
+      // Focus's top-right buttons keep the hero's wide gutter; pushed, they come in to the title's gap.
+      if (this._variant !== 'tablet') {
+        const card = this._heroCardFor(this._activeIdx);
+        // The waveform and its players hang off the same right edge, so they move by the same amount.
+        const btns = card ? [...card.querySelectorAll('#settings, #assist, #notifications, #battery, #chrome_pill, #now_playing')] : [];
+        const ref = card && card.querySelector('#settings, #notifications');
+        const d = W && ref ? Math.max(0, Math.round((parseFloat(getComputedStyle(ref).right) || 0) - this._sideGap())) : 0;
+        btns.forEach((el) => {
+          // button-card stamps its own transition inline; keep it beside ours.
+          if (el._hemmaTr == null) el._hemmaTr = el.style.transition || '';
+          el.style.transition = [T ? 'translate ' + T + 'ms ' + E : '', el._hemmaTr].filter(Boolean).join(', ');
+          el.style.translate = d + 'px 0px';
+        });
+      }
+      // translate:none is the only value that leaves fixed descendants alone, so the var is unset when idle.
+      this._setPushVars(W ? P : 0);
+      this._pushed = !!W;
+      this._placeClock(T, E);
+      this._packFor(W || this._catLeft || 0);
+      this._syncCatPush(!T);
+      setTimeout(() => this._fitNP(), T + 60);
+      setTimeout(() => this._sortSoon(true), T + 80);
+      // Only when the sidebar moves: a room change pushes instantly, and re-rastering the blurred photo then blanks it mid-slide.
+      if (this._variant === 'tablet' && T) setTimeout(() => this._repaintPhotos(), T + 80);
+      if (!W) {
+        const clear = () => {
+          if (this._pushed) return;
+          seen.forEach((el) => { el.style.translate = ''; el.style.transition = ''; el.style.removeProperty('--hemma-push-end'); });
+          this._pushEdge = null;
+          seen.clear();
+        };
+        if (!T) clear(); else this._pushClear = setTimeout(clear, T);
+      }
+      this._syncBack();
+    }
+
+    // A tablet left on "Same as desktop" follows the desktop's layout.
+    _overview() {
+      const V = this._statusVars();
+      const t = this._variant === 'tablet' ? V.home_layout_tablet : '';
+      if (t === 'focus') return false;
+      if (t === 'overview') return true;
+      return V.home_layout === 'overview';
+    }
+
+    // Desktop Overview keeps the sidebar open, as Apple Home's Mac app does; a tablet can still switch.
+    _sideLocked() {
+      return !!this._baseMode && this._variant !== 'tablet' && window.innerWidth >= 900;
+    }
+
+    _syncOverview() {
+      const on = this._overview();
+      window._hemmaOverview = on;
+      try {
+        const seg = String(location.pathname.split('/')[1] || '');
+        if (on) localStorage.setItem('hemma_ov_boot', seg); else if (localStorage.getItem('hemma_ov_boot') === seg) localStorage.removeItem('hemma_ov_boot');
+      } catch (_) {}
+      if (window._hemmaOvBoot) {
+        window._hemmaOvBoot = false;
+        // The view host takes these over; --hemma-fx-vis is let go once the page is up (_baseSwap's first fill).
+        ['--hemma-page-chrome', '--hemma-anim-name', '--hero-img-blur', '--hemma-hero-anim-dur', '--hemma-hero-anim-delay'].forEach((k) => document.documentElement.style.removeProperty(k));
+        if (!on) document.documentElement.style.removeProperty('--hemma-fx-vis');
+        this._bootOpen = true;
+      }
+      const vh = this._viewHost();
+      this.classList.toggle('side-locked', on && this._variant !== 'tablet' && window.innerWidth >= 900);
+      this.classList.toggle('compact', on && this._variant !== 'tablet');
+      if (on && !this._baseMode) {
+        // Overview lays far more over the photo, so it blurs it a little more than Focus (4px).
+        if (vh) {
+          vh.style.setProperty('--hemma-page-chrome', 'hidden'); vh.style.setProperty('--hemma-anim-name', 'none'); vh.style.setProperty('--hero-img-blur', '7px');
+          // Overview changes its wallpaper with the tap (_photoSwap); the photo's own drift is Focus's.
+          vh.style.setProperty('--hemma-hero-anim-dur', '0s'); vh.style.setProperty('--hemma-hero-anim-delay', '0s');
+        }
+        this._openBase(true);
+        if (this._sideOpen) this._fillSide();
+        this._syncSceneTab();
+      }
+      if (this._sideLocked() && !this._sideOpen && this._side) this._openSide(this._bootOpen || !this._everSynced);
+      this._everSynced = true;
+      this._bootOpen = false;
+      if (!on && this._baseMode) {
+        this._baseMode = false;
+        if (vh) ['--hemma-page-chrome', '--hemma-anim-name', '--hero-img-blur', '--hemma-hero-anim-dur', '--hemma-hero-anim-delay'].forEach((k) => vh.style.removeProperty(k));
+        this._closeCat(true);
+        this._fxRelease();
+        this._shelfMap = null;
+        if (this._sideOpen) this._fillSide();
+        this._syncSceneTab();
+      }
+    }
+
+    // Overview has the scenes on Home and in every room, so the navbar's Scenes tab goes with it.
+    _syncSceneTab() {
+      (this._els || []).forEach((el) => { if (el.route && el.route.menu === 'scenes') el.btn.style.display = this._baseMode ? 'none' : ''; });
+      this._placeIndicator(true);
+    }
+
+    _openBase(instant) {
+      this._baseMode = true;
+      if (this._catPage) { this._syncBack(); this._syncChrome(); return; }
+      this._openCat('home', this._baseRoom(), false, instant ? 'still' : 'fade');
+    }
+
+    _toBase() {
+      if (!this._catPage) return;
+      this._cat = 'home';
+      this._catRoom = this._baseRoom();
+      this._catLift = false;
+      if (window._hemmaFilter) window._hemmaFilter.set('all');
+      this._markSide();
+      this._syncBack();
+      this._fillCat('home');
+    }
+
+    _baseRoom() {
+      const el = this._activeIdx > 0 && this._els[this._activeIdx];
+      return el ? String(el.route.label || el.label.textContent || '').trim() || null : null;
+    }
+
+    _baseTitle() {
+      this._titleStale = false;
+      if (this._catRoom) return this._catRoom;
+      const card = this._heroCardFor(0);
+      // The greeting comes from its own function: the card's name reads its room name until its template has run.
+      const host = card && card.getRootNode && card.getRootNode().host;
+      const cfg = (host && host._config) || {};
+      // Remembered: going Home, the title is set before Home's card has drawn.
+      if (card) this._greetVars = String(cfg.name || '').indexOf('hemmaGreeting') >= 0 ? (cfg.variables || {}) : null;
+      const vars = this._greetVars;
+      if (vars && window.hemmaGreeting && this._hass) {
+        const g = String(window.hemmaGreeting(this._hass, this._hass.states, vars)).replace(/&lt;/g, '<').replace(/&amp;/g, '&');
+        if (g) return g;
+      }
+      const n = card && card.querySelector('#name');
+      const t = n && n.textContent.trim();
+      this._titleStale = !t;
+      return t || _hemmaT('filter.all', 'Home');
+    }
+
+    // The page covers the room card, so it carries the card's top-right buttons and battery, in the card's place.
+    async _syncChrome() {
+      const page = this._catPage;
+      if (!page) return;
+      const want = !!this._baseMode;
+      if (!want || page.querySelector('.cat-chrome')) {
+        if (!want) page.querySelectorAll('.cat-chrome, .cat-batt').forEach((n) => n.remove());
+        return;
+      }
+      const card = this._heroCardFor(this._activeIdx);
+      const helpers = await this._catHelpers();
+      if (!helpers || this._catPage !== page || page.querySelector('.cat-chrome')) return;
+      const V = this._statusVars();
+      const tablet = this._variant === 'tablet';
+      const assist = V.show_assist !== false && ((this._hass && this._hass.config && this._hass.config.components) || []).includes('conversation');
+      const box = document.createElement('div');
+      box.className = 'cat-chrome' + (tablet ? ' cap' : '');
+      const add = (template, variables) => {
+        let el = null;
+        try { el = helpers.createCardElement({ type: 'custom:button-card', template, variables }); } catch (_) {}
+        if (el) { box.appendChild(el); this._catChrome.push(el); }
+        return el;
+      };
+      this._catChrome = [];
+      if (V.show_notifications !== false) add('hemma_notifications_button', { shown: true });
+      // A tablet keeps Assist in the dots menu, as its room card does.
+      if (assist && !tablet) add('hemma_assist_button', { shown: true });
+      if (box.childElementCount && tablet) box.appendChild(Object.assign(document.createElement('i'), { className: 'sep' }));
+      add('hemma_settings_button', { shown: true, assist_available: assist, hemma_ui_managed: !!V.hemma_ui_managed });
+      if (!this._catChrome.length) return;
+      if (tablet) ['cap-rim', 'cap-rim-in'].forEach((c) => box.appendChild(Object.assign(document.createElement('i'), { className: c })));
+      const ref = card && [...card.querySelectorAll(tablet ? '#chrome_pill' : '#settings, #assist, #notifications')]
+        .map((e) => e.getBoundingClientRect()).filter((r) => r.width).sort((a, b) => b.right - a.right)[0];
+      if (ref && tablet) box.style.right = Math.max(0, Math.round(window.innerWidth - ref.right)) + 'px';
+      page.appendChild(box);
+      if (!tablet) page.style.setProperty('--cat-chrome-w', (box.childElementCount * 46 - 12) + 'px');
+      if (tablet) {
+        const b = document.createElement('div');
+        b.className = 'cat-batt';
+        page.appendChild(b);
+        this._catBattId = V.status_battery || '';
+        this._syncBattery();
+      }
+      this._catHass();
+    }
+
+    _syncBattery() {
+      const b = this._catPage && this._catPage.querySelector('.cat-batt');
+      if (!b || !this._hass) return;
+      const html = window.hemmaBatterySvg ? window.hemmaBatterySvg(this._hass.states, this._catBattId) : '';
+      if (b._html !== html) { b._html = html; b.innerHTML = html; }
+    }
+
+    // The greeting is Home's large title only; scrolled, the bar names the page as the tab does.
+    _miniTitle(k, title) {
+      if (k !== 'home' || this._catRoom) return title;
+      const el = this._els && this._els[0];
+      return String((el && (el.route.label || el.label.textContent)) || '').trim() || _hemmaT('nav.home', 'Home');
+    }
+
+    _syncBaseTitle() {
+      const page = this._catPage;
+      if (!page || this._cat !== 'home') return;
+      const t = this._baseTitle();
+      const h1 = page.querySelector('.cat-in h1');
+      if (h1 && h1.textContent !== t) h1.textContent = t;
+      const m = this._miniTitle('home', t);
+      if (this._catEls && this._catEls[2].textContent !== m) this._catEls[2].textContent = m;
+    }
+
+    // The phone's corner weather, from the room card's settings.
+    _wxCard(helpers) {
+      const V = this._statusVars();
+      const wx = (w) => (window.hemmaWx ? window.hemmaWx(V, w) : (w === 'entity' ? V.weather_entity : V.weather_temp_sensor)) || '';
+      const entity = wx('entity');
+      if (!entity && V.hero_line !== 'date') return null;
+      try {
+        return helpers.createCardElement({ type: 'custom:button-card', template: 'hemma_weather', entity,
+          variables: { hero_mode: false, weather_temp_sensor: wx('temp') } });
+      } catch (_) { return null; }
+    }
+
+    _syncBack() {
+      const b = this._sideBack;
+      if (!b) return;
+      // Only a category page has somewhere to go back to; rooms are reached from the sidebar and tabs.
+      const show = !!(this._cat && this._cat !== 'home' && this._catPage);
+      if (show) {
+        const edge = this._sideOpen && this._pushed ? this._side.getBoundingClientRect().width : (this._catLeft || 0);
+        const g = parseFloat(this._catPage.style.getPropertyValue('--cat-gutter')) || 20;
+        b.style.left = Math.round(edge + g) + 'px';
+      }
+      b.classList.toggle('on', show);
+    }
+
+    // Matched by name: mid room change HA keeps the previous view, so the first visible card is often the one just left.
+    _heroCardFor(idx) {
+      const el0 = this._els[idx];
+      if (!el0) return null;
+      const label = String(el0.route.label || '').trim().toLowerCase();
+      // The walk below covers every shadow root; a card found before is reused while it is still in place and drawn.
+      const hit = (this._heroCache || {})[idx];
+      if (hit && hit.isConnected && hit.getRootNode().host && hit.getRootNode().host.isConnected && hit.getBoundingClientRect().width) return hit;
+      const found = [];
+      try { walkFind(this._viewHost() || document, 'button-card', found, 0); } catch (_) {}
+      for (const el of found) {
+        const c = el._config || {};
+        if ([].concat(c.template || []).indexOf('hemma_room') < 0) continue;
+        const n = String(c.name || '');
+        if (n.trim().toLowerCase() !== label && !(idx === 0 && n.indexOf('hemmaGreeting') >= 0)) continue;
+        const card = el.isConnected && el.shadowRoot && el.shadowRoot.querySelector('ha-card');
+        if (card && card.getBoundingClientRect().width) { (this._heroCache = this._heroCache || {})[idx] = card; return card; }
+      }
+      return null;
+    }
+
+    // A room change brings a new card: push it the frame it appears, without animating.
+    _watchPush() {
+      cancelAnimationFrame(this._pushRaf);
+      const start = performance.now();
+      const tick = () => {
+        if (!this._sideOpen || !this._pushed) return;
+        if (this._heroCardFor(this._activeIdx)) { this._pushView(true, true); return; }
+        if (performance.now() - start < 4000) this._pushRaf = requestAnimationFrame(tick);
+      };
+      tick();
+    }
+
+    _markSide() {
+      (this._sideRooms || []).forEach((r) => r.btn.classList.toggle('on', (!this._cat || this._cat === 'home') && r.idx === this._activeIdx));
+      if (this._sideList) this._sideList.querySelectorAll('.side-cat').forEach((b) => b.classList.toggle('on', b.dataset.cat === this._cat));
+    }
+
+    _syncSideMotion() {
+      const hass = this._hass;
+      (this._sideRooms || []).forEach((r) => {
+        const cfg = this._els[r.idx] && this._els[r.idx].route.badge;
+        if (!r.btn._motion || !cfg) return;
+        r.btn._motion.classList.toggle('on', !!(hass && resolve(cfg.show, hass, false)));
+      });
+    }
+
+    _toggleSide() { if (this._sideOpen) this._closeSide(); else this._openSide(); }
+
+    _sideBootKey() { return 'hemma_side_boot_' + this._variant; }
+
+    _sideRoom() {
+      return this._variant === 'tablet' ? window.matchMedia('(orientation: landscape)').matches : window.innerWidth >= 900;
+    }
+
+    _sideWanted() {
+      return this._sideRoom() && this._statusVars().sidebar_open === true;
+    }
+
+    _statusVars() {
+      if (this._sVars && this._sVarsAt > Date.now() - 5000) return this._sVars;
+      const found = [];
+      try { walkFind(this._viewHost() || document, 'button-card', found, 0); } catch (_) {}
+      const room = found.find((el) => [].concat((el._config || {}).template || []).indexOf('hemma_room') >= 0);
+      if (room) { this._sVars = (room._config && room._config.variables) || {}; this._sVarsAt = Date.now(); }
+      return this._sVars || {};
+    }
+
+    _renderStatus() {
+      const out = this._status, hass = this._hass;
+      if (!out || !hass) return;
+      const V = this._statusVars();
+      const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      let html = '';
+      const tid = V.time_entity || (V.hemma_ui_managed ? '' : 'sensor.time');
+      const ts = tid && hass.states[tid];
+      if (ts) {
+        let t = String(ts.state || '');
+        if (t.indexOf(',') >= 0) t = (t.split(',')[1] || '').trim() || t;
+        const m = t.match(/^(\d{1,2}):(\d{2})$/);
+        if (m && V.use_12h !== false) {
+          const h = parseInt(m[1], 10);
+          t = ((h % 12) || 12) + ':' + m[2] + ' ' + (h >= 12 ? _hemmaT('time.pm', 'PM') : _hemmaT('time.am', 'AM'));
+        }
+        const suffix = String(V.time_suffix || '').trim();
+        if (suffix) t += ' ' + suffix;
+        if (String(hass.language || 'en').indexOf('en') === 0) t = t.toUpperCase();
+        html = esc(t);
+        const dateUp = V.hero_line === 'date';
+        if (!dateUp && V.show_date === true && V.date_on !== (this._variant === 'tablet' ? 'desktop' : 'tablet') && window.hemmaDate) {
+          const d = window.hemmaDate(hass, V.date_style === 'long' ? 'long' : 'short');
+          if (d) html += '<span class="extra">' + esc(d) + '</span>';
+        }
+        if (dateUp && V.weather_entity) {
+          const w = hass.states[V.weather_entity];
+          const tsn = V.weather_temp_sensor && hass.states[V.weather_temp_sensor];
+          let deg = null;
+          if (tsn && tsn.state !== '' && Number.isFinite(Number(tsn.state))) deg = Math.round(Number(tsn.state));
+          if (deg === null && w && Number.isFinite(Number((w.attributes || {}).temperature))) deg = Math.round(Number(w.attributes.temperature));
+          if (deg !== null) {
+            let unit = '';
+            if (V.show_temp_unit === true) {
+              unit = String((tsn && tsn.attributes.unit_of_measurement) || (w && w.attributes.temperature_unit)
+                || (hass.config && hass.config.unit_system && hass.config.unit_system.temperature) || '').replace('°', '').trim();
+            }
+            html += '<span class="extra">' + deg + '°' + (unit ? '&nbsp;' + esc(unit) : '') + '</span>';
+          }
+        }
+      }
+      if (html !== this._statusHtml) { this._statusHtml = html; out.innerHTML = html; this._fitClock(); }
+      if (this._clockX == null && this._variant !== 'tablet') this._placeClock(0);
+    }
+
+    _syncSideStatus() { this._sVars = null; this._renderStatus(); this._syncBaseTitle(); }
+
+    // Only the glass's clip-path animates: an animated opacity or transform on an ancestor drops backdrop-filter.
+    _morph(open) {
+      const side = this._side, bar = this._bar, glass = this._sideGlass;
+      const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!glass || !glass.animate || still) return null;
+      const gr = glass.getBoundingClientRect();
+      const sr = side.getBoundingClientRect();
+      const tab = this._variant === 'tablet';
+      const glyph = !tab && this._toggle && this._toggle.querySelector('svg, .gl');
+      const gb = (tab ? bar : (glyph || this._toggle || bar)).getBoundingClientRect();
+      // Desktop lands on a small plate around the icon, under the raised tab row, as the tablet lands under its pill.
+      const pr = tab ? gb : { left: gb.left - 8, top: gb.top - 8, width: gb.width + 16, height: gb.height + 16 };
+      const r0 = tab ? pr.height / 2 : 10;
+      const VW = gr.width, VH = gr.height, SW = sr.width;
+      const spring = (t) => { const x = Math.max(0, Math.min(1, t)); return 1 - (1 + 8 * x) * Math.exp(-8 * x); };
+      const norm = spring(1);
+      const ease = (t) => spring(t) / norm;
+      const seg = (t, a, b) => ease((t - a) / (b - a));
+      const lerp = (a, b, k) => a + (b - a) * k;
+      const rgba = (c) => (String(c).match(/[\d.]+/g) || [0, 0, 0, 1]).map(Number).concat([1]).slice(0, 4);
+      const c0 = rgba(getComputedStyle(this).getPropertyValue('--hemma-pill-fill').trim() || 'rgba(255,255,255,0.10)');
+      const c1 = rgba(getComputedStyle(glass).backgroundColor || 'rgba(28,28,32,0.74)');
+      const N = 28, frames = [], barFrames = [];
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        // k = how far from pill toward panel, per axis. Closing runs the curves backwards in time.
+        const kx = open ? seg(t, 0, 0.78) : 1 - seg(t, 0.22, 1);
+        const ky = open ? seg(t, 0.28, 1) : 1 - seg(t, 0, 0.72);
+        const x = lerp(pr.left, 0, kx), w = lerp(pr.width, SW, kx);
+        const y = lerp(pr.top, 0, ky), h = lerp(pr.height, VH, ky);
+        const r = lerp(r0, 0, Math.max(kx, ky));
+        const c = c0.map((v, j) => lerp(v, c1[j], ky));
+        // Crossfade with the pill's own glass at the pill end, so its rim never pops in.
+        const hand = open ? Math.min(1, t / 0.2) : Math.min(1, (1 - t) / (tab ? 0.25 : 0.35));
+        frames.push({
+          opacity: hand,
+          clipPath: 'inset(' + y + 'px ' + (VW - x - w) + 'px ' + (VH - y - h) + 'px ' + x + 'px round ' + r + 'px)',
+          backgroundColor: 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + c[3].toFixed(3) + ')',
+        });
+        // The labels ride the shape, blurring out as it grows and back in as it settles, as Apple's do.
+        const lv = open ? Math.max(0, 1 - t / 0.5) : Math.max(0, (t - 0.5) / 0.5);
+        barFrames.push({
+          transform: 'translateX(' + ((x - pr.left) + (w - pr.width) / 2) + 'px)',
+          opacity: lv,
+          filter: 'blur(' + ((1 - lv) * 10).toFixed(2) + 'px)',
+        });
+      }
+      const T = 480;
+      const a = glass.animate(frames, { duration: T, easing: 'linear' });
+      if (!tab) {
+        bar.classList.add('morphing');
+        const off = () => bar.classList.remove('morphing');
+        a.finished.then(off, off);
+      }
+      if (tab) {
+        bar.classList.add('morphing');
+        bar.querySelectorAll('.glass, .rim, .rim-in').forEach((g) => g.animate(open
+          ? [{ opacity: 1 }, { opacity: 0, offset: 0.2 }, { opacity: 0 }]
+          : [{ opacity: 0 }, { opacity: 0, offset: 0.75 }, { opacity: 1 }], { duration: T, easing: 'linear' }));
+        const ba = bar.animate(barFrames, { duration: T, easing: 'linear' });
+        const off = () => bar.classList.remove('morphing');
+        ba.finished.then(off, off);
+      }
+      [this._sideList, this._sideHead].filter(Boolean).forEach((n) => n.animate(open
+        ? [{ opacity: 0 }, { opacity: 0, offset: 0.55 }, { opacity: 1 }]
+        : [{ opacity: 1 }, { opacity: 0, offset: 0.22 }, { opacity: 0 }], { duration: T, easing: 'ease-out' }));
+      return a;
+    }
+
+    _openSide(still) {
+      const side = this._side;
+      if (!side || this._sideOpen) return;
+      this._closeMenu();
+      this._fillSide();
+      this._sideOpen = true;
+      side.classList.add('open');
+      this._syncSideStatus();
+      this._statusTick = setInterval(() => this._syncSideStatus(), 15000);
+      // On load it is simply there, as Apple Home's is; the morph is for a tap.
+      if (!still) this._morph(true);
+      this._pushView(true, still);
+      if (still) {
+        this._bar.style.transition = 'none';
+        requestAnimationFrame(() => requestAnimationFrame(() => this._bar && this._bar.style.removeProperty('transition')));
+      }
+      this._bar.classList.add('away');
+      document.addEventListener('pointerdown', this._onAway, true);
+      document.addEventListener('keydown', this._onKey, true);
+      document.addEventListener('touchstart', this._edgeTouch, { capture: true, passive: false });
+      document.addEventListener('pointerdown', this._edgeDown, true);
+    }
+
+    _closeSide() {
+      const side = this._side;
+      if (!side || !this._sideOpen || this._sideLocked()) return Promise.resolve();
+      this._sideOpen = false;
+      if (!this._baseMode && this._cat) this._closeCat();
+      clearInterval(this._statusTick);
+      document.removeEventListener('pointerdown', this._onAway, true);
+      document.removeEventListener('keydown', this._onKey, true);
+      document.removeEventListener('touchstart', this._edgeTouch, true);
+      document.removeEventListener('pointerdown', this._edgeDown, true);
+      this._bar.classList.remove('away');
+      const done = () => {
+        if (this._sideOpen) return;
+        side.classList.remove('open');
+        this._placeIndicator(true);
+      };
+      this._pushView(false);
+      const a = this._morph(false);
+      if (!a) { done(); return Promise.resolve(); }
+      return a.finished.then(done, done);
     }
 
     _isMenuRoute(route) {
@@ -3007,7 +5896,7 @@ window.hemmaMenuGlass = {
       return !!(ta && ta.action === 'open-popup');
     }
 
-    _activate(route, btn) {
+    _activate(route, btn, now) {
       if (this._isMenuRoute(route)) {
         if (this._menu && this._menu._owner === btn) { this._closeMenu(); return; }
         this._closeMenu();
@@ -3017,26 +5906,43 @@ window.hemmaMenuGlass = {
       const ta = route.tap_action;
       const to = route.url || (ta && ta.action === 'navigate' && ta.navigation_path) || null;
       if (!to) return;
-      if (this._variant !== 'tablet') { navigate(to); return; }
+      if (this._cat && !this._baseMode) {
+        if (this._els.findIndex((el) => el.btn === btn) !== this._activeIdx) this._fxNoSlideAt = Date.now();
+        this._closeCat();
+      }
       const idx = this._els.findIndex((el) => el.btn === btn);
+      // From a category page the room comes forward in depth, as closing the page does; only room and Home slide.
+      if (this._baseMode && idx >= 0 && idx === this._activeIdx && this._cat && this._cat !== 'home') { this._closeCat(); return; }
+      if (this._baseMode && idx >= 0 && idx !== this._activeIdx && this._photoFor(idx)) { this._baseGo(idx, to); return; }
+      if (this._variant !== 'tablet') { navigate(to); return; }
+      let folding = false;
       if (idx >= 0 && idx !== this._activeIdx) {
         this._els.forEach((el, i) => el.btn.classList.toggle('active', i === idx));
         this._activeIdx = idx;
+        // Fold before navigating: HA's view rebuild would otherwise stall the width animation mid-way.
+        folding = this._fold();
         this._placeIndicator();
       }
-      requestAnimationFrame(() => requestAnimationFrame(() => navigate(to)));
+      if (folding && !now) setTimeout(() => navigate(to), 250);
+      else requestAnimationFrame(() => requestAnimationFrame(() => navigate(to)));
     }
 
     // The phone capsule's tap: light blooms from the thumb, rises fast and leaves slowly.
-    _flash(ev) {
-      const f = this._flashEl;
-      if (!f || !this._bar || !f.animate) return;
-      const r = this._bar.getBoundingClientRect();
+    _flash(ev, f = this._flashEl, host = this._bar, size = 90) {
+      if (!f || !host || !f.animate) return;
+      const r = host.getBoundingClientRect();
       const x = r.width ? Math.max(0, Math.min(100, ((ev.clientX - r.left) / r.width) * 100)) : 50;
-      f.style.background = 'radial-gradient(90px circle at ' + x.toFixed(1) + '% 50%,'
+      f.style.background = 'radial-gradient(' + size + 'px circle at ' + x.toFixed(1) + '% 50%,'
         + ' rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.12) 55%, rgba(255,255,255,0) 100%)';
       f.animate([{ opacity: 0 }, { opacity: 1, offset: 0.25, easing: 'cubic-bezier(0.4,0,0.6,1)' }, { opacity: 0 }],
         { duration: 560, easing: 'ease-out' });
+    }
+
+    _bloom(btn) {
+      const f = document.createElement('span');
+      f.className = 'flash';
+      btn.appendChild(f);
+      btn.addEventListener('pointerdown', (ev) => this._flash(ev, f, btn, 58));
     }
 
     _syncRoute() {
@@ -3059,6 +5965,22 @@ window.hemmaMenuGlass = {
       });
 
       this._activeIdx = bestIdx;
+      const prev = this._shownIdx;
+      this._shownIdx = bestIdx;
+      if (prev != null && prev >= 0 && bestIdx >= 0 && prev !== bestIdx && (prev === 0) !== (bestIdx === 0)
+        && !this._fxAwait && !(Date.now() - (this._fxNoSlideAt || 0) < 1500)) this._slideDir = bestIdx === 0 ? -1 : 1;
+      if (this._fxAwait && prev !== bestIdx) this._fxPlay();
+      if (this._catDefer && prev !== bestIdx) this._dropDeferredWhenPainted();
+      this._fold();
+      this._slideIn();
+      if (this._baseMode && prev !== bestIdx) this._baseSwap(bestIdx);
+      setTimeout(() => this._fitNP(), 700);
+      if (this._sideOpen) {
+        this._markSide();
+        if (this._pushed) this._watchPush();
+        this._syncBack();
+        setTimeout(() => { if (this._sideOpen) this._syncSideStatus(); }, 400);
+      }
       this._syncHeaderOffset();
       this._placeIndicator();
     }
@@ -3105,7 +6027,27 @@ window.hemmaMenuGlass = {
       return { left: lRect.left - sRect.left + sc.scrollLeft, width: lRect.width };
     }
 
+    // The clock hides its date rather than run into the first tab.
+    _publishEdge() {
+      let left = Infinity, top = Infinity, bottom = -Infinity;
+      this._els.forEach((el) => {
+        const r = el && el.btn && el.btn.isConnected ? el.btn.getBoundingClientRect() : null;
+        if (r && r.width > 0) {
+          left = Math.min(left, r.left);
+          top = Math.min(top, r.top);
+          bottom = Math.max(bottom, r.bottom);
+        }
+      });
+      if (!isFinite(left)) return;
+      window._hemmaNavSpan = [top, bottom];
+      if (window._hemmaNavEdge === left) return;
+      window._hemmaNavEdge = left;
+      window.dispatchEvent(new CustomEvent('hemma-nav-edge'));
+      this._fitClock();
+    }
+
     _placeIndicator(instant) {
+      this._publishEdge();
       const ind  = this._indicator;
       const fill = this._fill;
       if (!ind || !fill || !this._scroller) return;
@@ -3301,7 +6243,7 @@ window.hemmaMenuGlass = {
             font: 'inherit', fontSize: 'var(--hemma-popup-label-size, 15px)',
             // 600 blanks these on re-render; 500 is the heaviest safe weight.
             fontWeight: it.active ? '500' : '400',
-            color: '#fff', opacity: it.active ? '1' : '.86',
+            color: 'var(--hemma-menu-ink, #fff)', opacity: it.active ? '1' : '.86',
             cursor: 'default', outline: 'none', boxSizing: 'border-box',
           });
 
@@ -3542,14 +6484,15 @@ window.hemmaMenuGlass = {
         }
       `;
 
-      if (this._variant === 'tablet') {
-        return shared + `
+      const tabletCss = `
           /* The clock and chrome buttons are custom fields of the room card, whose
              position:fixed is captured by a transformed ancestor, so they ride
              down under HA's header. This bar hangs off the viewport and would
              not - hence the offset. */
+          /* One row center for the pill, the capsule and the back button, each placed by its own half height. */
           :host {
-            top: calc(var(--hemma-chrome-row-top-tablet, 30px)
+            --hemma-nav-row-center: var(--hemma-chrome-row-center-tablet, 66px);
+            top: calc(var(--hemma-nav-row-center) - var(--hemma-nav-pill-height-tablet, 46px) / 2
               + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
             --hemma-nav-reserve-current: var(--hemma-chrome-side-reserve-tablet, 188px);
           }
@@ -3559,21 +6502,22 @@ window.hemmaMenuGlass = {
              cascade on paper and was not worth the doubt. */
           @media (orientation: portrait) {
             :host {
-              top: calc(var(--hemma-chrome-row-top-tablet-portrait, 32px)
+              --hemma-nav-row-center: var(--hemma-chrome-row-center-tablet-portrait, 66px);
+              top: calc(var(--hemma-nav-row-center) - var(--hemma-nav-pill-height-tablet, 46px) / 2
                 + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
               --hemma-nav-reserve-current:
-                var(--hemma-chrome-side-reserve-tablet-portrait, 96px);
+                var(--hemma-chrome-side-reserve-tablet-portrait, 108px);
             }
           }
 
           .bar {
             width: fit-content;
-            max-width: min(
+            max-width: var(--hemma-nav-bar-max, min(
               calc(75vw - 35px),
               calc(100vw - 2 * (var(--hero-gutter, 23px)
                 + var(--hemma-nav-reserve-current, 188px)))
-            );
-            margin: 0 auto;
+            ));
+            margin: var(--hemma-nav-bar-margin, 0 auto);
             height: var(--hemma-nav-pill-height-tablet, 46px);
             padding: 0 var(--hemma-nav-pill-inset-x-tablet, 4px);
             border-radius: 9999px;
@@ -3639,7 +6583,7 @@ window.hemmaMenuGlass = {
           }
 
           .indicator .fill {
-            background: var(--hemma-nav-active-fill, rgba(200,200,200,0.25));
+            background: var(--hemma-nav-active-fill, rgba(0,0,0,0.26));
           }
 
           .route[data-has-popup] .label::after {
@@ -3647,11 +6591,437 @@ window.hemmaMenuGlass = {
             margin-right: -6px;
           }
 
-          .badge { top: 8px; right: 12px; }
-        `;
-      }
+          /* Clear of the label's cap height in the 41px pill. */
+          .badge { top: 4px; right: 12px; }
 
-      return shared + `
+          .route.folded { display: none; }
+          .route.toggle .label { display: flex; align-items: center; padding: 0 12px; opacity: 0.9; }
+          .route.toggle svg { width: 16.7px; height: 13.2px; display: block; }
+          /*SIDE-START*/
+          .side-close svg { width: 25px; height: 19.5px; display: block; }
+
+          .bar { transition: opacity .24s ease, transform .34s cubic-bezier(0.32, 0.72, 0, 1); }
+          .bar.away { opacity: 0; transform: translateX(-14px) scale(0.96); pointer-events: none; }
+          .bar.morphing { position: relative; z-index: 62; }
+          .bar.morphing .glass, .bar.morphing .rim, .bar.morphing .rim-in { opacity: 0; }
+
+          .side {
+            position: fixed;
+            z-index: 60;
+            display: none;
+            flex-direction: column;
+            box-sizing: border-box;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: var(--side-w, min(264px, 38vw));
+            padding-top: calc(var(--hemma-chrome-row-top-tablet, 46px) - 8px
+              + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
+            transform-origin: top left;
+            color: #fff;
+            font-family: var(--primary-font-family, system-ui);
+          }
+          @media (orientation: portrait) {
+            .side { padding-top: calc(var(--hemma-chrome-row-top-tablet-portrait, 46px) - 8px
+              + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
+          }
+          .status {
+            position: fixed; z-index: 63; pointer-events: none; white-space: nowrap;
+            left: 16px;
+            top: calc(env(safe-area-inset-top, 0px) + 7px
+              + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
+            line-height: 18px; font-size: 13.5px; font-weight: 600;
+            color: #fff; opacity: var(--hemma-nav-label-inactive-opacity, 0.84);
+            font-family: var(--primary-font-family, system-ui);
+          }
+          .status .extra { text-transform: none; }
+          .status .extra { margin-left: .9em; }
+          .side.open { display: flex; pointer-events: auto; }
+          .side, .side * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+          .side-grip {
+            position: absolute; top: 0; bottom: 0; right: -14px; width: 28px; z-index: 2;
+            cursor: col-resize; touch-action: none;
+          }
+          @media (orientation: portrait) {
+            .side { --side-w: min(264px, 38vw); }
+            .side-grip { display: none; }
+          }
+          .side-glass {
+            position: absolute; left: 0; top: 0; bottom: 0; width: 100vw; z-index: -1;
+            pointer-events: none;
+            clip-path: inset(0px calc(100% - var(--side-w, min(264px, 38vw))) 0px 0px);
+            background: var(--hemma-sidebar-fill, rgba(28,28,32,0.74));
+            -webkit-backdrop-filter: var(--hemma-sidebar-backdrop, blur(40px) saturate(1.15));
+            backdrop-filter: var(--hemma-sidebar-backdrop, blur(40px) saturate(1.15));
+          }
+          .side-head { display: flex; justify-content: flex-end; padding: calc(var(--hemma-nav-row-center, 66px) - var(--hemma-chrome-row-top-tablet, 46px) - 14px) 10px 10px; }
+          .side-close, .side-back {
+            position: relative; width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0;
+            display: grid; place-items: center; color: #fff; cursor: pointer;
+            background-color: rgba(255,255,255,0.07);
+            background-image: radial-gradient(140% 90% at 50% -20%, rgba(255,255,255,0.14), rgba(255,255,255,0.04) 45%, transparent 62%);
+            -webkit-backdrop-filter: var(--hemma-perf-none, blur(10px) saturate(1.2));
+            backdrop-filter: var(--hemma-perf-none, blur(10px) saturate(1.2));
+          }
+          .side-close::before, .side-back::before {
+            content: ""; position: absolute; inset: 0; border-radius: 50%; padding: 1px; pointer-events: none;
+            /* Lit from the top-left as Apple's round glass is: a top and bottom glint reads as a tall oval. */
+            background: conic-gradient(from 0deg, rgba(255,255,255,0.10) 0deg, rgba(255,255,255,0.05) 60deg,
+              rgba(255,255,255,0.10) 100deg, rgba(255,255,255,0.26) 135deg, rgba(255,255,255,0.10) 170deg,
+              rgba(255,255,255,0.05) 240deg, rgba(255,255,255,0.10) 280deg, rgba(255,255,255,0.46) 315deg,
+              rgba(255,255,255,0.10) 350deg 360deg);
+            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask-composite: exclude;
+          }
+          .side-close::after, .side-back::after {
+            content: ""; position: absolute; inset: -0.5px; border-radius: 50%; padding: 0.5px; pointer-events: none;
+            background: rgba(0,0,0,0.30);
+            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask-composite: exclude;
+          }
+          .side-close > .flash, .side-back > .flash { position: absolute; inset: 0; border-radius: 50%; opacity: 0; pointer-events: none; }
+          .side-close:active { transform: scale(0.94); }
+          .side-close { transition: transform .15s ease; }
+          .gl {
+            display: block; width: 23px; height: 18px; background: currentColor;
+            -webkit-mask: var(--g) center / contain no-repeat; mask: var(--g) center / contain no-repeat;
+          }
+          .route.toggle .gl { width: 21px; height: 16.5px; }
+          .side-list {
+            flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+            padding: 4px 10px calc(14px + env(safe-area-inset-bottom, 0px));
+            -webkit-overflow-scrolling: touch; scrollbar-width: none;
+          }
+          .side-list::-webkit-scrollbar { display: none; }
+          .side-foot {
+            flex: none; padding: 6px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+            border-top: 0.5px solid rgba(255, 255, 255, 0.10);
+          }
+          .side-foot[hidden] { display: none; }
+          .side-list.scrolled {
+            -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18px);
+            mask-image: linear-gradient(to bottom, transparent, #000 18px);
+          }
+          .side-heading, .side-close, .side-back { -webkit-tap-highlight-color: transparent; }
+          .side-heading {
+            display: flex; align-items: center; justify-content: space-between; width: 100%;
+            border: 0; background: none; cursor: pointer; text-align: left; font: inherit;
+            font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+            color: rgba(255,255,255,0.55); padding: 18px 12px 6px;
+          }
+          .side-heading svg { width: 17px; height: 17px; flex: none; transition: transform .26s cubic-bezier(.32,.72,0,1); }
+          .side-heading[aria-expanded="false"] svg { transform: rotate(-90deg); }
+          .side-group.shut { display: none; }
+          .side-item {
+            position: relative; display: flex; align-items: center; gap: 14px; width: 100%;
+            height: 44px; padding: 0 12px; box-sizing: border-box; border: 0; border-radius: 22px;
+            background: transparent; color: #fff; cursor: pointer; text-align: left;
+            font: inherit; font-size: 17px; font-weight: 500; letter-spacing: -0.01em;
+            -webkit-tap-highlight-color: transparent;
+          }
+          .side-item > * { transition: opacity .12s ease; }
+          .side-item:active > :not(.side-motion), .side-item:active > .side-motion.on { opacity: 0.35; transition: none; }
+          .side-item ha-icon { --mdc-icon-size: 22px; width: 22px; flex: none; color: var(--hemma-color-teal, #00C3D0); }
+          .side-glyph {
+            width: 24px; height: 24px; flex: none; background: var(--hemma-color-teal, #00C3D0);
+            -webkit-mask: var(--g) center / contain no-repeat; mask: var(--g) center / contain no-repeat;
+          }
+          .side-item + .side-item { margin-top: 4px; }
+          /* Home Assistant's own sidebar rows on a desktop: smaller than the tablet's touch rows, like the compact page. */
+          :host(.compact) .side-item { height: 40px; gap: 12px; border-radius: 20px; font-size: 14px; }
+          :host(.compact) .side-glyph { width: 22px; height: 22px; }
+          :host(.compact) .side-item ha-icon { --mdc-icon-size: 22px; width: 22px; }
+          :host(.compact) .side-heading { font-size: 13px; padding: 16px 12px 6px; }
+          :host(.compact) .side-heading svg { width: 14px; height: 14px; }
+          :host(.compact) .side-motion { width: 22px; height: 22px; }
+          :host(.compact) .side-motion img { height: 12px; }
+          .side-item.on { background: rgba(255,255,255,0.12); }
+          .side-item > span:not(.side-motion) { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .side-motion {
+            width: 26px; height: 26px; border-radius: 9999px; flex: none; box-sizing: border-box;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.35);
+            opacity: 0; transform: scale(0.5);
+            transition: opacity .4s cubic-bezier(.34,1.56,.64,1), transform .4s cubic-bezier(.34,1.56,.64,1);
+          }
+          .side-motion.on { opacity: 1; transform: scale(1); }
+          .side-back {
+            position: fixed; z-index: 61;
+            top: calc(var(--hemma-nav-row-center, 66px) - 22px
+              + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
+            opacity: 0; transform: scale(0.8); pointer-events: none;
+            transition: opacity .28s ease, transform .4s cubic-bezier(.34,1.56,.64,1);
+          }
+          .side-back.on { opacity: 1; transform: none; pointer-events: auto; }
+          .side-back svg { width: 12px; height: 20px; display: block; margin-right: 3px; }
+          .side-motion img { height: 14px; width: auto; display: block; }
+          .bar { position: relative; z-index: 50; }
+          .cat-bg, .cat, .cat-mini {
+            position: fixed; top: 0; bottom: 0; right: 0; left: var(--cat-left, 0px);
+            transition: opacity .28s cubic-bezier(0.25, 0.46, 0.45, 0.94), left .48s cubic-bezier(0.32, 0.72, 0, 1);
+          }
+          .cat-bg.show, .cat.show { transition: opacity .25s ease, left .48s cubic-bezier(0.32, 0.72, 0, 1); }
+          .cat-bg.still, .cat.still, .cat-mini.still { transition: left .48s cubic-bezier(0.32, 0.72, 0, 1); }
+          .cat-bg.pushed, .cat.pushed, .cat-mini.pushed { left: var(--side-w, min(264px, 38vw)); }
+          .cat-bg {
+            z-index: 39; opacity: 0; pointer-events: none;
+            background: var(--hemma-perf-scrim, rgba(0, 0, 0, 0.22));
+            -webkit-backdrop-filter: var(--hemma-perf-none, blur(40px)); backdrop-filter: var(--hemma-perf-none, blur(40px));
+          }
+          .cat-bg.show { opacity: 1; }
+          .cat-xfade { position: fixed; z-index: 38; overflow: hidden; pointer-events: none; }
+          .cat-xfade > div { position: absolute; inset: 0; }
+          .cat {
+            z-index: 40; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain; scrollbar-width: none; color: #fff;
+            font-family: var(--primary-font-family, system-ui);
+            opacity: 0; pointer-events: none;
+          }
+          .cat::-webkit-scrollbar { display: none; }
+          .cat.show { opacity: 1; transform: none; pointer-events: auto; }
+          .cat-in {
+            padding: calc(var(--hemma-chrome-row-top-tablet, 46px) + 51px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))) 22px
+              calc(40px + env(safe-area-inset-bottom, 0px)) var(--cat-gutter, 20px);
+          }
+          .cat-in { --hemma-anim-name: none; --hemma-anim-delay: -1s; --hemma-anim-duration: 0.001s; position: relative; }
+          /* Under the top-right buttons on the tiles' edge, as Apple Home sets its forecast. */
+          .cat-wx { display: none; position: absolute; right: 22px; transform: translateY(-50%);
+            top: calc(var(--hemma-chrome-row-top-tablet, 46px) + 51px + 20.5px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
+          .cat.home .cat-wx { display: block; }
+          .cat-bg.show.clear { opacity: 0; }
+          .cat-chrome {
+            position: fixed; z-index: 4; right: 22px; display: flex; align-items: center; gap: 12px;
+            top: calc(var(--hemma-nav-row-center, 66px) + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
+            transform: translateY(-50%); --hemma-chrome-btn-size: 34px;
+          }
+          .cat-chrome > :not(.sep) { flex: none; width: var(--hemma-chrome-btn-size); height: var(--hemma-chrome-btn-size); }
+          .cat-chrome.cap {
+            --hemma-chrome-btn-size: var(--hemma-chrome-btn-size-tablet, 34px);
+            padding: 6px; border-radius: 9999px; --hemma-chrome-capsule: 1;
+            --hemma-chrome-fill: transparent; --hemma-chrome-fill-hover: rgba(255,255,255,0.10);
+            --hemma-bell-fill: transparent; --hemma-settings-fill: transparent; --hemma-assist-fill: transparent;
+          }
+          /* The navbar's two layers, side by side: a blur inside a blurring parent samples the parent, not the photo. */
+          .cat-chrome.cap::before, .cat-chrome.cap::after {
+            content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+          }
+          .cat-chrome.cap::before {
+            background: var(--hemma-pill-fill, rgba(255,255,255,0.10));
+            -webkit-backdrop-filter: var(--hemma-pill-backdrop, blur(12px) saturate(1.4));
+            backdrop-filter: var(--hemma-pill-backdrop, blur(12px) saturate(1.4));
+            box-shadow: var(--hemma-pill-rim, inset 0 0.5px 0 rgba(255,255,255,0.10), inset 0 -0.5px 0 rgba(255,255,255,0.10)),
+              inset 1px 0 0 var(--hemma-pill-edge, rgba(0,0,0,0.50)), inset -1px 0 0 var(--hemma-pill-edge, rgba(0,0,0,0.50));
+          }
+          .cat-chrome.cap::after {
+            -webkit-backdrop-filter: var(--hemma-pill-highlight, brightness(1.45));
+            backdrop-filter: var(--hemma-pill-highlight, brightness(1.45));
+            padding: 1px; box-sizing: border-box;
+            -webkit-mask: linear-gradient(to bottom, #000 0, rgba(0,0,0,.45) 13%, transparent 31%, transparent 69%, rgba(0,0,0,.45) 87%, #000 100%), linear-gradient(#000 0 0), linear-gradient(#000 0 0) content-box;
+            -webkit-mask-composite: source-in, source-out;
+            mask: linear-gradient(to bottom, #000 0, rgba(0,0,0,.45) 13%, transparent 31%, transparent 69%, rgba(0,0,0,.45) 87%, #000 100%), linear-gradient(#000 0 0), linear-gradient(#000 0 0) content-box;
+            mask-composite: intersect, subtract;
+          }
+          .cat-chrome .sep { flex: none; width: 1px; height: 18px; margin: 0 -6.5px; background: var(--hemma-pill-divider, rgba(60,60,67,0.36)); }
+          .cat-batt {
+            position: fixed; z-index: 4; right: 15px; top: calc(env(safe-area-inset-top, 0px) + 7px); height: 18px;
+            display: flex; align-items: center; pointer-events: none; opacity: var(--hemma-nav-label-inactive-opacity, 0.84);
+          }
+          .cat-in h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: 0.01em; line-height: 41px; }
+          .cat-pills {
+            position: sticky; top: calc(var(--hemma-chrome-row-top-tablet, 46px) + 58px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
+            z-index: 3; display: flex; gap: 8px; margin: 18px 0 4px; overflow-x: auto; scrollbar-width: none;
+          }
+          .cat-pills::-webkit-scrollbar { display: none; }
+          .cat-pills.cards { display: block; overflow: visible; margin: 14px -20px 0 calc(-1 * var(--cat-gutter, 20px)); --hemma-rail-left: var(--cat-gutter, 20px); }
+          .cat-chipcard { display: block; margin: 4px -20px 6px calc(-1 * var(--cat-gutter, 20px)); --hemma-rail-left: var(--cat-gutter, 20px); }
+          /* Bare chips read further apart than filled ones: layout-card's 4px either side of each goes. */
+          .cat-chipcard { --masonry-view-card-margin: 4px 0 8px; }
+          /* A button-card's #container is z-index 2, which would tie the veil's and paint over it. */
+          .cat-chipcard { position: relative; z-index: 0; }
+          /* Pinned to the page's width: sized to its chips, the row would never be narrower than them and so never scroll. */
+          .cat.room .cat-chipcard {
+            width: calc(100% + 20px + var(--cat-gutter, 20px)) !important; max-width: calc(100% + 20px + var(--cat-gutter, 20px)) !important;
+            min-width: 0 !important; box-sizing: border-box;
+          }
+          .cat-pill {
+            flex: none; display: flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px 0 11px;
+            border: 0; border-radius: 20px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
+            color: #fff; background: rgba(0, 0, 0, 0.40);
+            -webkit-backdrop-filter: var(--hemma-perf-none, blur(20px) saturate(1.2)); backdrop-filter: var(--hemma-perf-none, blur(20px) saturate(1.2));
+            transition: background-color .2s ease, color .2s ease;
+          }
+          .cat-pill.on { background: rgba(255, 255, 255, 0.94); color: #1c1c1e; }
+          .cat-glyph { width: 20px; height: 20px; flex: none; -webkit-mask: var(--g) center / contain no-repeat; mask: var(--g) center / contain no-repeat; }
+          .cat-body h2 { margin: 36px 0 12px; font-size: 20px; font-weight: 600; letter-spacing: 0.01em; line-height: 24px; }
+          .cat-pane > .cat-sec:first-child h2 { margin-top: 22px; }
+          .cat-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            grid-auto-rows: 72px; grid-auto-flow: row dense; gap: 10px;
+            --hemma-entity-inner-pad-current: 10px;
+            --hemma-entity-name-font-current: 14px;
+            --hemma-entity-state-font-current: 14px;
+          }
+          .cat-grid > [data-hemma-size="large"] { grid-row: span 2; }
+          /* button-card hides a card with the host's hidden attribute, which its own :host display outranks. */
+          .cat-grid > [hidden] { display: none; }
+          .cat-pane[hidden] { display: none !important; }
+          /* Hidden but still laid out, so showing Home again does not rebuild every tile's layout. */
+          @supports (content-visibility: hidden) {
+            .cat-pane[hidden] { display: block !important; content-visibility: hidden; }
+          }
+          .cat.compact .cat-grid {
+            grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+            grid-auto-rows: 62px; --hemma-entity-inner-pad-current: 8px; --hemma-entity-icon-size-current: 28px;
+            --hemma-entity-name-font-current: 13px; --hemma-entity-state-font-current: 13px;
+          }
+          .cat.compact .cat-grid > [data-hemma-size="large"] { --hemma-entity-inner-pad-current: 10px; }
+          .cat.compact .cat-body h2 { font-size: 17px; line-height: 21px; }
+          /* A Mac's title sits in the toolbar row, as Apple Home's: level with the clock and the buttons, the forecast beside them. */
+          .cat.compact .cat-in { padding-top: calc(var(--hemma-nav-row-center, 66px) - 20.5px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
+          .cat.compact:not(.home) .cat-in > h1 { margin-left: 58px; }
+          .cat.compact .cat-wx { top: calc(var(--hemma-nav-row-center, 66px) + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
+            right: calc(var(--cat-gutter, 20px) + var(--cat-chrome-w, 80px) + 26px); }
+          :host(.compact) .cat-chrome { right: var(--cat-gutter, 20px); }
+          /* A dashboard is tapped, not read: a double tap on a title must not select it. */
+          .bar, .side, .cat, .cat-mini, .cat-chrome { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+          .cat.compact .cat-np > * { --np-tile-width: min(var(--cat-two-tiles, 366px), 100%); --np-inner-radius: 20px; }
+          /* Apple Home on a Mac: 19px corners on 54px tiles, so 20 on these 62px ones. */
+          .cat.compact { --hemma-tile-radius-phone: 20px; --hemma-scene-tile-radius: 20px; }
+          .cat.room .cat-pills { display: none; }
+          .cat-body { position: relative; }
+          .cat.scenes .cat-pills, .cat.scenes .cat-chipcard { display: none; }
+          .cat-warm { position: fixed; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
+          /* The tile's #container is z-index 2, which would tie the veil's and paint over it: keep it in here. */
+          .cat-np { position: relative; z-index: 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; --np-elevation: 0 0 #0000; }
+          /* The tile's :host sizes it with !important, so it is fed variables instead. */
+          .cat-np > * { flex: none; --np-tile-width: min(360px, 100%); --np-max-w: 100%; --np-inner-radius: 26px; margin: 0 !important; }
+          .cat-scenes-row { margin: 0 -22px 0 calc(-1 * var(--cat-gutter, 20px)); }
+          .cat-scenes-row > .cat-scenes { --hemma-rail-left: var(--cat-gutter, 20px); }
+          .cat-scenes { display: block; margin-top: 14px; --hemma-rail-left: 0px; --hemma-measured-safe-left: 0px;
+            --hemma-scene-grid-cols: repeat(auto-fill, minmax(190px, 1fr)); --hemma-scene-grid-col-gap: 10px; --hemma-scene-grid-row-gap: 10px; }
+          .cat-empty { margin-top: 40px; font-size: 17px; opacity: 0.6; }
+          .cat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 560px)); gap: 10px; align-items: start; }
+          .cat-en {
+            border-radius: 26px; padding: 16px 18px 14px; background: rgba(12, 14, 19, 0.62);
+            -webkit-backdrop-filter: var(--hemma-perf-none, blur(24px) saturate(1.8)); backdrop-filter: var(--hemma-perf-none, blur(24px) saturate(1.8));
+            box-shadow: 0 18px 40px -22px rgba(0, 0, 0, 0.50);
+          }
+          .cat-en { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+          .cat-en h3 { margin: 0 0 2px; font-size: 16px; font-weight: 600; }
+          .cat-en .sub { font-size: 12.5px; opacity: 0.6; margin-bottom: 8px; }
+          .cat-en svg { display: block; }
+          .cat-en .lgs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
+          .cat-en .lg { font-size: 12px; opacity: 0.85; display: flex; align-items: center; gap: 6px; }
+          .cat-en .lg i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+          .cat-en .hb { display: grid; grid-template-columns: minmax(0, 120px) 1fr 74px; align-items: center; gap: 10px; height: 40px; }
+          .cat-en .hn { font-size: 13.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .cat-en .hbar { height: 12px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+          .cat-en .hbar i { display: block; height: 100%; border-radius: 6px; }
+          .cat-en .hv { font-size: 13px; opacity: 0.7; text-align: right; }
+          .cat-veilwrap { position: sticky; top: 0; height: 0; z-index: 2; pointer-events: none; }
+          .cat-veil {
+            position: absolute; top: 0; left: 0; right: 0; pointer-events: none; opacity: 0;
+            height: calc(var(--hemma-chrome-row-top-tablet, 46px) + 58px + 40px + 12px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
+            -webkit-backdrop-filter: var(--hemma-perf-none, blur(30px) saturate(1.3) brightness(0.72));
+            backdrop-filter: var(--hemma-perf-none, blur(30px) saturate(1.3) brightness(0.72));
+            transition: opacity 220ms ease-in-out;
+          }
+          .cat-veil.on { opacity: 1; }
+          .cat-mini {
+            z-index: 42; bottom: auto; pointer-events: none; opacity: 0; text-align: center;
+            top: calc(var(--hemma-chrome-row-top-tablet, 46px) - 3px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
+            font-family: var(--primary-font-family, system-ui); font-size: 17px; font-weight: 600; color: #fff;
+            transition: opacity 200ms ease, left .48s cubic-bezier(0.32, 0.72, 0, 1);
+          }
+          .cat-mini.show.on.pushed { opacity: 1; }
+          /* On a desktop the small title takes the big one's place in the toolbar row: same left edge, same center line. */
+          :host(.compact) .cat-mini { text-align: left; padding-left: var(--cat-gutter, 20px); line-height: 22px;
+            top: calc(var(--hemma-nav-row-center, 66px) - 11px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
+          :host(.compact) .cat-mini:not(.home) { padding-left: calc(var(--cat-gutter, 20px) + 58px); }
+          /*SIDE-END*/
+          /* As Apple Home on an iPad: badges scroll; the veil is a thin fading band under the navbar, button-row deep with the sidebar. */
+          .cat-pills { position: relative; top: auto; z-index: 0; }
+          /* Apple's top edge: what scrolls up fades into the wallpaper as it reaches the clock, under only a light blur. */
+          .cat-veil {
+            height: calc(env(safe-area-inset-top, 0px) + 34px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
+            background: none;
+            -webkit-backdrop-filter: var(--hemma-perf-none, blur(6px)); backdrop-filter: var(--hemma-perf-none, blur(6px));
+            -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent); mask-image: linear-gradient(to bottom, #000 40%, transparent);
+          }
+          /* Fades a registered --cat-edge, never opacity on the card: an animated ancestor opacity kills the tile's own glass blur. */
+          @supports (animation-timeline: view()) {
+            @keyframes cat-edge { to { --cat-edge: 0; } }
+            .cat:not(.pushed) :is(.cat-in > h1, .cat-pills, .cat-chipcard, .cat-body h2, .cat-grid > *, .cat-scenes-row, .cat-np > *) {
+              animation: cat-edge linear both; animation-timeline: view(block 0px 0px);
+              animation-range: exit calc(50% - 45px) exit calc(50% + 5px);
+            }
+            .cat:not(.pushed) :is(.cat-in > h1, .cat-body h2) { opacity: var(--cat-edge, 1); }
+          }
+          :host(.under) :is(.status, .cat-batt) { opacity: 1; text-shadow: 0 0 6px rgba(0,0,0,0.30), 0 0.5px 1.5px rgba(0,0,0,0.22); }
+          :host(.under) .cat-batt { filter: drop-shadow(0 0 3px rgba(0,0,0,0.30)); }
+          /* Apple's tablet glass, matched pixel for pixel over Apple's own sky (harnesses/glasslab): a blur mixed 26% toward a
+             NEUTRAL gray (a tinted gray turned every room photo blue); one crisp light pixel top and bottom with a softer one inside it and a faint glow. Half-point shadows,
+             not masked rings: those round to two device pixels wherever the pill lands on a fraction. */
+          :host {
+            --hemma-pill-backdrop: var(--hemma-perf-none, blur(12px) saturate(1.45));
+            --hemma-pill-fill: var(--hemma-perf-pill, rgba(108,108,108,0.26));
+            --hemma-pill-edge: transparent;
+            /* Apple's glass is flat a couple of pixels inside the edge: only a short falloff, no deep glow band. */
+            --hemma-pill-rim: inset 0 2px 2px -1px rgba(255,255,255,0.05), inset 0 -2px 2px -1px rgba(255,255,255,0.05);
+            --hemma-nav-active-fill: rgba(0,0,0,0.26);
+            --hemma-nav-label-inactive-opacity: 1;
+          }
+          .bar { font-family: var(--primary-font-family, -apple-system, system-ui); }
+          .label { font-weight: 500; font-size: 17px; }
+          .route.toggle .label { opacity: 1; }
+          /* Apple's edge, placed and toned against Apple's own pixels (glasslab option H): a light line on the glass's outermost
+             row along the top and bottom, and a dark line on the pixel just OUTSIDE the glass, strongest mid-end; both full
+             half-point rings faded by vertical masks, so they follow the curve without a seam. */
+          .glass::after, .cat-chrome.cap::after {
+            content: ""; position: absolute; border-radius: 9999px; pointer-events: none; z-index: 0;
+            padding: 0; border: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+          }
+          /* The light line is the glass itself brightened (Apple's is 1.2x what is behind it, so it takes that color): a
+             half-point ring of backdrop brightness beside the glass, faded out a quarter of the way round the curve. */
+          .bar > .rim, .cat-chrome > .cap-rim, .bar > .rim-in, .cat-chrome > .cap-rim-in {
+            display: block; position: absolute; inset: 0.5px; z-index: 0; border-radius: 9999px; pointer-events: none;
+            width: auto; height: auto; padding: 1px; box-sizing: border-box; background: none; box-shadow: none;
+            -webkit-backdrop-filter: var(--hemma-perf-none, brightness(1.24)); backdrop-filter: var(--hemma-perf-none, brightness(1.24));
+            -webkit-mask: linear-gradient(to bottom, #000 0%, rgba(0,0,0,.3) 10%, transparent 22%, transparent 78%, rgba(0,0,0,.3) 90%, #000 100%), linear-gradient(#000 0 0), linear-gradient(#000 0 0) content-box;
+            -webkit-mask-composite: source-in, source-out;
+            mask: linear-gradient(to bottom, #000 0%, rgba(0,0,0,.3) 10%, transparent 22%, transparent 78%, rgba(0,0,0,.3) 90%, #000 100%), linear-gradient(#000 0 0), linear-gradient(#000 0 0) content-box;
+            mask-composite: intersect, subtract;
+          }
+          /* iOS WebKit draws a half-point ring as one crisp pixel; Chrome rounds its bottom edge away, so it keeps a full point. */
+          .bar > .rim-in, .cat-chrome > .cap-rim-in { display: none; }
+          /* On iOS, two rows: the outer pixel at 1.315x, the one inside it at 1.16x. */
+          @supports (-webkit-touch-callout: none) {
+            .bar > .rim, .cat-chrome > .cap-rim { padding: 0.5px; -webkit-backdrop-filter: var(--hemma-perf-none, brightness(1.315)); backdrop-filter: var(--hemma-perf-none, brightness(1.315)); }
+            .bar > .rim-in, .cat-chrome > .cap-rim-in { display: block; inset: 1px; padding: 0.5px;
+              -webkit-backdrop-filter: var(--hemma-perf-none, brightness(1.16)); backdrop-filter: var(--hemma-perf-none, brightness(1.16)); }
+          }
+          .glass::after, .cat-chrome.cap::after {
+            inset: -0.5px; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.58);
+            -webkit-mask: linear-gradient(to bottom, transparent 8%, rgba(0,0,0,.6) 20%, #000 32%, #000 68%, rgba(0,0,0,.6) 80%, transparent 92%); mask: linear-gradient(to bottom, transparent 8%, rgba(0,0,0,.6) 20%, #000 32%, #000 68%, rgba(0,0,0,.6) 80%, transparent 92%);
+          }
+          /* The bar clips to its shape, so the glass gives up half a point and the dark line lands on the bar's own edge. */
+          .bar > .glass { inset: 0.5px; }
+          .cat-chrome.cap::before { inset: 0.5px; }
+          .cat-chrome.cap::after { inset: 0; }
+
+          .cat.pushed .cat-veil {
+            height: calc(var(--hemma-chrome-row-center-tablet, 54.5px) + 30.5px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
+            background: none; -webkit-backdrop-filter: var(--hemma-perf-none, blur(30px) saturate(1.3) brightness(0.72)); backdrop-filter: var(--hemma-perf-none, blur(30px) saturate(1.3) brightness(0.72));
+            -webkit-mask-image: none; mask-image: none;
+          }
+          .cat-mini { line-height: 22px;
+            top: calc(var(--hemma-chrome-row-center-tablet, 54.5px) - 11px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
+        `;
+      const desktopCss = `
         :host {
           top: calc(var(--hemma-chrome-row-center-desktop, 56px)
             - var(--hemma-nav-label-pad-top, 8px)
@@ -3695,9 +7065,7 @@ window.hemmaMenuGlass = {
           font-size: var(--hemma-chrome-font-size, 18px);
           font-weight: var(--hemma-chrome-font-weight, 500);
           letter-spacing: var(--hemma-chrome-letter-spacing, 0.2px);
-          /* Only a 2px underline marks the active room, so unselected labels
-             carry more of the contrast than they do on the tablet pill. */
-          opacity: var(--hemma-nav-label-inactive-opacity, 0.74);
+          opacity: 1;
         }
 
         .indicator {
@@ -3708,6 +7076,29 @@ window.hemmaMenuGlass = {
         .indicator .fill { background: rgba(255,255,255,0.85); }
 
         .badge { top: 6px; right: 10px; }
+      `;
+      if (this._variant === 'tablet') return shared + tabletCss;
+      const sideCss = tabletCss.slice(tabletCss.indexOf('/*SIDE-START*/'), tabletCss.indexOf('/*SIDE-END*/'));
+      return shared + desktopCss + sideCss + `
+        :host { --hemma-chrome-row-top-tablet: calc(var(--hemma-chrome-row-center-desktop, 56px) - 20px);
+          --hemma-nav-row-center: var(--hemma-chrome-row-center-desktop, 56px); }
+        /* As the tablet: the badges scroll with the page, so the veil only covers the toolbar row. */
+        .cat-pills { position: relative; top: auto; z-index: 0; }
+        .cat-veil { height: calc(var(--hemma-nav-row-center, 66px) + 30.5px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
+        /* The room card's clock, rule for rule (hemma_time), so one element can stand in for it everywhere. */
+        .status {
+          left: 22px; top: 0; z-index: 63; line-height: 1; padding-block: .16em; margin-block: -.16em;
+          font-size: var(--hemma-chrome-font-size, 18px); font-weight: var(--hemma-chrome-font-weight, 700);
+          letter-spacing: var(--hemma-time-letter-spacing, 1px); color: var(--primary-text-color, #fff); opacity: 0;
+        }
+        .status.on { opacity: var(--hemma-time-opacity, 1); }
+        .status .extra { margin-left: 0; text-transform: none; font-weight: 500; letter-spacing: var(--hemma-time-sub-spacing, .2px); }
+        .status .extra::before { content: "\\00b7"; margin: 0 .4em; }
+        .status.tight .extra { display: none; }
+        :host(.side-locked) .side-close { visibility: hidden; pointer-events: none; }
+        .route.toggle { padding: 0 14px 0 0; }
+        .route.toggle .label { display: flex; align-items: center; }
+        .route.toggle svg { width: 18px; height: 14.25px; display: block; }
       `;
     }
   }
@@ -3737,7 +7128,7 @@ window.hemmaMenuGlass = {
         throw new Error('hemma-nav: routes array required');
       }
       this._config = config;
-      this._adopt();
+      if (this._adoptReady) this._adopt();
     }
 
     set hass(hass) {
@@ -3752,10 +7143,19 @@ window.hemmaMenuGlass = {
     connectedCallback() {
       this.style.display = 'none';
       (HemmaNav._live || (HemmaNav._live = new Set())).add(this);
-      this._adopt();
+      // HA 2026.10 attaches a conditional's card before checking its condition; the nav bar swapped and the sidebar reopened.
+      cancelAnimationFrame(this._adoptRaf);
+      this._adoptReady = false;
+      this._adoptRaf = requestAnimationFrame(() => { this._adoptRaf = requestAnimationFrame(() => {
+        if (!this.isConnected) return;
+        this._adoptReady = true;
+        this._adopt();
+      }); });
     }
 
     disconnectedCallback() {
+      cancelAnimationFrame(this._adoptRaf);
+      this._adoptReady = false;
       if (HemmaNav._live) HemmaNav._live.delete(this);
       requestAnimationFrame(() => {
         if (HemmaNav._live && HemmaNav._live.size) return;
@@ -4195,6 +7595,32 @@ window.hemmaMenuGlass = {
 
     hemma-popup-hass { display: none; }
 
+    /* A frameless popup's surface is invisible, so its edges must never show: full screen, content in the old column. */
+    @media (min-width: 769px) {
+      :host([frameless]) .surface {
+        width: 100vw; max-width: none; margin-top: 0; max-height: 100svh; border-radius: 0;
+      }
+      :host([frameless]) .header {
+        position: absolute; top: 0; left: 0; right: 0; z-index: 2;
+        padding-top: var(--hemma-popup-top, 112px); padding-bottom: 14px;
+      }
+      :host([frameless]) .header-bar {
+        max-width: var(--popup-max-width, 600px); margin: 0 auto; box-sizing: border-box;
+      }
+      :host([frameless]) .header::before {
+        content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+        opacity: 0; transition: opacity 220ms ease-in-out;
+        backdrop-filter: blur(30px) saturate(1.3) brightness(0.72);
+        -webkit-backdrop-filter: blur(30px) saturate(1.3) brightness(0.72);
+      }
+      :host([frameless]) .surface.scrolled .header::before { opacity: 1; }
+      :host([frameless]) .content { padding-top: var(--hemma-popup-head-h, 132px); }
+      :host([frameless]) .content .container {
+        box-sizing: border-box; max-width: var(--popup-max-width, 600px); margin: 0 auto;
+        padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+    }
+
     @media (max-width: 768px) {
       .layer { align-items: flex-end; }
 
@@ -4421,6 +7847,14 @@ window.hemmaMenuGlass = {
       this._keep = root.querySelector('.keep');
       this._parked = new Map();
       this._bridge = root.querySelector('hemma-popup-hass');
+      this.content.addEventListener('scroll', () => {
+        this.surface.classList.toggle('scrolled', this.content.scrollTop > 2);
+      }, { passive: true });
+      if (window.ResizeObserver) {
+        new ResizeObserver(() => {
+          this.surface.style.setProperty('--hemma-popup-head-h', this._header.offsetHeight + 'px');
+        }).observe(this._header);
+      }
 
       this._dismissable = true;
 
@@ -4486,6 +7920,7 @@ window.hemmaMenuGlass = {
       var isCard = !!cfg.content && typeof cfg.content === 'object';
       this.toggleAttribute('card', isCard);
       this.toggleAttribute('flat', cfg.flat === true);
+      this.toggleAttribute('frameless', cfg.frameless === true);
       var hasHeader = !!(cfg.title || cfg.eyebrow);
       this._headerTitle.textContent = cfg.title || '';
       this._headerEyebrow.textContent = cfg.eyebrow || '';
@@ -4903,7 +8338,7 @@ window.hemmaMenuGlass = {
     // badge inherits its popup from hemma_popup_base, and button-card merges a
     // card's tap_action over the template's rather than replacing it, so one
     // event can carry both intentions.
-    if (ev.detail.hemma_filter !== undefined) return;
+    if (ev.detail.hemma_filter !== undefined || ev.detail.hemma_category !== undefined) return;
     ev.stopPropagation();
     window.hemmaPopup.open(cfg);
   }, true);
@@ -5406,7 +8841,12 @@ window.hemmaMenuGlass = {
         + 'font-weight:var(--hemma-popup-row-label-weight, 400);'
         + 'letter-spacing:-0.022em;color:'
         + (tone(r.labelTone) || T.ink) + ';overflow:hidden;'
-        + 'text-overflow:ellipsis;white-space:nowrap;">' + esc(r.label) + '</div>';
+        + 'text-overflow:ellipsis;white-space:nowrap;">'
+        // A dot stays visible beside a title that is cut short, so it sits outside the ellipsis.
+        + (r.dot ? '<span style="display:flex;align-items:center;min-width:0;">'
+          + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">' + esc(r.label) + '</span>'
+          + '<span style="flex:none;width:7px;height:7px;border-radius:50%;background:' + r.dot
+          + ';margin-inline-start:7px;"></span></span>' : esc(r.label)) + '</div>';
 
       if (r.sub) {
         var subs = Array.isArray(r.sub) ? r.sub : [r.sub];
@@ -5465,12 +8905,12 @@ window.hemmaMenuGlass = {
         }
         out += '<div' + vlive + ' style="font-size:var(--hemma-popup-row-value-size, 17px);'
           + 'letter-spacing:-0.022em;color:'
-          + (tone(r.valueTone) || T.ink2)
+          + (tone(r.valueTone) || r.valueColor || T.ink2)
           + ';margin-inline-start:var(--hemma-popup-value-gap, 0px)'
           + ';white-space:nowrap;pointer-events:none;">'
           + esc(r.value) + '</div>';
       }
-      if ((r.entity || r.tappable) && (!r.svc || armOnAction)) {
+      if ((r.entity || r.tappable) && (!r.svc || armOnAction) && r.chev !== false) {
         out += '<svg class="hui-chev" width="7" height="12" viewBox="0 0 7 12" aria-hidden="true">'
           + '<path d="M1 1L6 6L1 11" fill="none" stroke="' + T.ink3 + '" stroke-width="2" '
           + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -6415,15 +9855,36 @@ window.hemmaMenuGlass = {
     return (st && st.attributes && st.attributes.device_class) || '';
   }
 
+  // The room a device is in, from Home Assistant's areas (the entity's own, else its device's).
+  function roomOf(id) {
+    var h = hassOf();
+    var e = h && h.entities && id && h.entities[id];
+    if (!e) return null;
+    var aid = e.area_id || (e.device_id && h.devices && h.devices[e.device_id] && h.devices[e.device_id].area_id);
+    var a = aid && h.areas && h.areas[aid];
+    return (a && a.name) || null;
+  }
+
   function ago(ms) {
     var s = Math.max(0, (Date.now() - ms) / 1000);
-    if (s < 60) return _hemmaT('time.just_now_cap', 'Just now');
-    var m = Math.round(s / 60);
-    if (m < 60) return _hemmaT('time.min_ago', '{n} min ago', { n: m });
-    var h = Math.round(m / 60);
-    if (h < 24) return h === 1 ? _hemmaT('time.hr_ago', '{n} hr ago', { n: 1 }) : _hemmaT('time.hrs_ago', '{n} hrs ago', { n: h });
-    var d = Math.round(h / 24);
-    return d === 1 ? _hemmaT('time.yesterday', 'Yesterday') : _hemmaT('time.days_ago', '{n} days ago', { n: d });
+    if (s < 60) return _hemmaT('time.now', 'now');
+    if (s < 3600) return _hemmaT('time.short.minutes', '{n}m ago', { n: Math.floor(s / 60) });
+    var h = hassOf();
+    var loc = (h && h.locale) || {};
+    var lang = loc.language || (h && h.language) || undefined;
+    var hour12 = loc.time_format === '12' ? true : loc.time_format === '24' ? false : undefined;
+    var d = new Date(ms);
+    var now = new Date();
+    var day = function (x) { return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(); };
+    var days = Math.round((day(now) - day(d)) / 864e5);
+    try {
+      if (days === 0) return d.toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit', hour12: hour12 });
+      if (days === 1) return _hemmaT('time.yesterday', 'Yesterday');
+      if (days < 7) return d.toLocaleDateString(lang, { weekday: 'long' });
+      return d.toLocaleDateString(lang, { month: 'short', day: 'numeric' });
+    } catch (e) {
+      return d.toLocaleTimeString();
+    }
   }
 
 
@@ -6478,17 +9939,17 @@ window.hemmaMenuGlass = {
 
   var PLANT_WORD = {
     get 'moisture:Low'() { return _hemmaT('notify.plant.needs_water', '{name} needs water'); },
-    get 'moisture:High'() { return _hemmaT('notify.plant.overwatered', '{name} has been overwatered'); },
+    get 'moisture:High'() { return _hemmaT('notify.plant.overwatered', '{name} is overwatered'); },
     get 'conductivity:Low'() { return _hemmaT('notify.plant.needs_feeding', '{name} needs feeding'); },
-    get 'conductivity:High'() { return _hemmaT('notify.plant.too_much_fertilizer', '{name} has too much fertilizer'); },
-    get 'illuminance:Low'() { return _hemmaT('notify.plant.needs_light', '{name} needs more light'); },
-    get 'illuminance:High'() { return _hemmaT('notify.plant.too_much_light', '{name} is getting too much light'); },
-    get 'dli:Low'() { return _hemmaT('notify.plant.needs_light', '{name} needs more light'); },
-    get 'dli:High'() { return _hemmaT('notify.plant.too_much_light', '{name} is getting too much light'); },
+    get 'conductivity:High'() { return _hemmaT('notify.plant.too_much_fertilizer', '{name} is overfed'); },
+    get 'illuminance:Low'() { return _hemmaT('notify.plant.needs_light', '{name} needs light'); },
+    get 'illuminance:High'() { return _hemmaT('notify.plant.too_much_light', '{name} needs shade'); },
+    get 'dli:Low'() { return _hemmaT('notify.plant.needs_light', '{name} needs light'); },
+    get 'dli:High'() { return _hemmaT('notify.plant.too_much_light', '{name} needs shade'); },
     get 'temperature:Low'() { return _hemmaT('notify.plant.too_cold', '{name} is too cold'); },
     get 'temperature:High'() { return _hemmaT('notify.plant.too_warm', '{name} is too warm'); },
-    get 'humidity:Low'() { return _hemmaT('notify.plant.air_too_dry', '{name} is in air that is too dry'); },
-    get 'humidity:High'() { return _hemmaT('notify.plant.air_too_humid', '{name} is in air that is too humid'); },
+    get 'humidity:Low'() { return _hemmaT('notify.plant.air_too_dry', '{name} needs humidity'); },
+    get 'humidity:High'() { return _hemmaT('notify.plant.air_too_humid', '{name} needs drier air'); },
   };
 
   var APPLIANCE_DONE = /^(off|idle|finished|complete|completed|standby|end|ready)$/i;
@@ -6561,9 +10022,10 @@ window.hemmaMenuGlass = {
 
     if (id.indexOf('lock.') === 0) {
       var lk = { opens: ['hemma_badge_lock_group', 'hemma_popup_lock'] };
-      if (s === 'locked') return { label: _hemmaT('notify.lock_locked', '{name} locked', { name }), icon: 'lock-fill', tone: 'good', opens: lk.opens };
-      if (s === 'unlocked') return { label: _hemmaT('notify.lock_unlocked', '{name} unlocked', { name }), icon: 'lock-open-fill', tone: 'warn', opens: lk.opens };
-      if (s === 'jammed') return { label: _hemmaT('notify.lock_jammed', '{name} jammed', { name }), icon: 'exclamation', tone: 'bad', opens: lk.opens };
+      var lkRoom = roomOf(id);
+      if (s === 'locked') return { label: _hemmaT('notify.lock_locked', '{name} locked', { name }), sub: lkRoom, icon: 'lock-fill', tone: 'good', opens: lk.opens };
+      if (s === 'unlocked') return { label: _hemmaT('notify.lock_unlocked', '{name} unlocked', { name }), sub: lkRoom, icon: 'lock-open-fill', tone: 'warn', opens: lk.opens };
+      if (s === 'jammed') return { label: _hemmaT('notify.lock_jammed', '{name} jammed', { name }), sub: lkRoom, icon: 'exclamation', tone: 'bad', opens: lk.opens };
       return null;
     }
 
@@ -6582,11 +10044,10 @@ window.hemmaMenuGlass = {
         return { label: _hemmaT('notify.left', '{name} left', { name }), tone: AWAY, icon: who.icon,
           image: who.image, imageFit: who.imageFit, once: who.once };
       }
-			if (s && s !== 'unknown' && s !== 'unavailable') {
-				return {
-					label: _hemmaT('notify.is_at', '{name} is at {place}', {name: name, place: s}),
-					tone: AWAY, icon: who.icon, image: who.image, imageFit: who.imageFit, once: who.once};
-			}
+      if (s && s !== 'unknown' && s !== 'unavailable') {
+        return { label: _hemmaT('notify.is_at', '{name} is at {place}', { name, place: s }), tone: AWAY, icon: who.icon,
+          image: who.image, imageFit: who.imageFit, once: who.once };
+      }
       return null;
     }
 
@@ -6597,6 +10058,7 @@ window.hemmaMenuGlass = {
         label: word,
         icon: s === 'disarmed' ? 'lock-open-fill' : 'lock-fill',
         tone: s === 'triggered' ? 'bad' : s === 'disarmed' ? 'warn' : 'good',
+        urgent: s === 'triggered' && !!st && st.state === 'triggered',
       };
     }
 
@@ -6604,21 +10066,28 @@ window.hemmaMenuGlass = {
       if (VACUUM_DONE[s] && VACUUM_BUSY[prev]) {
         return { label: _hemmaT('notify.finished_cleaning', '{name} finished cleaning', { name }), icon: 'vacuum-charge', tone: 'good' };
       }
-      if (s === 'error') return { label: _hemmaT('notify.needs_attention', '{name} needs attention', { name }), icon: 'vacuum', tone: 'bad' };
+      if (s === 'error') {
+        var verr = st && st.attributes && st.attributes.error;
+        return { label: _hemmaT('notify.needs_attention', '{name} needs attention', { name }),
+          sub: typeof verr === 'string' && verr.trim() ? verr.trim() : null, icon: 'vacuum', tone: 'bad' };
+      }
       return null;
     }
 
     if (isDoorbell(id, st)) {
+      // A restart logs the event entity as unknown; only a timestamp (or a sensor turning on) is a press.
+      var pressed = id.indexOf('event.') === 0 ? (!isNaN(Date.parse(s)) && s !== prev) : s === 'on';
+      if (!pressed) return null;
       // "Front Door Ding" is the entity, "Front Door" is the thing that rang.
       var who = name.replace(/\s+(ding|doorbell|chime|button)$/i, '');
-      return { label: _hemmaT('notify.rang', '{name} rang', { name: who || name }), icon: 'doorbell', tone: 'accent' };
+      return { label: _hemmaT('notify.rang', '{name} rang', { name: who || name }), sub: roomOf(id), icon: 'doorbell', tone: 'accent' };
     }
 
     var appl = applianceFor(id);
     if (appl) {
       var done = appl.done ? new RegExp('^' + appl.done + '$', 'i') : APPLIANCE_DONE;
       if (done.test(s) && APPLIANCE_BUSY.test(prev || '')) {
-        return { label: _hemmaT('notify.finished', '{name} finished', { name: appl.name || name }), icon: 'default', tone: 'good' };
+        return { label: _hemmaT('notify.finished', '{name} finished', { name: appl.name || name }), sub: roomOf(id), icon: 'default', tone: 'good' };
       }
       return null;
     }
@@ -6627,7 +10096,47 @@ window.hemmaMenuGlass = {
   }
 
 
-  var _lowSince = {};
+  // When each sensor's current run of bad readings began, read from HA's history so every device agrees.
+  var _since = {};
+  var _wantSince = {};
+
+  function sinceOf(id, isBad) {
+    if (_since[id] != null) return _since[id];
+    _wantSince[id] = isBad;
+    return null;
+  }
+
+  function fetchSince(hass) {
+    var want = _wantSince;
+    _wantSince = {};
+    var ids = Object.keys(want);
+    if (!ids.length || !hass.callWS) return Promise.resolve(false);
+    var settle = function (id, at) {
+      var st = hass.states[id];
+      _since[id] = at != null ? at : (Date.parse((st && st.last_changed) || '') || Date.now());
+    };
+    return hass.callWS({
+      type: 'history/history_during_period',
+      start_time: new Date(Date.now() - 7 * 864e5).toISOString(),
+      entity_ids: ids, minimal_response: true, no_attributes: true, significant_changes_only: false,
+    }).then(function (res) {
+      ids.forEach(function (id) {
+        var list = (res && res[id]) || [];
+        var at = null;
+        for (var i = list.length - 1; i >= 0; i--) {
+          var v = list[i].s;
+          if (v === 'unavailable' || v === 'unknown') continue;
+          if (!want[id](v)) break;
+          at = Math.round(Number(list[i].lc || list[i].lu) * 1000) || at;
+        }
+        settle(id, at);
+      });
+      return true;
+    }).catch(function () {
+      ids.forEach(function (id) { settle(id, null); });
+      return true;
+    });
+  }
 
   function standing(hass) {
     var rows = [];
@@ -6659,9 +10168,11 @@ window.hemmaMenuGlass = {
       rows.push({
         id: 'hemma:updates',
         when: newest(updates) || Date.now(),
+        // The name goes under a short title: in the title it ran past the row. Several are only counted.
         label: updates.length === 1
-          ? _hemmaT('notify.update_available', '{name} update available', { name: nameOf(updates[0]).replace(/\s+Update$/i, '') })
+          ? _hemmaT('notify.update_one', 'Update available')
           : _hemmaT('notify.updates_available', '{n} updates available', { n: updates.length }),
+        sub: updates.length === 1 ? nameOf(updates[0]).replace(/\s+Update$/i, '') : null,
         icon: 'updates',
         tone: 'accent',
         entity: updates[0].entity_id,
@@ -6694,34 +10205,31 @@ window.hemmaMenuGlass = {
       var st = S[id];
       if (dc(st) !== 'battery') return;
       var pct = null;
-      var isLow;
+      var lowAt;
       if (id.indexOf('sensor.') === 0) {
         pct = parseFloat(st.state);
         // Unavailable is no news: hold the clock rather than start it over.
         if (!isFinite(pct)) return;
-        isLow = pct <= lowPct;
+        lowAt = function (v) { var n = parseFloat(v); return isFinite(n) && n <= lowPct; };
       } else if (id.indexOf('binary_sensor.') === 0) {
         if (st.state !== 'on' && st.state !== 'off') return;
-        isLow = st.state === 'on';
+        lowAt = function (v) { return v === 'on'; };
       } else {
         return;
       }
-      if (!isLow) { delete _lowSince[id]; return; }
-      // 19 -> 18 moves last_changed, so only the first sighting starts the clock.
-      if (!_lowSince[id]) {
-        _lowSince[id] = Math.min(Date.parse(st.last_changed || '') || nowMs, nowMs);
-      }
-      if (nowMs - _lowSince[id] >= holdMin * 60000) low.push({ st: st, pct: pct });
+      if (!lowAt(st.state)) { delete _since[id]; return; }
+      var since = sinceOf(id, lowAt);
+      if (since != null && nowMs - since >= holdMin * 60000) low.push({ st: st, pct: pct, since: since });
     });
     if (low.length && on('battery')) {
       low.sort(function (a, b) { return (a.pct == null ? -1 : a.pct) - (b.pct == null ? -1 : b.pct); });
       rows.push({
         id: 'hemma:battery',
-        when: newest(low.map(function (x) { return x.st; })) || Date.now(),
+        when: Math.max.apply(null, low.map(function (x) { return x.since; })),
         label: low.length === 1
           ? _hemmaT('notify.battery_low_one', '{name} battery low', { name: nameOf(low[0].st).replace(/\s+Battery$/i, '') })
           : _hemmaT('notify.battery_low_n', '{n} devices low on battery', { n: low.length }),
-        value: low.length === 1 && low[0].pct != null ? low[0].pct + '%' : null,
+        sub: low.length === 1 && low[0].pct != null ? _hemmaT('notify.battery_left', '{n}% left', { n: low[0].pct }) : null,
         icon: 'battery',
         tone: 'bad',
         entity: low.length === 1 ? low[0].st.entity_id : null,
@@ -6747,11 +10255,12 @@ window.hemmaMenuGlass = {
           id: 'hemma:safety:' + id,
           when: Date.parse(st.last_changed || '') || Date.now(),
           label: kind.word,
-          sub: nameOf(st),
+          sub: roomOf(id) || nameOf(st),
           icon: kind.icon,
           tone: 'bad',
           entity: id,
           rank: 1,
+          urgent: true,
         });
       });
     }
@@ -6779,11 +10288,8 @@ window.hemmaMenuGlass = {
           id: 'hemma:open:' + id,
           when: since,
           label: _hemmaT('notify.is_open', '{name} is open', { name: tidyName(nameOf(st)) }),
-          sub: mins < 60 ? _hemmaT('notify.open_for_min', 'For {n} min', { n: mins })
-            : mins < 120 ? _hemmaT('notify.open_for_hr', 'For {n} hr', { n: Math.round(mins / 60) })
-            : _hemmaT('notify.open_for_hrs', 'For {n} hrs', { n: Math.round(mins / 60) }),
-            
-          ongoing: true,
+          // The time on the right already says how long; the room says where.
+          sub: roomOf(id),
           icon: kind === 'window' ? 'window-shade-open' : 'door-open',
           tone: 'warn',
           entity: id,
@@ -6796,11 +10302,6 @@ window.hemmaMenuGlass = {
     var co2Limit = Number(window.HEMMA_NOTIFY_CO2);
     if (!isFinite(co2Limit)) co2Limit = 1800;
     if (on('air') && co2Limit > 0) {
-      var CO2_KEY = 'hemma_co2_since';
-      var co2Since = {};
-      try { co2Since = JSON.parse(localStorage.getItem(CO2_KEY) || '{}') || {}; }
-      catch (e) { co2Since = {}; }
-      var co2Now = {};
       var plants = ids.filter(function (id) { return id.indexOf('plant.') === 0; })
         .map(function (id) { return id.slice(6); });
       ids.forEach(function (id) {
@@ -6810,17 +10311,17 @@ window.hemmaMenuGlass = {
         var bare = id.slice(7);
         if (plants.some(function (n) { return bare.indexOf(n) === 0; })) return;
         var ppm = parseFloat(st.state);
-        if (!isFinite(ppm) || ppm < co2Limit) return;
+        if (!isFinite(ppm)) return;
+        if (ppm < co2Limit) { delete _since[id]; return; }
         var bad = ppm >= 2000;
-        var crossed = Number(co2Since[id]);
-        if (!isFinite(crossed)) crossed = Date.now();
-        co2Now[id] = crossed;
+        var crossed = sinceOf(id, function (v) { var n = parseFloat(v); return isFinite(n) && n >= co2Limit; });
+        if (crossed == null) return;
         rows.push({
           id: 'hemma:co2:' + id,
           when: crossed,
           label: _hemmaT('notify.co2_high', 'Carbon dioxide is high'),
           sub: (function () {
-            var where = nameOf(st)
+            var where = roomOf(id) || nameOf(st)
               .replace(/\s*(carbon dioxide|co2)\s*/gi, ' ')
               .replace(/\s+/g, ' ').trim();
             return where ? _hemmaT('notify.co2_in', '{ppm} ppm in {where}', { ppm: Math.round(ppm), where }) : _hemmaT('notify.co2', '{ppm} ppm', { ppm: Math.round(ppm) });
@@ -6829,14 +10330,8 @@ window.hemmaMenuGlass = {
           tone: bad ? 'bad' : 'warn',
           entity: id,
           opens: ['hemma_badge_air_quality'],
-          rank: bad ? 1 : 0,
         });
       });
-      try {
-        if (JSON.stringify(co2Now) !== JSON.stringify(co2Since)) {
-          localStorage.setItem(CO2_KEY, JSON.stringify(co2Now));
-        }
-      } catch (e) {}
     }
 
     if (on('plants')) {
@@ -6853,13 +10348,17 @@ window.hemmaMenuGlass = {
           || probs[0];
         var word = PLANT_WORD[first.sensor_type + ':' + first.status];
         if (!word) return;
-        var soil = parseFloat(first.current);
+        var cur = parseFloat(first.current);
         rows.push({
           id: 'hemma:plant:' + id,
           when: Math.max(Date.parse(st.last_changed || '') || 0, midnight.getTime()),
           label: word.split('{name}').join(nameOf(st)),
-          sub: (first.sensor_type === 'moisture' && isFinite(soil))
-            ? _hemmaT('notify.soil_at', 'Soil at {n}%', { n: Math.round(soil) }) : null,
+          // The reading where a number means something at a glance; light and feeding values do not.
+          sub: !isFinite(cur) ? null
+            : first.sensor_type === 'moisture' ? _hemmaT('notify.soil_at', 'Soil at {n}%', { n: Math.round(cur) })
+            : first.sensor_type === 'humidity' ? _hemmaT('notify.humidity_at', 'Humidity {n}%', { n: Math.round(cur) })
+            : first.sensor_type === 'temperature' ? _hemmaT('notify.degrees', '{n}°', { n: Math.round(cur) })
+            : null,
           icon: 'plant',
           tone: 'warn',
           entity: id,
@@ -6901,6 +10400,7 @@ window.hemmaMenuGlass = {
 
   // ── Collection ─────────────────────────────────────────────────────────────
 
+  var _all = [];
   var _rows = [];
   var _busy = null;
 
@@ -6911,13 +10411,15 @@ window.hemmaMenuGlass = {
 
     var live = standing(hass);
     var ids = watched(hass);
+    var crossings = fetchSince(hass).then(function (asked) { if (asked) live = standing(hass); });
     var since = new Date(Date.now() - HOURS * 3600 * 1000).toISOString();
 
     var fetch = (ids.length && hass.callWS)
       ? hass.callWS({ type: 'logbook/get_events', start_time: since, entity_ids: ids })
       : Promise.resolve([]);
 
-    _busy = fetch.catch(function () { return []; }).then(function (entries) {
+    _busy = Promise.all([fetch.catch(function () { return []; }), crossings]).then(function (got) {
+      var entries = got[0];
       var prev = {};
       var events = [];
       var asked = {};
@@ -6945,6 +10447,7 @@ window.hemmaMenuGlass = {
           entity: id,
           opens: d.opens || null,
           once: d.once || null,
+          urgent: !!d.urgent,
         });
       });
 
@@ -6970,13 +10473,22 @@ window.hemmaMenuGlass = {
         kept.push(e);
       });
 
+      // Only the latest trigger of an alarm that is still going off stays pinned.
+      var pinned = {};
+      kept.forEach(function (e) {
+        if (!e.urgent) return;
+        if (pinned[e.entity]) { e.urgent = false; return; }
+        pinned[e.entity] = 1;
+        e.rank = 1;
+      });
+
       var room = Math.max(0, MAX_ROWS - live.length);
-      _rows = live.concat(kept.slice(0, room))
+      _all = live.concat(kept.slice(0, room))
         .sort(function (a, b) {
           return ((b.rank || 0) - (a.rank || 0)) || (b.when - a.when);
         });
       _busy = null;
-      announce();
+      shown();
       return _rows;
     });
 
@@ -7046,14 +10558,6 @@ window.hemmaMenuGlass = {
 
   // ── Panel body ─────────────────────────────────────────────────────────────
 
-  function ordered() {
-    var w = watermark();
-    return {
-      fresh: _rows.filter(function (r) { return r.when > w; }),
-      old: _rows.filter(function (r) { return r.when <= w; }),
-    };
-  }
-
   function configure(cfg) {
     cfg = cfg || {};
     if (cfg.types !== undefined) window.HEMMA_NOTIFY_TYPES = cfg.types;
@@ -7066,52 +10570,6 @@ window.hemmaMenuGlass = {
       window.HEMMA_NOTIFY_READ_ENTITY = cfg.read_entity || null;
     }
     return true;
-  }
-
-  function sections() {
-    var UI = window._hemmaUI;
-    if (!UI) return '';
-    var g = ordered();
-
-    if (!_rows.length) {
-      return '<div style="font-family:' + UI.tokens.font + ';text-align:center;'
-        + 'padding:34px 16px 38px;color:' + UI.tokens.ink3 + ';font-size:15px;">'
-        + _hemmaT('notify.nothing_new', 'Nothing new') + '</div>';
-    }
-
-    var toRow = function (r) {
-      return {
-        icon: r.icon,
-        iconTone: r.tone,
-        label: r.label,
-        // Something still happening says how long, not when it started as well.
-        sub: r.ongoing ? r.sub : (r.sub ? [r.sub, ago(r.when)] : ago(r.when)),
-        value: r.value || null,
-        entity: r.entity || null,
-        image: r.image,
-        imageFit: r.imageFit,
-        tappable: !!(r.entity || r.opens),
-      };
-    };
-
-    var opts = { labelInside: true };
-    var out = '';
-    if (g.fresh.length) out += UI.group(g.fresh.map(toRow), g.old.length ? _hemmaT('notify.new', 'New') : null, null, opts);
-    if (g.old.length) out += UI.group(g.old.map(toRow), g.fresh.length ? _hemmaT('notify.earlier', 'Earlier') : null, null, opts);
-    return out;
-  }
-
-  function paint(root) {
-    if (!root) return;
-    var g = ordered();
-    var list = g.fresh.concat(g.old);
-    var els = root.querySelectorAll('.hui-row');
-    for (var i = 0; i < els.length && i < list.length; i++) {
-      els[i]._hemmaRow = list[i];
-      if (!list[i].opens) continue;
-      els[i].removeAttribute('data-hemma-mi');
-      els[i].dataset.hemmaOpen = list[i].opens;
-    }
   }
 
   function templatesOf(cfg) {
@@ -7222,6 +10680,8 @@ window.hemmaMenuGlass = {
     setTimeout(function () { finish(false); }, 400);
   }
 
+  window._hemmaOpenTarget = function (what, fallbackEntity) { openTarget(what, fallbackEntity); };
+
   function openTarget(what, fallbackEntity) {
     // dataset stringifies an array, so a retagged row arrives comma-joined.
     var names = Array.isArray(what) ? what
@@ -7247,25 +10707,72 @@ window.hemmaMenuGlass = {
     });
   }
 
-  function bindOpens(root, close) {
-    if (!root) return;
-    root.addEventListener('click', function (e) {
-      var path = (e.composedPath && e.composedPath()) || [e.target];
-      for (var i = 0; i < path.length; i++) {
-        var n = path[i];
-        if (n && n.dataset && n.dataset.hemmaOpen) {
-          e.preventDefault();
-          e.stopPropagation();
-          var row = n._hemmaRow;
-          if (close) close();
-          openTarget(n.dataset.hemmaOpen, row && row.entity);
-          return;
-        }
-      }
-    }, true);
+  // ── Cleared ────────────────────────────────────────────────────────────────
+
+  var CLEARED_KEY = 'hemma_notify_cleared_v1';
+  var _cleared = { cleared_at: 0, ids: {} };
+  var _synced = false;
+  var _subConn = null;
+
+  try {
+    var savedClear = JSON.parse(localStorage.getItem(CLEARED_KEY) || 'null');
+    if (savedClear && typeof savedClear === 'object') {
+      _cleared = { cleared_at: Number(savedClear.cleared_at) || 0, ids: savedClear.ids || {} };
+    }
+  } catch (e) {}
+
+  function isCleared(r) {
+    if (r.when <= _cleared.cleared_at) return true;
+    var at = _cleared.ids[r.id];
+    return at != null && at >= r.when;
   }
 
-  // ── Presentation ───────────────────────────────────────────────────────────
+  function shown() {
+    _rows = _all.filter(function (r) { return !isCleared(r); });
+    announce();
+    if (_center) _center._sync();
+  }
+
+  function keepCleared() {
+    var ids = _cleared.ids;
+    var keys = Object.keys(ids).sort(function (a, b) { return ids[a] - ids[b]; });
+    var horizon = Date.now() - 30 * 864e5;
+    var kept = {};
+    keys.slice(-200).forEach(function (k) { if (ids[k] >= horizon) kept[k] = ids[k]; });
+    _cleared.ids = kept;
+    try { localStorage.setItem(CLEARED_KEY, JSON.stringify(_cleared)); } catch (e) {}
+  }
+
+  // The integration keeps the list, so a clear lands on every open dashboard at once.
+  function subscribeCleared() {
+    var h = hassOf();
+    var conn = h && h.connection;
+    if (!conn || conn === _subConn || typeof conn.subscribeMessage !== 'function') return;
+    _subConn = conn;
+    Promise.resolve(conn.subscribeMessage(function (msg) {
+      _synced = true;
+      _cleared = { cleared_at: Number(msg && msg.cleared_at) || 0, ids: (msg && msg.ids) || {} };
+      keepCleared();
+      shown();
+    }, { type: 'hemma/notify/subscribe' })).catch(function () {});
+  }
+
+  function clearRows(list, all) {
+    var ids = {};
+    var now = Date.now();
+    list.forEach(function (r) { if (r.id) ids[r.id] = Math.max(r.when, now); });
+    if (all) _cleared.cleared_at = Math.max(_cleared.cleared_at, Date.now());
+    Object.keys(ids).forEach(function (k) { _cleared.ids[k] = ids[k]; });
+    keepCleared();
+    var h = hassOf();
+    if (_synced && h && h.callWS) {
+      Promise.resolve(h.callWS({ type: 'hemma/notify/clear', ids: ids, all: !!all }))
+        .catch(function () {});
+    }
+    shown();
+  }
+
+  // ── Notification Center ────────────────────────────────────────────────────
 
   function isPhone() {
     try {
@@ -7278,9 +10785,15 @@ window.hemmaMenuGlass = {
     announce();
   }
 
+  function capsuled(anchor) {
+    try {
+      return getComputedStyle(anchor).getPropertyValue('--hemma-chrome-capsule').trim() === '1';
+    } catch (e) { return false; }
+  }
+
   function lift(anchor, on) {
     if (!anchor || !anchor.style) return;
-    if (isPhone()) return;
+    if (isPhone() || capsuled(anchor)) return;
     if (on) {
       anchor.style.setProperty('--hemma-bell-fill', '#fff');
       anchor.style.setProperty('--hemma-bell-filter', 'brightness(0)');
@@ -7290,68 +10803,153 @@ window.hemmaMenuGlass = {
     }
   }
 
-  function openSheet(anchor) {
-    if (!window.hemmaPopup) return;
-    lift(anchor, true);
-    window.hemmaPopup.open({
-      title: _hemmaT('notify.title', 'Notifications'),
-      dismissable: true,
-      popup_styles: [{
-        style: 'all',
-        styles: '--hemma-popup-gutter-wide: 40px;'
-          + '--hemma-popup-row-fill: transparent;'
-          + '--hemma-popup-row-radius: 0px;'
-          + '.header { padding-top: var(--hemma-popup-header-gap, 10px);'
-          + ' padding-bottom: var(--hemma-popup-header-gap, 10px); }'
-          + '.header-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }'
-          + '.content .container { padding-top: 6px !important; }',
-      }],
-      content: {
-        type: 'custom:button-card',
-        tap_action: { action: 'none' },
-        show_icon: false, show_name: false, show_label: false, show_state: false,
-        card_mod: {
-          style: ':host { --ha-card-box-shadow: none !important;'
-            + ' --button-card-box-shadow: none !important; }\n'
-            + 'ha-card { background: transparent !important; border: none !important;'
-            + ' box-shadow: none !important; backdrop-filter: none !important;'
-            + ' -webkit-backdrop-filter: none !important; cursor: default !important; }\n'
-            + 'ha-ripple { display: none !important; }',
-        },
-        styles: {
-          card: [{ background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
-                 { padding: '0 10px 22px 10px' }],
-          grid: [{ 'grid-template-areas': '"list"' }, { 'grid-template-columns': '1fr' }],
-          custom_fields: { list: [{ 'justify-self': 'stretch' }] },
-        },
-        custom_fields: { list: sections() },
-      },
-    });
+  var EASE = 'cubic-bezier(0.22,1,0.36,1)';
+  var X_SVG = '<svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true" style="display:block;flex:none;">'
+    + '<path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 
-    var el = window.hemmaPopup.element;
-    // The sheet builds its card asynchronously, so the retag waits for it.
-    setTimeout(function () {
-      var surface = window.hemmaPopup.surface;
-      paint(surface);
-      if (surface && !surface._hemmaNotifyBound) {
-        surface._hemmaNotifyBound = true;
-        bindOpens(surface, function () { window.hemmaPopup.close(); });
-      }
-    }, 260);
-
-    var watch = setInterval(function () {
-      if (el && el.hasAttribute('open')) return;
-      clearInterval(watch);
-      lift(anchor, false);
-      seal();
-    }, 300);
+  function centerStyle() {
+    if (document.getElementById('hemma-nc-style')) return;
+    var glass = 'background:var(--hemma-perf-pill, rgba(150,152,158,0.08));'
+      + '-webkit-backdrop-filter:var(--hemma-perf-none, blur(32px) saturate(1.1));'
+      + 'backdrop-filter:var(--hemma-perf-none, blur(32px) saturate(1.1));';
+    var rim = '{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;'
+      + 'background:linear-gradient(to bottom, rgba(255,255,255,0.40), rgba(255,255,255,0.10) 22%,'
+      + ' rgba(255,255,255,0.04) 50%, rgba(255,255,255,0.07) 78%, rgba(255,255,255,0.20));'
+      + '-webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);-webkit-mask-composite:xor;'
+      + 'mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);mask-composite:exclude;}';
+    var MORPH = '420ms cubic-bezier(0.4,0,0.2,1)';
+    // Measured off Apple's: a hairline just outside the card, darker down the sides, and a one-pixel highlight inside top and bottom.
+    // WebKit drops a masked border along curves; a half-pixel shadow ring on the card itself stays continuous.
+    var EDGE = '0 0 0 0.5px rgba(0,0,0,0.42)';
+    var st = document.createElement('style');
+    st.id = 'hemma-nc-style';
+    st.textContent = ''
+      + '.hemma-nc-scrim{position:fixed;inset:0;z-index:99998;}'
+      + '.hemma-nc{position:fixed;z-index:99999;box-sizing:border-box;display:flex;flex-direction:column;'
+      + 'color:#fff;-webkit-text-size-adjust:100%;text-size-adjust:100%;}'
+      + '.hemma-nc *{box-sizing:border-box;}'
+      + '.hemma-nc-halo{position:absolute;left:-30px;right:-30px;top:-30px;bottom:-30px;z-index:-2;pointer-events:none;}'
+      + '.hemma-nc-slot.stack .hemma-nc-halo{bottom:-39px;}'
+      + '.hemma-nc-slot.stack.deep .hemma-nc-halo{bottom:-46px;}'
+      + '.hemma-nc-halo > div{position:absolute;inset:0;}'
+      + '.hemma-nc-shades{position:absolute;inset:0;z-index:-3;pointer-events:none;}'
+      + '.hemma-nc-shades > div{position:absolute;border-radius:22px;box-shadow:var(--hemma-perf-none, 0 32px 180px rgba(0,0,0,0.5));}'
+      // An outer shadow leaves its own box clear, which bare text cannot cover.
+      + '.hemma-nc-shades > div.text{box-shadow:none;border-radius:50%;background:var(--hemma-perf-none, rgba(0,0,0,0.24));filter:blur(26px);}'
+      + '.hemma-nc-head{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;'
+      + 'min-height:26px;padding:0 0 0 8px;}'
+      + '.hemma-nc-title{margin:0;font-size:18px;font-weight:700;letter-spacing:-0.01em;'
+      + 'text-shadow:0 1px 8px rgba(0,0,0,0.30);white-space:nowrap;}'
+      + '.hemma-nc-x{display:inline-flex;align-items:center;justify-content:center;gap:0;flex:none;'
+      + 'position:relative;height:24px;min-width:24px;padding:0 7.5px;border:0;border-radius:12px;cursor:pointer;'
+      + 'font:inherit;font-size:11px;font-weight:500;letter-spacing:0;color:rgba(255,255,255,0.8);'
+      + glass + 'box-shadow:' + EDGE + ';transition:background-color 160ms ease, padding ' + MORPH + ';-webkit-tap-highlight-color:transparent;}'
+      + '.hemma-nc-x::before' + rim
+      // Apple's highlight is brightest along the top and bottom, fading into the corners and on faintly down the sides.
+      + '.hemma-nc-card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;'
+      + 'background:linear-gradient(to right, rgba(255,255,255,0) 24px, rgba(255,255,255,var(--nc-hl-t, 0.15)) 62px, rgba(255,255,255,var(--nc-hl-t, 0.15)) calc(100% - 62px), rgba(255,255,255,0) calc(100% - 24px)) 0 0/100% 0.5px no-repeat,'
+      + ' linear-gradient(to right, rgba(255,255,255,0) 24px, rgba(255,255,255,var(--nc-hl-2, 0.14)) 62px, rgba(255,255,255,var(--nc-hl-2, 0.14)) calc(100% - 62px), rgba(255,255,255,0) calc(100% - 24px)) 0 0.5px/100% 0.5px no-repeat,'
+      + ' linear-gradient(to right, rgba(255,255,255,0) 24px, rgba(255,255,255,var(--nc-hl-b, 0.26)) 62px, rgba(255,255,255,var(--nc-hl-b, 0.26)) calc(100% - 62px), rgba(255,255,255,0) calc(100% - 24px)) 0 100%/100% 0.5px no-repeat,'
+      + ' linear-gradient(to right, rgba(255,255,255,0) 24px, rgba(255,255,255,var(--nc-hl-2, 0.14)) 62px, rgba(255,255,255,var(--nc-hl-2, 0.14)) calc(100% - 62px), rgba(255,255,255,0) calc(100% - 24px)) 0 calc(100% - 0.5px)/100% 0.5px no-repeat,'
+      + ' linear-gradient(rgba(255,255,255,var(--nc-hl-s, 0.06)), rgba(255,255,255,var(--nc-hl-s, 0.06)));'
+      + '-webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);-webkit-mask-composite:xor;'
+      + 'mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);mask-composite:exclude;}'
+      + '.hemma-nc-x span{display:block;max-width:0;overflow:hidden;white-space:nowrap;opacity:0;'
+      + 'transition:max-width ' + MORPH + ', opacity 200ms ease;}'
+      + '.hemma-nc-x svg{transition:width ' + MORPH + ', opacity 240ms ease 160ms;}'
+      + '.hemma-nc-x.open{padding:0 10px;}'
+      + '.hemma-nc-x.open svg{width:0;opacity:0;transition:width ' + MORPH + ', opacity 180ms ease;}'
+      + '.hemma-nc-x.open span{opacity:1;transition:max-width ' + MORPH + ', opacity 280ms ease 140ms;}'
+      + '.hemma-nc-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;'
+      // A scroller clips: the padding holds the cards' shadow, the margins put the cards back where they were.
+      + 'pointer-events:none;padding:30px 30px 60px 38px;margin:-24px -30px -44px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}'
+      + '.hemma-nc-list::-webkit-scrollbar{display:none;}'
+      + '.hemma-nc-slot{position:relative;margin-bottom:7px;pointer-events:auto;}'
+      + '.hemma-nc-slot.fresh-in > .hemma-nc-card{animation:hemma-nc-in 320ms ' + EASE + ' backwards;}'
+      + '@keyframes hemma-nc-in{from{opacity:0;transform:translateY(-6px);}}'
+      + '.hemma-nc-card{position:relative;z-index:1;display:flex;gap:11px;align-items:center;'
+      + 'padding:12px 14px 12px 12px;border-radius:22px;min-height:56px;' + glass
+      + 'box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.10);'
+      + 'touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;'
+      + 'transition:background-color 160ms ease, transform 300ms ' + EASE + ', opacity 220ms ease;}'
+      + '.hemma-nc-card.tap{cursor:pointer;}'
+      + '.hemma-nc-lead{flex:none;width:32px;height:32px;border-radius:8px;overflow:hidden;'
+      + 'display:grid;place-items:center;--hemma-popup-icon-tile:32px;}'
+      + '.hemma-nc-lead > div{border-radius:8px !important;}'
+      + '.hemma-nc-lead img{display:block;width:100%;height:100%;object-fit:cover;}'
+      + '.hemma-nc-lead.contain{background:rgba(255,255,255,0.12);}'
+      + '.hemma-nc-lead.contain img{width:86%;height:86%;object-fit:contain;}'
+      + '.hemma-nc-txt{flex:1;min-width:0;}'
+      + '.hemma-nc-leadwrap{position:relative;flex:none;}'
+      + '.hemma-nc-count{position:absolute;right:-6px;top:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;'
+      + 'font-size:10.5px;font-weight:600;line-height:16px;text-align:center;color:#fff;background:rgba(60,64,72,0.92);'
+      + 'box-shadow:0 0 0 0.5px rgba(0,0,0,0.45), inset 0 0.5px 0 rgba(255,255,255,0.3);}'
+      + '.hemma-nc-tag{font-size:11px;font-weight:600;line-height:14px;letter-spacing:0.02em;text-transform:uppercase;'
+      + 'color:rgba(255,255,255,0.45);margin-bottom:1px;}'
+      + '.hemma-nc-slot.stack{margin-bottom:16px;}'
+      + '.hemma-nc-slot.stack.deep{margin-bottom:23px;}'
+      + '.hemma-nc-ghost{position:absolute;left:9px;right:9px;top:9px;bottom:-9px;border-radius:20px;z-index:0;pointer-events:none;'
+      + glass.replace('0.08)', '0.13)') + 'box-shadow:' + EDGE + ', inset 0 -1px 0 rgba(255,255,255,0.22);}'
+      + '.hemma-nc-ghost.far{left:18px;right:18px;top:16px;bottom:-16px;z-index:-1;' + glass.replace('0.08)', '0.09)') + '}'
+      + '.hemma-nc-ghead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 1px 4px;}'
+      + '.hemma-nc-ghead b{font-size:15px;font-weight:700;letter-spacing:-0.01em;color:rgba(255,255,255,0.92);'
+      + 'text-shadow:0 1px 8px rgba(0,0,0,0.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+      + '.hemma-nc-pills{display:flex;gap:6px;flex:none;}'
+      + '.hemma-nc-pill{position:relative;height:24px;min-width:24px;padding:0 10px;border:0;border-radius:12px;cursor:pointer;'
+      + 'display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:11px;font-weight:500;'
+      + 'color:rgba(255,255,255,0.8);' + glass + 'box-shadow:' + EDGE + ';-webkit-tap-highlight-color:transparent;}'
+      + '.hemma-nc-pill.round{padding:0;width:24px;}'
+      + '.hemma-nc-pill svg{width:8px;height:8px;}'
+      + '.hemma-nc-pill::before' + rim
+      + '.hemma-nc-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}'
+      + '.hemma-nc-t{display:flex;align-items:center;gap:6px;min-width:0;font-size:13px;font-weight:600;color:rgba(255,255,255,0.92);'
+      + 'letter-spacing:-0.005em;line-height:16px;}'
+      + '.hemma-nc-t b{font-weight:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+      + '.hemma-nc-t i{flex:none;width:6px;height:6px;border-radius:50%;background:var(--hemma-color-teal, #00C3D0);}'
+      + '.hemma-nc-when{flex:none;font-size:11px;color:rgba(255,255,255,0.55);white-space:nowrap;}'
+      + '.hemma-nc-s{margin-top:1px;font-size:13px;line-height:16px;letter-spacing:-0.005em;color:rgba(255,255,255,0.85);'
+      + 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+      + '.hemma-nc-close{position:absolute;left:-6px;top:-6px;z-index:2;width:20px;height:20px;padding:0;'
+      + 'border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:rgba(255,255,255,0.62);'
+      + glass + 'box-shadow:' + EDGE + ';'
+      + 'opacity:0;pointer-events:none;transition:opacity 140ms ease;}'
+      + '.hemma-nc-close::before' + rim
+      + '.hemma-nc-close svg{width:8px;height:8px;}'
+      + '.hemma-nc-clear{position:absolute;right:0;top:0;bottom:0;width:66px;border:0;border-radius:18px;'
+      + 'padding:0;cursor:pointer;font:inherit;font-size:13px;font-weight:600;color:#fff;'
+      + 'background:rgba(255,69,58,0.92);opacity:0;-webkit-tap-highlight-color:transparent;}'
+      + '@keyframes hemma-nc-fade{from{opacity:0;}}'
+      + '.hemma-nc-empty{position:relative;width:fit-content;margin:2px 0 0 auto;padding:4px 2px;border-radius:22px;animation:hemma-nc-in 320ms ' + EASE + ' backwards;'
+      + 'font-size:15px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;'
+      + 'color:rgba(255,255,255,0.92);text-shadow:0 1px 8px rgba(0,0,0,0.35);}'
+      + '.hemma-nc.light .hemma-nc-card, .hemma-nc.light .hemma-nc-x, .hemma-nc.light .hemma-nc-close, .hemma-nc.light .hemma-nc-pill{'
+      + 'background:var(--hemma-perf-pill, rgba(250,250,252,0.46));-webkit-backdrop-filter:var(--hemma-perf-none, blur(32px) saturate(1.2));'
+      + 'backdrop-filter:var(--hemma-perf-none, blur(32px) saturate(1.2));color:rgba(0,0,0,0.7);}'
+      + '.hemma-nc.light .hemma-nc-card{box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.08);}'
+      + '.hemma-nc.light .hemma-nc-ghost{background:rgba(250,250,252,0.32);box-shadow:' + EDGE + ', inset 0 -1px 0 rgba(255,255,255,0.5);}'
+      + '.hemma-nc.light .hemma-nc-ghost.far{background:rgba(250,250,252,0.22);}'
+      + '.hemma-nc.light .hemma-nc-x::before, .hemma-nc.light .hemma-nc-close::before, .hemma-nc.light .hemma-nc-pill::before{'
+      + 'background:linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(255,255,255,0.3) 22%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.18) 78%, rgba(255,255,255,0.45));}'
+      + '.hemma-nc.light .hemma-nc-t{color:rgba(0,0,0,0.88);}'
+      + '.hemma-nc.light .hemma-nc-s{color:rgba(0,0,0,0.8);}'
+      + '.hemma-nc.light .hemma-nc-when{color:rgba(0,0,0,0.5);}'
+      + '.hemma-nc.light .hemma-nc-tag{color:rgba(0,0,0,0.45);}'
+      + '@media (hover:hover) and (pointer:fine){'
+      + '.hemma-nc.light .hemma-nc-card:hover{background-color:var(--hemma-perf-pill, rgba(250,250,252,0.6));}'
+      + '.hemma-nc.light .hemma-nc-x:hover{background:rgba(250,250,252,0.62);}}'
+      + '@media (hover:hover) and (pointer:fine){'
+      + '.hemma-nc-card:hover{background-color:var(--hemma-perf-pill, rgba(160,162,168,0.14));}'
+      + '.hemma-nc-slot:hover .hemma-nc-close{opacity:1;pointer-events:auto;}'
+      + '.hemma-nc-x:hover{background:rgba(160,162,168,0.16);}}'
+      + '.hemma-nc.light{--nc-hl-t:0.9;--nc-hl-b:0.75;--nc-hl-2:0.45;--nc-hl-s:0.13;--nc-glow-t:0.22;--nc-glow-b:0.16;}'
+      + '.hemma-nc .hemma-nc-card, .hemma-nc.light .hemma-nc-card{'
+      + 'background-image:linear-gradient(to bottom, rgba(255,255,255,var(--nc-glow-t, 0.03)), rgba(255,255,255,0) 12px,'
+      + ' rgba(255,255,255,0) calc(100% - 8px), rgba(255,255,255,var(--nc-glow-b, 0.05)));'
+      + '-webkit-backdrop-filter:var(--hemma-perf-none, blur(16px) saturate(1.3));backdrop-filter:var(--hemma-perf-none, blur(16px) saturate(1.3));}';
+    (document.head || document.documentElement).appendChild(st);
   }
 
-  var _menu = null;
-
-
-  function openMenu(anchor) {
-    var GLASS = window.hemmaMenuGlass;
+  function chromeRect(anchor) {
     var card = anchor && anchor.shadowRoot && anchor.shadowRoot.querySelector('ha-card');
     var r = (card || anchor).getBoundingClientRect();
     for (var up = anchor, i = 0; up && i < 6; i++) {
@@ -7363,154 +10961,757 @@ window.hemmaMenuGlass = {
         if (cap) r = cap.getBoundingClientRect();
         break;
       }
+      if (capsuled(anchor) && tpl && [].concat(tpl).indexOf('hemma_room') >= 0) {
+        var pill = up.shadowRoot && up.shadowRoot.querySelector('#chrome_pill');
+        if (pill && pill.getBoundingClientRect().width) r = pill.getBoundingClientRect();
+        break;
+      }
     }
+    return r;
+  }
 
-    var menu = document.createElement('div');
-    _menu = menu;
-    lift(anchor, true);
-    menu.className = 'hemma-notify-menu';
-    menu.setAttribute('role', 'dialog');
-    Object.assign(menu.style, {
-      position: 'fixed', zIndex: '99999', boxSizing: 'border-box',
-      width: 'max-content',
-      minWidth: '256px',
-      maxWidth: 'min(392px, calc(100vw - 24px))',
-      padding: '0',
-      overflow: 'hidden',
+  function rowRight(anchor, r) {
+    var right = r.right;
+    var root = anchor && anchor.getRootNode && anchor.getRootNode();
+    if (!root || !root.querySelectorAll) return right;
+    root.querySelectorAll('button-card').forEach(function (c) {
+      var t = c._config && c._config.template;
+      if (!t || [].concat(t).indexOf('hemma_settings_button') < 0) return;
+      var card = c.shadowRoot && c.shadowRoot.querySelector('ha-card');
+      var b = (card || c).getBoundingClientRect();
+      if (b.width && Math.abs(b.top - r.top) < 30 && b.right > right) right = b.right;
     });
-    GLASS.apply(menu);
+    return right;
+  }
 
-    var inner = document.createElement('div');
-    // Safari lets a descendant's background paint past a rounded parent's radius.
-    Object.assign(inner.style, {
-      opacity: '0', willChange: 'opacity',
-      borderRadius: 'inherit', overflow: 'hidden',
-      clipPath: 'inset(0 round ' + GLASS.radius + ')',
-    });
+  function groupOf(r) {
+    if (r.urgent) return r.id;
+    var id = String(r.id || '');
+    if (id.indexOf('hemma:') === 0) return id.split(':').slice(0, 2).join(':');
+    return r.entity || id;
+  }
+
+  function groupName(rows) {
+    var r = rows[0];
+    var KIND = {
+      'hemma:co2': _hemmaT('notify.group.co2', 'Carbon dioxide'),
+      'hemma:open': _hemmaT('notify.group.open', 'Open doors'),
+      'hemma:plant': _hemmaT('notify.group.plants', 'Plants'),
+      'hemma:appliance': _hemmaT('notify.group.appliances', 'Appliances'),
+    };
+    var g = groupOf(r);
+    if (KIND[g]) return KIND[g];
+    var h = hassOf();
+    var st = h && h.states && h.states[r.entity];
+    return tidyName(nameOf(st)).replace(/\s+(ding|doorbell|chime|button)$/i, '') || r.label;
+  }
+
+  function leadHtml(r) {
+    var UI = window._hemmaUI;
+    if (r.image) {
+      return '<div class="hemma-nc-lead' + (r.imageFit === 'cover' ? '' : ' contain') + '">'
+        + '<img src="' + UI.esc(r.image) + '" alt=""></div>';
+    }
+    return '<div class="hemma-nc-lead">' + UI.icon(r.icon || 'bell', r.tone) + '</div>';
+  }
+
+  function cardHtml(r, fresh, count) {
+    var esc = window._hemmaUI.esc;
+    return '<span class="hemma-nc-leadwrap">' + leadHtml(r)
+      + (count > 1 ? '<span class="hemma-nc-count">' + count + '</span>' : '') + '</span>'
+      + '<div class="hemma-nc-txt">'
+      + (r.urgent ? '<div class="hemma-nc-tag">' + esc(_hemmaT('notify.time_sensitive', 'Time Sensitive')) + '</div>' : '')
+      + '<div class="hemma-nc-top">'
+      + '<span class="hemma-nc-t"><b>' + esc(r.label) + '</b>' + (fresh ? '<i></i>' : '') + '</span>'
+      + '<span class="hemma-nc-when">' + esc(ago(r.when)) + '</span></div>'
+      + (r.sub ? '<div class="hemma-nc-s">' + esc(r.sub) + '</div>' : '')
+      + '</div>';
+  }
+
+  var _center = null;
+
+  function openCenter(anchor) {
+    if (!window._hemmaUI) return;
+    centerStyle();
+    var phone = isPhone();
+    var r = chromeRect(anchor);
+    var mark = watermark();
+
+    var scrim = document.createElement('div');
+    scrim.className = 'hemma-nc-scrim' + (phone ? ' phone' : '');
+
+    var nc = document.createElement('div');
+    var themes = (hassOf() || {}).themes;
+    var dark = themes && typeof themes.darkMode === 'boolean' ? themes.darkMode
+      : !(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    nc.className = 'hemma-nc' + (phone ? ' phone' : '') + (dark ? '' : ' light');
+    nc.setAttribute('role', 'dialog');
+    nc.setAttribute('aria-label', _hemmaT('notify.title', 'Notifications'));
+    nc.style.fontFamily = window._hemmaUI.tokens.font;
+    var top = Math.round(r.bottom + (phone ? 12 : 14));
+    nc.style.top = top + 'px';
+    nc.style.maxHeight = 'calc(100% - ' + (top + 12) + 'px)';
+    var gutter = Math.max(12, Math.round(window.innerWidth - rowRight(anchor, r)));
+    nc.style.width = Math.min(phone ? 460 : 346, window.innerWidth - 2 * gutter + 8) + 'px';
+    nc.style.right = gutter + 'px';
 
     var head = document.createElement('div');
-    Object.assign(head.style, {
-      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-      gap: '12px', padding: '15px 16px 9px',
-      fontFamily: 'var(--primary-font-family, system-ui)',
-    });
-    var clear = document.createElement('button');
-    clear.type = 'button';
-    clear.textContent = _hemmaT('notify.mark_all_read', 'Mark all read');
-    Object.assign(clear.style, {
-      border: '0', background: 'transparent', font: 'inherit', fontSize: '14px',
-      fontWeight: '500', letterSpacing: '-0.01em', cursor: 'pointer', padding: '0',
-      color: 'var(--hemma-popup-ui-action, var(--hemma-color-teal, #00C3D0))',
-    });
-    clear.onclick = function (e) { e.stopPropagation(); seal(); menu._close(); };
-    clear.style.display = unread() ? 'block' : 'none';
-    head.appendChild(clear);
-    head.style.justifyContent = 'flex-end';
-    head.style.padding = '11px calc(var(--hemma-popup-row-pad-x, 16px) + 8px) 5px';
-    if (unread()) inner.appendChild(head);
+    head.className = 'hemma-nc-head';
+    var title = document.createElement('h3');
+    title.className = 'hemma-nc-title';
+    title.textContent = _hemmaT('notify.title', 'Notifications');
+    var x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'hemma-nc-x';
+    x.setAttribute('aria-label', _hemmaT('notify.clear_all', 'Clear All'));
+    x.innerHTML = X_SVG + '<span>' + window._hemmaUI.esc(_hemmaT('notify.clear_all', 'Clear All')) + '</span>';
+    head.appendChild(title);
+    head.appendChild(x);
 
-    var body = document.createElement('div');
-    Object.assign(body.style, {
-      maxHeight: 'min(62vh, 560px)', overflowY: 'auto', overscrollBehavior: 'contain',
-    });
-    var fade = function () {
-      var over = body.scrollHeight - body.clientHeight;
-      var top = over > 4 && body.scrollTop > 1;
-      var bot = over > 4 && body.scrollTop < over - 1;
-      var v = (top || bot)
-        ? 'linear-gradient(to bottom, '
-          + (top ? 'transparent 0, #000 26px' : '#000 0')
-          + ', '
-          + (bot ? '#000 calc(100% - 26px), transparent 100%' : '#000 100%')
-          + ')'
-        : '';
-      if (body.style.webkitMaskImage !== v) {
-        body.style.webkitMaskImage = v;
-        body.style.maskImage = v;
-      }
+    var list = document.createElement('div');
+    list.className = 'hemma-nc-list';
+    var empty = document.createElement('div');
+    empty.className = 'hemma-nc-empty';
+    empty.textContent = _hemmaT('notify.none', 'No recent notifications');
+
+    // Apple's column blur grows in strength toward the cards; one blur faded by opacity shows a sharp and a soft copy at once.
+    var ramp = function (from, len) {
+      var r = function (dir) {
+        return 'linear-gradient(' + dir + ', transparent ' + from + 'px, #000 ' + (from + len) + 'px, #000 calc(100% - '
+          + (from + len) + 'px), transparent calc(100% - ' + from + 'px))';
+      };
+      return r('to right') + ', ' + r('to bottom');
     };
-    body.addEventListener('scroll', fade, { passive: true });
-    GLASS.lockScroll(menu, body);
-    // Custom properties never land through Object.assign.
-    body.style.setProperty('--hemma-popup-row-fill', 'transparent');
-    body.style.setProperty('--hemma-popup-row-hover', 'rgba(255,255,255,0.10)');
-    body.style.setProperty('--hemma-popup-chev-gap', '16px');
-    body.style.setProperty('--hemma-popup-group-label-gap', '4px');
-    var U_MIN = 10, U_VW = 0.575, U_MAX = 11.5;
-    body.style.setProperty('--hemma-popup-row-label-weight', '600');
-    body.style.setProperty('--hemma-popup-sub-color', 'rgba(255,255,255,0.62)');
-    [['--hemma-popup-row-label-size', 1.53],
-     ['--hemma-popup-sub-size', 1.25],
-     ['--hemma-popup-row-min', 4.68],
-     ['--hemma-popup-icon-tile', 2.61],
-     ['--hemma-popup-lead-plate', 2.88],
-     ['--hemma-popup-group-label-size', 1.35]].forEach(function (p) {
-      var k = p[1];
-      body.style.setProperty(p[0], 'clamp(' + (U_MIN * k).toFixed(2) + 'px, '
-        + (U_VW * k).toFixed(4) + 'vw, ' + (U_MAX * k).toFixed(2) + 'px)');
-    });
-    body.style.setProperty('--hemma-popup-row-radius', '0px');
-    body.innerHTML = sections();
-    inner.appendChild(body);
-    menu.appendChild(inner);
-    document.body.appendChild(menu);
-    fade();
-    paint(body);
-    bindOpens(body, null);
-
-    var w = menu.offsetWidth;
-    menu.style.top = GLASS.dropTop(r, 10) + 'px';
-    menu.style.left = Math.round(
-      Math.max(12, Math.min(r.right - w, window.innerWidth - w - 12))
-    ) + 'px';
-
-    inner.style.opacity = '1';
-    inner.style.willChange = 'auto';
-    GLASS.enter(menu);
-
-    var onKey = function (e) { if (e.key === 'Escape') menu._close(); };
-    var onAway = function (e) {
-      var path = (e.composedPath && e.composedPath()) || [e.target];
-      if (path.indexOf(menu) !== -1) return;
-      // contains() cannot cross a shadow boundary.
-      if (anchor && path.indexOf(anchor) !== -1) return;
-      for (var i = 0; i < path.length; i++) {
-        var n = path[i];
-        var tag = (n && n.tagName) ? String(n.tagName).toLowerCase() : '';
-        // A more-info opened FROM a row is not somewhere else.
-        if (tag === 'dialog' || /-dialog$/.test(tag) || tag === 'hemma-popup') return;
-      }
-      menu._close();
+    // Measured off Apple's over a white page: a wide soft shadow, heavier below, and only a hint of blur near the card.
+    var halo = function () {
+      var h = document.createElement('div');
+      h.className = 'hemma-nc-halo';
+      var soft = document.createElement('div');
+      var f = 'var(--hemma-perf-none, blur(2px))';
+      soft.style.backdropFilter = f;
+      soft.style.webkitBackdropFilter = f;
+      var m = ramp(0, 30);
+      soft.style.webkitMaskImage = m;
+      soft.style.maskImage = m;
+      soft.style.webkitMaskComposite = 'source-in';
+      soft.style.maskComposite = 'intersect';
+      h.appendChild(soft);
+      return h;
     };
-    var idle = setTimeout(function () { menu._idle = true; menu._close(); }, 20000);
+    nc.appendChild(head);
+    nc.appendChild(list);
+    document.body.appendChild(scrim);
+    document.body.appendChild(nc);
+    _center = nc;
+    lift(anchor, true);
 
-    menu._close = function () {
-      if (_menu !== menu) return;
-      _menu = null;
+    var slots = {};
+    var opened = {};
+    var swiped = null;
+    var clearing = false;
+    var idle = null;
+    var idleOut = false;
+    var bump = function () {
       clearTimeout(idle);
-      window.removeEventListener('keydown', onKey, true);
-      document.removeEventListener('pointerdown', onAway, true);
-      window.removeEventListener('resize', menu._close);
-      lift(anchor, false);
-      if (!menu._idle) seal();
-      GLASS.exit(menu, function () { if (menu.parentNode) menu.remove(); });
+      idle = setTimeout(function () { idleOut = true; nc._close(); }, 30000);
     };
 
-    setTimeout(function () {
-      window.addEventListener('keydown', onKey, true);
-      document.addEventListener('pointerdown', onAway, true);
-      window.addEventListener('resize', menu._close);
-    }, 0);
+    var frost = function (slot) {
+      var h = slot.querySelector(':scope > .hemma-nc-halo');
+      return h ? [].slice.call(h.children) : [];
+    };
+
+    var collapse = function (slot, dir) {
+      if (slot._gone) return;
+      slot._gone = true;
+      if (swiped === slot) swiped = null;
+      delete slots[slot._ukey];
+      var card = slot.firstChild;
+      slot.style.height = slot.offsetHeight + 'px';
+      slot.style.overflow = 'visible';
+      card.style.transition = 'transform 260ms ' + EASE + ', opacity 200ms ease';
+      card.style.transform = 'translateX(' + (dir < 0 ? '-110%' : '40px') + ')';
+      card.style.opacity = '0';
+      var btn = slot.querySelector('.hemma-nc-clear');
+      if (btn) { btn.style.transition = 'opacity 160ms ease'; btn.style.opacity = '0'; }
+      [].concat([].slice.call(slot.querySelectorAll('.hemma-nc-ghost')), frost(slot)).forEach(function (gh) {
+        gh.style.transition = card.style.transition;
+        gh.style.transform = card.style.transform;
+        gh.style.opacity = '0';
+      });
+      var x1 = slot.querySelector('.hemma-nc-close');
+      if (x1) {
+        x1.style.pointerEvents = 'none';
+        x1.style.transition = card.style.transition;
+        x1.style.transform = card.style.transform;
+        x1.style.opacity = '0';
+      }
+      setTimeout(function () {
+        slot.style.transition = 'height 260ms ' + EASE + ', margin-bottom 260ms ' + EASE;
+        slot.style.height = '0px';
+        slot.style.marginBottom = '0px';
+      }, 150);
+      setTimeout(function () { if (slot.parentNode) slot.remove(); }, 440);
+    };
+
+    var settle = function (slot, off) {
+      var card = slot.firstChild;
+      var btn = slot.querySelector('.hemma-nc-clear');
+      card.style.transition = '';
+      btn.style.transition = 'opacity 200ms ease';
+      card.style.transform = off ? 'translateX(' + off + 'px)' : '';
+      frost(slot).forEach(function (f) {
+        f.style.transition = 'transform 300ms ' + EASE;
+        f.style.transform = card.style.transform;
+      });
+      btn.style.opacity = off ? '1' : '0';
+      swiped = off ? slot : (swiped === slot ? null : swiped);
+    };
+
+    var activate = function (row) {
+      nc._close();
+      if (row.opens) { openTarget(row.opens, row.entity); return; }
+      if (!row.entity) return;
+      var h = ha();
+      if (h) {
+        h.dispatchEvent(new CustomEvent('hass-more-info', {
+          bubbles: true, composed: true, detail: { entityId: row.entity },
+        }));
+      }
+    };
+
+    var makeHead = function (u) {
+      var slot = document.createElement('div');
+      slot.className = 'hemma-nc-slot hemma-nc-ghead-slot';
+      var head1 = document.createElement('div');
+      head1.className = 'hemma-nc-ghead';
+      var name = document.createElement('b');
+      var pills = document.createElement('span');
+      pills.className = 'hemma-nc-pills';
+      var less = document.createElement('button');
+      less.type = 'button';
+      less.className = 'hemma-nc-pill';
+      less.textContent = _hemmaT('notify.show_less', 'Show less');
+      var drop = document.createElement('button');
+      drop.type = 'button';
+      drop.className = 'hemma-nc-pill round';
+      drop.setAttribute('aria-label', _hemmaT('notify.clear', 'Clear'));
+      drop.innerHTML = X_SVG;
+      pills.appendChild(less);
+      pills.appendChild(drop);
+      head1.appendChild(name);
+      head1.appendChild(pills);
+      slot.appendChild(head1);
+      slot._name = name;
+      less.addEventListener('click', function (e) { e.stopPropagation(); fold(slot._group); });
+      drop.addEventListener('click', function (e) { e.stopPropagation(); clearRows(slot._rows, false); });
+      return slot;
+    };
+
+    var make = function (u) {
+      if (u.head) return makeHead(u);
+      var row = u.row;
+      var slot = document.createElement('div');
+      slot.className = 'hemma-nc-slot';
+      var card = document.createElement('div');
+      card.className = 'hemma-nc-card' + ((u.stack || row.opens || row.entity) ? ' tap' : '');
+      var close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'hemma-nc-close';
+      close.setAttribute('aria-label', _hemmaT('notify.clear', 'Clear'));
+      close.innerHTML = X_SVG;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'hemma-nc-clear';
+      btn.textContent = _hemmaT('notify.clear', 'Clear');
+      slot.appendChild(card);
+      slot.appendChild(close);
+      slot.appendChild(btn);
+      slot.appendChild(halo());
+
+      close.addEventListener('click', function (e) {
+        e.stopPropagation();
+        clearRows(slot._rows, false);
+      });
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        slot._dir = -1;
+        clearRows(slot._rows, false);
+      });
+
+      var g = null;
+      var blockClick = 0;
+      card.addEventListener('pointerdown', function (e) {
+        if (e.pointerType === 'mouse' || slot._gone) return;
+        if (swiped && swiped !== slot) settle(swiped, 0);
+        var m = /translateX\((-?[\d.]+)px\)/.exec(card.style.transform || '');
+        g = { x: e.clientX, y: e.clientY, base: m ? parseFloat(m[1]) : 0, off: 0, mode: null, id: e.pointerId };
+      });
+      card.addEventListener('pointermove', function (e) {
+        if (!g || e.pointerId !== g.id) return;
+        var dx = e.clientX - g.x, dy = e.clientY - g.y;
+        if (!g.mode) {
+          if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) { g = null; return; }
+          if (Math.abs(dx) < 8) return;
+          g.mode = 'drag';
+          try { card.setPointerCapture(e.pointerId); } catch (err) {}
+          card.style.transition = 'none';
+          btn.style.transition = 'none';
+        }
+        var off = g.base + dx;
+        if (off > 0) off = off * 0.25;
+        g.off = off;
+        card.style.transform = 'translateX(' + off + 'px)';
+        frost(slot).forEach(function (f) { f.style.transition = 'none'; f.style.transform = card.style.transform; });
+        btn.style.opacity = String(Math.max(0, Math.min(1, -off / 60)));
+      });
+      var end = function (e) {
+        if (!g || e.pointerId !== g.id) return;
+        var was = g;
+        g = null;
+        if (was.mode !== 'drag') return;
+        blockClick = Date.now();
+        bump();
+        if (was.off < -card.offsetWidth * 0.55) {
+          slot._dir = -1;
+          clearRows(slot._rows, false);
+        } else {
+          settle(slot, was.off < -40 ? -74 : 0);
+        }
+      };
+      card.addEventListener('pointerup', end);
+      card.addEventListener('pointercancel', end);
+      card.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (Date.now() - blockClick < 400) return;
+        if (swiped) { settle(swiped, 0); return; }
+        if (slot._stack) { spread(slot._stack); return; }
+        activate(slot._row);
+      });
+      return slot;
+    };
+
+    var paintSlot = function (slot, u) {
+      slot._ukey = u.key;
+      slot._group = u.group;
+      slot._rows = u.rows;
+      if (u.head) {
+        var n = groupName(u.rows);
+        if (slot._name.textContent !== n) slot._name.textContent = n;
+        return;
+      }
+      var row = u.row;
+      var count = u.stack ? u.rows.length : 0;
+      var fresh = row.when > mark;
+      var key = row.label + '|' + (row.sub || '') + '|' + ago(row.when) + '|' + fresh + '|' + (row.image || row.icon)
+        + '|' + count + '|' + !!row.urgent;
+      slot._row = row;
+      slot._stack = u.stack || null;
+      var depth = count > 2 ? 2 : count > 1 ? 1 : 0;
+      if (slot._depth !== depth) {
+        slot._depth = depth;
+        slot.classList.toggle('stack', depth > 0);
+        slot.classList.toggle('deep', depth > 1);
+        [].forEach.call(slot.querySelectorAll('.hemma-nc-ghost'), function (gh) { gh.remove(); });
+        for (var d = depth; d > 0; d--) {
+          var gh = document.createElement('div');
+          gh.className = 'hemma-nc-ghost' + (d > 1 ? ' far' : '');
+          slot.appendChild(gh);
+        }
+      }
+      if (slot._key === key) return;
+      slot._key = key;
+      slot.firstChild.innerHTML = cardHtml(row, fresh, count);
+    };
+
+    var units = function () {
+      var order = [];
+      var by = {};
+      _rows.forEach(function (row) {
+        var g = groupOf(row);
+        if (!by[g]) { by[g] = []; order.push(g); }
+        by[g].push(row);
+      });
+      var out = [];
+      order.forEach(function (g) {
+        var rows = by[g];
+        if (rows.length < 2) {
+          delete opened[g];
+          out.push({ key: rows[0].id, row: rows[0], rows: rows });
+        } else if (opened[g]) {
+          out.push({ key: 'head:' + g, head: true, group: g, rows: rows });
+          rows.forEach(function (row, i) { out.push({ key: row.id, row: row, rows: [row], group: g, index: i }); });
+        } else {
+          out.push({ key: 'stack:' + g, row: rows[0], rows: rows, stack: g, group: g });
+        }
+      });
+      return out;
+    };
+
+    nc._sync = function (first, quiet) {
+      if (clearing) return;
+      var all = units();
+      var want = {};
+      all.forEach(function (u) { want[u.key] = 1; });
+      Object.keys(slots).forEach(function (k) {
+        if (!want[k]) collapse(slots[k], slots[k]._dir || 1);
+      });
+      var ref = list.firstChild;
+      all.forEach(function (u) {
+        var slot = slots[u.key];
+        if (!slot) {
+          slot = slots[u.key] = make(u);
+          if (!first && !quiet) slot.classList.add('fresh-in');
+        }
+        slot._index = u.index || 0;
+        paintSlot(slot, u);
+        while (ref && ref._gone) ref = ref.nextSibling;
+        if (slot !== ref) list.insertBefore(slot, ref);
+        else ref = ref.nextSibling;
+      });
+      var none = !_rows.length;
+      head.style.display = none ? 'none' : '';
+      if (none && !empty.parentNode) {
+        setTimeout(function () {
+          if (_center === nc && !_rows.length && !empty.parentNode) list.appendChild(empty);
+        }, (first || !list.querySelector('.hemma-nc-slot')) ? 0 : 380);
+      } else if (!none && empty.parentNode) {
+        empty.remove();
+      }
+      taper();
+    };
+
+    // Children move, never the slot: an animated ancestor blanks the glass's blur.
+    var SPRING = (function () {
+      var zeta = 0.78;
+      var w = 2 * Math.PI / 0.4;
+      var a = zeta * w;
+      var wd = w * Math.sqrt(1 - zeta * zeta);
+      var dur = Math.log(1000) / a;
+      var pts = [];
+      for (var i = 0; i <= 48; i++) {
+        var t = dur * i / 48;
+        pts.push((1 - Math.exp(-a * t) * (Math.cos(wd * t) + (a / wd) * Math.sin(wd * t))).toFixed(4));
+      }
+      pts[48] = '1';
+      var ok = window.CSS && CSS.supports && CSS.supports('transition-timing-function', 'linear(0, 1)');
+      return { ease: ok ? 'linear(' + pts.join(', ') + ')' : 'cubic-bezier(0.34,1.36,0.64,1)', ms: Math.round(dur * 1000) };
+    })();
+    var drift = function (slot, frames, opts) {
+      [].forEach.call(slot.children, function (el) {
+        if (!el.animate) return;
+        // The swipe Clear and the hover ✕ only travel with the card; animating their opacity shows them.
+        if (el.classList.contains('hemma-nc-halo')) {
+          [].forEach.call(el.children, function (f) { f.animate(frames, opts); });
+          return;
+        }
+        if (el.classList.contains('hemma-nc-clear') || el.classList.contains('hemma-nc-close')) {
+          if (!frames[0].transform) return;
+          el.animate(frames.map(function (f) { return { transform: f.transform }; }), opts);
+          return;
+        }
+        el.animate(frames, opts);
+      });
+    };
+    var flip = function (change, enter) {
+      var before = new Map();
+      [].forEach.call(list.children, function (el) { if (!el._gone) before.set(el, el.getBoundingClientRect().top); });
+      change();
+      [].forEach.call(list.children, function (el) {
+        if (el._gone || !el.classList.contains('hemma-nc-slot')) return;
+        var top = el.getBoundingClientRect().top;
+        if (before.has(el)) {
+          var dy = before.get(el) - top;
+          if (Math.abs(dy) > 0.5) drift(el, [{ transform: 'translateY(' + dy + 'px)' }, { transform: 'none' }], { duration: SPRING.ms, easing: SPRING.ease });
+        } else if (enter) {
+          enter(el, top);
+        }
+      });
+    };
+    var layer = function (slot, i) {
+      var card = slot.firstChild;
+      card.style.zIndex = String(10 - Math.min(i, 8));
+      clearTimeout(card._zt);
+      card._zt = setTimeout(function () { card.style.zIndex = ''; }, 800);
+    };
+    var drop = function (slot) {
+      slot._gone = true;
+      delete slots[slot._ukey];
+      if (swiped === slot) swiped = null;
+      slot.remove();
+    };
+
+    var spread = function (g) {
+      var stack = slots['stack:' + g];
+      if (!stack) return;
+      settle2(SPRING.ms + 160);
+      var from = stack.getBoundingClientRect().top;
+      flip(function () {
+        drop(stack);
+        opened[g] = true;
+        nc._sync(false, true);
+      }, function (el, top) {
+        if (el.classList.contains('hemma-nc-ghead-slot')) {
+          drift(el, [{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 120, easing: 'ease', fill: 'backwards' });
+          return;
+        }
+        var i = el._index || 0;
+        layer(el, i);
+        drift(el, [
+          { transform: 'translateY(' + (from - top) + 'px) scale(' + (i ? 0.94 : 1) + ')', opacity: i ? 0 : 1 },
+          { transform: 'none', opacity: 1 },
+        ], { duration: SPRING.ms, delay: Math.min(i, 4) * 25, easing: SPRING.ease, fill: 'backwards' });
+      });
+    };
+
+    var fold = function (g) {
+      var group = [].filter.call(list.children, function (el) { return !el._gone && el._group === g && !el._stack; });
+      var cards = group.filter(function (el) { return !el.classList.contains('hemma-nc-ghead-slot'); });
+      if (!cards.length) return;
+      var lead = cards[0];
+      var leadTop = lead.getBoundingClientRect().top;
+      // A positioned scroller would make WebKit blur only what is inside it, so these anchor to the panel.
+      var box = nc.getBoundingClientRect();
+      var spots = group.filter(function (el) { return el !== lead; }).map(function (el) {
+        var b = el.getBoundingClientRect();
+        return { el: el, top: b.top - box.top, left: b.left - box.left, width: b.width };
+      });
+      var landed = leadTop;
+      settle2(SPRING.ms + 60);
+      flip(function () {
+        drop(lead);
+        spots.forEach(function (p) {
+          var el = p.el;
+          el._gone = true;
+          delete slots[el._ukey];
+          if (swiped === el) swiped = null;
+          el.style.position = 'absolute';
+          el.style.top = p.top + 'px';
+          el.style.left = p.left + 'px';
+          el.style.width = p.width + 'px';
+          el.style.margin = '0';
+          el.style.pointerEvents = 'none';
+        });
+        delete opened[g];
+        nc._sync(false, true);
+      }, function (el, top) {
+        landed = top;
+        layer(el, 0);
+        drift(el, [{ transform: 'translateY(' + (leadTop - top) + 'px)' }, { transform: 'none' }],
+          { duration: SPRING.ms, easing: SPRING.ease });
+      });
+      spots.forEach(function (p, n) {
+        var el = p.el;
+        if (el.classList.contains('hemma-nc-ghead-slot')) {
+          drift(el, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease', fill: 'forwards' });
+        } else {
+          layer(el, n + 1);
+          drift(el, [
+            { transform: 'none', opacity: 1 },
+            { transform: 'translateY(' + (landed - el.getBoundingClientRect().top) + 'px) scale(0.94)', opacity: 0 },
+          ], { duration: SPRING.ms, easing: SPRING.ease, fill: 'forwards' });
+        }
+        setTimeout(function () { if (el.parentNode) el.remove(); }, SPRING.ms + 40);
+      });
+    };
+
+    var label = x.querySelector('span');
+    var expand = function (on) {
+      // The label's own width, not a generous cap, or the morph spends most of its time on nothing.
+      label.style.maxWidth = on ? label.scrollWidth + 'px' : '';
+      x.classList.toggle('open', !!on);
+      clearTimeout(x._t);
+      if (on) x._t = setTimeout(function () { expand(false); }, 3000);
+    };
+    x.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') expand(true); });
+    x.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') expand(false); });
+    x.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (!x.classList.contains('open')) { expand(true); return; }
+      if (clearing) return;
+      clearing = true;
+      clearTimeout(x._t);
+      var all = _rows.slice();
+      var live = [].slice.call(list.querySelectorAll('.hemma-nc-slot'));
+      var DUR = 480, STEP = 40, OUT = 'cubic-bezier(0.4,0,0.2,1)';
+      var fadeX = x.animate ? x.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 320, easing: OUT, fill: 'forwards' }) : null;
+      live.forEach(function (slot, i) {
+        slot._gone = true;
+        delete slots[slot._ukey];
+        var cx = slot.querySelector('.hemma-nc-close');
+        if (cx) cx.style.opacity = '0';
+        drift(slot, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(56px)' }],
+          { duration: DUR, delay: Math.min(i, 8) * STEP, easing: OUT, fill: 'forwards' });
+      });
+      setTimeout(function () {
+        live.forEach(function (slot) { slot.remove(); });
+        clearing = false;
+        expand(false);
+        clearRows(all, true);
+        if (fadeX) fadeX.cancel();
+      }, DUR + Math.min(Math.max(live.length - 1, 0), 8) * STEP);
+    });
+
+    var TAPER = 100;
+    var tapering = 0;
+    var settling = 0;
+    var settle2 = function (ms) {
+      settling++;
+      setTimeout(function () { settling--; taper(); }, ms);
+    };
+
+    function taper() {
+      if (settling) return;
+      var lb = list.getBoundingClientRect();
+      var edge = Math.min(lb.bottom, window.innerHeight) - 8;
+      var left = list.scrollHeight - list.clientHeight - list.scrollTop;
+      var room = Math.max(0, Math.min(1, left / TAPER));
+      [].forEach.call(list.children, function (slot) {
+        if (slot._gone || !slot.classList.contains('hemma-nc-slot') || slot.classList.contains('hemma-nc-ghead-slot')) return;
+        var card = slot.firstChild;
+        var b = card.getBoundingClientRect();
+        var t = room * Math.max(0, Math.min(1, (b.bottom - (edge - TAPER)) / TAPER));
+        var op = t ? (1 - 0.85 * t).toFixed(3) : '';
+        var sc = t ? (1 - 0.07 * t).toFixed(4) : '';
+        if (card.style.opacity !== op && swiped !== slot) card.style.opacity = op;
+        if (card.style.scale !== sc) { card.style.scale = sc; card.style.transformOrigin = '50% 0'; }
+        [].concat([].slice.call(slot.querySelectorAll('.hemma-nc-ghost')), frost(slot)).forEach(function (gh) { gh.style.opacity = op; });
+      });
+    }
+    list.addEventListener('scroll', function () {
+      if (tapering) return;
+      tapering = requestAnimationFrame(function () { tapering = 0; taper(); });
+    }, { passive: true });
+
+    nc.addEventListener('click', function () { if (swiped) settle(swiped, 0); });
+    nc.addEventListener('pointerdown', bump, true);
+    nc.addEventListener('wheel', bump, { passive: true, capture: true });
+    scrim.addEventListener('click', function (e) { e.stopPropagation(); nc._close(); });
+
+    // A scroller clips, so the shadows live outside it and copy each card's place and fade every frame.
+    var shades = document.createElement('div');
+    shades.className = 'hemma-nc-shades';
+    var shadeOf = new Map();
+    var shadeRaf = 0;
+    var mirror = function () {
+      shadeRaf = requestAnimationFrame(mirror);
+      var nb = nc.getBoundingClientRect();
+      var lb = list.getBoundingClientRect();
+      var seen = new Set();
+      [].forEach.call(list.children, function (slot) {
+        if (!slot.classList.contains('hemma-nc-slot') || slot.classList.contains('hemma-nc-ghead-slot')) return;
+        var card = slot.firstChild;
+        var b = card.getBoundingClientRect();
+        var extra = slot.classList.contains('deep') ? 16 : slot.classList.contains('stack') ? 9 : 0;
+        var sh = shadeOf.get(slot);
+        if (!sh) { sh = shades.appendChild(document.createElement('div')); shadeOf.set(slot, sh); }
+        seen.add(slot);
+        var shown = Math.max(0, Math.min(b.bottom, lb.bottom) - Math.max(b.top, lb.top)) / Math.max(1, b.height);
+        var op = (Number(getComputedStyle(card).opacity) * shown).toFixed(3);
+        var css = 'left:' + (b.left - nb.left) + 'px;top:' + (b.top - nb.top) + 'px;width:' + b.width + 'px;height:' + (b.height + extra) + 'px;opacity:' + op;
+        if (sh._css !== css) { sh._css = css; sh.style.cssText = css; }
+      });
+      if (empty.isConnected) {
+        var eb = empty.getBoundingClientRect();
+        var es = shadeOf.get(empty);
+        if (!es) { es = shades.appendChild(document.createElement('div')); es.className = 'text'; shadeOf.set(empty, es); }
+        seen.add(empty);
+        var ecss = 'left:' + (eb.left - nb.left - 24) + 'px;top:' + (eb.top - nb.top - 14) + 'px;width:' + (eb.width + 48) + 'px;height:' + (eb.height + 28)
+          + 'px;opacity:' + Number(getComputedStyle(empty).opacity).toFixed(3);
+        if (es._css !== ecss) { es._css = ecss; es.style.cssText = ecss; }
+      }
+      shadeOf.forEach(function (sh, slot) {
+        if (seen.has(slot)) return;
+        sh.remove();
+        shadeOf.delete(slot);
+      });
+    };
+    nc.insertBefore(shades, nc.firstChild);
+    mirror();
+    nc._sync(true);
+    bump();
+    // Each glass piece moves on its own: an animated ancestor leaves their blur blank until it settles.
+    var pieces = function () {
+      return [title, x, empty].concat([].slice.call(list.querySelectorAll('.hemma-nc-card, .hemma-nc-ghost, .hemma-nc-ghead, .hemma-nc-halo > div')));
+    };
+    var away = phone ? 'translateY(-14px)' : 'translateX(28px)';
+    pieces().forEach(function (el) {
+      if (!el.animate) return;
+      el.animate([{ opacity: 0, transform: away }, { opacity: 1, transform: 'none' }],
+        { duration: 420, easing: EASE, fill: 'backwards' });
+    });
+    requestAnimationFrame(function () { scrim.classList.add('on'); });
+
+    var yielded = [];
+    var box = nc.getBoundingClientRect();
+    var yieldTo = function (c) {
+      var t = c._config && c._config.template;
+      t = t ? [].concat(t) : [];
+      if (t.indexOf('hemma_weather') < 0 && t.indexOf('hemma_mobile_weather') < 0) return;
+      if (yielded.some(function (y) { return y.el === c; })) return;
+      var b = c.getBoundingClientRect();
+      if (!b.width || b.right < box.left || b.left > box.right || b.bottom < box.top - 8 || b.top > box.bottom) return;
+      if (!c.animate) return;
+      yielded.push({ el: c, anim: c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: 'ease', fill: 'forwards' }) });
+    };
+    var bar = document.querySelector('hemma-nav-bar');
+    [bar && bar.shadowRoot, anchor && anchor.getRootNode && anchor.getRootNode()].forEach(function (root) {
+      if (root && root.querySelectorAll) root.querySelectorAll('button-card').forEach(yieldTo);
+    });
+    // The phone's title and weather are one header card in the view, out of the bell's reach.
+    if (phone) {
+      (function walk(root, depth) {
+        if (!root || depth > 12 || !root.querySelectorAll) return;
+        root.querySelectorAll('*').forEach(function (el) {
+          if (el.tagName === 'BUTTON-CARD') yieldTo(el);
+          if (el.shadowRoot) walk(el.shadowRoot, depth + 1);
+        });
+      })(document, 0);
+    }
+
+    var width = window.innerWidth;
+    var onKey = function (e) { if (e.key === 'Escape') nc._close(); };
+    var onResize = function () { if (window.innerWidth !== width) nc._close(); };
+
+    nc._close = function () {
+      setTimeout(function () { cancelAnimationFrame(shadeRaf); }, 460);
+      if (_center !== nc) return;
+      _center = null;
+      clearTimeout(idle);
+      clearTimeout(x._t);
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('resize', onResize);
+      lift(anchor, false);
+      if (!idleOut) seal();
+      scrim.classList.remove('on');
+      nc.style.pointerEvents = 'none';
+      yielded.forEach(function (y) {
+        y.anim.reverse();
+        y.anim.onfinish = function () { y.anim.cancel(); };
+      });
+      pieces().forEach(function (el) {
+        if (!el.animate) { el.style.opacity = '0'; return; }
+        el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: away }],
+          { duration: 260, easing: 'ease-in', fill: 'forwards' });
+      });
+      setTimeout(function () {
+        if (scrim.parentNode) scrim.remove();
+        if (nc.parentNode) nc.remove();
+      }, 440);
+    };
+
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('resize', onResize);
   }
 
   function open(anchor) {
-    if (_menu) { _menu._close(); return; }
+    if (_center) { _center._close(); return; }
     var pop = window.hemmaPopup && window.hemmaPopup.element;
     if (pop && pop.hasAttribute('open')) { window.hemmaPopup.close(); return; }
 
-    var show = function () { openMenu(anchor); };
+    var show = function () { openCenter(anchor); };
     // Opening waits on the network only the very first time.
-    if (_rows.length) { show(); collect(); } else { collect().then(show); }
+    if (_all.length) { show(); collect(); } else { collect().then(show); }
   }
 
   // The categories a dashboard can switch off, as the panel writes them.
@@ -7554,7 +11755,8 @@ window.hemmaMenuGlass = {
 
   window._hemmaNotify = {
     open: open,
-    close: function () { if (_menu) _menu._close(); },
+    close: function () { if (_center) _center._close(); },
+    clearAll: function () { clearRows(_rows.slice(), true); },
     refresh: collect,
     configure: configure,
     configureFrom: configureFrom,
@@ -7568,6 +11770,7 @@ window.hemmaMenuGlass = {
     var wait = setInterval(function () {
       if (!hassOf()) return;
       clearInterval(wait);
+      subscribeCleared();
       tick();
       setInterval(tick, POLL_MS);
       // A new bell arrives with every view change and starts out empty.
@@ -7678,12 +11881,17 @@ window.hemmaMenuGlass = {
     var mins = minutes(cfg);
     if (!mins) return bump();
     var home = homePath(cfg);
-    if (!home || norm(location.pathname) === norm(home)) return bump();
+    var busy = typeof window._hemmaNavBusy === 'function' && window._hemmaNavBusy();
+    var away = norm(location.pathname) !== norm(home);
+    if (!home || (!away && !busy)) return bump();
     // Never pull the view out from under someone reading a popup.
     if (window.hemmaPopup && window.hemmaPopup.surface) return bump();
     if (Date.now() - last < mins * 60000) return;
-    history.pushState(null, '', home);
-    window.dispatchEvent(new CustomEvent('location-changed', { detail: { replace: false } }));
+    if (busy && typeof window._hemmaNavReset === 'function') window._hemmaNavReset();
+    if (away) {
+      history.pushState(null, '', home);
+      window.dispatchEvent(new CustomEvent('location-changed', { detail: { replace: false } }));
+    }
     bump();
   }
 
@@ -7723,7 +11931,7 @@ window.hemmaMenuGlass = {
   }
 
   // One hass object arrives per update and is handed to every card, so the
-  // rewrite is memoised on it rather than repeated down the tree.
+  // rewrite is memoized on it rather than repeated down the tree.
   var lastIn = null, lastVal = null, lastOut = null;
 
   function apply(hass) {

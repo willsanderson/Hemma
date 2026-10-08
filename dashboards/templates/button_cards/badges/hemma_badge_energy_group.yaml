@@ -9,21 +9,12 @@ hemma_badge_energy_group:
   variables:
     enabled: true
     power_entity: null
-    # Which input_select drives the active state (mobile swaps in its filter).
-    row_entity: input_select.hemma_expanded_row
-
-  entity: input_select.hemma_expanded_row
+    # The mobile badge row passes its filter, so the badge shows as selected there.
+    row_entity: null
 
   tap_action:
-    action: call-service
-    service: input_select.select_option
-    service_data:
-      entity_id: input_select.hemma_expanded_row
-      option: >
-        [[[
-          return states['input_select.hemma_expanded_row']?.state === 'energy'
-            ? 'none' : 'energy';
-        ]]]
+    action: fire-dom-event
+    hemma_category: energy
 
   # hold_action comes from hemma_popup_energy (this room's energy popup).
   double_tap_action:

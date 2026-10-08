@@ -10,19 +10,10 @@ hemma_badge_security_group:
     locks: null
     lock_entity: null
     lock_entity_2: null
-  entity: input_select.hemma_expanded_row
-
 
   tap_action:
-    action: call-service
-    service: input_select.select_option
-    service_data:
-      entity_id: input_select.hemma_expanded_row
-      option: >
-        [[[
-          return states['input_select.hemma_expanded_row']?.state === 'security'
-            ? 'none' : 'security';
-        ]]]
+    action: fire-dom-event
+    hemma_category: security
 
   hold_action:
     action: none
@@ -115,8 +106,8 @@ hemma_badge_security_group:
           position: absolute;
           inset: 0;
           background-color: var(--hemma-badge-icon-color, var(--hemma-badge-security-color, #00c3d0)) !important;
-          -webkit-mask: url('${URL}') no-repeat center / auto 72%;
-          mask: url('${URL}') no-repeat center / auto 72%;
+          -webkit-mask: url('${URL}') no-repeat center / auto 80%;
+          mask: url('${URL}') no-repeat center / auto 80%;
           transform: translateZ(0);
         }`;
     ]]]

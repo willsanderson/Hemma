@@ -269,11 +269,19 @@ hemma_now_playing_primary:
                 if (over > 4) {
                   const loopDist = singleWidth + GAP_PX;
                   const dur = Math.max(MIN_DUR_S, (loopDist / SPEED_PX_S) / (1 - PAUSE_FRACTION));
-                  ln.style.setProperty('--np-mq', loopDist.toFixed(0) + 'px');
-                  ln.style.setProperty('--np-marquee-dur', dur.toFixed(2) + 's');
-                  // Set per line: edge-fade (on the line) and translateX (on the text) must share duration+delay to stay in lockstep.
-                  ln.style.setProperty('--np-mq-delay',
-                    ln.querySelector('.np-sub') ? '1.2s' : '0s');
+                  const mqv = loopDist.toFixed(0) + 'px', durv = dur.toFixed(2) + 's';
+                  const key = original.className.split(' ')[0] + '|' + original.textContent;
+                  const mq = el._npMq = el._npMq || {};
+                  const kept = mq[key] && mq[key].mq === mqv && mq[key].dur === durv && ln.classList.contains('np-scroll');
+                  if (!kept) {
+                    const base = ln.querySelector('.np-sub') ? 1.2 : 0;
+                    Object.keys(mq).forEach((k) => { if (k.split('|')[0] === key.split('|')[0]) delete mq[k]; });
+                    mq[key] = { mq: mqv, dur: durv, base, gap: GAP_PX, t0: Date.now() };
+                    ln.style.setProperty('--np-mq', mqv);
+                    ln.style.setProperty('--np-marquee-dur', durv);
+                    // Set per line: edge-fade (on the line) and translateX (on the text) must share duration+delay to stay in lockstep.
+                    ln.style.setProperty('--np-mq-delay', base + 's');
+                  }
                   ln.classList.add('np-scroll');
                   if (!clone) {
                     const dupe = original.cloneNode(true);
@@ -283,6 +291,7 @@ hemma_now_playing_primary:
                     ln.appendChild(dupe);
                   }
                 } else {
+                  if (el._npMq) delete el._npMq[original.className.split(' ')[0] + '|' + original.textContent];
                   ln.style.removeProperty('--np-mq');
                   ln.style.removeProperty('--np-marquee-dur');
                   ln.style.removeProperty('--np-mq-delay');
@@ -620,11 +629,11 @@ hemma_now_playing_primary:
               calc(var(--np-has-art, 0) * 100%),
             var(--badge-background, rgba(10,12,14,0.65))) !important
       - -webkit-backdrop-filter: >
-          blur(calc(var(--np-inner-glass, 1) * 22px))
-          saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1)))) !important
+          var(--hemma-perf-none, blur(calc(var(--np-inner-glass, 1) * 22px))
+          saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1))))) !important
       - backdrop-filter: >
-          blur(calc(var(--np-inner-glass, 1) * 22px))
-          saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1)))) !important
+          var(--hemma-perf-none, blur(calc(var(--np-inner-glass, 1) * 22px))
+          saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1))))) !important
       - border-radius: var(--np-inner-radius, calc(var(--hemma-u-np, 10px) * 2.6))
       # ── ARTWORK CORNER RADIUS - tune this value ── Strictly concentric with the card (--np-inner-radius - --np-pad-v) is 10px but reads too square; 15px is deliberately rounder. Range ~10-20px.
       - --np-art-radius: calc(var(--hemma-u-np, 10px) * 1.5)
@@ -749,10 +758,21 @@ hemma_now_playing_primary:
         bar = `<div class="np-track"><div class="np-fill" style="transform: scaleX(${frac.toFixed(5)}); ${anim}"></div></div>`;
       }
 
+      // The progress bar makes this markup new on every render, which rebuilds the lines: a scrolling one is written
+      // already scrolling, at the point its scroll had reached (--np-marquee-scan keeps the start time).
+      const mq = this._npMq || {};
+      const line = (cls, text) => {
+        const m = mq[cls + '|' + text];
+        if (!m) return `<div class="np-line"><span class="${cls}">${esc(text)}</span></div>`;
+        const at = (m.base - (Date.now() - m.t0) / 1000).toFixed(2);
+        return `<div class="np-line np-scroll" style="--np-mq:${m.mq};--np-marquee-dur:${m.dur};--np-mq-delay:${at}s">`
+          + `<span class="${cls}">${esc(text)}</span>`
+          + `<span class="${cls} np-marquee-clone" aria-hidden="true" style="margin-left:${m.gap}px">${esc(text)}</span></div>`;
+      };
       return `
         <div class="np-meta">
-          <div class="np-line"><span class="np-title">${esc(s.title)}</span></div>
-          ${sub ? `<div class="np-line"><span class="np-sub">${esc(sub)}</span></div>` : ''}
+          ${line('np-title', s.title)}
+          ${sub ? line('np-sub', sub) : ''}
           ${bar}
         </div>
       `;
@@ -772,18 +792,19 @@ hemma_now_playing_primary:
       /* min(natural, slot): --np-slot-h is the stack's budget split between the live
          tiles, so one or two keep their natural size and the rest shrink exactly
          enough to fit. The 999px fallback is the mobile row, which sets no slot. */
-      --np-pad-v: min(calc(var(--hemma-u-np, 10px) * 1.6), calc(var(--np-slot-h, 999px) * 0.134));
+      /* The phone's tile on every device: the artwork sets the height, the text and transport sit within it. */
+      --np-pad-v: min(16px, calc(var(--np-slot-h, 999px) * 0.134));
       /* 2px less than --np-pad-v - top/bottom read as slightly heavier than left at the same value, tuned down on request. */
-      --np-pad-tb: min(calc(var(--hemma-u-np, 10px) * 1.4), calc(var(--np-slot-h, 999px) * 0.117));
-      --np-art-size: min(calc(var(--hemma-u-np, 10px) * 9.4), calc(var(--np-slot-h, 999px) - 2 * var(--np-pad-tb)));
-      --np-row-gap: calc(var(--hemma-u-np, 10px) * 1);
-      --np-track-gap: calc(var(--hemma-u-np, 10px) * 0.8);
+      --np-pad-tb: min(14px, calc(var(--np-slot-h, 999px) * 0.117));
+      --np-art-size: min(108px, calc(var(--np-slot-h, 999px) - 2 * var(--np-pad-tb)));
+      --np-row-gap: 7px;
+      --np-track-gap: 9px;
       /* Desktop's title/sub read as loud as the entity grid's own tile names despite living in a peripheral,
          ambient corner widget — sized down a step so it reads as glanceable status, not a second headline. */
       /* Also min(): past five tiles the text column, not the artwork, is what
          would drive the card past its slot. */
-      --np-title-size: min(calc(var(--hemma-u-np, 10px) * 1.5), calc(var(--np-slot-h, 999px) * 0.30));
-      --np-sub-size: min(calc(var(--hemma-u-np, 10px) * 1.3), calc(var(--np-slot-h, 999px) * 0.26));
+      --np-title-size: min(16px, calc(var(--np-slot-h, 999px) * 0.30));
+      --np-sub-size: min(14px, calc(var(--np-slot-h, 999px) * 0.26));
     }
 
     /* Minimise/expand motion, lifted from hemma_badge_base's entrance with the origin moved to the header's waveform toggle.
@@ -1118,16 +1139,14 @@ hemma_now_playing_primary:
     /* Tablet (touch, 768-1400px) - desktop/mouse keeps the larger :host defaults above. */
     @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (pointer: coarse),
            (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (hover: none) {
+      /* The phone's tile scaled to a tablet's corner: same layout, smaller numbers. */
       :host{
-        --np-art-size: min(78px, calc(var(--np-slot-h, 999px) - 2 * var(--np-pad-tb)));
+        --np-art-size: min(76px, calc(var(--np-slot-h, 999px) - 2 * var(--np-pad-tb)));
         --np-title-size: min(14px, calc(var(--np-slot-h, 999px) * 0.30));
         --np-sub-size: min(12px, calc(var(--np-slot-h, 999px) * 0.26));
         --np-pad-v: min(12px, calc(var(--np-slot-h, 999px) * 0.134));
-        /* Must be restated per breakpoint: --np-pad-tb is set unconditionally on :host, so it does
-           NOT fall back to this block's --np-pad-v. Left it at the desktop 14px against a 12px left
-           inset, i.e. top/bottom 2px LARGER than the left — the one place the intended relationship
-           was inverted. 12px squares the artwork's inset on all three sides. */
         --np-pad-tb: min(12px, calc(var(--np-slot-h, 999px) * 0.117));
+        --np-row-gap: 6px;
         --np-track-gap: 8px;
       }
     }

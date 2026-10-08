@@ -1,8 +1,6 @@
 hemma_badge_media_group:
   template: [hemma_badge_base]
 
-  entity: input_select.hemma_expanded_row
-
   variables:
     enabled: true
     always_visible: false
@@ -30,14 +28,8 @@ hemma_badge_media_group:
   icon: mdi:television-speaker
 
   tap_action:
-    action: call-service
-    service: input_select.select_option
-    service_data:
-      entity_id: input_select.hemma_expanded_row
-      option: >
-        [[[
-          return states['input_select.hemma_expanded_row']?.state === 'media' ? 'none' : 'media';
-        ]]]
+    action: fire-dom-event
+    hemma_category: media
 
   hold_action:
     action: none
@@ -64,6 +56,12 @@ hemma_badge_media_group:
           const st = String(s.state || '').toLowerCase();
           if (['unavailable','unknown','off','standby'].includes(st)) return false;
           if (['playing','buffering','on'].includes(st)) return true;
+          // PlayStation (PSN) sensors carry the game as their state, the same rule as Now Playing.
+          if (eid.indexOf('sensor.') === 0) {
+            const t = String((s.attributes || {}).full_title || (s.attributes || {}).media_title || (s.attributes || {}).title || '').trim();
+            return t ? !['paused','idle','none',''].includes(st)
+              : !['playing','paused','idle','on','off','home','away','online','offline','standby','unavailable','unknown','none','null',''].includes(st);
+          }
           const a = s.attributes || {};
           const hasContent = !!(
             String(a.media_title || '').trim() ||
@@ -155,6 +153,12 @@ hemma_badge_media_group:
               const st = String(s.state || '').toLowerCase();
               if (['unavailable','unknown','off','standby'].includes(st)) return false;
               if (['playing','buffering','on'].includes(st)) return true;
+              // PlayStation (PSN) sensors carry the game as their state, the same rule as Now Playing.
+              if (eid.indexOf('sensor.') === 0) {
+                const t = String((s.attributes || {}).full_title || (s.attributes || {}).media_title || (s.attributes || {}).title || '').trim();
+                return t ? !['paused','idle','none',''].includes(st)
+                  : !['playing','paused','idle','on','off','home','away','online','offline','standby','unavailable','unknown','none','null',''].includes(st);
+              }
               const a = s.attributes || {};
               const hasContent = !!(
                 String(a.media_title || '').trim() ||
@@ -208,6 +212,12 @@ hemma_badge_media_group:
         const st = String(s.state || '').toLowerCase();
         if (['unavailable','unknown','off','standby'].includes(st)) return false;
         if (['playing','buffering','on'].includes(st)) return true;
+        // PlayStation (PSN) sensors carry the game as their state, the same rule as Now Playing.
+        if (eid.indexOf('sensor.') === 0) {
+          const t = String((s.attributes || {}).full_title || (s.attributes || {}).media_title || (s.attributes || {}).title || '').trim();
+          return t ? !['paused','idle','none',''].includes(st)
+            : !['playing','paused','idle','on','off','home','away','online','offline','standby','unavailable','unknown','none','null',''].includes(st);
+        }
         const a = s.attributes || {};
         const hasContent = !!(
           String(a.media_title || '').trim() ||

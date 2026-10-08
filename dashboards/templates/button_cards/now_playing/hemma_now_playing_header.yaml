@@ -52,7 +52,20 @@ hemma_now_playing_header:
     card:
       - --hemma-card-hover-shadow: none
       - --hemma-card-hover-filter: none
-      - --np-head-open: '[[[ return variables.open ? 1 : 0; ]]]'
+      - --np-head-open: >
+          [[[
+            const on = variables.open ? 1 : 0;
+            try {
+              let n = this;
+              for (let i = 0; i < 10 && n; i++) {
+                const root = n.getRootNode && n.getRootNode();
+                n = root && root.host;
+                const t = n && n._config && n._config.template;
+                if (t && [].concat(t).indexOf('hemma_room') >= 0) { n.style.setProperty('--np-head-on', String(on)); break; }
+              }
+            } catch (e) {}
+            return on;
+          ]]]
       - --np-head-min: >
           [[[
             const st = states[variables.minimized_entity];
@@ -135,14 +148,14 @@ hemma_now_playing_header:
           fill, no rim and no backdrop-filter. Flat, the way the reference draws
           them; the glass rim read as a raised bubble at this diameter and the
           two buttons stopped looking like one control set. */
-      width: 34px;
-      height: 34px;
+      width: var(--hemma-chrome-btn-size, 34px);
+      height: var(--hemma-chrome-btn-size, 34px);
       box-sizing: border-box;
       border-radius: 50%;
       /* Inverts when the panel it controls is open, the same rule the settings
          button follows: fill says active, geometry never changes.
          --np-head-min is 1 while collapsed, 0 while expanded. */
-      background: color-mix(in srgb, #fff calc((1 - var(--np-head-min, 0)) * 100%),
+      background: color-mix(in srgb, #fff calc((1 - var(--np-head-min, 0)) * var(--hemma-np-invert, 1) * 100%),
                             var(--hemma-chrome-fill, rgba(0,0,0,0.40)));
       /* No backdrop-filter, deliberately. A translucent fill plus a blur renders
          differently depending on the backdrop root its ancestors create, and
@@ -169,7 +182,7 @@ hemma_now_playing_header:
       height: calc(var(--np-wave-u, 8px) * 1.2);
       border-radius: 1px;
       transform-origin: center;
-      background: color-mix(in srgb, #1c1c20 calc((1 - var(--np-head-min, 0)) * 100%),
+      background: color-mix(in srgb, #1c1c20 calc((1 - var(--np-head-min, 0)) * var(--hemma-np-invert, 1) * 100%),
                             rgba(255,255,255,0.90));
       transition: width 0.34s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.34s cubic-bezier(0.32, 0.72, 0, 1);
       animation: np-wave-bounce 1.53s ease-in-out infinite;

@@ -1320,6 +1320,7 @@ hemma_popup_light:
         ]]]
       dismissable: true
       dismiss_on_background: true
+      frameless: true
       style: |
         [[[
           const _hdr = typeof window._hemmaLPC === 'function' ? window._hemmaLPC(entity, states, typeof hass !== 'undefined' ? hass : null, variables, 'header') : null;

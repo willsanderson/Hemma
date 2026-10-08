@@ -84,7 +84,7 @@ hemma_motion:
 
   entity_picture: |
     [[[
-      return window.hemmaIconUrl('motion');
+      return window.hemmaIconUrl('person-walking-motion');
     ]]]
 
   name: |
@@ -151,7 +151,7 @@ hemma_motion:
 
   styles:
     card:
-      - --hemma-icon-mask-image: "[[[ return `url('${window.hemmaIconUrl('motion')}')`; ]]]"
+      - --hemma-icon-mask-image: "[[[ return `url('${window.hemmaIconUrl('person-walking-motion')}')`; ]]]"
     state:
       - color: |
           [[[

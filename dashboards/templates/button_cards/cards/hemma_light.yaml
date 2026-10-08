@@ -38,6 +38,12 @@ hemma_light:
         return mems.flatMap(m => units(m, seen));
       };
 
+      // A lamp group shown as one light inside its room (variables.as_light) reads as one light: its own brightness.
+      if (entity && (variables.as_light || !memsOf(entity.entity_id).length)) {
+        const b = Number(entity.attributes?.brightness);
+        if (entity.state === 'on' && b > 0) return Math.max(1, Math.round((b / 255) * 100)) + '%';
+        return hass.formatEntityState ? hass.formatEntityState(entity) : entity.state;
+      }
       const seen = new Set();
       const all = [...new Set(units(entity?.entity_id, seen))];
       const onCount = all.filter(eid => states[eid]?.state === "on").length;

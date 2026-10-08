@@ -1,8 +1,6 @@
 hemma_badge_climate_group:
   template: [hemma_badge_base]
 
-  entity: input_select.hemma_expanded_row
-
   variables:
     enabled: true
     temp_sensor: null
@@ -18,14 +16,8 @@ hemma_badge_climate_group:
     climate_entity_3: null
 
   tap_action:
-    action: call-service
-    service: input_select.select_option
-    service_data:
-      entity_id: input_select.hemma_expanded_row
-      option: >
-        [[[
-          return states['input_select.hemma_expanded_row']?.state === 'climate' ? 'none' : 'climate';
-        ]]]
+    action: fire-dom-event
+    hemma_category: climate
 
   hold_action:
     action: none

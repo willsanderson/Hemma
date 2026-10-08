@@ -45,6 +45,18 @@ hemma_scene_row:
       contain: none !important;
     }
     #scenes_row::-webkit-scrollbar { display: none !important; }
+    /* The same lift as an entity tile's hover: its hover tint at 5%, in fast, out slow. */
+    @media (hover: hover) {
+      [data-scene] { position: relative; }
+      [data-scene]::after {
+        content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+        background: var(--hemma-entity-hover-tint, rgba(255,255,255,0.30));
+        opacity: 0; transition: opacity .35s ease;
+      }
+      [data-scene]:hover::after {
+        opacity: var(--hemma-hover-overlay-opacity, 0.05); transition: opacity .18s ease;
+      }
+    }
 
   custom_fields:
     scenes_row: |
@@ -89,7 +101,7 @@ hemma_scene_row:
         }
 
         const inner = grid
-          ? 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--hemma-scene-grid-row-gap, 12px) var(--hemma-scene-grid-col-gap, 11px);width:100%;pointer-events:auto;'
+          ? 'display:grid;grid-template-columns:var(--hemma-scene-grid-cols, repeat(2,minmax(0,1fr)));gap:var(--hemma-scene-grid-row-gap, 12px) var(--hemma-scene-grid-col-gap, 11px);width:100%;pointer-events:auto;'
           : 'display:flex;flex-direction:row;gap:8px;width:max-content;min-width:100%;pointer-events:auto;';
 
         const dbg = (variables.sort_debug === true && SC.sortDebug)

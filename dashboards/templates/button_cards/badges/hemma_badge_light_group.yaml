@@ -4,8 +4,6 @@ hemma_badge_light_group:
   icon_tap_action:
     action: none
 
-  entity: input_select.hemma_expanded_row
-
   variables:
     enabled: true
     entity_1: null
@@ -32,14 +30,8 @@ hemma_badge_light_group:
       ]]]
 
   tap_action:
-    action: call-service
-    service: input_select.select_option
-    service_data:
-      entity_id: input_select.hemma_expanded_row
-      option: >
-        [[[
-          return states['input_select.hemma_expanded_row']?.state === 'lights' ? 'none' : 'lights';
-        ]]]
+    action: fire-dom-event
+    hemma_category: lights
 
   double_tap_action:
     action: none

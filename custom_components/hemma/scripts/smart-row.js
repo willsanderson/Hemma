@@ -130,7 +130,9 @@ function getFilterCategory(card) {
   const list = Array.isArray(tmpl) ? tmpl : (tmpl ? [tmpl] : []);
   const cats = filterCategories();
   for (const t of list) {
-    if (Object.prototype.hasOwnProperty.call(cats, t)) return cats[t];
+    if (!Object.prototype.hasOwnProperty.call(cats, t)) continue;
+    if (cats[t] !== 'by_entity') return cats[t];
+    return window.hemmaEntityCategory ? window.hemmaEntityCategory(cfg.entity) : null;
   }
   if (list.includes('hemma_mobile_header')) {
     const slug = String(cfg.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -205,6 +207,7 @@ class HemmaSmartRow extends HTMLElement {
 
   connectedCallback() {
     (window._hemmaSmartRows = window._hemmaSmartRows || new Set()).add(this);
+    if (this._rawHass && !this._filterOff) this.hass = this._rawHass;
     if (!this._onVisChange) {
       this._onVisChange = (ev) => {
         const el = ev.composedPath ? ev.composedPath()[0] : ev.target;
@@ -274,6 +277,7 @@ class HemmaSmartRow extends HTMLElement {
 
   disconnectedCallback() {
     window._hemmaSmartRows?.delete(this);
+    if (this._filterOff) { this._filterOff(); this._filterOff = null; }
     if (this._sortTimer) { clearTimeout(this._sortTimer); this._sortTimer = null; }
     if (this._rafId)     { cancelAnimationFrame(this._rafId); this._rafId = null; }
     if (this._vizRetry1) { clearTimeout(this._vizRetry1); this._vizRetry1 = null; }
@@ -287,6 +291,7 @@ class HemmaSmartRow extends HTMLElement {
   setConfig(config) {
     if (!Array.isArray(config.cards)) throw new Error('hemma-smart-row: cards array required');
     this._config      = config;
+    this._showWhenIdx = null;
     this._sortEnabled = config.sort !== false;
     this._scrollMode  = config.scroll_mode !== undefined
       ? !!config.scroll_mode
@@ -407,13 +412,18 @@ class HemmaSmartRow extends HTMLElement {
       ? (parseFloat(getComputedStyle(this._container).columnGap) || 0)
       : 0;
 
+    // The filter page hides rows with opacity 0 !important; a plain write here replaced it and the row showed through.
+    const setOpacity = (wrapper, v) => {
+      if (wrapper.style.getPropertyPriority('opacity') === 'important') return;
+      wrapper.style.opacity = v;
+    };
     const clearAnimStyles = (wrapper) => {
       wrapper.style.transition  = '';
       wrapper.style.height      = '';
       wrapper.style.width       = '';
       wrapper.style.flex        = '';
       wrapper.style.marginRight = '';
-      wrapper.style.opacity     = '';
+      setOpacity(wrapper, '');
       wrapper.style.overflow    = '';
       const card = wrapper.firstElementChild;
       if (card) {
@@ -440,7 +450,7 @@ class HemmaSmartRow extends HTMLElement {
         wrapper.style.height = size + 'px';
       }
       wrapper.style.overflow   = 'hidden';
-      wrapper.style.opacity    = '1';
+      setOpacity(wrapper, '1');
       wrapper.style.transition =
         `${axis} ${DUR}ms ${EASE}, flex-basis ${DUR}ms ${EASE}, ` +
         `margin-right ${DUR}ms ${EASE}, opacity ${DUR}ms ${EASE}`;
@@ -453,7 +463,7 @@ class HemmaSmartRow extends HTMLElement {
         } else {
           wrapper.style.height = '0';
         }
-        wrapper.style.opacity = '0';
+        setOpacity(wrapper, '0');
       }));
       setTimeout(() => {
         if (!this._animHiding.has(wrapper)) return;
@@ -464,7 +474,17 @@ class HemmaSmartRow extends HTMLElement {
     };
 
     const showWrapper = (wrapper, animate) => {
+      // Put in its sorted place before it shows; opened at the end and moved later, it read as a jump.
       delete wrapper.dataset.showWhen;
+      const idx = Number(wrapper.dataset.idx);
+      if (this._isShowWhen(idx) && wrapper.style.display === 'none') {
+        animate = false;
+        if (this._sortEnabled && !this._activeSet.has(idx)) {
+          this._activeSet.add(idx);
+          this._activationOrder = [...this._activeSet].sort((a, b) => a - b);
+          this._applyOrder(false);
+        }
+      }
       if (this._animShowing.has(wrapper)) return;
       if (this._animHiding.has(wrapper)) {
         this._animHiding.delete(wrapper);
@@ -492,7 +512,7 @@ class HemmaSmartRow extends HTMLElement {
         wrapper.style.height = '0';
       }
       wrapper.style.overflow   = 'hidden';
-      wrapper.style.opacity    = '0';
+      setOpacity(wrapper, '0');
       wrapper.style.transition =
         `${axis} ${DUR}ms ${EASE}, flex-basis ${DUR}ms ${EASE}, ` +
         `margin-right ${DUR}ms ${EASE}, opacity ${DUR}ms ${EASE}`;
@@ -505,7 +525,7 @@ class HemmaSmartRow extends HTMLElement {
         } else {
           wrapper.style.height = size + 'px';
         }
-        wrapper.style.opacity = '1';
+        setOpacity(wrapper, '1');
       }));
       setTimeout(() => {
         if (!this._animShowing.has(wrapper)) return;
@@ -779,6 +799,16 @@ class HemmaSmartRow extends HTMLElement {
     }, { passive: true });
 
     setTimeout(() => {
+      // Every card has drawn, so a show_when card that is showing joins the first sort in its sorted place.
+      this._wrappers.forEach((wrapper, i) => {
+        const card = this._cards[i];
+        if (wrapper.dataset.showWhen !== '1' || !card || !card.shadowRoot) return;
+        if (card.hidden || getComputedStyle(card).display === 'none') return;
+        delete wrapper.dataset.showWhen;
+        wrapper.style.display = '';
+        this._hiddenState[i] = false;
+        this._reported.add(i);
+      });
       this._wrappers.forEach((wrapper, i) => {
         if (!this._isCardHidden(this._cards[i], wrapper)) return;
         wrapper.style.display = 'none';
@@ -867,9 +897,17 @@ class HemmaSmartRow extends HTMLElement {
     return st ? activeStates().has((st.state || '').toLowerCase()) : false;
   }
 
+  // show_when: active cards (Plex, Updates) are only ever on screen while active, whatever their card has drawn yet.
+  _isShowWhen(index) {
+    if (!this._showWhenIdx) this._showWhenIdx = new Map();
+    if (!this._showWhenIdx.has(index)) this._showWhenIdx.set(index, !!startsClosed((this._config.cards || [])[index]));
+    return this._showWhenIdx.get(index);
+  }
+
   _isActive(index) {
     if (this._heldClosed(index)) return false;
     if (this._isCardHidden(this._cards[index], this._wrappers[index])) return false;
+    if (this._isShowWhen(index)) return true;
     const dom = this._isActiveByDom(index);
     return dom !== null ? dom : this._isActiveByState(index);
   }
@@ -985,6 +1023,10 @@ class HemmaSmartRow extends HTMLElement {
     return `
       :host {
         --hsr-rail: var(--hemma-entity-left-inset-current, var(--hemma-entity-left-inset-desktop, var(--hemma-rail-left, var(--page-gutter, 8vw))));
+        translate: var(--hemma-side-shift, none);
+        visibility: var(--hemma-fx-vis);
+        transform: var(--hemma-fx-xf, none);
+        transform-origin: 50% 30%;
         display: block;
         position: absolute;
         z-index: 3;
@@ -1030,7 +1072,7 @@ class HemmaSmartRow extends HTMLElement {
         align-items: flex-end;
         gap: 8px;
         padding: 20px calc(var(--hemma-entity-shadow-pad-right-current, var(--hemma-entity-shadow-pad-right-desktop, 0px))
-          + var(--hemma-entity-row-pad-end-current, 0px)) var(--hemma-entity-row-pad-bottom-current, 40px) var(--hsr-rail);
+          + var(--hemma-entity-row-pad-end-current, 0px) + var(--hemma-push-end, var(--hemma-side-push, 0px))) var(--hemma-entity-row-pad-bottom-current, 40px) var(--hsr-rail);
         min-width: max-content;
         box-sizing: border-box;
       }

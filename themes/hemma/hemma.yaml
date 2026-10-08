@@ -62,7 +62,7 @@ Hemma:
 
       hemma-nav-bg: rgba(20,20,20,0.3)
       hemma-nav-border: transparent
-      hemma-nav-active-fill: rgba(255,255,255,0.25)
+      hemma-nav-active-fill: rgba(0,0,0,0.26)
 
 
       hemma-popup-tiles-text-primary: 'rgba(255,255,255,0.98)'
@@ -193,7 +193,7 @@ Hemma:
 
       hemma-nav-bg: rgba(0,0,0,0.3)
       hemma-nav-border: transparent
-      hemma-nav-active-fill: rgba(200,200,200,0.25)
+      hemma-nav-active-fill: rgba(0,0,0,0.26)
 
       hemma-popup-tiles-text-primary: 'rgba(255,255,255,0.95)'
       hemma-popup-tiles-text-secondary: 'rgba(255,255,255,0.75)'
@@ -751,14 +751,18 @@ Hemma:
   # Temperature formatting
   hero-header-gap-desktop: calc(var(--hemma-u-weather, 10px) * 0.8)
   hero-header-gap-tablet: 8px
+  hero-wx-raise-desktop: calc(var(--hemma-u-weather, 10px) * 0.85)
+  hero-wx-raise-tablet: 10px
+  hero-badge-gap-extra-desktop: calc(var(--hemma-u-weather, 10px) * 0.8)
+  hero-badge-gap-extra-tablet: 7px
   hero-header-gap-mobile: 8px
   hero-temp-font-size-desktop: calc(var(--hemma-u-weather, 10px) * 1.8)
   hero-temp-font-size-tablet: 16px
   hero-temp-font-size-mobile: 14px
 
   # Hero title sizing
-  hero-title-size-desktop: clamp(75px, 4.6vw + 8px, calc(var(--hemma-u, 10px) * 10.5))
-  hero-title-size-tablet: clamp(68px, 5.5vw + 8px, 90px)
+  hero-title-size-desktop: clamp(58px, 3.59vw + 6.2px, calc(var(--hemma-u, 10px) * 8.2))
+  hero-title-size-tablet: clamp(53px, 4.29vw + 6.2px, 70px)
   hero-title-size-mobile: clamp(38px, 4vw + 2px, 64px)
   hero-title-size-landscape: clamp(28px, 4.6vw + 4px, 40px)
 
@@ -782,8 +786,10 @@ Hemma:
   # ----------------------------------------------------------------------------
 
   weather-icon-size-mobile: 26px
-  weather-icon-size-tablet: 30px
-  weather-icon-size-desktop: calc(var(--hemma-u-weather, 10px) * 3)
+  weather-icon-size-tablet: 26px
+  weather-icon-size-desktop: calc(var(--hemma-u-weather, 10px) * 2.6)
+  weather-hero-size-tablet: 30px
+  weather-hero-size-desktop: calc(var(--hemma-u-weather, 10px) * 3)
   weather-mobile-badge-nudge: -2px
   weather-hero-digit-align: 0px
   weather-hero-widget-position-nudge: calc(var(--hemma-u-weather, 10px) * -2.2)
@@ -808,7 +814,10 @@ Hemma:
   hemma-entity-aspect-desktop: 1.487
   hemma-entity-height-desktop: clamp(160px, calc(22svh + (var(--hemma-u, 10px) - 10px) * 42), min(calc(var(--hemma-entity-col-width-desktop) / var(--hemma-entity-aspect-desktop, 1.487)), 24svh))
   hemma-entity-col-width-desktop: clamp(290px, calc(var(--hemma-u, 10px) * 29), 319px)
-  hemma-entity-inner-pad-desktop: calc(var(--hemma-u, 10px) * 2)
+  hemma-entity-inner-pad-desktop: calc(var(--hemma-u, 10px) * 1.5)
+  hemma-entity-inner-pad-tablet: 12px
+  hemma-entity-name-font-tablet-standard: 15px
+  hemma-name-gap-adjust: -6px
   hemma-entity-name-font-desktop: calc(var(--hemma-u, 10px) * 1.8)
   hemma-entity-state-font-desktop: calc(var(--hemma-u, 10px) * 1.5)
   hemma-entity-icon-size-desktop: calc(var(--hemma-u, 10px) * 3.4)
@@ -818,6 +827,7 @@ Hemma:
   hemma-entity-col-width-tablet-portrait: calc((100vw - var(--hemma-rail-left, 3vw) - var(--hemma-tile-peek-tablet, 60px) - 24px) / 3)
   hemma-entity-col-width-tablet-landscape: calc((100vw - var(--hemma-rail-left, 3vw) - var(--hemma-tile-peek-tablet, 60px) - 40px) / 5)
   hemma-entity-col-width-tablet-landscape-sm: calc((100vw - var(--hemma-rail-left, 3vw) - var(--hemma-tile-peek-tablet, 60px) - 32px) / 4)
+  hemma-entity-col-width-tablet-standard: calc((100vw - var(--hemma-rail-left, 3vw) - 40px) / 4.65)
   hemma-entity-row-pad-end: var(--page-gutter-desktop, 6vw)
   hemma-entity-row-pad-end-tablet: 3vw
 
@@ -829,7 +839,7 @@ Hemma:
   hemma-entity-state-font-tablet-lg: 14px
 
   hemma-icon-circle-ratio: 0.22
-  hemma-icon-circle-ratio-tablet: 0.2375
+  hemma-icon-circle-ratio-tablet: 0.2625
   hemma-entity-height-mobile: 110px
   hemma-entity-col-width-mobile: 180px
   hemma-entity-name-font-mobile: 15px
@@ -923,17 +933,21 @@ Hemma:
   hemma-nav-indicator-lead: 0.07s
   hemma-nav-indicator-ease: cubic-bezier(0.32, 0.72, 0, 1)
 
-  hemma-chrome-row-top-tablet: 30px
-  hemma-chrome-row-top-tablet-portrait: 32px
+  # Apple Home's row: a 44px pill 32.5px from the top (measured at 2x, 2026-10-06); pages sit 9px higher to keep its 22px clearance.
+  hemma-chrome-row-top-tablet: 37px
+  hemma-chrome-row-top-tablet-portrait: 37px
+  hemma-chrome-row-center-tablet: 54.5px
+  hemma-chrome-row-center-tablet-portrait: 54.5px
   hemma-time-row-offset-tablet: 15px
 
   hemma-chrome-btn-step: 46px
   hemma-chrome-row-gap: 16px
   hemma-chrome-side-reserve-tablet: "calc((3 * var(--hemma-chrome-btn-step, 46px)) - 12px + var(--hemma-chrome-row-gap, 16px))"
-  hemma-chrome-side-reserve-tablet-portrait: "calc((2 * var(--hemma-chrome-btn-step, 46px)) - 12px + var(--hemma-chrome-row-gap, 16px))"
+  hemma-chrome-side-reserve-tablet-portrait: "calc((2 * var(--hemma-chrome-btn-step, 46px)) + var(--hemma-chrome-row-gap, 16px))"
   hemma-now-playing-top-tablet-portrait: "calc(var(--hemma-chrome-row-top-tablet-portrait, 32px) + var(--hemma-nav-pill-height-tablet, 46px) + 8px)"
 
-  hemma-nav-pill-height-tablet: 46px
+  hemma-nav-pill-height-tablet: 44px
+  hemma-chrome-btn-size-tablet: 32px
   hemma-nav-pill-inset-y-tablet: 4px
   hemma-nav-pill-inset-x-tablet: 6px
   hemma-nav-route-gap-tablet: 4px
@@ -1015,6 +1029,8 @@ Hemma:
   ha-card-backdrop-filter: blur(22px) saturate(1.2)
   ha-card-border-color: transparent
   ha-card-border-radius: 28px
+  # Entity tiles in every layout and on every device.
+  hemma-tile-corner: 26px
   ha-card-border-width: 0
   md-list-item-container-shape: 28px
   stack-card-gap: 0px
@@ -1077,7 +1093,7 @@ Hemma:
 
       hui-view-container {
         overflow-x: hidden !important;
-        max-width: 100vw !important;
+        max-width: 100% !important;
       }
 
       :host {
@@ -1164,14 +1180,15 @@ Hemma:
         --hero-top: var(--header-top-desktop);
         --hero-gutter: var(--page-gutter-desktop);
         --hero-header-gap-current: var(--hero-header-gap-desktop, 6px);
-        --hemma-badge-subrow-gap-current: var(--hemma-badge-subrow-gap-desktop, 14px);
+        --hero-wx-raise-current: var(--hero-wx-raise-desktop, 0px);
+        --hero-badge-gap-extra-current: var(--hero-badge-gap-extra-desktop, 0px);
         --hero-temp-font-size: var(--hero-temp-font-size-desktop, 18px);
         --hemma-header-stack-h-current: var(--hemma-header-cap-desktop, clamp(260px, 30vh, 380px));
         --hemma-header-media-badge-nudge-current: var(--hemma-header-media-badge-nudge-desktop, 3px);
         --hemma-nav-margin-current: var(--hemma-nav-margin-desktop, 8vw);
         --hemma-nav-gap-current: var(--hemma-nav-gap-desktop, 50px);
         --hemma-nav-top-current: var(--hemma-nav-top-desktop, 60px);
-        --hero-room-name-size-current: var(--hero-title-size-desktop, clamp(75px, 4.6vw + 8px, 105px));
+        --hero-room-name-size-current: var(--hero-title-size-desktop, clamp(58px, 3.59vw + 6.2px, 82px));
         --hero-room-name-line-height-current: var(--hero-title-line-height-desktop, 1.18);
         --hero-room-name-letter-spacing-current: var(--hero-title-letter-spacing-desktop, -2px);
         --hero-room-name-margin-left-current: var(--hero-title-margin-left-desktop, -2px);
@@ -1214,13 +1231,14 @@ Hemma:
           --hero-top: var(--header-top-tablet);
           --hero-gutter: var(--page-gutter-tablet);
           --hero-header-gap-current: var(--hero-header-gap-tablet, 6px);
-          --hemma-badge-subrow-gap-current: var(--hemma-badge-subrow-gap-tablet, 14px);
+          --hero-wx-raise-current: var(--hero-wx-raise-tablet, 0px);
+          --hero-badge-gap-extra-current: var(--hero-badge-gap-extra-tablet, 0px);
           --hero-temp-font-size: var(--hero-temp-font-size-tablet, 16px);
           --hemma-header-stack-h-current: var(--hemma-header-cap-tablet, clamp(230px, 28vh, 340px));
           --hemma-nav-margin-current: var(--hemma-nav-margin-tablet, 4.3vw);
           --hemma-nav-gap-current: var(--hemma-nav-gap-tablet, 45px);
           --hemma-nav-top-current: var(--hemma-nav-top-tablet, 55px);
-          --hero-room-name-size-current: var(--hero-title-size-tablet, clamp(36px, 4.2vw + 6px, 64px));
+          --hero-room-name-size-current: var(--hero-title-size-tablet, clamp(53px, 4.29vw + 6.2px, 70px));
           --hero-room-name-line-height-current: var(--hero-title-line-height-tablet, 1.18);
           --hero-room-name-letter-spacing-current: var(--hero-title-letter-spacing-tablet, -1.5px);
           --hero-room-name-margin-left-current: var(--hero-title-margin-left-tablet, -1px);
@@ -1247,7 +1265,8 @@ Hemma:
           --hemma-entity-name-font-current: var(--hemma-entity-name-font-tablet, 15px);
           --hemma-entity-state-font-current: var(--hemma-entity-state-font-tablet, 13px);
           --hemma-entity-icon-size-current: var(--hemma-entity-icon-size-tablet, 28px);
-          --hemma-icon-circle-ratio: var(--hemma-icon-circle-ratio-tablet, 0.2375);
+          --hemma-icon-circle-ratio: var(--hemma-icon-circle-ratio-tablet, 0.2625);
+          --hemma-tile-corner: 26px;
           --hemma-entity-right-inset-current: 0px;
           --hemma-button-card-box-shadow-current: var(--button-card-box-shadow);
           --hemma-button-card-box-shadow-active-current: var(--button-card-box-shadow-active);
@@ -1280,6 +1299,16 @@ Hemma:
         }
       }
 
+      /* 11" iPads in landscape: four tiles and most of a fifth, a step larger than five up. */
+      @media (min-width: 1180px) and (max-width: 1250px) and (max-height: 1000px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+        :host {
+          --hemma-entity-col-width-current: var(--hemma-entity-col-width-tablet-standard);
+          --hemma-entity-name-font-current: var(--hemma-entity-name-font-tablet-standard, 16px);
+          --hemma-entity-state-font-current: var(--hemma-entity-state-font-tablet-standard, 14px);
+          --hemma-entity-icon-size-current: var(--hemma-entity-icon-size-tablet-standard, 30px);
+        }
+      }
+
       /* Tablet Portrait */
       @media (min-width: 768px) and (max-width: 1600px) and (orientation: portrait) and (min-height: 501px) and (hover: none) and (pointer: coarse) {
         :host {
@@ -1300,6 +1329,8 @@ Hemma:
           --hemma-tiles-top-portrait: calc(var(--hero-top) + var(--hemma-tiles-top-portrait-nudge, 0px));
           --hero-gutter: var(--page-gutter-mobile);
           --hero-header-gap-current: var(--hero-header-gap-mobile, 5px);
+          --hero-wx-raise-current: 0px;
+          --hero-badge-gap-extra-current: 0px;
           --hero-temp-font-size: var(--hero-temp-font-size-mobile, 14px);
           --hemma-header-stack-h-current: var(--hemma-header-cap-mobile, clamp(240px, 34vh, 360px));
           --hero-room-name-size-current: var(--hero-title-size-mobile, clamp(38px, 4vw + 2px, 64px));
@@ -1346,6 +1377,8 @@ Hemma:
           --content-rail: var(--hemma-rail-left);
           --hero-gutter: 18px;
           --hero-top: calc(env(safe-area-inset-top, 0px) + 96px + var(--hemma-hero-top-landscape-nudge, 0px));
+          --hero-wx-raise-current: 0px;
+          --hero-badge-gap-extra-current: 0px;
           --hemma-tiles-top-landscape: calc(var(--hero-top) + var(--hemma-tiles-top-landscape-nudge, 0px));
           --hemma-entity-col-width-current: var(--hemma-entity-col-width-landscape, 200px);
           --hemma-entity-height-current: var(--hemma-entity-height-landscape, 110px);

@@ -1,5 +1,104 @@
 # Changelog
 
+## 2.3.0
+
+**After updating, restart Home Assistant, then clear your browser's cache if Hemma looks unchanged.** On the iOS app that means clearing the app cache; in a desktop browser a hard reload usually does it. The new options and template changes also need one Save in Hemma Studio.
+
+This release brings an Apple Home-inspired design to tablets and desktop: a sidebar, a page for each category, and a second layout, Overview. The tablet also picks up the phone's design, with the same badges, tiles and filter pages.
+
+### Two layouts
+
+- **Overview, a new layout.** Home shows the greeting and badges at the top, then Now Playing, your scenes in one row, your favorites and each room's tiles. Each room opens as a page of its own tiles, with the room's sensor chips at the top.
+- **Focus, Hemma's layout, stays the default.** The big room photo, the room name and a row of tiles, as before.
+- **Choose per device.** The new **Layout** section in Hemma Studio sets the desktop and the tablet separately. The tablet follows the desktop unless you change it.
+- **Overview on desktop** keeps the sidebar open. The title sits in the toolbar row level with the clock, with the weather beside the buttons, and tiles have smaller corners.
+- **Smart Sort** moves active tiles to the front, in both layouts. On Overview, rooms are packed in rows with no gaps before a later tile.
+
+### The sidebar
+
+- **A sidebar.** Tap the sidebar button in the nav bar to open it. It lists Home, your rooms and your categories, and both lists fold away.
+  - On desktop the button is the first item in the tab row. In Focus, ⌃⌘S opens and closes it.
+  - **Scenes** sits under Home and opens a page with all your scenes. Overview shows your scenes on Home instead.
+  - **Home Assistant** in the **...** menu opens Home Assistant's own sidebar. It replaces the faint menu button in the top left corner on tablets and desktop. YAML dashboards get the **...** menu too, with Refresh and Home Assistant.
+  - In landscape, and on desktop, it moves the room aside and stays open while you switch rooms. Overview starts the page 20pt after it on a tablet and 15pt on desktop, and Focus leaves a little more room. On desktop the clock moves into the sidebar, and the top right buttons and Now Playing move in to match. Drag its edge to make it a little wider or narrower.
+  - In portrait it opens over the page and closes as you pick a room.
+  - Rooms with motion show a motion icon.
+  - Turn on **Open sidebar on load** under Layout to have it open when the dashboard loads.
+
+### Category pages
+
+- **A page for each category.** Tap Climate, Lights, People, Media, Security or Energy in the sidebar to see that category's tiles from every room, the way the phone's filter pages work. It has the phone's badges and sub-badges at the top, and tapping a badge switches category. A category with nothing in it is left out of the sidebar.
+- **Lights lists every light on its own**, with its brightness, rather than one tile per room. A light group inside a room stays one tile and shows All On or how many are on.
+- **Scenes that touch a category** show at the top of its page.
+- **Badges open their category page**, as they do on the phone. On Home a badge shows that category across the whole house; in a room it shows just that room. Tap the selected badge again to close the page. The rows of sub-badges that used to open under the badges are gone; the category page shows them at the top.
+- **An Energy page.** Your Energy tile, plus today's usage by the hour and each device's total, from the devices in your Home Assistant Energy settings. Tap either chart for the energy popup.
+
+### Motion
+
+- **A category page rises from the bottom** while the room sinks back, and when it closes the room comes forward again, title, badges and tiles together. Switching categories changes the page in place.
+- **Home to a room slides**, and back to Home slides the other way, with the room's photo drifting in under it. Moving between rooms swaps them with a quick fade.
+- **Overview moves the moment you tap.** The room's page and its photo change in the same frame, and Home Assistant catches up once the slide has landed, so the motion never waits on it.
+- **The dashboard loads in one piece.** On desktop the clock and the page no longer slide into place, and Overview appears whole, already sorted, instead of the greeting first and the tiles after it.
+
+### New on tablets
+
+- **A new nav bar.** Neutral glass that keeps the color of the photo behind it, with light edges at the top and bottom, a fine dark line at each end, and room names in the system font. It shows the rooms that fit in landscape, and Home, the current room and Scenes in portrait. The sidebar button is a simple outline the height of the text.
+- **The top buttons share one glass capsule**, with the Now Playing waveform inside it. Desktop keeps its separate buttons.
+- **A status bar.** The time and date sit at the top left and the battery at the top right. Choose the battery sensor under General > Status bar.
+- **The sidebar and back buttons are true circles** of glass, lit from the top left, and glow softly when pressed, as the nav bar does.
+- **The Lights and Batteries popups use the whole screen.** They no longer stop short of the bottom, and what you scroll past slides under the header behind a blur instead of being cut off.
+- **Tiles are a little tighter** on tablets and desktop.
+
+### Notifications
+
+- **Notification Center.** The bell slides your notifications in from the right edge as macOS-style floating glass cards. Tap one to open it. Hover over a card and click its ✕, or swipe it left on a touchscreen, to clear it; the ✕ beside the title becomes Clear All. On a phone the cards line up with your tiles, and the weather steps aside while it's open. With nothing new, "No recent notifications" slides out under the bell.
+- **Light and dark.** In light mode the cards are a bright frost with dark text; in dark mode, a darker glass. They follow Home Assistant's dark mode setting.
+- **Clearing syncs.** Clear a notification on one device and it's gone on every device and for everyone using the dashboard.
+- **Repeats stack.** Several notifications from the same thing fold into one card with a count and the others peeking out beneath it. Tap it to fan them out under their own header, with Show less and a ✕ that clears the group.
+- **Safety alarms are marked Time Sensitive** and stay at the top while they are still going: smoke, carbon monoxide, gas, water and a triggered alarm. Everything else is newest first.
+- **Times at a glance:** "now", "12m ago", then the clock time for earlier today, then Yesterday or the day of the week.
+- **A second line only when it adds something:** the room for doorbells, locks, doors, alarms and carbon dioxide, or the level for a low battery. A dot marks anything new.
+- **A long list fades softly at the bottom edge** while there's more to scroll.
+
+### New everywhere
+
+- **A greeting on Home.** Set Home > Appearance > Title to Greeting for "Good morning" in place of the room name.
+- **Show the date, and choose where the weather goes.** Hemma Studio has a new Weather and date panel under General. Pick what sits above the room name, the weather or the date, and the other one moves next to the time. Nothing changes until you use it. Requested by [@DewGew](https://github.com/DewGew) in [#81](https://github.com/willsanderson/Hemma/issues/81).
+  - With the weather above the room name, **Conditions** shows its icon (74° ☀), a description (74° Sunny) or just the temperature.
+  - **Show date** adds the date next to the time, and **Show on** chooses desktop, tablet or both.
+  - **Date style** switches between Tue Sep 29 and Tuesday, September 29. The date follows your Home Assistant language and date format.
+  - The weather section can show °F or °C after the temperature.
+- **The weather icon is a little smaller on tablets and desktop**, with more room between it and the temperature.
+- **One tile switch.** Tiles with a switch use the same size everywhere.
+- **The ... menu uses the notifications' glass**, light or dark to match Home Assistant, with the same bright edge along the top.
+- **Badge names are semibold** instead of bold, in whichever font you picked in Hemma Studio.
+- **The phone's room popup shows every light** as its own tile.
+- **Performance mode covers the new glass.** The nav bar, sidebar buttons, category pages and Now Playing turn solid too.
+- **Hemma Studio's options slide in.** Settings that only apply once you turn something else on now appear and disappear in place, instead of the whole panel redrawing.
+- **Hemma Studio's preview follows the new layouts.** The tablet and desktop previews show Overview and the sidebar, and you can tap the preview's nav bar, weather, date or time to go straight to their settings.
+
+### Translations
+
+- **Swedish is almost complete**, about 97% of Hemma, thanks to [@DewGew](https://github.com/DewGew) in [#80](https://github.com/willsanderson/Hemma/pull/80).
+- **Weather conditions are translated on the phone**, also from [@DewGew](https://github.com/DewGew) in [#82](https://github.com/willsanderson/Hemma/pull/82).
+
+### Fixes
+
+- **Restarting Home Assistant no longer rings the doorbell.** A Ring doorbell resets on every restart, and each restart showed up as "Front Door rang".
+- **The Scenes row scrolls out to the edge** on Overview instead of being cut off short of the sidebar.
+- **Phone filter pages open in the right place.** The first time you opened one it could sit too high, with the rooms under the badges.
+- **Phone filter pages no longer jump after a dashboard change.** Once the dashboard had been edited or Hemma updated, every badge's page slid up too far and then snapped down until you reloaded.
+- **The Climate filter page shows its tiles.** It could open with only the sub-badges and nothing below them. Favorites could go missing the same way.
+- **The phone no longer opens too low.** A cold start could leave a gap the height of Home Assistant's header above the page.
+- **The room photo fills the screen on a tablet.** After rotating, or coming back to the app after a while, it could stop short of the right edge until you changed rooms.
+- **Ready for Home Assistant 2026.10.** Changing rooms with the sidebar open could close it and open it again each time.
+- **The Now Playing title scrolls again** when it's too long to fit.
+- **Hemma Studio fits an iPad screen** instead of scrolling slightly.
+- **Hemma Studio's preview stays put.** It could jump when you switched sections, and after a refresh it could load too high and then drop into place.
+- **The Air Quality sub-badge in the preview matches the dashboard.** It read the sensor's raw state, so the preview could say good while the dashboard said Excellent.
+- **Return to Home when idle resets everything on a tablet.** A category page or the sidebar could stay open over the Home screen.
+- **`input_select.hemma_expanded_row` is gone** from `packages/hemma_helpers.yaml`, with the automation that opened it when media played. Nothing has used it since badges started opening category pages; remove it from your own copy if you keep one.
+
 ## 2.2.0
 
 **If Hemma looks unchanged after updating, clear your browser's cache.** On the

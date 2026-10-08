@@ -3,6 +3,10 @@ hemma_weather:
     show_icon: true
     weather_temp_sensor: ''
     hero_mode: false
+    hero_line: ''
+    conditions: ''
+    show_temp_unit: false
+    date_style: ''
 
   show_icon: true
   show_name: true
@@ -29,7 +33,7 @@ hemma_weather:
     card:
       # No entity, no card: a dashboard with weather turned off was still
       # drawing the glyph on the surfaces that do not gate the slot themselves.
-      - display: '[[[ return entity ? "flex" : "none" ]]]'
+      - display: '[[[ return (entity || (variables.hero_mode && variables.hero_line === "date")) ? "flex" : "none" ]]]'
       - background: none
       - box-shadow: none
       - backdrop-filter: none
@@ -46,6 +50,8 @@ hemma_weather:
             const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
             const isTablet = !isMobile && window.matchMedia('(max-width: 1024px)').matches;
             if (isMobile) return 'var(--weather-icon-size-mobile, 26px)';
+            // The line above the room name (Focus) keeps its own size; the corner weather is the smaller one.
+            if (variables.hero_mode) return isTablet ? 'var(--weather-hero-size-tablet, 30px)' : 'var(--weather-hero-size-desktop, 30px)';
             if (isTablet) return 'var(--weather-icon-size-tablet, 34px)';
             return 'var(--weather-icon-size-desktop, 34px)';
           ]]]
@@ -66,7 +72,7 @@ hemma_weather:
       - column-gap: |
           [[[
             const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
-            return isMobile ? '7px' : '5px';
+            return isMobile ? '7px' : '9px';
           ]]]
       - row-gap: 2px
       - justify-content: >
@@ -93,7 +99,7 @@ hemma_weather:
           ]]]
       - font-size: |
           [[[
-            if (variables.hero_mode) return 'calc(var(--weather-icon-size, 34px) * 1.1)';
+            if (variables.hero_mode) return 'calc(var(--weather-icon-size, 34px) * 0.72)';
             const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
             return isMobile ? 'var(--hero-weather-title-size-mobile, 15px)' : 'var(--hero-weather-title-size, 15px)';
           ]]]
@@ -106,7 +112,8 @@ hemma_weather:
       - padding-block: 0.16em
       - margin-block: -0.16em
       - max-width: 100%
-      - opacity: 1
+      # Apple Home's weather reads at about 96% white, temperature and condition alike.
+      - opacity: 0.96
 
     icon:
       - width: var(--weather-icon-size, 34px)
@@ -137,12 +144,15 @@ hemma_weather:
           ]]]
       - font-weight: 500
       - line-height: 1.1
-      - margin-top: -3px
+      - margin-top: |
+          [[[
+            return window.matchMedia('(max-width: 767px), (max-height: 600px)').matches ? '-3px' : '0';
+          ]]]
       - white-space: nowrap
       - overflow: visible
       - text-overflow: ellipsis
       - max-width: 100%
-      - opacity: 0.9
+      - opacity: 0.96
 
   name: >
     [[[
@@ -165,10 +175,16 @@ hemma_weather:
       }
 
       if (variables?.hero_mode) {
+        const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        if (variables?.hero_line === 'date') {
+          const date = window.hemmaDate ? window.hemmaDate(hass, variables?.date_style === 'short' ? 'short' : 'long') : '';
+          return date ? `<div style="font-size:1em;font-weight:500;letter-spacing:0;line-height:1.25;opacity:0.72;">${esc(date)}</div>` : '';
+        }
         if (tempVal === null) return '';
 
         let iconHtml = '';
-        if (variables?.show_icon !== false) {
+        const shows = variables?.conditions || '';
+        if (variables?.show_icon !== false && shows === '') {
           const condRaw = String(w?.state || '').toLowerCase();
           const svgMap = {
             'sunny':           'clear-day',
@@ -191,11 +207,24 @@ hemma_weather:
           };
           const file = svgMap[condRaw];
           if (file) {
-            iconHtml = `<img src="/local/hemma/weather/${file}.svg" style="width:auto;height:var(--weather-icon-size,34px);object-fit:contain;opacity:0.92;flex-shrink:0;" />`;
+            iconHtml = `<img src="/local/hemma/weather/${file}.svg" style="width:auto;height:calc(var(--weather-icon-size,34px) * 0.68);object-fit:contain;opacity:0.92;flex-shrink:0;" />`;
           }
         }
 
-        return `<span style="display:inline-flex;align-items:center;gap:4px;"><span style="position:relative;top:var(--weather-hero-digit-align, 3px);">${tempVal}°</span>${iconHtml}</span>`;
+        let cond = '';
+        const condKey = String(w?.state || '').toLowerCase().trim();
+        if (shows === 'text' && condKey && !['unknown', 'unavailable'].includes(condKey)) {
+          const loc = hass?.localize ? hass.localize(`component.weather.entity_component._.state.${condKey}`) : '';
+          cond = (loc && !loc.includes('entity_component')) ? loc
+            : condKey.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        }
+        const condHtml = cond ? `<span style="position:relative;top:var(--weather-hero-digit-align, 3px);font-weight:600;margin-left:4px;">${esc(cond)}</span>` : '';
+        let unit = '';
+        if (variables?.show_temp_unit === true) {
+          const ts = tempEid ? states[tempEid] : null;
+          unit = String((ts && ts.attributes.unit_of_measurement) || w?.attributes?.temperature_unit || hass.config?.unit_system?.temperature || '').replace('°', '').trim();
+        }
+        return `<span style="display:inline-flex;align-items:center;gap:4px;"><span style="position:relative;top:var(--weather-hero-digit-align, 3px);">${tempVal}°${unit ? '&nbsp;' + esc(unit) : ''}</span>${iconHtml}${condHtml}</span>`;
       }
 
       return (tempVal === null) ? '' : `${tempVal}°`;

@@ -111,7 +111,19 @@
     }
   }
 
-  function findRoomHeaderStack() {
+  // A full walk of every shadow root forces layout; on a room change it landed mid-slide, so each find is kept.
+  var cached = {};
+  function keep(key, find) {
+    var el = cached[key];
+    if (el && el.isConnected && isVisible(el)) return el;
+    return (cached[key] = find());
+  }
+
+  function findRoomHeaderStack() { return keep('stack', walkHeaderStack); }
+  function findActiveEntityRow() { return keep('row', walkEntityRow); }
+  function findNavbar() { return keep('nav', walkNavbar); }
+
+  function walkHeaderStack() {
     var found = [];
     walkFind(document, '#badges_media', found, 0);
     for (var i = 0; i < found.length; i++) {
@@ -121,7 +133,7 @@
     return null;
   }
 
-  function findActiveEntityRow() {
+  function walkEntityRow() {
     var found = [];
     walkFind(document, 'hemma-smart-row', found, 0);
     for (var i = 0; i < found.length; i++) {
@@ -132,7 +144,7 @@
   }
 
   // The hemma-nav-bar host is a zero-height fixed anchor; .bar is the real box.
-  function findNavbar() {
+  function walkNavbar() {
     var found = [];
     walkFind(document, 'hemma-nav-bar', found, 0);
     for (var i = 0; i < found.length; i++) {
@@ -194,8 +206,9 @@
     }
   }
 
+  // Overview hides the room card's header and rows, so there is nothing to place, and a search would never find them.
   function computeAndApplyHeader() {
-    if (!isDesktopOrTablet()) return;
+    if (!isDesktopOrTablet() || window._hemmaOverview) return;
     applyExtras();
 
     var headerStack = findRoomHeaderStack();
@@ -245,11 +258,12 @@
   }
 
   function initHeader() {
+    if (window._hemmaOverview) return;
     computeAndApplyHeader();
     setupHeaderObservers();
     var attempts = 0;
     var iv = setInterval(function () {
-      if (++attempts > 20) { clearInterval(iv); return; }
+      if (++attempts > 20 || headerObservedEls.length >= 2 || window._hemmaOverview) { clearInterval(iv); return; }
       computeAndApplyHeader();
       setupHeaderObservers();
     }, 250);
@@ -259,9 +273,10 @@
   window.addEventListener('location-changed', function () {
     // Drop stale observations and re-discover once the new view has rendered.
     headerObservedEls = [];
+    cached = {};
     lastExtras = -1;
     if (headerRO) { try { headerRO.disconnect(); } catch (e) {} }
-    setTimeout(initHeader, 400);
+    setTimeout(initHeader, 600);
   });
 
   setTimeout(initSidebar, 200);

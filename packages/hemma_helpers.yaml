@@ -104,19 +104,6 @@ input_select:
       - room_office
     initial: all
 
-  # Badges row
-  hemma_expanded_row:
-    name: Expanded Badge Row
-    options:
-      - none
-      - climate
-      - presence
-      - media
-      - lights
-      - security
-      - energy
-    initial: none
-
   # Thermostat mode
   hemma_thermostat_mode:
     name: Thermostat Mode
@@ -369,26 +356,3 @@ automation:
       - service: input_boolean.turn_off
         target:
           entity_id: input_boolean.hemma_restart_done_2
-
-  - alias: "Hemma - Auto-expand media row when playing"
-    id: hemma_auto_expand_media_row
-    trigger:
-      - platform: homeassistant
-        event: start
-      - platform: template
-        value_template: >
-          {{ states.media_player
-             | selectattr('state', 'in', ['playing', 'buffering'])
-             | list | count > 0 }}
-    condition:
-      - condition: template
-        value_template: >
-          {{ states('input_select.hemma_expanded_row') == 'none'
-             and (states.media_player
-                  | selectattr('state', 'in', ['playing', 'buffering'])
-                  | list | count > 0) }}
-    action:
-      - service: input_select.select_option
-        data:
-          entity_id: input_select.hemma_expanded_row
-          option: media

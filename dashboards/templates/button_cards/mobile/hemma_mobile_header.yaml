@@ -74,7 +74,7 @@ hemma_mobile_header:
             border:1px solid rgba(255,255,255,0.14);
             box-sizing:border-box;
           ">
-            <img src="${window.hemmaIconUrl('motion')}" alt="" style="height:14px;width:auto;display:block;" />
+            <img src="${window.hemmaIconUrl('person-walking-motion')}" alt="" style="height:14px;width:auto;display:block;" />
           </div>
         `;
       ]]]

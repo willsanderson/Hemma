@@ -216,11 +216,11 @@ hemma_now_playing:
             try {
               this.style.setProperty('--np-open', String(open));
               this.style.setProperty('--np-ptr', open ? 'auto' : 'none');
-              this.style.setProperty('--np-vis', open ? 'visible' : 'hidden');
+              this.style.setProperty('--np-vis', open ? 'inherit' : 'hidden');
             } catch (e) {}
             return open;
           ]]]
-      - --np-inner-radius: 'calc(var(--hemma-u-np, 10px) * 2.6)'
+      - --np-inner-radius: 'var(--hemma-tile-corner, var(--ha-card-border-radius, 28px))'
       - --np-tile-width: 'min(520px, 100%)'
 
       # --np-inner-glass: 1=glass, 0=flat (revert switch)
@@ -474,7 +474,10 @@ hemma_now_playing:
               return (on && window._hemmaNP(states, Object.assign({}, variables, { pinned_key: states[variables.pin_entity]?.state || '' })).length) ? 1 : 0;
             ]]]
           minimized_entity: '[[[ return variables.minimized_entity; ]]]'
-          playing: '[[[ return !!(variables.settled || [])[0]?.playing; ]]]'
+          playing: >
+            [[[
+              return (variables.settled || []).some((x) => x && (x.playing || x.kind === 'activity' || x.kind === 'plex'));
+            ]]]
 
     np_main:
       card:
@@ -515,18 +518,35 @@ hemma_now_playing:
             padding: var(--np-stack-pad-y, 22px) var(--np-enter-shift, 30px);
             margin: calc(-1 * var(--np-stack-pad-y, 22px)) calc(-1 * var(--np-enter-shift, 30px));
           }
+          ha-card { --np-slot-h: var(--np-slot-h-all); }
+          #more { display: none; }
+          /* A tablet's corner holds two players; the rest are a tap away on the Media page. */
+          @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (pointer: coarse),
+                 (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (hover: none) {
+            ha-card { --np-slot-h: var(--np-slot-h-cap); }
+            #s3, #s4, #s5, #s6, #s7 { display: none !important; }
+            #more { display: var(--np-more-on, none); justify-content: flex-end; }
+          }
         variables:
           settled: '[[[ return variables.settled || []; ]]]'
           minimized_entity: '[[[ return variables.minimized_entity; ]]]'
         styles:
           card:
-            - --np-slot-h: >
+            - --np-slot-h-all: >
                 [[[
                   const n = Math.max(1, (variables.settled || []).length);
                   const gaps = 9 * (n - 1);
                   return 'calc((var(--np-stack-budget, 320px) - ' + gaps + 'px) * '
                     + (1 / n).toFixed(6) + ')';
                 ]]]
+            # Tablet shows two tiles and a "+N more" row; extra_styles picks this share there.
+            - --np-slot-h-cap: >
+                [[[
+                  const n = Math.max(1, (variables.settled || []).length);
+                  if (n <= 2) return 'calc((var(--np-stack-budget, 320px) - ' + (9 * (n - 1)) + 'px) * ' + (1 / n).toFixed(6) + ')';
+                  return 'calc((var(--np-stack-budget, 320px) - 18px - 30px) * 0.5)';
+                ]]]
+            - --np-more-on: "[[[ return (variables.settled || []).length > 2 ? 'flex' : 'none'; ]]]"
             - --ha-card-background: transparent
             - --ha-card-box-shadow: none
             - --hemma-card-hover-shadow: none
@@ -686,6 +706,42 @@ hemma_now_playing:
                 src: '[[[ return (variables.settled || [])[6] || null; ]]]'
                 minimized_entity: '[[[ return variables.minimized_entity; ]]]'
                 np_count: '[[[ return (variables.settled || []).length || 1; ]]]'
+          more:
+            card:
+              type: custom:button-card
+              show_icon: false
+              show_state: false
+              name: >
+                [[[
+                  const n = Math.max(0, (variables.settled || []).length - 2);
+                  const T = window._hemmaT || ((k, en, v) => String(en).split(String.fromCharCode(123) + 'n' + String.fromCharCode(125)).join(String(v.n)));
+                  return T('now_playing.more', '+{n} more', { n: n });
+                ]]]
+              variables:
+                settled: '[[[ return variables.settled || []; ]]]'
+              tap_action:
+                action: fire-dom-event
+                hemma_category: media
+              hold_action: { action: none }
+              double_tap_action: { action: none }
+              styles:
+                card:
+                  - height: 30px
+                  - width: var(--np-tile-width, 100%)
+                  - max-width: var(--np-max-w, calc(var(--hemma-u-np, 10px) * 40))
+                  - margin-left: auto
+                  - padding: 0 14px
+                  - box-sizing: border-box
+                  - border-radius: 999px
+                  - background: var(--hemma-glass-background, rgba(0,0,0,0.40))
+                  - backdrop-filter: var(--hemma-glass-backdrop, blur(20px) saturate(1.2))
+                  - -webkit-backdrop-filter: var(--hemma-glass-backdrop, blur(20px) saturate(1.2))
+                  - box-shadow: var(--hemma-glass-rim, inset 0 0 0 .5px rgba(255,255,255,0.14))
+                  - cursor: pointer
+                name:
+                  - font-size: 13px
+                  - font-weight: 600
+                  - color: "#fff"
 
   extra_styles: |
     /* Tablet - Now Playing Padding */
@@ -704,7 +760,8 @@ hemma_now_playing:
       width: 100%;
       max-height: calc(var(--np-open, 0) * var(--np-vp, 1) * 640px);
       opacity: var(--np-vp, 1);
-      visibility: var(--np-vis, visible);
+      /* inherit, not visible: a hidden room card (Overview) must hide its Now Playing too. */
+      visibility: var(--np-vis, inherit);
       transition:
         opacity .30s ease,
         max-height 0s var(--np-hold, 0s),

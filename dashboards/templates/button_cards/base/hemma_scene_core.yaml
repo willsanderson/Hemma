@@ -151,6 +151,15 @@ hemma_scene_core:
                 return false;
               };
 
+              // Overview's category pages: a scene belongs to every kind of thing it sets (hemma-core's hemmaEntityCategory).
+              const sceneTouchesCategory = (sceneId, states, cat) => {
+                const kind = window.hemmaEntityCategory;
+                const targets = states[sceneId]?.attributes?.entity_id;
+                if (typeof kind !== 'function' || !Array.isArray(targets)) return false;
+                return targets.some((t) => typeof t === 'string'
+                  && (kind(t) === cat || expandEntity(t, states).some((l) => kind(l) === cat)));
+              };
+
               const entityMatch = (eid, t, states) => {
                 const live = states[eid];
                 if (!live) return false;
@@ -271,6 +280,7 @@ hemma_scene_core:
                     const roomSet = roomEntityIds(hass, v.room);
                     if (roomSet) ids = ids.filter((id) => sceneTouchesRoom(id, states, roomSet));
                   }
+                  if (v.category) ids = ids.filter((id) => sceneTouchesCategory(id, states, v.category));
                   if (!explicit) {
                     const nameOf = (id) => states[id]?.attributes?.friendly_name
                       || id.replace('scene.', '').replace(/_/g, ' ');

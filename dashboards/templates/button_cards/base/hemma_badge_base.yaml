@@ -117,7 +117,7 @@ hemma_badge_base:
       - grid-area: l
       - min-width: 0
       - color: var(--badge-title-color, var(--secondary-text-color))
-      - font-weight: 700
+      - font-weight: 600
       - font-size: var(--badge-font-size-current, var(--badge-font-size, 13px))
       - line-height: 1.2
       - text-align: left
@@ -329,7 +329,8 @@ hemma_badge_base:
 
     .badge-title{
       font-size: var(--badge-font-size-current, 13px);
-      font-weight: 700;
+      /* Apple Home's semibold: 700 read as heavier than its badges. */
+      font-weight: 600;
       line-height: 1.2;
       color: var(--badge-title-color, var(--secondary-text-color));
       white-space:nowrap;
@@ -346,5 +347,10 @@ hemma_badge_base:
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
+    }
+
+    @media (min-width: 768px) and (min-height: 501px) {
+      .badge-wrap { gap: 0; }
+      .badge-title, .badge-sub { line-height: 1.15; padding-block: 0.16em; margin-block: -0.16em; }
     }
 

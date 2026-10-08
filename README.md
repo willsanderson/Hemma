@@ -137,12 +137,15 @@ Five things changed in 2.1 that are worth knowing:
 ## Features
 
 - **Built from a UI.** Rooms, entities, badges, tiles, scenes, weather, the clock and Now Playing are all set up in Hemma itself, with a live preview of the desktop, tablet and phone layouts as you go.
+- **Two layouts.** Focus, with a big room photo and a row of tiles, or Overview, a Home screen of your scenes, favorites and rooms. Pick one for desktop and one for tablet.
 - **Rooms** with a photo hero, live clock, weather, and per-room entity tiles
-- **Badges** for climate, lights, presence, media, security and energy, each opening a full popup
+- **Badges** for climate, lights, people, media, security and energy, each opening a page of that category's tiles
 - **Now Playing** showing every active source at once, with artwork, progress and controls. Understands media players, Plex and Tautulli, Discord, Steam and PlayStation.
 - **Scenes**, as a row, a page, and per-room sections
 - **Popups** for lights, locks, covers, climate and air quality, energy, network, plants, batteries, cameras, scenes, system updates, Plex and recently added
 - **Mobile dashboard** with filter pills, room popups, a collapsing header, and a wallpaper that samples your room photos for its gradient
+- **Sidebar** on tablet and desktop, with your rooms and a page for each category that gathers its tiles from every room, plus an Energy page with today's usage by device
+- **Notification Center** like the Mac's: arrivals, doorbells, locks, low batteries, updates and more as glass cards that stack repeats and clear on every device at once
 - **Motion** shows a pulsing dot beside a room in the navigation, and a motion icon on the phone
 - **Light and dark** throughout, with day and night room images
 - **Your language.** The dashboard and Hemma Studio follow your Home Assistant language, and numbers and money follow your Home Assistant settings

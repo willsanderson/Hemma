@@ -328,7 +328,9 @@
     const t = cfg?.template;
     const cats = filterCategories();
     for (const n of (Array.isArray(t) ? t : [t])) {
-      if (n && Object.prototype.hasOwnProperty.call(cats, n)) return cats[n];
+      if (!n || !Object.prototype.hasOwnProperty.call(cats, n)) continue;
+      if (cats[n] !== 'by_entity') return cats[n];
+      return window.hemmaEntityCategory ? window.hemmaEntityCategory(cfg?.entity) : null;
     }
     return null;
   }
@@ -395,6 +397,8 @@
     };
     if (root instanceof Element) walk(root, 0);
   }
+  // hemma-core's Overview room page has the same chip rows outside any popup.
+  window._hemmaFixRowWidths = _fixRowWidths;
 
   (function attachRowScrollFix() {
     let row = null, inner = null, maxPan = 0, panStart = 0;
@@ -777,9 +781,12 @@
     connectedCallback() {
       this.style.cssText = 'display:none!important;';
       if (this._config && !this._initialized && !this._initializing) this._init();
+      if (this._rawHass && !this._filterOff) this.hass = this._rawHass;
     }
 
     disconnectedCallback() {
+      // A dashboard rebuild leaves this instance detached; still subscribed, it opens alongside its replacement and takes the badge row.
+      if (this._filterOff) { this._filterOff(); this._filterOff = null; }
       if (this._blurLayerEl) _blurLayers.delete(this._blurLayerEl);
       this._blurLayerEl?.remove();
       this._overlayEl?.remove();
@@ -1098,8 +1105,8 @@
           pending = null;
         }
       }
-      this._autoSectionsDone = true;
       if (!rooms.length) return;
+      this._autoSectionsDone = true;
       let i = 0;
 
       if (roomMode && this._config.scenes !== false && window._hemmaSC) {
@@ -1157,6 +1164,9 @@
             if (!buckets.has(key)) buckets.set(key, []);
             buckets.get(key).push(c);
           }
+          if (buckets.has('lights') && window.hemmaExpandLights) {
+            buckets.set('lights', window.hemmaExpandLights(this._hass?.states || {}, roomMode, buckets.get('lights')));
+          }
           const keys = ROOM_SECTION_ORDER.filter((k) => buckets.has(k));
           if (buckets.has(ROOM_SECTION_OTHER)) keys.push(ROOM_SECTION_OTHER);
           for (const key of keys) {
@@ -1200,9 +1210,10 @@
           break;
         }
       }
-      const cards = (rowEl?._config?.cards || []).filter(
+      if (!rowEl?._config) return;
+      const cards = (rowEl._config.cards || []).filter(
         (c) => _cardCategory(c) === this._config.filter_category);
-      this._favPopupDone = true; // attempted, so don't rescan on every open
+      this._favPopupDone = true;
       if (!cards.length) return;
       const frag = document.createDocumentFragment();
       this._appendRevealCard({
@@ -2008,18 +2019,24 @@
           _restoreBadgeRow();
         }
         const noBadge = !!this._config?.room;
+        if (!noBadge && !_movedBadgeRow && (!this._badgeRowWrapper || !this._badgeRowEl)) {
+          this._discoverElements();
+        }
+        const ownRow = !!(_movedBadgeRow && _movedBadgeRow.owner === this);
         if (!noBadge && this._badgeRowWrapper && this._badgeRowEl &&
-            this._compactHeaderEl && !_movedBadgeRow) {
+            this._compactHeaderEl && (!_movedBadgeRow || ownRow)) {
           const badgeW  = this._badgeRowWrapper;
           const badgeEl = this._badgeRowEl;
           const hdrRect = this._compactHeaderEl.getBoundingClientRect();
           const lockTop = hdrRect.bottom + BADGE_LOCK_GAP;
           const pillBf  = window.getComputedStyle(badgeEl)
             .getPropertyValue('--ha-card-backdrop-filter').trim();
-          _movedBadgeRow = {
-            owner: this, wrapper: badgeW, el: badgeEl,
-            parent: badgeW.parentNode, sibling: badgeW.nextSibling,
-          };
+          if (!ownRow) {
+            _movedBadgeRow = {
+              owner: this, wrapper: badgeW, el: badgeEl,
+              parent: badgeW.parentNode, sibling: badgeW.nextSibling,
+            };
+          }
           badgeEl.style.removeProperty('transform');
           badgeEl.style.removeProperty('transition');
           badgeEl.style.setProperty('position', 'relative', 'important');
@@ -2198,6 +2215,7 @@
                 if (!this._showing) return;
                 if (_touchActive) { setTimeout(tryEngage, 120); return; }
                 this._engageScrollHeader();
+                [0, 160, 480].forEach((ms) => setTimeout(() => this._guardBelowBadges(), ms));
               };
               tryEngage();
             }
@@ -2207,6 +2225,21 @@
     }
 
     // ── Scroll-header mode ─────────────────────────────────────────────────────
+    // Content below the pinned badge row may never start above it, whatever a mid-render measurement said.
+    _guardBelowBadges() {
+      const ce = this._contentEl, bw = this._badgeRowWrapper;
+      if (!this._showing || !ce || !bw || bw.parentNode !== ce || (this._overlayEl && this._overlayEl.scrollTop > 2)) return;
+      const card = this._badgeRowEl?.shadowRoot?.querySelector('ha-card') || this._badgeRowEl || bw;
+      const floor = card.getBoundingClientRect().bottom + 6;
+      let next = bw.nextElementSibling;
+      while (next && !next.getBoundingClientRect().height) next = next.nextElementSibling;
+      if (!next) return;
+      const short = floor - next.getBoundingClientRect().top;
+      if (short <= 12) return;
+      const mt = parseFloat(next.style.getPropertyValue('margin-top')) || 0;
+      next.style.setProperty('margin-top', (mt + short).toFixed(2) + 'px', 'important');
+    }
+
     _engageScrollHeader() {
       const overlayEl = this._overlayEl;
       const contentEl = this._contentEl;

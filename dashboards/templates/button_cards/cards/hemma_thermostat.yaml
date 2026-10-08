@@ -10,6 +10,7 @@ hemma_thermostat:
     has_controls: |
       [[[
         if (variables.size === 'large') return true;
+        if (this?.classList?.contains('hemma-compact')) return false;
         return !window.matchMedia('(max-width: 767px) and (orientation: portrait), (max-height: 500px) and (orientation: portrait), (max-height: 600px) and (orientation: landscape)').matches;
       ]]]
     mobile_filter_category: climate
@@ -153,7 +154,7 @@ hemma_thermostat:
                 "placeholder"
                 "n"
                 "s"
-            - row-gap: 4px
+            - row-gap: var(--hemma-thermo-row-gap, 4px)
           name:
             - color: var(--thermostat-overlay-text-name, var(--hemma-entity-name, rgba(255,255,255,0.9))) !important
             - font-weight: 550
@@ -166,7 +167,7 @@ hemma_thermostat:
             - white-space: nowrap
             - overflow: hidden
             - text-overflow: ellipsis
-            - margin-bottom: calc(-2px - 0.16em)
+            - margin-bottom: var(--hemma-thermo-name-mb, calc(-2px - 0.16em))
             - transition: color .15s ease
           state:
             - color: var(--thermostat-overlay-text-state, var(--hemma-entity-state, var(--secondary-text-color))) !important
@@ -301,6 +302,7 @@ hemma_thermostat:
     @media (max-width: 767px), (max-height: 600px) {
       ha-card { --thermo-btn-radius: 15px; }
     }
+    :host(.hemma-compact) ha-card { --thermo-btn-radius: 15px; }
 
     /* Hover/press */
     @media (hover: hover) {
@@ -345,7 +347,7 @@ hemma_thermostat:
     card:
       - --rail-w: |
           [[[
-            const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
+            const isMobile = (!!this?.classList?.contains('hemma-compact') || window.matchMedia('(max-width: 767px), (max-height: 600px)').matches);
             return isMobile ? '46px' : '56px';
           ]]]
       - --thermostat-control-opacity: |
@@ -392,7 +394,7 @@ hemma_thermostat:
       - --thermo-toggle-w: var(--hemma-toggle-width, 46px)
       - --thermo-btn-gap: |
           [[[
-            const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
+            const isMobile = (!!this?.classList?.contains('hemma-compact') || window.matchMedia('(max-width: 767px), (max-height: 600px)').matches);
             return isMobile ? '5px' : '6px';
           ]]]
       - --thermo-icon-up: |
@@ -401,12 +403,12 @@ hemma_thermostat:
           [[[ return `url('${window.hemmaIconUrl('decrease')}')`; ]]]
       - --thermo-glyph-size: |
           [[[
-            const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
+            const isMobile = (!!this?.classList?.contains('hemma-compact') || window.matchMedia('(max-width: 767px), (max-height: 600px)').matches);
             return isMobile ? '38%' : '34%';
           ]]]
       - --thermo-set-font: |
           [[[
-            const isMobile = window.matchMedia('(max-width: 767px), (max-height: 600px)').matches;
+            const isMobile = (!!this?.classList?.contains('hemma-compact') || window.matchMedia('(max-width: 767px), (max-height: 600px)').matches);
             return isMobile ? '13px' : '14px';
           ]]]
       - --thermo-ease: |

@@ -18,8 +18,8 @@ hemma_entity_actions:
           media_player: 'speaker', lock: 'lock-fill', cover: 'curtain-open',
           vacuum: 'vacuum', script: 'scenes', scene: 'scenes',
           automation: 'scenes', button: 'power_on', input_button: 'power_on',
-          binary_sensor: 'motion', remote: 'tv', water_heater: 'hot_water',
-          valve: 'curtain-open', siren: 'motion',
+          binary_sensor: 'person-walking-motion', remote: 'tv', water_heater: 'hot_water',
+          valve: 'curtain-open', siren: 'person-walking-motion',
         })[dom] || 'default';
       ]]]
     svg_path: /local/hemma/icons
@@ -357,6 +357,23 @@ hemma_entity_actions:
         --hemma-actions-pill-bottom: 10px;
         --hemma-actions-label-size: 14px;
       }
+    }
+    :host(.hemma-compact) .hemma-act-pill .hemma-act-glyphbox { display: none; }
+    :host(.hemma-compact) .hemma-act-pill {
+      gap: 0;
+      --hemma-actions-label-inset: 0px;
+      --hemma-actions-pill-pad-start: 14px;
+    }
+
+    :host(.hemma-compact) {
+      --hemma-actions-btn-radius: 12px;
+      --hemma-actions-icon-size: 22px;
+      --hemma-actions-svg-size: 19px;
+      --hemma-actions-corner-gap: 2px;
+      --hemma-actions-pill-h: 30px;
+      --hemma-actions-pill-gap: 6px;
+      --hemma-actions-pill-bottom: 10px;
+      --hemma-actions-label-size: 14px;
     }
 
     /* The press lives one level in: the pill wrapper's transform belongs to

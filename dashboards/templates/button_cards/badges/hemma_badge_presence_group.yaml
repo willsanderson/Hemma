@@ -2,8 +2,6 @@
 hemma_badge_presence_group:
   template: [hemma_badge_base]
 
-  entity: input_select.hemma_expanded_row
-
   variables:
     enabled: true
     entity_1: null
@@ -17,14 +15,8 @@ hemma_badge_presence_group:
   icon: mdi:home-account
 
   tap_action:
-    action: call-service
-    service: input_select.select_option
-    service_data:
-      entity_id: input_select.hemma_expanded_row
-      option: >
-        [[[
-          return states['input_select.hemma_expanded_row']?.state === 'presence' ? 'none' : 'presence';
-        ]]]
+    action: fire-dom-event
+    hemma_category: presence
 
   hold_action:
     action: none
