@@ -2983,7 +2983,8 @@ window.hemmaMenuGlass = {
 
   const MENU_CSS = `
     .hemma-nav-menu > button { background: transparent; transition: background .12s ease; }
-    .hemma-nav-menu > button:hover { background: rgba(255,255,255,0.14); }
+    .hemma-nav-menu > button:hover, .hemma-nav-menu > button:focus, .hemma-nav-menu > button.on {
+      background: var(--hemma-menu-lit, rgba(255,255,255,0.18)); }
     @media (prefers-reduced-motion: reduce) {
       .hemma-nav-menu > button { transition: none; }
     }
@@ -6234,28 +6235,25 @@ window.hemmaMenuGlass = {
           const row = document.createElement('button');
           row.type = 'button';
           row.setAttribute('role', 'menuitem');
+          if (it.active) row.className = 'on';
           Object.assign(row.style, {
-            display: 'grid', gridTemplateColumns: '20px 1fr', alignItems: 'center',
-            justifyItems: 'start', columnGap: '15px', width: '100%',
-            minHeight: '46px', padding: '0 16px 0 13px',
+            display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
+            padding: '9px 13px',
             borderRadius: 'calc(var(--hemma-menu-radius, 28px) - 6px)',
             border: '0', textAlign: 'left',
-            font: 'inherit', fontSize: 'var(--hemma-popup-label-size, 15px)',
-            // 600 blanks these on re-render; 500 is the heaviest safe weight.
-            fontWeight: it.active ? '500' : '400',
-            color: 'var(--hemma-menu-ink, #fff)', opacity: it.active ? '1' : '.86',
+            font: 'inherit', fontSize: '14px', fontWeight: '500', letterSpacing: '-0.01em', lineHeight: '1.35',
+            color: 'var(--hemma-menu-ink, #fff)',
             cursor: 'default', outline: 'none', boxSizing: 'border-box',
           });
 
           const ico = document.createElement('ha-icon');
           ico.setAttribute('icon', it.icon);
           Object.assign(ico.style, {
-            width: '20px', height: '20px', color: 'currentColor',
+            width: '21px', height: '21px', color: 'currentColor', flex: 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            placeSelf: 'center',
           });
           // Object.assign cannot set a custom property; it fails silently.
-          ico.style.setProperty('--mdc-icon-size', '18px');
+          ico.style.setProperty('--mdc-icon-size', '21px');
 
           const txt = document.createElement('span');
           txt.textContent = it.label;
