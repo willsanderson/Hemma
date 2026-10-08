@@ -7,7 +7,7 @@ A modern, mobile-friendly dashboard for Home Assistant, built and configured fro
 
 Hemma installs as an integration and is added to your sidebar. There is no dashboard YAML to write and no card configuration to paste. You pick your rooms and entities, press Save, and Hemma writes the dashboard. 
 
-Creating a dashboard gives you two layouts from one setup: desktop and tablet, and a phone layout inspired by Apple Home. Phones are routed to the phone one automatically.
+One setup gives you desktop, tablet and phone: Focus or Overview on desktop and tablet, and a phone layout inspired by Apple Home. Phones are routed to the phone one automatically.
 
 Inspired by the [Homio](https://github.com/iamtherufus/Homio) dashboard by @iamtherufus, rebuilt and extended.
 
@@ -59,7 +59,7 @@ Hemma's icons, fonts, room images and theme live in your config folder. From thi
 - `themes/hemma/` into `/config/themes/hemma/`
 - `packages/hemma_helpers.yaml` into `/config/packages/`
 
-Without the last one, tapping a badge group throws a service-call error and the phone's filter pills do nothing. Hemma keeps the room list in it up to date for you once your dashboard is saved, and you never edit that file by hand.
+Without the last one, the phone's badges and filter pills do nothing. Hemma keeps the room list in it up to date for you once your dashboard is saved, and you never edit that file by hand.
 
 ### 3. Restart Home Assistant
 

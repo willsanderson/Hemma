@@ -188,9 +188,9 @@ Each view typically contains:
 
 ### :thermometer: Climate badge
 
-The climate group badge aggregates temperature, HVAC activity, humidity, and air quality into a single tappable badge on the hero card. Tap to expand sub-badges for temperature range, humidity, and air quality.
+The climate group badge aggregates temperature, HVAC activity, humidity, and air quality into a single tappable badge on the hero card. Tap it to open the Climate page, which shows sub-badges for temperature range, humidity, and air quality at the top.
 
-> **Dependency:** The expand/collapse behavior for all badge groups (climate, lights, presence, media, energy, security) is driven by `input_select.hemma_expanded_row`. This entity is defined in `packages/hemma_helpers.yaml` - make sure you have copied that file and reloaded HA (or restarted) so the entity exists before using any badge. Without it, tapping a badge group will throw a service-call error and the sub-badge row will not expand.
+> **Dependency:** Every badge group (climate, lights, presence, media, energy, security) opens its category page. On tablet and desktop that needs nothing extra. On the phone the page is a filter driven by `input_select.hemma_mobile_filter`, defined in `packages/hemma_helpers.yaml` - make sure you have copied that file and reloaded HA (or restarted) so the entity exists. Without it, the phone's badges do nothing.
 
 > **Badges are enabled by their entities.** As of 2.0 there are no `show_*` switches for the badge rows - a badge appears as soon as you give it something to show and stays hidden otherwise. The climate badge appears when **any** of `climate_entity_1`, `temp_sensor_1`, `humidity_sensor`, or `quality_sensor` is set.
 
@@ -198,10 +198,10 @@ The climate group badge aggregates temperature, HVAC activity, humidity, and air
 |---|---|
 | `climate_entity_1` – `climate_entity_3` | Climate/thermostat entities - used to detect active HVAC and animate the fan icon |
 | `temp_sensor_1` – `temp_sensor_5` | Temperature sensors - if multiple are provided, the badge shows a min–max range |
-| `humidity_sensor` | Humidity sensor (shown in expanded sub-badges) |
-| `quality_sensor` | Air quality sensor (shown in expanded sub-badges) |
+| `humidity_sensor` | Humidity sensor (shown as a sub-badge on the Climate page) |
+| `quality_sensor` | Air quality sensor (shown as a sub-badge on the Climate page) |
 | `temp_unit` | `'F'` or `'C'` - controls comfort label thresholds |
-| `show_climate_inline` | `true` to show temp/humidity/air-quality as individual badges on the top row instead of one expandable group badge |
+| `show_climate_inline` | `true` to show temp/humidity/air-quality as individual badges on the top row instead of one group badge |
 
 ---
 
@@ -220,9 +220,9 @@ If the group you point at sits inside a larger one, the popup opens on that larg
 
 ### :bust_in_silhouette: Presence badge
 
-Shows a grouped presence badge on the hero card. Tap to expand individual person badges.
+Shows a grouped presence badge on the hero card. Tap it to open the People page, with a badge for each person at the top.
 
-Set one `presence_entity_1` for a single person badge; set two or more and you get the expandable group badge instead.
+Set one `presence_entity_1` for a single person badge; set two or more and you get the group badge instead.
 
 | Variable | Description |
 |---|---|
@@ -286,7 +286,7 @@ Example home view with all badge types enabled:
     weather_entity: weather.your_weather
     weather_temp_sensor: sensor.your_outdoor_temp
 
-    # Presence badge - two entities, so the expandable group badge is used
+    # Presence badge - two entities, so the group badge is used
     presence_entity_1: sensor.person_one_status
     presence_entity_2: sensor.person_two_status
 
@@ -333,7 +333,7 @@ Set `show_now_playing: true` on a room card. `hemma_room` suppresses the media b
 
 ### :zap: Energy badges
 
-The energy group badge adds an expandable row of value badges to the hero card. Each `energy_entity_N` gets one badge (up to 6). On the Home view these are typically per-room figures; on a room it's usually a single badge showing that room's running cost.
+The energy group badge opens the Energy page, which shows a value badge for each `energy_entity_N` at the top (up to 6). On the Home view these are typically per-room figures; on a room it's usually a single badge showing that room's running cost.
 
 | Variable | Description |
 |---|---|
@@ -377,7 +377,7 @@ By default a sub-badge opens this view's own energy popup. To point a badge at a
 
 ### :lock: Security badges
 
-The security group badge expands into one badge per security entity. A single template handles every type, picking its icon and wording from the entity's domain:
+The security group badge opens the Security page, with one badge per security entity at the top. A single template handles every type, picking its icon and wording from the entity's domain:
 
 | Domain | States shown |
 |---|---|
