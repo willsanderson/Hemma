@@ -86,12 +86,15 @@ Everything is optional. A room with nothing but a light group is a valid room, a
 
 ## Screenshots
 
-### Desktop
-<img width="1729" height="1089" alt="desktop" src="https://github.com/user-attachments/assets/bdbca823-eb97-4ca0-8c49-b504c67beec8" />
+### Desktop (Focus Layout)
+<img width="1604" height="903" alt="Screenshot 2026-10-08 at 4 22 16 PM" src="https://github.com/user-attachments/assets/5fae3633-edef-431b-8201-8c7856e8af17" />
+
+### Desktop (Overview Layout)
+<img width="1605" height="907" alt="Screenshot 2026-10-08 at 4 23 34 PM" src="https://github.com/user-attachments/assets/f27d8a56-d0e4-410b-87c6-1191a6653afb" />
 
 ### Light and dark
-<img width="1729" height="1089" alt="livingroom-day" src="https://github.com/user-attachments/assets/6be96a9f-7f78-4e77-b470-9825976ce5a8" />
-<img width="1729" height="1089" alt="livingroom-night" src="https://github.com/user-attachments/assets/d32dfa80-2097-4f27-afa4-2e1a92f6eb68" />
+<img width="1525" height="904" alt="light" src="https://github.com/user-attachments/assets/d41c2a2d-8e54-4a8c-8a48-a0a73b423367" />
+<img width="1525" height="904" alt="dark" src="https://github.com/user-attachments/assets/c89b35ff-8481-4c12-9b72-aa82b78a44bd" />
 
 ### Mobile
 <img width="850" height="600" alt="mobile" src="https://github.com/user-attachments/assets/beb8537b-89f5-4f1b-ac7b-85af30117b68" />
@@ -110,7 +113,7 @@ Everything is optional. A room with nothing but a light group is a valid room, a
 <img width="386" height="668" alt="popup-battery" hspace="15" src="https://github.com/user-attachments/assets/a68d4924-bcc6-42cb-810e-2104bb1ec152" />
 
 ### Editing
-![studio](https://github.com/user-attachments/assets/02598a48-108e-4b94-939e-c86616a02aa4)
+<img width="1582" height="833" alt="Studio" src="https://github.com/user-attachments/assets/26743e60-1967-4d64-a395-71186ee86f16" />
 
 ## Upgrading from Hemma 2.0
 
