@@ -8,6 +8,7 @@
 - **Motion and Occupancy show when they last saw someone**, like "11 hours ago", instead of Not Detected. The time comes from Home Assistant's history, so a restart doesn't reset it.
 - **Opening Notifications no longer dims the pill above it** on tablets.
 - **The tablet's nav bar and top right pill catch a little more light** along their top and bottom edges, closer to the notifications' glass.
+- **Swedish picks up the newest strings**, including the greetings, thanks to [@DewGew](https://github.com/DewGew) in [#83](https://github.com/willsanderson/Hemma/pull/83).
 
 ## 2.3.1
 
