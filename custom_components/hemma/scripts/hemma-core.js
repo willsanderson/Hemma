@@ -678,6 +678,26 @@ window.hemmaMenuGlass = {
     roomSensorsMemo.set(memoKey, out);
     return out;
   };
+  // Ring's motion event can go quiet while the same device's last-activity sensor keeps the real time; the later one wins.
+  const stampSibs = new Map();
+  let stampFor = null;
+  const eventStamp = (S, id) => {
+    const s = S && S[id];
+    let t = s ? Date.parse(s.state) : NaN;
+    const ha = document.querySelector('home-assistant');
+    const ents = (ha && ha.hass && ha.hass.entities) || {};
+    if (stampFor !== ents) { stampSibs.clear(); stampFor = ents; }
+    if (!stampSibs.has(id)) {
+      const dev = (ents[id] || {}).device_id;
+      stampSibs.set(id, dev ? Object.keys(ents).filter((x) => x.indexOf('sensor.') === 0
+        && (ents[x] || {}).device_id === dev && /last_(motion|activity)/.test(x)) : []);
+    }
+    stampSibs.get(id).forEach((x) => {
+      const v = Date.parse((S[x] || {}).state);
+      if (Number.isFinite(v) && !(v <= t)) t = v;
+    });
+    return t;
+  };
   // Detected or not: an event (a doorbell's motion) counts for a minute after it fires.
   window.hemmaSensorsOn = function (states, ids) {
     let seen = false;
@@ -685,7 +705,7 @@ window.hemmaMenuGlass = {
       const s = states && states[id];
       if (!s) continue;
       if (id.indexOf('event.') === 0) {
-        const t = Date.parse(s.state);
+        const t = eventStamp(states, id);
         seen = true;
         if (Number.isFinite(t) && Date.now() - t < 60000) return true;
       } else if (s.state === 'on') return true;
@@ -731,7 +751,7 @@ window.hemmaMenuGlass = {
       const s = hass && hass.states && hass.states[id];
       if (!s) continue;
       let t = null;
-      if (id.indexOf('event.') === 0) t = Date.parse(s.state);
+      if (id.indexOf('event.') === 0) t = eventStamp(hass.states, id);
       else if (s.state === 'on') t = Date.now();
       else if (s.state === 'off') {
         const c = seenAt[id];
