@@ -1408,7 +1408,7 @@ const SECTIONS = [
         always: true, ord: 7 },
       { key: "notify_appliances", glyph: "stove-fill", tone: "var(--hemma-popup-ui-good, #30D158)", label: "Appliances", type: "bool", boolDefault: true,
         always: true, ord: 8 },
-      { key: "notify_plants", glyph: "plant", tone: "var(--hemma-popup-ui-warn, #FF9F0A)", label: "Plants", type: "bool", boolDefault: true,
+      { key: "notify_plants", glyph: "plant", tone: "var(--hemma-color-green, #30D158)", label: "Plants", type: "bool", boolDefault: true,
         always: true, ord: 9 },
       { key: "notify_battery", glyph: "battery", tone: "var(--hemma-popup-ui-bad, #FF453A)", label: "Low battery", type: "bool", boolDefault: true,
         always: true, ord: 10 },
@@ -1416,7 +1416,7 @@ const SECTIONS = [
         always: true, ord: 11 },
       { key: "notify_restart", glyph: "exclamation", tone: "var(--hemma-popup-ui-warn, #FF9F0A)", label: "Restart pending", type: "bool", boolDefault: true,
         always: true, ord: 12 },
-      { key: "notify_plex", glyph: "plex", tone: "var(--hemma-color-yellow, #FFD60A)", label: "Recently Added", type: "bool", boolDefault: true,
+      { key: "notify_plex", glyph: "plex", tone: "var(--hemma-popup-ui-warn, #FF9F0A)", label: "Recently Added", type: "bool", boolDefault: true,
         always: true, ord: 13 },
 
       { ...LIST("notification_appliances", "Appliances to watch",
