@@ -2,6 +2,7 @@
 
 ## 2.3.2
 
+- **New on Plex shows up in Notifications.** Movies and episodes added in the last three days appear with their poster, and tapping one opens Recently Added. Several stack into one Plex group. Turn it off with Recently Added in Hemma's notification settings.
 - **Notifications close once you clear the last one**, instead of leaving "No recent notifications" over the dashboard. That line now only appears when you open Notifications with nothing new.
 - **Opening a notification clears it**, as Apple's do.
 - **Swiping a notification reveals a glass Clear button**, styled like the notifications themselves, as Apple's is. It replaces the red button, whose color bled into the card beside it.

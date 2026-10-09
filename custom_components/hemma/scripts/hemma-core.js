@@ -10249,6 +10249,40 @@ window.hemmaMenuGlass = {
     });
   }
 
+  // New on Plex, from the Plex Recently Added sensors the Plex tile reads; `airdate` is when it was added, `aired` its release.
+  var PLEX_DAYS = 3;
+  function plexRows(hass) {
+    if (!on('plex')) return [];
+    var rows = [];
+    var since = Date.now() - PLEX_DAYS * 864e5;
+    [['sensor.recently_added_movies', false], ['sensor.recently_added_tv', true]].forEach(function (src) {
+      var st = hass.states[src[0]];
+      var list = st && st.attributes && Array.isArray(st.attributes.data) ? st.attributes.data.slice(1) : [];
+      list.forEach(function (it) {
+        if (!it || !it.title) return;
+        var when = Date.parse(it.airdate);
+        if (!isFinite(when) || when < since) return;
+        var tv = src[1];
+        var num = String(it.number || '').replace(/^S0*(\d+)E0*(\d+)$/i, 'S$1 E$2');
+        var year = String(it.aired || '').slice(0, 4);
+        rows.push({
+          id: 'hemma:plex:' + it.title + (it.number ? '|' + it.number : '') + '@' + when,
+          when: when,
+          label: it.title,
+          sub: tv ? [num, it.episode].filter(Boolean).join(' \u00b7 ') || null
+            : [_hemmaT('notify.plex.movie', 'Movie'), /^\d{4}$/.test(year) ? year : ''].filter(Boolean).join(' \u00b7 '),
+          icon: 'plex',
+          tone: 'accent',
+          image: it.poster || null,
+          imageFit: 'cover',
+          entity: src[0],
+          opens: ['hemma_plex_recently_added', 'hemma_popup_recently_added'],
+        });
+      });
+    });
+    return rows.sort(function (a, b) { return b.when - a.when; }).slice(0, 12);
+  }
+
   function standing(hass) {
     var rows = [];
     var S = hass.states;
@@ -10593,6 +10627,7 @@ window.hemmaMenuGlass = {
         e.rank = 1;
       });
 
+      kept = kept.concat(plexRows(hass)).sort(function (a, b) { return b.when - a.when; });
       var room = Math.max(0, MAX_ROWS - live.length);
       _all = live.concat(kept.slice(0, room))
         .sort(function (a, b) {
@@ -11155,6 +11190,7 @@ window.hemmaMenuGlass = {
     var r = rows[0];
     var KIND = {
       'hemma:co2': _hemmaT('notify.group.co2', 'Carbon dioxide'),
+      'hemma:plex': _hemmaT('notify.group.plex', 'Plex'),
       'hemma:open': _hemmaT('notify.group.open', 'Open doors'),
       'hemma:plant': _hemmaT('notify.group.plants', 'Plants'),
       'hemma:appliance': _hemmaT('notify.group.appliances', 'Appliances'),
@@ -11952,7 +11988,7 @@ window.hemmaMenuGlass = {
 
   // The categories a dashboard can switch off, as the panel writes them.
   var TYPES = ['safety', 'air', 'locks', 'alarm', 'doorbell', 'doors', 'people',
-    'vacuum', 'appliances', 'plants', 'battery', 'updates', 'restart'];
+    'vacuum', 'appliances', 'plants', 'battery', 'updates', 'restart', 'plex'];
 
   function configureFrom(V) {
     V = V || {};

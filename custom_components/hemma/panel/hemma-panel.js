@@ -1416,6 +1416,8 @@ const SECTIONS = [
         always: true, ord: 11 },
       { key: "notify_restart", glyph: "exclamation", tone: "var(--hemma-popup-ui-warn, #FF9F0A)", label: "Restart pending", type: "bool", boolDefault: true,
         always: true, ord: 12 },
+      { key: "notify_plex", glyph: "plex", tone: "var(--hemma-color-yellow, #FFD60A)", label: "Recently Added", type: "bool", boolDefault: true,
+        always: true, ord: 13 },
 
       { ...LIST("notification_appliances", "Appliances to watch",
         ["sensor", "binary_sensor", "switch", "vacuum"]),
