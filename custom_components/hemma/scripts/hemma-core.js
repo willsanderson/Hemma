@@ -10959,7 +10959,7 @@ window.hemmaMenuGlass = {
       + glass + 'box-shadow:' + EDGE + ';transition:background-color 160ms ease, padding ' + MORPH + ';-webkit-tap-highlight-color:transparent;}'
       + '.hemma-nc-x::before' + rim
       // Apple's highlight is brightest along the top and bottom, fading into the corners and on faintly down the sides.
-      + '.hemma-nc-card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;'
+      + '.hemma-nc-card::before, .hemma-nc-clear::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;'
       + 'background:linear-gradient(to right, rgba(255,255,255,0) 24px, rgba(255,255,255,var(--nc-hl-t, 0.15)) 62px, rgba(255,255,255,var(--nc-hl-t, 0.15)) calc(100% - 62px), rgba(255,255,255,0) calc(100% - 24px)) 0 0/100% 0.5px no-repeat,'
       + ' linear-gradient(to right, rgba(255,255,255,0) 24px, rgba(255,255,255,var(--nc-hl-2, 0.14)) 62px, rgba(255,255,255,var(--nc-hl-2, 0.14)) calc(100% - 62px), rgba(255,255,255,0) calc(100% - 24px)) 0 0.5px/100% 0.5px no-repeat,'
       + ' linear-gradient(to right, rgba(255,255,255,0) 24px, rgba(255,255,255,var(--nc-hl-b, 0.26)) 62px, rgba(255,255,255,var(--nc-hl-b, 0.26)) calc(100% - 62px), rgba(255,255,255,0) calc(100% - 24px)) 0 100%/100% 0.5px no-repeat,'
@@ -10975,7 +10975,7 @@ window.hemmaMenuGlass = {
       + '.hemma-nc-x.open span{opacity:1;transition:max-width ' + MORPH + ', opacity 280ms ease 140ms;}'
       + '.hemma-nc-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;'
       // A scroller clips: the padding holds the cards' shadow, the margins put the cards back where they were.
-      + 'pointer-events:none;padding:30px 30px 60px 118px;margin:-24px -30px -44px -110px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}'
+      + 'pointer-events:none;padding:30px 30px 60px 138px;margin:-24px -30px -44px -130px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}'
       + '.hemma-nc-list::-webkit-scrollbar{display:none;}'
       + '.hemma-nc-slot{position:relative;margin-bottom:7px;pointer-events:auto;}'
       + '.hemma-nc-slot.fresh-in > .hemma-nc-card{animation:hemma-nc-in 320ms ' + EASE + ' backwards;}'
@@ -11029,17 +11029,18 @@ window.hemmaMenuGlass = {
       + 'opacity:0;pointer-events:none;transition:opacity 140ms ease;}'
       + '.hemma-nc-close::before' + rim
       + '.hemma-nc-close svg{width:8px;height:8px;}'
-      + '.hemma-nc-clear{position:absolute;right:0;top:0;bottom:0;width:66px;border:0;border-radius:18px;'
-      + 'padding:0;cursor:pointer;font:inherit;font-size:13px;font-weight:600;color:#fff;'
-      + 'background:rgba(255,69,58,0.92);opacity:0;-webkit-tap-highlight-color:transparent;}'
+      // Apple's Clear is a glass tile like the card, not a red button. Above the card, so the card's blur cannot pull it in.
+      + '.hemma-nc-clear{position:absolute;right:0;top:0;bottom:0;z-index:2;width:85px;border:0;border-radius:22px;'
+      + 'padding:0;cursor:pointer;font:inherit;font-size:17px;font-weight:400;letter-spacing:-0.01em;color:rgba(255,255,255,0.92);'
+      + glass + 'box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.10);opacity:0;pointer-events:none;-webkit-tap-highlight-color:transparent;}'
       + '@keyframes hemma-nc-fade{from{opacity:0;}}'
       + '.hemma-nc-empty{position:relative;width:fit-content;margin:2px 0 0 auto;padding:4px 2px;border-radius:22px;animation:hemma-nc-in 320ms ' + EASE + ' backwards;'
       + 'font-size:15px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;'
       + 'color:rgba(255,255,255,0.92);text-shadow:0 1px 8px rgba(0,0,0,0.35);}'
-      + '.hemma-nc.light .hemma-nc-card, .hemma-nc.light .hemma-nc-x, .hemma-nc.light .hemma-nc-close, .hemma-nc.light .hemma-nc-pill{'
+      + '.hemma-nc.light .hemma-nc-card, .hemma-nc.light .hemma-nc-clear, .hemma-nc.light .hemma-nc-x, .hemma-nc.light .hemma-nc-close, .hemma-nc.light .hemma-nc-pill{'
       + 'background:var(--hemma-perf-pill, rgba(250,250,252,0.46));-webkit-backdrop-filter:var(--hemma-perf-none, blur(32px) saturate(1.2));'
       + 'backdrop-filter:var(--hemma-perf-none, blur(32px) saturate(1.2));color:rgba(0,0,0,0.7);}'
-      + '.hemma-nc.light .hemma-nc-card{box-shadow:0 0.5px 0 rgba(255,255,255,0.13), ' + EDGE + ', 0 4px 16px rgba(0,0,0,0.08);}'
+      + '.hemma-nc.light .hemma-nc-card, .hemma-nc.light .hemma-nc-clear{box-shadow:0 0.5px 0 rgba(255,255,255,0.13), ' + EDGE + ', 0 4px 16px rgba(0,0,0,0.08);}'
       + '.hemma-nc.light .hemma-nc-ghost{background:rgba(250,250,252,0.32);box-shadow:' + EDGE + ', inset 0 -1px 0 rgba(255,255,255,0.5);}'
       + '.hemma-nc.light .hemma-nc-ghost.far{background:rgba(250,250,252,0.22);}'
       + '.hemma-nc.light .hemma-nc-x::before, .hemma-nc.light .hemma-nc-close::before, .hemma-nc.light .hemma-nc-pill::before{'
@@ -11056,7 +11057,7 @@ window.hemmaMenuGlass = {
       + '.hemma-nc-slot:hover .hemma-nc-close{opacity:1;pointer-events:auto;}'
       + '.hemma-nc-x:hover{background:rgba(160,162,168,0.16);}}'
       + '.hemma-nc.light{--nc-hl-t:0.9;--nc-hl-b:0.75;--nc-hl-2:0.45;--nc-hl-s:0.13;--nc-glow-t:0.22;--nc-glow-b:0.16;}'
-      + '.hemma-nc .hemma-nc-card, .hemma-nc.light .hemma-nc-card{'
+      + '.hemma-nc .hemma-nc-card, .hemma-nc.light .hemma-nc-card, .hemma-nc .hemma-nc-clear, .hemma-nc.light .hemma-nc-clear{'
       + 'background-image:linear-gradient(to bottom, rgba(255,255,255,var(--nc-glow-t, 0.03)), rgba(255,255,255,0) 12px,'
       + ' rgba(255,255,255,0) calc(100% - 8px), rgba(255,255,255,var(--nc-glow-b, 0.05)));'
       + '-webkit-backdrop-filter:var(--hemma-perf-none, blur(16px) saturate(1.3));backdrop-filter:var(--hemma-perf-none, blur(16px) saturate(1.3));}'
@@ -11077,7 +11078,7 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone .hemma-nc-pill path{stroke-width:1.35;}'
       + '.hemma-nc.phone:not(.light) .hemma-nc-pill{color:#fff;}'
       + '.hemma-nc.phone .hemma-nc-x::after, .hemma-nc.phone .hemma-nc-pill::after{content:"";position:absolute;inset:-5px;}'
-      + '.hemma-nc.phone.light .hemma-nc-card{--nc-glow-t:0.19;background-image:linear-gradient(to bottom, rgba(255,255,255,var(--nc-glow-t, 0.03)), rgba(255,255,255,0) 8px,'
+      + '.hemma-nc.phone.light .hemma-nc-card, .hemma-nc.phone.light .hemma-nc-clear{--nc-glow-t:0.19;background-image:linear-gradient(to bottom, rgba(255,255,255,var(--nc-glow-t, 0.03)), rgba(255,255,255,0) 8px,'
       + ' rgba(255,255,255,0) calc(100% - 8px), rgba(255,255,255,var(--nc-glow-b, 0.05)));}'
       + '.hemma-nc.phone .hemma-nc-x.open{padding:0 14px;}'
       + '.hemma-nc.phone .hemma-nc-x svg{width:14px;height:14px;}'
@@ -11094,14 +11095,14 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone .hemma-nc-s{font-size:15px;line-height:18px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}'
       + '.hemma-nc.phone .hemma-nc-tag{font-size:12px;line-height:15px;}'
       // iOS 27's edge: one bright row stepping down fast, then a soft glow into the glass.
-      + '.hemma-nc.phone:not(.light) .hemma-nc-card::before{background:linear-gradient(to bottom, rgba(255,255,255,0.5) 0.3333px, rgba(255,255,255,0.325) 0.3333px 0.6667px, rgba(255,255,255,0.175) 0.6667px) 62px 0/calc(100% - 124px) 1px no-repeat,'
+      + '.hemma-nc.phone:not(.light) .hemma-nc-card::before, .hemma-nc.phone:not(.light) .hemma-nc-clear::before{background:linear-gradient(to bottom, rgba(255,255,255,0.5) 0.3333px, rgba(255,255,255,0.325) 0.3333px 0.6667px, rgba(255,255,255,0.175) 0.6667px) 62px 0/calc(100% - 124px) 1px no-repeat,'
       + ' linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.335)) 24px 0/38px 1px no-repeat,'
       + ' linear-gradient(to left, rgba(255,255,255,0), rgba(255,255,255,0.335)) right 24px top/38px 1px no-repeat,'
       + ' linear-gradient(to top, rgba(255,255,255,0.38) 0.3333px, rgba(255,255,255,0.24) 0.3333px 0.6667px, rgba(255,255,255,0.13) 0.6667px) 62px 100%/calc(100% - 124px) 1px no-repeat,'
       + ' linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.25)) 24px 100%/38px 1px no-repeat,'
       + ' linear-gradient(to left, rgba(255,255,255,0), rgba(255,255,255,0.25)) right 24px bottom/38px 1px no-repeat,'
       + ' linear-gradient(rgba(255,255,255,0.05), rgba(255,255,255,0.05));}'
-      + '.hemma-nc.phone:not(.light) .hemma-nc-card{background-color:var(--hemma-perf-pill, rgba(255,255,255,0.1));'
+      + '.hemma-nc.phone:not(.light) .hemma-nc-card, .hemma-nc.phone:not(.light) .hemma-nc-clear{background-color:var(--hemma-perf-pill, rgba(255,255,255,0.1));'
       + 'background-image:linear-gradient(to bottom, rgba(255,255,255,0.12) 1px, rgba(255,255,255,0.07) 2px, rgba(255,255,255,0.035) 3.5px,'
       + ' rgba(255,255,255,0.015) 5.5px, rgba(255,255,255,0) 8px, rgba(255,255,255,0) calc(100% - 5.5px), rgba(255,255,255,0.012) calc(100% - 4.3px),'
       + ' rgba(255,255,255,0.031) calc(100% - 3.3px), rgba(255,255,255,0.066) calc(100% - 2px), rgba(255,255,255,0.12) calc(100% - 1px));}';
@@ -11343,6 +11344,7 @@ window.hemmaMenuGlass = {
         f.style.transform = card.style.transform;
       });
       btn.style.opacity = off ? '1' : '0';
+      btn.style.pointerEvents = off ? 'auto' : 'none';
       swiped = off ? slot : (swiped === slot ? null : swiped);
     };
 
@@ -11425,7 +11427,7 @@ window.hemmaMenuGlass = {
 
       var g = null;
       var blockClick = 0;
-      var OPEN = -74;
+      var OPEN = -94;
       card.addEventListener('pointerdown', function (e) {
         if (e.pointerType === 'mouse' || slot._gone) return;
         if (swiped && swiped !== slot) settle(swiped, 0);
@@ -11450,7 +11452,7 @@ window.hemmaMenuGlass = {
         g.off = off;
         card.style.transform = 'translateX(' + off + 'px)';
         riders(slot).forEach(function (f) { f.style.transition = 'none'; f.style.transform = card.style.transform; });
-        btn.style.opacity = String(Math.max(0, Math.min(1, -off / 60)));
+        btn.style.opacity = String(Math.max(0, Math.min(1, -off / 80)));
       });
       var end = function (e) {
         if (!g || e.pointerId !== g.id) return;
@@ -11847,7 +11849,8 @@ window.hemmaMenuGlass = {
     bump();
     // Each glass piece moves on its own: an animated ancestor leaves their blur blank until it settles.
     var pieces = function () {
-      return [title, x, empty].concat([].slice.call(head.querySelectorAll('.hemma-nc-halo > div')), [].slice.call(list.querySelectorAll('.hemma-nc-card, .hemma-nc-ghost, .hemma-nc-ghead, .hemma-nc-halo > div')));
+      var clears = [].slice.call(list.querySelectorAll('.hemma-nc-clear')).filter(function (el) { return Number(getComputedStyle(el).opacity) > 0.05; });
+      return [title, x, empty].concat(clears, [].slice.call(head.querySelectorAll('.hemma-nc-halo > div')), [].slice.call(list.querySelectorAll('.hemma-nc-card, .hemma-nc-ghost, .hemma-nc-ghead, .hemma-nc-halo > div')));
     };
     var away = phone ? 'translateY(-14px)' : 'translateX(28px)';
     pieces().forEach(function (el) {
