@@ -99,6 +99,9 @@ Everything is optional. A room with nothing but a light group is a valid room, a
 ### Mobile
 <img width="850" height="600" alt="mobile" src="https://github.com/user-attachments/assets/beb8537b-89f5-4f1b-ac7b-85af30117b68" />
 
+### Editing the dashboard
+<img width="1582" height="833" alt="Studio" src="https://github.com/user-attachments/assets/26743e60-1967-4d64-a395-71186ee86f16" />
+
 ### Popups
 
 <img width="386" height="572" alt="popup-cover" hspace="15" src="https://github.com/user-attachments/assets/af162535-1ad7-477c-a6f7-add2f8f49c70" />
@@ -111,9 +114,6 @@ Everything is optional. A room with nothing but a light group is a valid room, a
 <img width="386" height="388" alt="popup-network" hspace="15" src="https://github.com/user-attachments/assets/a73d5b33-03d6-487c-ba13-39c3ae22346f" />
 <br><br>
 <img width="386" height="668" alt="popup-battery" hspace="15" src="https://github.com/user-attachments/assets/a68d4924-bcc6-42cb-810e-2104bb1ec152" />
-
-### Editing
-<img width="1582" height="833" alt="Studio" src="https://github.com/user-attachments/assets/26743e60-1967-4d64-a395-71186ee86f16" />
 
 ## Upgrading from Hemma 2.0
 
