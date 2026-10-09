@@ -11448,7 +11448,10 @@ window.hemmaMenuGlass = {
         if (Date.now() - blockClick < 400) return;
         if (swiped) { settle(swiped, 0); return; }
         if (slot._stack) { spread(slot._stack); return; }
+        // Opening a notification clears it, as Apple's do.
+        var rows = slot._rows;
         activate(slot._row);
+        if (rows && rows.length) clearRows(rows, false);
       });
       return slot;
     };
@@ -11533,6 +11536,14 @@ window.hemmaMenuGlass = {
         else ref = ref.nextSibling;
       });
       var none = !_rows.length;
+      // Cleared down to nothing, it closes; the empty line is only for opening with nothing there.
+      if (!none) nc._had = true;
+      if (none && nc._had) {
+        var leaving = [].some.call(list.children, function (el) { return el._gone; });
+        setTimeout(function () { if (_center === nc && !_rows.length) nc._close(); }, leaving ? 220 : 0);
+        taper();
+        return;
+      }
       head.style.display = none ? 'none' : '';
       if (none && !empty.parentNode) {
         setTimeout(function () {
