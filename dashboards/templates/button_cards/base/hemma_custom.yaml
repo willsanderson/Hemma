@@ -13,6 +13,17 @@ hemma_custom:
   variables:
     icon: null
 
+  # Studio stores the pasted card as custom_fields.card itself; button-card only draws a field
+  # that holds `card:`, so the template adds it, handing back the user's card without it.
+  custom_fields:
+    card:
+      card: |
+        [[[
+          const f = Object.assign({}, (this._config.custom_fields || {}).card);
+          delete f.card;
+          return f;
+        ]]]
+
   styles:
     grid:
       - grid-template-columns: 1fr
