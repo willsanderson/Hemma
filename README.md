@@ -82,6 +82,8 @@ Open **Hemma** in the sidebar and choose **Create dashboard**. Add a room, choos
 
 Everything is optional. A room with nothing but a light group is a valid room, and you can come back and add badges, scenes and Now Playing whenever you like.
 
+<img width="1582" height="833" alt="Studio" src="https://github.com/user-attachments/assets/26743e60-1967-4d64-a395-71186ee86f16" />
+
 ---
 
 ## Screenshots
@@ -98,9 +100,6 @@ Everything is optional. A room with nothing but a light group is a valid room, a
 
 ### Mobile
 <img width="850" height="600" alt="mobile" src="https://github.com/user-attachments/assets/beb8537b-89f5-4f1b-ac7b-85af30117b68" />
-
-### Editing the dashboard
-<img width="1582" height="833" alt="Studio" src="https://github.com/user-attachments/assets/26743e60-1967-4d64-a395-71186ee86f16" />
 
 ### Popups
 
