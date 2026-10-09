@@ -519,7 +519,7 @@
       } catch (_) {}
     }
 
-    const st = (px) => `calc(env(safe-area-inset-top, 0px) + var(--hemma-mobile-chrome-drop, 4px) + ${px}px)`;
+    const st = (px) => `calc(env(safe-area-inset-top, 0px) + var(--hemma-mobile-chrome-drop, 4px) + 8px * var(${LANDSCAPE_PHONE_VAR}, 0) + ${px}px)`;
     const hardStop = (px, maxA = 1) => {
       const c = maxA >= 1 ? 'black' : `rgba(0,0,0,${maxA})`;
       return `linear-gradient(to bottom, ${c} 0px, ${c} ${st(px)}, transparent ${st(px)})`;
@@ -560,7 +560,7 @@
     const edge = document.createElement('div');
     edge.style.cssText = [
       'position:fixed', 'left:0', 'right:0',
-      'top:calc(env(safe-area-inset-top, 0px) + var(--hemma-mobile-chrome-drop, 4px) + 51px)',
+      `top:${st(51)}`,
       'height:11px', 'z-index:112', 'pointer-events:none', 'opacity:0',
       'transition:opacity 220ms ease-in-out',
       'background:linear-gradient(to bottom, rgba(18,20,26,0.025), rgba(18,20,26,0))',
@@ -606,7 +606,7 @@
     title.style.cssText = [
       'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:112',
       `height:${DASH_BAR_HEIGHT}px`,
-      'padding-top:calc(env(safe-area-inset-top, 0px) + var(--hemma-mobile-chrome-drop, 4px))',
+      `padding-top:calc(env(safe-area-inset-top, 0px) + var(--hemma-mobile-chrome-drop, 4px) + 8px * var(${LANDSCAPE_PHONE_VAR}, 0))`,
       'padding-left:max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px))',
       'box-sizing:content-box',
       'display:flex', 'align-items:center', 'justify-content:flex-start',
@@ -623,8 +623,10 @@
     const pillHost = document.createElement('div');
     pillHost.style.cssText = [
       'position:fixed',
-      'top:calc(env(safe-area-inset-top, 0px) + var(--hemma-mobile-chrome-drop, 4px))',
-      'right:16px', 'z-index:113', 'pointer-events:auto',
+      // Landscape has no top safe area, so the pill would sit against the screen's edge.
+      `top:calc(env(safe-area-inset-top, 0px) + var(--hemma-mobile-chrome-drop, 4px) + 8px * var(${LANDSCAPE_PHONE_VAR}, 0))`,
+      // In landscape the phone's rounded corner would clip it; the safe area lines it up with the tiles.
+      'right:calc(16px + env(safe-area-inset-right, 0px))', 'z-index:113', 'pointer-events:auto',
     ].join(';');
 
     const pillFlash = document.createElement('div');

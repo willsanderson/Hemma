@@ -10963,6 +10963,17 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone .hemma-nc-title{font-size:27px;font-weight:400;letter-spacing:-0.015em;}'
       + '.hemma-nc.phone .hemma-nc-x{height:34px;min-width:34px;padding:0 10px;border-radius:17px;font-size:15px;}'
       + '.hemma-nc.phone:not(.light) .hemma-nc-x{color:#fff;}'
+      + '.hemma-nc.phone .hemma-nc-ghead{padding:12px 0 2px 12px;gap:12px;}'
+      + '.hemma-nc.phone .hemma-nc-ghead b{font-size:20px;letter-spacing:-0.01em;}'
+      + '.hemma-nc.phone .hemma-nc-pills{gap:8px;}'
+      + '.hemma-nc.phone .hemma-nc-pill{height:34px;min-width:34px;padding:0 14px;border-radius:17px;font-size:15px;}'
+      + '.hemma-nc.phone .hemma-nc-pill.round{width:34px;padding:0;}'
+      + '.hemma-nc.phone .hemma-nc-pill svg{width:12px;height:12px;}'
+      + '.hemma-nc.phone .hemma-nc-pill path{stroke-width:1.35;}'
+      + '.hemma-nc.phone:not(.light) .hemma-nc-pill{color:#fff;}'
+      + '.hemma-nc.phone .hemma-nc-x::after, .hemma-nc.phone .hemma-nc-pill::after{content:"";position:absolute;inset:-5px;}'
+      + '.hemma-nc.phone.light .hemma-nc-card{--nc-glow-t:0.19;background-image:linear-gradient(to bottom, rgba(255,255,255,var(--nc-glow-t, 0.03)), rgba(255,255,255,0) 8px,'
+      + ' rgba(255,255,255,0) calc(100% - 8px), rgba(255,255,255,var(--nc-glow-b, 0.05)));}'
       + '.hemma-nc.phone .hemma-nc-x.open{padding:0 14px;}'
       + '.hemma-nc.phone .hemma-nc-x svg{width:14px;height:14px;}'
       + '.hemma-nc.phone .hemma-nc-x.open svg{width:0;}'
@@ -11087,7 +11098,10 @@ window.hemmaMenuGlass = {
     var themes = (hassOf() || {}).themes;
     var dark = themes && typeof themes.darkMode === 'boolean' ? themes.darkMode
       : !(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
-    nc.className = 'hemma-nc' + (phone ? ' phone' : '') + (dark ? '' : ' light');
+    // A touchscreen tablet gets the phone's notifications; the Mac's, sized for a mouse, are too small to tap.
+    var touch = !phone && !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+    var mobile = phone || touch;
+    nc.className = 'hemma-nc' + (mobile ? ' phone' : '') + (dark ? '' : ' light');
     nc.setAttribute('role', 'dialog');
     nc.setAttribute('aria-label', _hemmaT('notify.title', 'Notifications'));
     nc.style.fontFamily = window._hemmaUI.tokens.font;
@@ -11141,6 +11155,12 @@ window.hemmaMenuGlass = {
       h.appendChild(soft);
       return h;
     };
+    // The bell is always on screen, so on the phone the title can open over tiles; it carries its own halo like a card.
+    if (mobile) {
+      var hf = halo();
+      hf.lastChild.style.backdropFilter = hf.lastChild.style.webkitBackdropFilter = 'var(--hemma-perf-none, blur(10px))';
+      head.appendChild(hf);
+    }
     nc.appendChild(head);
     nc.appendChild(list);
     document.body.appendChild(scrim);
@@ -11176,11 +11196,11 @@ window.hemmaMenuGlass = {
       var card = slot.firstChild;
       slot.style.height = slot.offsetHeight + 'px';
       slot.style.overflow = 'visible';
-      card.style.transition = 'transform 260ms ' + EASE + ', opacity 200ms ease';
+      card.style.transition = 'transform 200ms ' + EASE + ', opacity 150ms ease';
       card.style.transform = 'translateX(' + (dir < 0 ? '-110%' : '40px') + ')';
       card.style.opacity = '0';
       var btn = slot.querySelector('.hemma-nc-clear');
-      if (btn) { btn.style.transition = 'opacity 160ms ease'; btn.style.opacity = '0'; }
+      if (btn) { btn.style.transition = 'opacity 120ms ease'; btn.style.opacity = '0'; }
       [].concat([].slice.call(slot.querySelectorAll('.hemma-nc-ghost')), frost(slot)).forEach(function (gh) {
         gh.style.transition = card.style.transition;
         gh.style.transform = card.style.transform;
@@ -11194,17 +11214,17 @@ window.hemmaMenuGlass = {
         x1.style.opacity = '0';
       }
       setTimeout(function () {
-        slot.style.transition = 'height 260ms ' + EASE + ', margin-bottom 260ms ' + EASE;
+        slot.style.transition = 'height 200ms ' + EASE + ', margin-bottom 200ms ' + EASE;
         slot.style.height = '0px';
         slot.style.marginBottom = '0px';
-      }, 150);
-      setTimeout(function () { if (slot.parentNode) slot.remove(); }, 440);
+      }, 110);
+      setTimeout(function () { if (slot.parentNode) slot.remove(); }, 330);
     };
 
     var settle = function (slot, off) {
       var card = slot.firstChild;
       var btn = slot.querySelector('.hemma-nc-clear');
-      var spring = 'transform 420ms cubic-bezier(0.3, 1.35, 0.5, 1)';
+      var spring = 'background-color 160ms ease, transform 420ms cubic-bezier(0.3, 1.35, 0.5, 1), opacity 220ms ease';
       card.style.transition = spring;
       btn.style.transition = 'opacity 200ms ease';
       card.style.transform = off ? 'translateX(' + off + 'px)' : '';
@@ -11250,6 +11270,12 @@ window.hemmaMenuGlass = {
       head1.appendChild(name);
       head1.appendChild(pills);
       slot.appendChild(head1);
+      // The phone's header row has no card behind it, so it gets one's halo, blurred enough to quiet the badges under it.
+      if (mobile) {
+        var fr = halo();
+        fr.lastChild.style.backdropFilter = fr.lastChild.style.webkitBackdropFilter = 'var(--hemma-perf-none, blur(10px))';
+        slot.appendChild(fr);
+      }
       slot._name = name;
       less.addEventListener('click', function (e) { e.stopPropagation(); fold(slot._group); });
       drop.addEventListener('click', function (e) { e.stopPropagation(); clearRows(slot._rows, false); });
@@ -11646,6 +11672,16 @@ window.hemmaMenuGlass = {
       var lb = list.getBoundingClientRect();
       var seen = new Set();
       [].forEach.call(list.children, function (slot) {
+        if (mobile && slot.classList.contains('hemma-nc-ghead-slot') && !slot._gone) {
+          var gb = slot.firstChild.getBoundingClientRect();
+          var gs = shadeOf.get(slot);
+          if (!gs) { gs = shades.appendChild(document.createElement('div')); gs.className = 'text'; shadeOf.set(slot, gs); }
+          seen.add(slot);
+          var gcss = 'left:' + (gb.left - nb.left - 16) + 'px;top:' + (gb.top - nb.top - 6) + 'px;width:' + (gb.width + 32) + 'px;height:' + (gb.height + 12)
+            + 'px;opacity:' + Number(getComputedStyle(slot.firstChild).opacity).toFixed(3);
+          if (gs._css !== gcss) { gs._css = gcss; gs.style.cssText = gcss; }
+          return;
+        }
         if (!slot.classList.contains('hemma-nc-slot') || slot.classList.contains('hemma-nc-ghead-slot')) return;
         var card = slot.firstChild;
         var b = card.getBoundingClientRect();
@@ -11658,6 +11694,15 @@ window.hemmaMenuGlass = {
         var css = 'left:' + (b.left - nb.left) + 'px;top:' + (b.top - nb.top) + 'px;width:' + b.width + 'px;height:' + (b.height + extra) + 'px;opacity:' + op;
         if (sh._css !== css) { sh._css = css; sh.style.cssText = css; }
       });
+      if (mobile && head.style.display !== 'none') {
+        var tb = title.getBoundingClientRect();
+        var ts = shadeOf.get(head);
+        if (!ts) { ts = shades.appendChild(document.createElement('div')); ts.className = 'text'; shadeOf.set(head, ts); }
+        seen.add(head);
+        var tcss = 'left:' + (tb.left - nb.left - 16) + 'px;top:' + (tb.top - nb.top - 6) + 'px;width:' + (tb.width + 32) + 'px;height:' + (tb.height + 12)
+          + 'px;opacity:' + Number(getComputedStyle(title).opacity).toFixed(3);
+        if (ts._css !== tcss) { ts._css = tcss; ts.style.cssText = tcss; }
+      }
       if (empty.isConnected) {
         var eb = empty.getBoundingClientRect();
         var es = shadeOf.get(empty);
@@ -11679,7 +11724,7 @@ window.hemmaMenuGlass = {
     bump();
     // Each glass piece moves on its own: an animated ancestor leaves their blur blank until it settles.
     var pieces = function () {
-      return [title, x, empty].concat([].slice.call(list.querySelectorAll('.hemma-nc-card, .hemma-nc-ghost, .hemma-nc-ghead, .hemma-nc-halo > div')));
+      return [title, x, empty].concat([].slice.call(head.querySelectorAll('.hemma-nc-halo > div')), [].slice.call(list.querySelectorAll('.hemma-nc-card, .hemma-nc-ghost, .hemma-nc-ghead, .hemma-nc-halo > div')));
     };
     var away = phone ? 'translateY(-14px)' : 'translateX(28px)';
     pieces().forEach(function (el) {
@@ -11719,6 +11764,18 @@ window.hemmaMenuGlass = {
     var width = window.innerWidth;
     var onKey = function (e) { if (e.key === 'Escape') nc._close(); };
     var onResize = function () { if (window.innerWidth !== width) nc._close(); };
+    // Like a popover, scrolling anywhere else closes it; the dashboard would otherwise slide under cards meant to float over it.
+    var outside = function (e) { return (e.composedPath ? e.composedPath() : []).indexOf(nc) < 0; };
+    var touch0 = null;
+    var onTouchStart = function (e) {
+      var p = e.touches && e.touches[0];
+      touch0 = p && outside(e) ? { x: p.clientX, y: p.clientY } : null;
+    };
+    var onTouchMove = function (e) {
+      var p = touch0 && e.touches && e.touches[0];
+      if (p && (Math.abs(p.clientY - touch0.y) > 8 || Math.abs(p.clientX - touch0.x) > 8)) { touch0 = null; nc._close(); }
+    };
+    var onWheel = function (e) { if (outside(e)) nc._close(); };
 
     nc._close = function () {
       setTimeout(function () { cancelAnimationFrame(shadeRaf); }, 460);
@@ -11728,6 +11785,9 @@ window.hemmaMenuGlass = {
       clearTimeout(x._t);
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('touchstart', onTouchStart, true);
+      window.removeEventListener('touchmove', onTouchMove, true);
+      window.removeEventListener('wheel', onWheel, true);
       lift(anchor, false);
       if (!idleOut) seal();
       scrim.classList.remove('on');
@@ -11749,6 +11809,9 @@ window.hemmaMenuGlass = {
 
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('resize', onResize);
+    window.addEventListener('touchstart', onTouchStart, { capture: true, passive: true });
+    window.addEventListener('touchmove', onTouchMove, { capture: true, passive: true });
+    window.addEventListener('wheel', onWheel, { capture: true, passive: true });
   }
 
   function open(anchor) {
