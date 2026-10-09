@@ -10870,7 +10870,7 @@ window.hemmaMenuGlass = {
       + '.hemma-nc-x.open span{opacity:1;transition:max-width ' + MORPH + ', opacity 280ms ease 140ms;}'
       + '.hemma-nc-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;'
       // A scroller clips: the padding holds the cards' shadow, the margins put the cards back where they were.
-      + 'pointer-events:none;padding:30px 30px 60px 38px;margin:-24px -30px -44px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}'
+      + 'pointer-events:none;padding:30px 30px 60px 118px;margin:-24px -30px -44px -110px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}'
       + '.hemma-nc-list::-webkit-scrollbar{display:none;}'
       + '.hemma-nc-slot{position:relative;margin-bottom:7px;pointer-events:auto;}'
       + '.hemma-nc-slot.fresh-in > .hemma-nc-card{animation:hemma-nc-in 320ms ' + EASE + ' backwards;}'
@@ -11165,11 +11165,12 @@ window.hemmaMenuGlass = {
     var settle = function (slot, off) {
       var card = slot.firstChild;
       var btn = slot.querySelector('.hemma-nc-clear');
-      card.style.transition = '';
+      var spring = 'transform 420ms cubic-bezier(0.3, 1.35, 0.5, 1)';
+      card.style.transition = spring;
       btn.style.transition = 'opacity 200ms ease';
       card.style.transform = off ? 'translateX(' + off + 'px)' : '';
       frost(slot).forEach(function (f) {
-        f.style.transition = 'transform 300ms ' + EASE;
+        f.style.transition = spring;
         f.style.transform = card.style.transform;
       });
       btn.style.opacity = off ? '1' : '0';
@@ -11249,6 +11250,7 @@ window.hemmaMenuGlass = {
 
       var g = null;
       var blockClick = 0;
+      var OPEN = -74;
       card.addEventListener('pointerdown', function (e) {
         if (e.pointerType === 'mouse' || slot._gone) return;
         if (swiped && swiped !== slot) settle(swiped, 0);
@@ -11268,6 +11270,8 @@ window.hemmaMenuGlass = {
         }
         var off = g.base + dx;
         if (off > 0) off = off * 0.25;
+        // Past the Clear button the card only stretches a little, so it never runs off the panel.
+        else if (off < OPEN) off = OPEN - 28 * (1 - Math.exp((off - OPEN) / 80));
         g.off = off;
         card.style.transform = 'translateX(' + off + 'px)';
         frost(slot).forEach(function (f) { f.style.transition = 'none'; f.style.transform = card.style.transform; });
@@ -11280,12 +11284,7 @@ window.hemmaMenuGlass = {
         if (was.mode !== 'drag') return;
         blockClick = Date.now();
         bump();
-        if (was.off < -card.offsetWidth * 0.55) {
-          slot._dir = -1;
-          clearRows(slot._rows, false);
-        } else {
-          settle(slot, was.off < -40 ? -74 : 0);
-        }
+        settle(slot, was.off < -40 ? OPEN : 0);
       };
       card.addEventListener('pointerup', end);
       card.addEventListener('pointercancel', end);

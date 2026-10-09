@@ -5,6 +5,7 @@
 ### Fixes
 
 - **Switching between Overview and Focus is instant.** After saving the change in Hemma Studio, the page to the right of the sidebar could stay empty for several seconds before it appeared.
+- **Swiping a notification stops beside Clear.** On a phone or tablet a card could be dragged across the screen and cut off by the panel's edge. It now stretches only a little past the Clear button and springs back beside it.
 - **Now Playing keeps its width in Focus without controls.** A source that offers no playback controls, like Spotify on some speakers, Plex or PlayStation, made the tile shrink to its title. It is now as wide as a tile with controls.
 
 ## 2.3.0
