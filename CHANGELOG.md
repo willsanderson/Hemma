@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.3.2
+
+- **Opening Notifications no longer dims the pill above it** on tablets.
+- **The tablet's nav bar and top right pill catch a little more light** along their top and bottom edges, closer to the notifications' glass.
+
 ## 2.3.1
 
 A quick update with fixes for 2.3.0, and a refreshed Notification Center on phones and tablets.

@@ -2999,6 +2999,17 @@ window.hemmaMenuGlass = {
     document.head.appendChild(el);
   }
 
+  // A touch tablet's nav bar and corner capsule sit beside the notifications' glass, so their edge light is a step brighter there.
+  if (!document.getElementById('hemma-tablet-pill-css')) {
+    const el = document.createElement('style');
+    el.id = 'hemma-tablet-pill-css';
+    el.textContent = '@media (hover: none) and (pointer: coarse) and (min-width: 768px) and (min-height: 501px) { body {'
+      + ' --hemma-pill-highlight: brightness(1.5);'
+      + ' --hemma-pill-rim: inset 0 0.5px 0 rgba(255,255,255,0.14), inset 0 -0.5px 0 rgba(255,255,255,0.14),'
+      + ' inset 0 3px 4px -3px rgba(255,255,255,0.18), inset 0 -3px 4px -3px rgba(255,255,255,0.13); } }';
+    document.head.appendChild(el);
+  }
+
   function ensureMenuCss() {
     if (document.getElementById('hemma-nav-menu-css')) return;
     const el = document.createElement('style');
@@ -6979,7 +6990,7 @@ window.hemmaMenuGlass = {
             --hemma-pill-fill: var(--hemma-perf-pill, rgba(108,108,108,0.26));
             --hemma-pill-edge: transparent;
             /* Apple's glass is flat a couple of pixels inside the edge: only a short falloff, no deep glow band. */
-            --hemma-pill-rim: inset 0 2px 2px -1px rgba(255,255,255,0.05), inset 0 -2px 2px -1px rgba(255,255,255,0.05);
+            --hemma-pill-rim: inset 0 2px 2px -1px rgba(255,255,255,0.07), inset 0 -2px 2px -1px rgba(255,255,255,0.07);
             --hemma-nav-active-fill: rgba(0,0,0,0.26);
             --hemma-nav-label-inactive-opacity: 1;
           }
@@ -6998,7 +7009,7 @@ window.hemmaMenuGlass = {
           .bar > .rim, .cat-chrome > .cap-rim, .bar > .rim-in, .cat-chrome > .cap-rim-in {
             display: block; position: absolute; inset: 0.5px; z-index: 0; border-radius: 9999px; pointer-events: none;
             width: auto; height: auto; padding: 1px; box-sizing: border-box; background: none; box-shadow: none;
-            -webkit-backdrop-filter: var(--hemma-perf-none, brightness(1.24)); backdrop-filter: var(--hemma-perf-none, brightness(1.24));
+            -webkit-backdrop-filter: var(--hemma-perf-none, brightness(1.3)); backdrop-filter: var(--hemma-perf-none, brightness(1.3));
             -webkit-mask: linear-gradient(to bottom, #000 0%, rgba(0,0,0,.3) 10%, transparent 22%, transparent 78%, rgba(0,0,0,.3) 90%, #000 100%), linear-gradient(#000 0 0), linear-gradient(#000 0 0) content-box;
             -webkit-mask-composite: source-in, source-out;
             mask: linear-gradient(to bottom, #000 0%, rgba(0,0,0,.3) 10%, transparent 22%, transparent 78%, rgba(0,0,0,.3) 90%, #000 100%), linear-gradient(#000 0 0), linear-gradient(#000 0 0) content-box;
@@ -7008,9 +7019,9 @@ window.hemmaMenuGlass = {
           .bar > .rim-in, .cat-chrome > .cap-rim-in { display: none; }
           /* On iOS, two rows: the outer pixel at 1.315x, the one inside it at 1.16x. */
           @supports (-webkit-touch-callout: none) {
-            .bar > .rim, .cat-chrome > .cap-rim { padding: 0.5px; -webkit-backdrop-filter: var(--hemma-perf-none, brightness(1.315)); backdrop-filter: var(--hemma-perf-none, brightness(1.315)); }
+            .bar > .rim, .cat-chrome > .cap-rim { padding: 0.5px; -webkit-backdrop-filter: var(--hemma-perf-none, brightness(1.38)); backdrop-filter: var(--hemma-perf-none, brightness(1.38)); }
             .bar > .rim-in, .cat-chrome > .cap-rim-in { display: block; inset: 1px; padding: 0.5px;
-              -webkit-backdrop-filter: var(--hemma-perf-none, brightness(1.16)); backdrop-filter: var(--hemma-perf-none, brightness(1.16)); }
+              -webkit-backdrop-filter: var(--hemma-perf-none, brightness(1.2)); backdrop-filter: var(--hemma-perf-none, brightness(1.2)); }
           }
           .glass::after, .cat-chrome.cap::after {
             inset: -0.5px; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.58);
@@ -10840,7 +10851,9 @@ window.hemmaMenuGlass = {
       + '.hemma-nc-slot.stack .hemma-nc-halo{bottom:-39px;}'
       + '.hemma-nc-slot.stack.deep .hemma-nc-halo{bottom:-46px;}'
       + '.hemma-nc-halo > div{position:absolute;inset:0;}'
-      + '.hemma-nc-shades{position:absolute;inset:0;z-index:-3;pointer-events:none;}'
+      + '.hemma-nc-shades{position:absolute;inset:-200px;z-index:-3;pointer-events:none;'
+      // Faded out above the panel, so the cards' shadow never dims the bell's pill or buttons above it.
+      + '-webkit-mask-image:linear-gradient(to bottom, transparent 194px, #000 230px);mask-image:linear-gradient(to bottom, transparent 194px, #000 230px);}'
       + '.hemma-nc-shades > div{position:absolute;border-radius:22px;box-shadow:var(--hemma-perf-none, 0 32px 180px rgba(0,0,0,0.5));}'
       // An outer shadow leaves its own box clear, which bare text cannot cover.
       + '.hemma-nc-shades > div.text{box-shadow:none;border-radius:50%;background:var(--hemma-perf-none, rgba(0,0,0,0.24));filter:blur(26px);}'
@@ -11158,6 +11171,11 @@ window.hemmaMenuGlass = {
     // The bell is always on screen, so on the phone the title can open over tiles; it carries its own halo like a card.
     if (mobile) {
       var hf = halo();
+      // Kept below the row's top, or it blurs the bell's pill just above.
+      hf.style.top = '-4px';
+      var hm = 'linear-gradient(to right, transparent 0px, #000 30px, #000 calc(100% - 30px), transparent 100%),'
+        + ' linear-gradient(to bottom, transparent 0px, #000 14px, #000 calc(100% - 30px), transparent 100%)';
+      hf.lastChild.style.webkitMaskImage = hf.lastChild.style.maskImage = hm;
       hf.lastChild.style.backdropFilter = hf.lastChild.style.webkitBackdropFilter = 'var(--hemma-perf-none, blur(10px))';
       head.appendChild(hf);
     }
@@ -11668,7 +11686,7 @@ window.hemmaMenuGlass = {
     var shadeRaf = 0;
     var mirror = function () {
       shadeRaf = requestAnimationFrame(mirror);
-      var nb = nc.getBoundingClientRect();
+      var sb = shades.getBoundingClientRect();
       var lb = list.getBoundingClientRect();
       var seen = new Set();
       [].forEach.call(list.children, function (slot) {
@@ -11677,7 +11695,7 @@ window.hemmaMenuGlass = {
           var gs = shadeOf.get(slot);
           if (!gs) { gs = shades.appendChild(document.createElement('div')); gs.className = 'text'; shadeOf.set(slot, gs); }
           seen.add(slot);
-          var gcss = 'left:' + (gb.left - nb.left - 16) + 'px;top:' + (gb.top - nb.top - 6) + 'px;width:' + (gb.width + 32) + 'px;height:' + (gb.height + 12)
+          var gcss = 'left:' + (gb.left - sb.left - 16) + 'px;top:' + (gb.top - sb.top - 6) + 'px;width:' + (gb.width + 32) + 'px;height:' + (gb.height + 12)
             + 'px;opacity:' + Number(getComputedStyle(slot.firstChild).opacity).toFixed(3);
           if (gs._css !== gcss) { gs._css = gcss; gs.style.cssText = gcss; }
           return;
@@ -11691,7 +11709,7 @@ window.hemmaMenuGlass = {
         seen.add(slot);
         var shown = Math.max(0, Math.min(b.bottom, lb.bottom) - Math.max(b.top, lb.top)) / Math.max(1, b.height);
         var op = (Number(getComputedStyle(card).opacity) * shown).toFixed(3);
-        var css = 'left:' + (b.left - nb.left) + 'px;top:' + (b.top - nb.top) + 'px;width:' + b.width + 'px;height:' + (b.height + extra) + 'px;opacity:' + op;
+        var css = 'left:' + (b.left - sb.left) + 'px;top:' + (b.top - sb.top) + 'px;width:' + b.width + 'px;height:' + (b.height + extra) + 'px;opacity:' + op;
         if (sh._css !== css) { sh._css = css; sh.style.cssText = css; }
       });
       if (mobile && head.style.display !== 'none') {
@@ -11699,8 +11717,10 @@ window.hemmaMenuGlass = {
         var ts = shadeOf.get(head);
         if (!ts) { ts = shades.appendChild(document.createElement('div')); ts.className = 'text'; shadeOf.set(head, ts); }
         seen.add(head);
-        var tcss = 'left:' + (tb.left - nb.left - 16) + 'px;top:' + (tb.top - nb.top - 6) + 'px;width:' + (tb.width + 32) + 'px;height:' + (tb.height + 12)
-          + 'px;opacity:' + Number(getComputedStyle(title).opacity).toFixed(3);
+        // A gradient, not a blurred patch: a blur spills upward onto the bell's pill.
+        var tcss = 'left:' + (tb.left - sb.left - 40) + 'px;top:' + (tb.top - sb.top - 2) + 'px;width:' + (tb.width + 80) + 'px;height:' + (tb.height + 22)
+          + 'px;filter:none;border-radius:0;background:var(--hemma-perf-none, radial-gradient(closest-side, rgba(0,0,0,0.26), rgba(0,0,0,0.12) 60%, rgba(0,0,0,0)));'
+          + 'opacity:' + Number(getComputedStyle(title).opacity).toFixed(3);
         if (ts._css !== tcss) { ts._css = tcss; ts.style.cssText = tcss; }
       }
       if (empty.isConnected) {
@@ -11708,7 +11728,7 @@ window.hemmaMenuGlass = {
         var es = shadeOf.get(empty);
         if (!es) { es = shades.appendChild(document.createElement('div')); es.className = 'text'; shadeOf.set(empty, es); }
         seen.add(empty);
-        var ecss = 'left:' + (eb.left - nb.left - 24) + 'px;top:' + (eb.top - nb.top - 14) + 'px;width:' + (eb.width + 48) + 'px;height:' + (eb.height + 28)
+        var ecss = 'left:' + (eb.left - sb.left - 24) + 'px;top:' + (eb.top - sb.top - 14) + 'px;width:' + (eb.width + 48) + 'px;height:' + (eb.height + 28)
           + 'px;opacity:' + Number(getComputedStyle(empty).opacity).toFixed(3);
         if (es._css !== ecss) { es._css = ecss; es.style.cssText = ecss; }
       }
