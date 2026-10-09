@@ -303,8 +303,9 @@ hemma_mobile_sensor_chips:
                 const R = window.hemmaRoomSensors ? window.hemmaRoomSensors(hass, f, variables.room_chips) : { motion: [], occupancy: [variables.room_chips?.[f]?.motion_entity].filter(Boolean) };
                 const on = window.hemmaSensorsOn ? window.hemmaSensorsOn(states, R.motion) : (R.motion.some((id) => states[id]?.state === 'on') ? true : R.motion.length ? false : null);
                 const L = (k, en) => { const v = hass?.localize?.(k); return (v && v !== k) ? v : en; };
+                const seen = on === false && window.hemmaLastSeen ? window.hemmaLastSeen(hass, R.motion, this) : null;
                 const sub = on === true ? T('motion.detected', 'Detected')
-                  : on === false ? T('motion.not_detected', 'Not Detected')
+                  : on === false ? (Number.isFinite(seen) && window.hemmaAgo ? window.hemmaAgo(seen) : T('motion.not_detected', 'Not Detected'))
                   : L('state.default.unavailable', 'Unavailable');
                 return `<div class="badge-wrap"><div class="badge-title">${T('motion.title', 'Motion')}</div><div class="badge-sub">${sub}</div></div>`;
               ]]]
@@ -378,8 +379,9 @@ hemma_mobile_sensor_chips:
                 const R = window.hemmaRoomSensors ? window.hemmaRoomSensors(hass, f, variables.room_chips) : { motion: [], occupancy: [variables.room_chips?.[f]?.motion_entity].filter(Boolean) };
                 const on = window.hemmaSensorsOn ? window.hemmaSensorsOn(states, R.occupancy) : (R.occupancy.some((id) => states[id]?.state === 'on') ? true : R.occupancy.length ? false : null);
                 const L = (k, en) => { const v = hass?.localize?.(k); return (v && v !== k) ? v : en; };
+                const seen = on === false && window.hemmaLastSeen ? window.hemmaLastSeen(hass, R.occupancy, this) : null;
                 const sub = on === true ? T('motion.detected', 'Detected')
-                  : on === false ? T('motion.not_detected', 'Not Detected')
+                  : on === false ? (Number.isFinite(seen) && window.hemmaAgo ? window.hemmaAgo(seen) : T('motion.not_detected', 'Not Detected'))
                   : L('state.default.unavailable', 'Unavailable');
                 return `<div class="badge-wrap"><div class="badge-title">${T('occupancy.title', 'Occupancy')}</div><div class="badge-sub">${sub}</div></div>`;
               ]]]

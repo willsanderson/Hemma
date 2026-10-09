@@ -693,6 +693,78 @@ window.hemmaMenuGlass = {
     }
     return seen ? false : null;
   };
+  // When a room's sensors last saw someone. A binary sensor's last_changed resets on every restart, so its time comes from history.
+  const seenAt = {};
+  const seenAsk = new Map();
+  const seenEls = new Set();
+  let seenTimer = 0;
+  let seenTick = 0;
+  const seenFetch = (hass) => {
+    seenTimer = 0;
+    const asks = new Map(seenAsk);
+    seenAsk.clear();
+    const ids = [...asks.keys()];
+    const settle = (id, at) => { const s = hass.states[id]; seenAt[id] = { key: s && s.last_changed, at }; };
+    Promise.resolve(hass.callWS({
+      type: 'history/history_during_period',
+      start_time: new Date(Date.now() - 7 * 864e5).toISOString(),
+      entity_ids: ids, minimal_response: true, no_attributes: true, significant_changes_only: false,
+    })).then((res) => {
+      ids.forEach((id) => {
+        const list = (res && res[id]) || [];
+        let at = null;
+        for (let i = list.length - 1; i >= 0; i--) {
+          if (list[i].s !== 'on') continue;
+          const next = list[i + 1];
+          at = next ? Math.round(Number(next.lc || next.lu) * 1000) : Date.now();
+          break;
+        }
+        settle(id, at);
+      });
+    }).catch(() => { ids.forEach((id) => settle(id, null)); })
+      .then(() => { asks.forEach((els) => els.forEach((el) => window.hemmaKick && window.hemmaKick(el))); });
+  };
+  window.hemmaLastSeen = function (hass, ids, el) {
+    let best = null;
+    let wait = false;
+    for (const id of ids || []) {
+      const s = hass && hass.states && hass.states[id];
+      if (!s) continue;
+      let t = null;
+      if (id.indexOf('event.') === 0) t = Date.parse(s.state);
+      else if (s.state === 'on') t = Date.now();
+      else if (s.state === 'off') {
+        const c = seenAt[id];
+        if (c && c.key === s.last_changed) t = c.at;
+        else {
+          wait = true;
+          const set = seenAsk.get(id) || new Set();
+          if (el) set.add(el);
+          seenAsk.set(id, set);
+        }
+      }
+      if (Number.isFinite(t) && (best == null || t > best)) best = t;
+    }
+    if (el) seenEls.add(el);
+    // The text reads "5 minutes ago", so it is redrawn as the minutes pass.
+    if (!seenTick) {
+      seenTick = setInterval(() => {
+        seenEls.forEach((x) => { if (!x.isConnected) seenEls.delete(x); else if (window.hemmaKick) window.hemmaKick(x); });
+      }, 60000);
+    }
+    if (wait && !seenTimer && hass && hass.callWS) seenTimer = setTimeout(() => seenFetch(hass), 0);
+    return wait ? undefined : best;
+  };
+  window.hemmaAgo = function (t) {
+    const T = window._hemmaT || ((k, en, v) => String(en).split('{n}').join(v ? String(v.n) : ''));
+    const m = Math.floor((Date.now() - t) / 60000);
+    if (m < 1) return T('time.just_now_cap', 'Just now');
+    if (m < 60) return m === 1 ? T('time.minute_ago', '{n} minute ago', { n: 1 }) : T('time.minutes_ago', '{n} minutes ago', { n: m });
+    const h = Math.floor(m / 60);
+    if (h < 24) return h === 1 ? T('time.hour_ago', '{n} hour ago', { n: 1 }) : T('time.hours_ago', '{n} hours ago', { n: h });
+    const d = Math.floor(h / 24);
+    return d === 1 ? T('time.day_ago', '{n} day ago', { n: 1 }) : T('time.days_ago', '{n} days ago', { n: d });
+  };
   window.hemmaBatterySvg = function (states, id) {
     var s = id && states && states[id];
     var lvl = s ? Math.round(Number(s.state)) : NaN;

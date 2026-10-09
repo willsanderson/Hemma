@@ -2,6 +2,7 @@
 
 ## 2.3.2
 
+- **Motion and Occupancy show when they last saw someone**, like "11 hours ago", instead of Not Detected. The time comes from Home Assistant's history, so a restart doesn't reset it.
 - **Opening Notifications no longer dims the pill above it** on tablets.
 - **The tablet's nav bar and top right pill catch a little more light** along their top and bottom edges, closer to the notifications' glass.
 

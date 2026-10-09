@@ -16811,12 +16811,30 @@ class HemmaPanel extends HTMLElement {
   _presenceChips(key, chips) {
     const S = (this._hass && this._hass.states) || {};
     const R = roomSensors(this._hass, key, chips);
-    const word = (on) => (on === true ? _studioT("motion.detected", "Detected")
-      : on === false ? _studioT("motion.not_detected", "Not Detected") : _studioL("state.default.unavailable", "Unavailable"));
+    // Off, the dashboard shows when the sensor last saw someone; without its history helper, only an event's own time is known.
+    const seen = (ids) => {
+      if (window.hemmaLastSeen) return window.hemmaLastSeen(this._hass, ids, null);
+      const ev = ids.map((id) => id.indexOf("event.") === 0 && S[id] ? Date.parse(S[id].state) : NaN).filter(Number.isFinite);
+      return ids.every((id) => id.indexOf("event.") === 0) && ev.length ? Math.max(...ev) : null;
+    };
+    const ago = (t) => {
+      if (window.hemmaAgo) return window.hemmaAgo(t);
+      const m = Math.floor((Date.now() - t) / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24);
+      return m < 1 ? _studioT("time.just_now_cap", "Just now")
+        : m < 60 ? (m === 1 ? _studioT("time.minute_ago", "{n} minute ago", { n: 1 }) : _studioT("time.minutes_ago", "{n} minutes ago", { n: m }))
+        : h < 24 ? (h === 1 ? _studioT("time.hour_ago", "{n} hour ago", { n: 1 }) : _studioT("time.hours_ago", "{n} hours ago", { n: h }))
+        : (d === 1 ? _studioT("time.day_ago", "{n} day ago", { n: 1 }) : _studioT("time.days_ago", "{n} days ago", { n: d }));
+    };
+    const word = (on, ids) => {
+      if (on === true) return _studioT("motion.detected", "Detected");
+      if (on !== false) return _studioL("state.default.unavailable", "Unavailable");
+      const t = seen(ids);
+      return Number.isFinite(t) ? ago(t) : _studioT("motion.not_detected", "Not Detected");
+    };
     const out = [];
-    if (R.motion.length) out.push({ icon: "motion", label: _studioT("motion.title", "Motion"), glyphHeight: "70%", color: "#fff", bare: true, text: word(sensorsOn(S, R.motion)) });
+    if (R.motion.length) out.push({ icon: "motion", label: _studioT("motion.title", "Motion"), glyphHeight: "70%", color: "#fff", bare: true, text: word(sensorsOn(S, R.motion), R.motion) });
     const occ = sensorsOn(S, R.occupancy);
-    if (R.occupancy.length) out.push({ icon: occ ? "person-walking-motion" : "person-walking", label: _studioT("occupancy.title", "Occupancy"), glyphHeight: "70%", color: "#fff", bare: true, text: word(occ) });
+    if (R.occupancy.length) out.push({ icon: occ ? "person-walking-motion" : "person-walking", label: _studioT("occupancy.title", "Occupancy"), glyphHeight: "70%", color: "#fff", bare: true, text: word(occ, R.occupancy) });
     return out;
   }
 
