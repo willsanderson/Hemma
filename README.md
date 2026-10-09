@@ -80,9 +80,9 @@ If Hemma is not in the list, the `frontend: themes:` line above is missing from
 
 Open **Hemma** in the sidebar and choose **Create dashboard**. Add a room, choose your entities, and press Save. Repeat for each room.
 
-Everything is optional. A room with nothing but a light group is a valid room, and you can come back and add badges, scenes and Now Playing whenever you like.
-
 <img width="1582" height="833" alt="Studio" src="https://github.com/user-attachments/assets/26743e60-1967-4d64-a395-71186ee86f16" />
+
+Everything is optional. A room with nothing but a light group is a valid room, and you can come back and add badges, scenes and Now Playing whenever you like.
 
 ---
 
