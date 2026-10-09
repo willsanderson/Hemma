@@ -10896,9 +10896,10 @@ window.hemmaMenuGlass = {
       + 'color:rgba(255,255,255,0.45);margin-bottom:1px;}'
       + '.hemma-nc-slot.stack{margin-bottom:16px;}'
       + '.hemma-nc-slot.stack.deep{margin-bottom:23px;}'
-      + '.hemma-nc-ghost{position:absolute;left:9px;right:9px;top:9px;bottom:-9px;border-radius:20px;z-index:0;pointer-events:none;'
+      // Clipped to what peeks out below: the card in front is glass, so the rest would show through it.
+      + '.hemma-nc-ghost{position:absolute;left:9px;right:9px;top:9px;bottom:-9px;border-radius:20px;z-index:0;pointer-events:none;clip-path:inset(calc(100% - 14px) -2px -2px -2px);'
       + glass.replace('0.08)', '0.13)') + 'box-shadow:' + EDGE + ', inset 0 -1px 0 rgba(255,255,255,0.22);}'
-      + '.hemma-nc-ghost.far{left:18px;right:18px;top:16px;bottom:-16px;z-index:-1;' + glass.replace('0.08)', '0.09)') + '}'
+      + '.hemma-nc-ghost.far{left:18px;right:18px;top:16px;bottom:-16px;z-index:-1;clip-path:inset(calc(100% - 12px) -2px -2px -2px);' + glass.replace('0.08)', '0.09)') + '}'
       + '.hemma-nc-ghead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 1px 4px;}'
       + '.hemma-nc-ghead b{font-size:15px;font-weight:700;letter-spacing:-0.01em;color:rgba(255,255,255,0.92);'
       + 'text-shadow:0 1px 8px rgba(0,0,0,0.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
@@ -10933,7 +10934,7 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.light .hemma-nc-card, .hemma-nc.light .hemma-nc-x, .hemma-nc.light .hemma-nc-close, .hemma-nc.light .hemma-nc-pill{'
       + 'background:var(--hemma-perf-pill, rgba(250,250,252,0.46));-webkit-backdrop-filter:var(--hemma-perf-none, blur(32px) saturate(1.2));'
       + 'backdrop-filter:var(--hemma-perf-none, blur(32px) saturate(1.2));color:rgba(0,0,0,0.7);}'
-      + '.hemma-nc.light .hemma-nc-card{box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.08);}'
+      + '.hemma-nc.light .hemma-nc-card{box-shadow:0 0.5px 0 rgba(255,255,255,0.13), ' + EDGE + ', 0 4px 16px rgba(0,0,0,0.08);}'
       + '.hemma-nc.light .hemma-nc-ghost{background:rgba(250,250,252,0.32);box-shadow:' + EDGE + ', inset 0 -1px 0 rgba(255,255,255,0.5);}'
       + '.hemma-nc.light .hemma-nc-ghost.far{background:rgba(250,250,252,0.22);}'
       + '.hemma-nc.light .hemma-nc-x::before, .hemma-nc.light .hemma-nc-close::before, .hemma-nc.light .hemma-nc-pill::before{'
@@ -10953,7 +10954,41 @@ window.hemmaMenuGlass = {
       + '.hemma-nc .hemma-nc-card, .hemma-nc.light .hemma-nc-card{'
       + 'background-image:linear-gradient(to bottom, rgba(255,255,255,var(--nc-glow-t, 0.03)), rgba(255,255,255,0) 12px,'
       + ' rgba(255,255,255,0) calc(100% - 8px), rgba(255,255,255,var(--nc-glow-b, 0.05)));'
-      + '-webkit-backdrop-filter:var(--hemma-perf-none, blur(16px) saturate(1.3));backdrop-filter:var(--hemma-perf-none, blur(16px) saturate(1.3));}';
+      + '-webkit-backdrop-filter:var(--hemma-perf-none, blur(16px) saturate(1.3));backdrop-filter:var(--hemma-perf-none, blur(16px) saturate(1.3));}'
+      // The phone follows the iPhone's lock screen notifications, measured off iOS 27.
+      + '.hemma-nc.phone .hemma-nc-head{min-height:34px;padding-left:20px;margin-bottom:5px;}'
+      + '.hemma-nc.phone .hemma-nc-slot{margin-bottom:8px;}'
+      + '.hemma-nc.phone .hemma-nc-slot.stack{margin-bottom:17px;}'
+      + '.hemma-nc.phone .hemma-nc-slot.stack.deep{margin-bottom:24px;}'
+      + '.hemma-nc.phone .hemma-nc-title{font-size:27px;font-weight:400;letter-spacing:-0.015em;}'
+      + '.hemma-nc.phone .hemma-nc-x{height:34px;min-width:34px;padding:0 10px;border-radius:17px;font-size:15px;}'
+      + '.hemma-nc.phone:not(.light) .hemma-nc-x{color:#fff;}'
+      + '.hemma-nc.phone .hemma-nc-x.open{padding:0 14px;}'
+      + '.hemma-nc.phone .hemma-nc-x svg{width:14px;height:14px;}'
+      + '.hemma-nc.phone .hemma-nc-x.open svg{width:0;}'
+      + '.hemma-nc.phone .hemma-nc-x path{stroke-width:1.35;}'
+      + '.hemma-nc.phone .hemma-nc-card{padding:14px 18px 14px 13px;border-radius:23px;min-height:66px;gap:13px;}'
+      + '.hemma-nc.phone .hemma-nc-clear{border-radius:23px;}'
+      + '.hemma-nc.phone .hemma-nc-shades > div{border-radius:23px;}'
+      + '.hemma-nc.phone .hemma-nc-ghost{border-radius:21px;}'
+      + '.hemma-nc.phone .hemma-nc-lead{width:38px;height:38px;border-radius:9.5px;--hemma-popup-icon-tile:38px;}'
+      + '.hemma-nc.phone .hemma-nc-lead > div{border-radius:9.5px !important;}'
+      + '.hemma-nc.phone .hemma-nc-t{font-size:15px;line-height:20px;}'
+      + '.hemma-nc.phone .hemma-nc-when{font-size:15px;}'
+      + '.hemma-nc.phone .hemma-nc-s{font-size:15px;line-height:18px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}'
+      + '.hemma-nc.phone .hemma-nc-tag{font-size:12px;line-height:15px;}'
+      // iOS 27's edge: one bright row stepping down fast, then a soft glow into the glass.
+      + '.hemma-nc.phone:not(.light) .hemma-nc-card::before{background:linear-gradient(to bottom, rgba(255,255,255,0.5) 0.3333px, rgba(255,255,255,0.325) 0.3333px 0.6667px, rgba(255,255,255,0.175) 0.6667px) 62px 0/calc(100% - 124px) 1px no-repeat,'
+      + ' linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.335)) 24px 0/38px 1px no-repeat,'
+      + ' linear-gradient(to left, rgba(255,255,255,0), rgba(255,255,255,0.335)) right 24px top/38px 1px no-repeat,'
+      + ' linear-gradient(to top, rgba(255,255,255,0.38) 0.3333px, rgba(255,255,255,0.24) 0.3333px 0.6667px, rgba(255,255,255,0.13) 0.6667px) 62px 100%/calc(100% - 124px) 1px no-repeat,'
+      + ' linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.25)) 24px 100%/38px 1px no-repeat,'
+      + ' linear-gradient(to left, rgba(255,255,255,0), rgba(255,255,255,0.25)) right 24px bottom/38px 1px no-repeat,'
+      + ' linear-gradient(rgba(255,255,255,0.05), rgba(255,255,255,0.05));}'
+      + '.hemma-nc.phone:not(.light) .hemma-nc-card{background-color:var(--hemma-perf-pill, rgba(255,255,255,0.1));'
+      + 'background-image:linear-gradient(to bottom, rgba(255,255,255,0.12) 1px, rgba(255,255,255,0.07) 2px, rgba(255,255,255,0.035) 3.5px,'
+      + ' rgba(255,255,255,0.015) 5.5px, rgba(255,255,255,0) 8px, rgba(255,255,255,0) calc(100% - 5.5px), rgba(255,255,255,0.012) calc(100% - 4.3px),'
+      + ' rgba(255,255,255,0.031) calc(100% - 3.3px), rgba(255,255,255,0.066) calc(100% - 2px), rgba(255,255,255,0.12) calc(100% - 1px));}';
     (document.head || document.documentElement).appendChild(st);
   }
 
@@ -11128,6 +11163,10 @@ window.hemmaMenuGlass = {
       var h = slot.querySelector(':scope > .hemma-nc-halo');
       return h ? [].slice.call(h.children) : [];
     };
+    // A stack swipes as one, so the cards behind never sit over the Clear button.
+    var riders = function (slot) {
+      return frost(slot).concat([].slice.call(slot.querySelectorAll(':scope > .hemma-nc-ghost')));
+    };
 
     var collapse = function (slot, dir) {
       if (slot._gone) return;
@@ -11169,7 +11208,7 @@ window.hemmaMenuGlass = {
       card.style.transition = spring;
       btn.style.transition = 'opacity 200ms ease';
       card.style.transform = off ? 'translateX(' + off + 'px)' : '';
-      frost(slot).forEach(function (f) {
+      riders(slot).forEach(function (f) {
         f.style.transition = spring;
         f.style.transform = card.style.transform;
       });
@@ -11274,7 +11313,7 @@ window.hemmaMenuGlass = {
         else if (off < OPEN) off = OPEN - 28 * (1 - Math.exp((off - OPEN) / 80));
         g.off = off;
         card.style.transform = 'translateX(' + off + 'px)';
-        frost(slot).forEach(function (f) { f.style.transition = 'none'; f.style.transform = card.style.transform; });
+        riders(slot).forEach(function (f) { f.style.transition = 'none'; f.style.transform = card.style.transform; });
         btn.style.opacity = String(Math.max(0, Math.min(1, -off / 60)));
       });
       var end = function (e) {
@@ -11323,6 +11362,7 @@ window.hemmaMenuGlass = {
         for (var d = depth; d > 0; d--) {
           var gh = document.createElement('div');
           gh.className = 'hemma-nc-ghost' + (d > 1 ? ' far' : '');
+          gh.style.transform = slot.firstChild.style.transform;
           slot.appendChild(gh);
         }
       }

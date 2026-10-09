@@ -2,10 +2,15 @@
 
 ## 2.3.1
 
+### Notifications
+
+- **The phone's notifications follow iOS 27's lock screen.** A larger title and a bigger ✕, wider cards with larger icons and text, a second line that wraps instead of cutting off, and brighter glass edges.
+
 ### Fixes
 
+- **A stack of notifications no longer shows the card behind it** through the front card's glass.
 - **Switching between Overview and Focus is instant.** After saving the change in Hemma Studio, the page to the right of the sidebar could stay empty for several seconds before it appeared.
-- **Swiping a notification stops beside Clear.** On a phone or tablet a card could be dragged across the screen and cut off by the panel's edge. It now stretches only a little past the Clear button and springs back beside it.
+- **Swiping a notification stops beside Clear.** On a phone or tablet a card could be dragged across the screen and cut off by the panel's edge. It now stretches only a little past the Clear button and springs back beside it. A stack slides as one, so the cards behind no longer cover the button.
 - **Now Playing keeps its width in Focus without controls.** A source that offers no playback controls, like Spotify on some speakers, Plex or PlayStation, made the tile shrink to its title. It is now as wide as a tile with controls.
 
 ## 2.3.0
