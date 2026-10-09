@@ -226,7 +226,7 @@
 	"notify.appliance_finishing": "{name} slutförs",
 	"notify.appliance_running": "{name} körs",
 	"notify.arrived": "{name} anlände",
-	"notify.battery_left": "{n}% kvar"
+	"notify.battery_left": "{n}% kvar",
 	"notify.battery_low_n": "{n} enheter har låg batterinivå",
 	"notify.battery_low_one": "Låg batterinivå i {name}",
 	"notify.clear": "Rensa",
@@ -503,7 +503,6 @@
 	"studio.dashboards_heading": "Instrumentpaneler",
 	"studio.day": "Dag",
 	"studio.date_style": "Datumformat",
-	"studio.day": "Dag",
 	"studio.default": "Standard",
 	"studio.default_f": "Standard (°F)",
 	"studio.default_keep_discord": "Standard (behåll Discord)",
@@ -527,7 +526,7 @@
 	"studio.desktop_phone_don_t_match": "Dator och telefon stämmer inte överens",
 	"studio.desktop_phone_layouts_agree_save": "Dina dator- och telefonlayouter stämmer överens. Spara för att behålla ändringarna.",
 	"studio.desktop_phone_layouts_don_t": "Dina dator- och telefonlayouter stämmer inte överens",
-	"studio.desktop_tablet": "Dator och surfplatta"
+	"studio.desktop_tablet": "Dator och surfplatta",
 	"studio.detail": "Detalj",
 	"studio.details": "Detaljer",
 	"studio.device_n": "Enhet %",
@@ -590,7 +589,7 @@
 	"studio.go_page": "Gå till en sida",
 	"studio.gold": "Guld",
 	"studio.green": "Grön",
-	"studio.greeting": "Hälsning"
+	"studio.greeting": "Hälsning",
 	"studio.group_type": "Gruppera efter typ",
 	"studio.has_no_navigation_bar": "Har inget navigeringsfält",
 	"studio.has_no_pages": "Den har inga sidor.",
