@@ -1391,33 +1391,33 @@ const SECTIONS = [
     group: "rooms", scope: "dashboard", toggle: "show_notifications",
     fields: [
       { key: "notify_safety", glyph: "exclamation", tone: "var(--hemma-popup-ui-bad, #FF453A)", label: "Leaks, smoke and CO", type: "bool", boolDefault: true,
-        always: true, ord: 0 },
+        always: true, ord: 0, abc: true },
       { key: "notify_air", glyph: "co2-fill", tone: "var(--hemma-popup-ui-warn, #FF9F0A)", label: "High carbon dioxide", type: "bool", boolDefault: true,
-        always: true, ord: 1 },
+        always: true, ord: 0, abc: true },
       { key: "notify_locks", glyph: "lock-fill", tone: "var(--hemma-popup-ui-good, #30D158)", label: "Locks", type: "bool", boolDefault: true,
-        always: true, ord: 2 },
+        always: true, ord: 0, abc: true },
       { key: "notify_alarm", glyph: "alarm-fill", tone: "var(--hemma-popup-ui-good, #30D158)", label: "Alarm", type: "bool", boolDefault: true,
-        always: true, ord: 3 },
+        always: true, ord: 0, abc: true },
       { key: "notify_doorbell", glyph: "doorbell", tone: "var(--hemma-color-teal, #00C3D0)", label: "Doorbell", type: "bool", boolDefault: true,
-        always: true, ord: 4 },
+        always: true, ord: 0, abc: true },
       { key: "notify_doors", glyph: "door-open", tone: "var(--hemma-popup-ui-warn, #FF9F0A)", label: "Doors", type: "bool", boolDefault: true,
-        always: true, ord: 5 },
+        always: true, ord: 0, abc: true },
       { key: "notify_people", glyph: "person", tone: "var(--hemma-popup-ui-good, #30D158)", label: "People", type: "bool", boolDefault: true,
-        always: true, ord: 6 },
+        always: true, ord: 0, abc: true },
       { key: "notify_vacuum", glyph: "vacuum-charge", tone: "var(--hemma-color-teal, #00C3D0)", label: "Vacuum", type: "bool", boolDefault: true,
-        always: true, ord: 7 },
+        always: true, ord: 0, abc: true },
       { key: "notify_appliances", glyph: "stove-fill", tone: "var(--hemma-popup-ui-good, #30D158)", label: "Appliances", type: "bool", boolDefault: true,
-        always: true, ord: 8 },
+        always: true, ord: 0, abc: true },
       { key: "notify_plants", glyph: "plant", tone: "var(--hemma-color-green, #30D158)", label: "Plants", type: "bool", boolDefault: true,
-        always: true, ord: 9 },
+        always: true, ord: 0, abc: true },
       { key: "notify_battery", glyph: "battery", tone: "var(--hemma-popup-ui-bad, #FF453A)", label: "Low battery", type: "bool", boolDefault: true,
-        always: true, ord: 10 },
+        always: true, ord: 0, abc: true },
       { key: "notify_updates", glyph: "updates", tone: "var(--hemma-color-teal, #00C3D0)", label: "Updates", type: "bool", boolDefault: true,
-        always: true, ord: 11 },
+        always: true, ord: 0, abc: true },
       { key: "notify_restart", glyph: "exclamation", tone: "var(--hemma-popup-ui-warn, #FF9F0A)", label: "Restart pending", type: "bool", boolDefault: true,
-        always: true, ord: 12 },
+        always: true, ord: 0, abc: true },
       { key: "notify_plex", glyph: "plex", tone: "var(--hemma-popup-ui-warn, #FF9F0A)", label: "Recently Added", type: "bool", boolDefault: true,
-        always: true, ord: 13 },
+        always: true, ord: 0, abc: true },
 
       { ...LIST("notification_appliances", "Appliances to watch",
         ["sensor", "binary_sensor", "switch", "vacuum"]),
@@ -12190,7 +12190,9 @@ class HemmaPanel extends HTMLElement {
         .filter((f) => !f.phoneName || this._favSection(room))
         .filter((f) => !f.homeOnly || this._room === 0)
         .map((f, i) => [f, i])
-        .sort((a, b) => (ordOf(a[0]) - ordOf(b[0])) || (a[1] - b[1]))
+        .sort((a, b) => (ordOf(a[0]) - ordOf(b[0]))
+          || (a[0].abc && b[0].abc ? _sx(a[0].label).localeCompare(_sx(b[0].label), (this._hass && this._hass.language) || undefined) : 0)
+          || (a[1] - b[1]))
         .map(([f]) => f);
     };
 
