@@ -11065,8 +11065,8 @@ window.hemmaMenuGlass = {
       + '.hemma-nc-close::before' + rim
       + '.hemma-nc-close svg{width:8px;height:8px;}'
       // Apple's Clear is a glass tile like the card, not a red button. Above the card, so the card's blur cannot pull it in.
-      + '.hemma-nc-clear{position:absolute;right:0;top:0;bottom:0;z-index:2;width:85px;border:0;border-radius:22px;'
-      + 'padding:0;cursor:pointer;font:inherit;font-size:17px;font-weight:400;letter-spacing:-0.01em;color:rgba(255,255,255,0.92);'
+      + '.hemma-nc-clear{position:absolute;right:0;top:0;bottom:0;z-index:2;width:0;border:0;border-radius:22px;overflow:hidden;white-space:nowrap;'
+      + 'padding:0;cursor:pointer;font:inherit;font-size:15px;font-weight:400;letter-spacing:-0.01em;color:rgba(255,255,255,0.92);'
       + glass + 'box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.10);opacity:0;pointer-events:none;-webkit-tap-highlight-color:transparent;}'
       + '@keyframes hemma-nc-fade{from{opacity:0;}}'
       + '.hemma-nc-empty{position:relative;width:fit-content;margin:2px 0 0 auto;padding:4px 2px;border-radius:22px;animation:hemma-nc-in 320ms ' + EASE + ' backwards;'
@@ -11121,6 +11121,7 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone .hemma-nc-x path{stroke-width:1.35;}'
       + '.hemma-nc.phone .hemma-nc-card{padding:14px 18px 14px 13px;border-radius:23px;min-height:66px;gap:13px;}'
       + '.hemma-nc.phone .hemma-nc-clear{border-radius:23px;}'
+      + '.hemma-nc-clear span{display:inline-block;opacity:0;transition:opacity 160ms ease;}'
       + '.hemma-nc.phone .hemma-nc-shades > div{border-radius:23px;}'
       + '.hemma-nc.phone .hemma-nc-ghost{border-radius:21px;}'
       + '.hemma-nc.phone .hemma-nc-lead{width:38px;height:38px;border-radius:9.5px;--hemma-popup-icon-tile:38px;}'
@@ -11331,6 +11332,15 @@ window.hemmaMenuGlass = {
       return h ? [].slice.call(h.children) : [];
     };
     // A stack swipes as one, so the cards behind never sit over the Clear button.
+    // Apple's Clear grows out of the card's edge into the room the card leaves, joined at first, so the two never overlap.
+    var clearSize = function (btn, off) {
+      var room = Math.max(0, -off);
+      var w = Math.max(0, room - Math.min(9, room * 0.25));
+      btn.style.width = w + 'px';
+      var label = btn.firstChild;
+      if (label && label.style) label.style.opacity = String(Math.max(0, Math.min(1, (w - 40) / 30)));
+      return w;
+    };
     var riders = function (slot) {
       return frost(slot).concat([].slice.call(slot.querySelectorAll(':scope > .hemma-nc-ghost')));
     };
@@ -11371,9 +11381,11 @@ window.hemmaMenuGlass = {
     var settle = function (slot, off) {
       var card = slot.firstChild;
       var btn = slot.querySelector('.hemma-nc-clear');
-      var spring = 'background-color 160ms ease, transform 420ms cubic-bezier(0.3, 1.35, 0.5, 1), opacity 220ms ease';
+      var bounce = '420ms cubic-bezier(0.3, 1.35, 0.5, 1)';
+      var spring = 'background-color 160ms ease, transform ' + bounce + ', opacity 220ms ease';
       card.style.transition = spring;
-      btn.style.transition = 'opacity 200ms ease';
+      btn.style.transition = 'opacity 200ms ease, width ' + bounce;
+      clearSize(btn, off || 0);
       card.style.transform = off ? 'translateX(' + off + 'px)' : '';
       riders(slot).forEach(function (f) {
         f.style.transition = spring;
@@ -11445,7 +11457,7 @@ window.hemmaMenuGlass = {
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'hemma-nc-clear';
-      btn.textContent = _hemmaT('notify.clear', 'Clear');
+      btn.innerHTML = '<span>' + window._hemmaUI.esc(_hemmaT('notify.clear', 'Clear')) + '</span>';
       slot.appendChild(card);
       slot.appendChild(close);
       slot.appendChild(btn);
@@ -11488,7 +11500,7 @@ window.hemmaMenuGlass = {
         g.off = off;
         card.style.transform = 'translateX(' + off + 'px)';
         riders(slot).forEach(function (f) { f.style.transition = 'none'; f.style.transform = card.style.transform; });
-        btn.style.opacity = String(Math.max(0, Math.min(1, -off / 80)));
+        btn.style.opacity = String(Math.min(1, clearSize(btn, off) / 24));
       });
       var end = function (e) {
         if (!g || e.pointerId !== g.id) return;
