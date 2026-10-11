@@ -11611,6 +11611,7 @@ window.hemmaMenuGlass = {
       var none = !_rows.length;
       // Cleared down to nothing, it closes; the empty line is only for opening with nothing there.
       if (!none) nc._had = true;
+      if (!none && nc._yield) { var later = nc._yield; nc._yield = null; later(); }
       if (none && nc._had) {
         var leaving = [].some.call(list.children, function (el) { return el._gone; });
         setTimeout(function () { if (_center === nc && !_rows.length) nc._close(); }, leaving ? 220 : 0);
@@ -11923,20 +11924,24 @@ window.hemmaMenuGlass = {
       if (!c.animate) return;
       yielded.push({ el: c, anim: c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: 'ease', fill: 'forwards' }) });
     };
-    var bar = document.querySelector('hemma-nav-bar');
-    [bar && bar.shadowRoot, anchor && anchor.getRootNode && anchor.getRootNode()].forEach(function (root) {
-      if (root && root.querySelectorAll) root.querySelectorAll('button-card').forEach(yieldTo);
-    });
-    // The phone's title and weather are one header card in the view, out of the bell's reach.
-    if (phone) {
-      (function walk(root, depth) {
-        if (!root || depth > 12 || !root.querySelectorAll) return;
-        root.querySelectorAll('*').forEach(function (el) {
-          if (el.tagName === 'BUTTON-CARD') yieldTo(el);
-          if (el.shadowRoot) walk(el.shadowRoot, depth + 1);
-        });
-      })(document, 0);
-    }
+    var yieldAll = function () {
+      var bar = document.querySelector('hemma-nav-bar');
+      [bar && bar.shadowRoot, anchor && anchor.getRootNode && anchor.getRootNode()].forEach(function (root) {
+        if (root && root.querySelectorAll) root.querySelectorAll('button-card').forEach(yieldTo);
+      });
+      // The phone's title and weather are one header card in the view, out of the bell's reach.
+      if (phone) {
+        (function walk(root, depth) {
+          if (!root || depth > 12 || !root.querySelectorAll) return;
+          root.querySelectorAll('*').forEach(function (el) {
+            if (el.tagName === 'BUTTON-CARD') yieldTo(el);
+            if (el.shadowRoot) walk(el.shadowRoot, depth + 1);
+          });
+        })(document, 0);
+      }
+    };
+    // "No recent notifications" fits beside the title and weather; only cards make them step aside.
+    if (_rows.length) yieldAll(); else nc._yield = yieldAll;
 
     var width = window.innerWidth;
     var onKey = function (e) { if (e.key === 'Escape') nc._close(); };

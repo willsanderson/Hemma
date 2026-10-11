@@ -5,6 +5,7 @@
 - **New on Plex shows up in Notifications.** Movies and episodes added in the last three days appear with their poster, and tapping one opens Recently Added. Several stack into one Plex group. Turn it off with Recently Added in Hemma's notification settings.
 - **Notifications close once you clear the last one**, instead of leaving "No recent notifications" over the dashboard. That line now only appears when you open Notifications with nothing new.
 - **Opening a notification clears it**, as Apple's do.
+- **With nothing new, the title and weather stay put.** They only step aside for notifications, not for the "No recent notifications" line.
 - **Swiping a notification reveals a glass Clear button**, styled like the notifications themselves, as Apple's is. It grows out of the card's edge as you swipe, so the two never pass through each other, and it replaces the red button, whose color bled into the card beside it.
 - **Custom cards work in the tile row.** A card added with Custom card showed [object Object] and ignored taps; it now draws and responds like it does on any dashboard. Reported by [@aussielabber](https://github.com/aussielabber) in [#84](https://github.com/willsanderson/Hemma/issues/84).
 - **Motion and Occupancy show when they last saw someone**, like "11 hours ago", instead of Not Detected. The time comes from Home Assistant's history, so a restart doesn't reset it.
