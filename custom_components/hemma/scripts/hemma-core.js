@@ -11914,34 +11914,37 @@ window.hemmaMenuGlass = {
 
     var yielded = [];
     var box = nc.getBoundingClientRect();
-    var yieldTo = function (c) {
+    // The phone's header card holds the title as well as the weather: the weather always steps aside, the title only for cards.
+    var yieldTo = function (c, whole) {
       var t = c._config && c._config.template;
       t = t ? [].concat(t) : [];
-      if (t.indexOf('hemma_weather') < 0 && t.indexOf('hemma_mobile_weather') < 0) return;
-      if (yielded.some(function (y) { return y.el === c; })) return;
+      var mobile = t.indexOf('hemma_mobile_weather') >= 0;
+      if (t.indexOf('hemma_weather') < 0 && !mobile) return;
+      var el = mobile && !whole ? (c.shadowRoot && c.shadowRoot.getElementById('weather')) : c;
+      if (!el || !el.animate || yielded.some(function (y) { return y.el === el; })) return;
       var b = c.getBoundingClientRect();
       if (!b.width || b.right < box.left || b.left > box.right || b.bottom < box.top - 8 || b.top > box.bottom) return;
-      if (!c.animate) return;
-      yielded.push({ el: c, anim: c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: 'ease', fill: 'forwards' }) });
+      yielded.push({ el: el, anim: el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: 'ease', fill: 'forwards' }) });
     };
-    var yieldAll = function () {
+    var yieldAll = function (whole) {
+      var each = function (c) { yieldTo(c, whole); };
       var bar = document.querySelector('hemma-nav-bar');
       [bar && bar.shadowRoot, anchor && anchor.getRootNode && anchor.getRootNode()].forEach(function (root) {
-        if (root && root.querySelectorAll) root.querySelectorAll('button-card').forEach(yieldTo);
+        if (root && root.querySelectorAll) root.querySelectorAll('button-card').forEach(each);
       });
-      // The phone's title and weather are one header card in the view, out of the bell's reach.
+      // The phone's header card sits in the view, out of the bell's reach.
       if (phone) {
         (function walk(root, depth) {
           if (!root || depth > 12 || !root.querySelectorAll) return;
           root.querySelectorAll('*').forEach(function (el) {
-            if (el.tagName === 'BUTTON-CARD') yieldTo(el);
+            if (el.tagName === 'BUTTON-CARD') each(el);
             if (el.shadowRoot) walk(el.shadowRoot, depth + 1);
           });
         })(document, 0);
       }
     };
-    // "No recent notifications" fits beside the title and weather; only cards make them step aside.
-    if (_rows.length) yieldAll(); else nc._yield = yieldAll;
+    yieldAll(false);
+    if (_rows.length) yieldAll(true); else nc._yield = function () { yieldAll(true); };
 
     var width = window.innerWidth;
     var onKey = function (e) { if (e.key === 'Escape') nc._close(); };
