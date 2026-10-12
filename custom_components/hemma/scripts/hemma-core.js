@@ -3880,10 +3880,37 @@ window.hemmaMenuGlass = {
       try { n = window._hemmaNPView(this._hass.states, window._hemmaCatNPV).filter(Boolean).length; } catch (_) { n = 0; }
       // Per box: a page back from the shelf holds the tiles of when it was left.
       if (n === box._hemmaN) return;
+      const was = box._hemmaN;
       box._hemmaN = n;
-      // In place: a page being built still holds this list.
-      for (let i = this._catCards.length - 1; i >= 0; i--) if (this._catCards[i]._hemmaNP) this._catCards.splice(i, 1);
-      box.innerHTML = '';
+      // Only a section on screen moves; a page being built or one on the shelf just changes.
+      const move = was >= 0 && box.getClientRects().length > 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const h0 = move ? box.getBoundingClientRect().height : 0;
+      if (!n && move && h0) {
+        // Leaving, the tiles fade, then the section closes and what is below rises into its place.
+        clearTimeout(box._npT);
+        (box._npAnims || []).forEach((x) => { try { x.cancel(); } catch (_) {} });
+        const out = box._npAnims = [];
+        Object.assign(box.style, { overflow: 'clip', height: h0 + 'px' });
+        const fade = { duration: 180, easing: 'ease-in', fill: 'forwards' };
+        box.querySelectorAll('.cat-np > *').forEach((el) => {
+          const c = el.shadowRoot && el.shadowRoot.querySelector('ha-card');
+          if (c) out.push(c.animate([{ opacity: 1 }, { opacity: 0 }], fade));
+        });
+        const head = box.querySelector('h2');
+        const close = { duration: 380, delay: 120, easing: FX_SPRING, fill: 'forwards' };
+        if (head) head.style.marginTop = '0px';
+        const slack = this._npSlack(box);
+        if (head) head.style.marginTop = '';
+        // The heading's top margin reaches past the section, so it closes too, or it would vanish in one step at the end.
+        if (head) {
+          out.push(head.animate([{ opacity: 1 }, { opacity: 0 }], fade));
+          out.push(head.animate([{ marginTop: getComputedStyle(head).marginTop }, { marginTop: '0px' }], close));
+        }
+        out.push(box.animate([{ height: h0 + 'px', marginBottom: '0px' }, { height: '0px', marginBottom: -slack + 'px' }], close));
+        box._npT = setTimeout(() => { if (box._hemmaN === 0) this._npClear(box); }, 520);
+        return;
+      }
+      this._npClear(box);
       if (!n) return;
       const h = document.createElement('h2');
       h.textContent = _hemmaT('now_playing.title', 'Now Playing');
@@ -3907,6 +3934,67 @@ window.hemmaMenuGlass = {
         this._catCards.push(el);
       }
       this._npEqual();
+      if (move) this._npGrow(box, h0, Math.max(0, was));
+    }
+
+    _npSlack(box) {
+      const next = box.nextElementSibling;
+      if (!next) return 0;
+      const kids = [...box.children];
+      const prev = box.style.height;
+      box.style.height = '0px';
+      const full = next.getBoundingClientRect().top;
+      kids.forEach((k) => { k.style.display = 'none'; });
+      const empty = next.getBoundingClientRect().top;
+      kids.forEach((k) => { k.style.display = ''; });
+      box.style.height = prev;
+      return Math.round(full - empty);
+    }
+
+    _npClear(box) {
+      clearTimeout(box._npT);
+      (box._npAnims || []).forEach((x) => { try { x.cancel(); } catch (_) {} });
+      box._npAnims = [];
+      // In place: a page being built still holds this list.
+      for (let i = this._catCards.length - 1; i >= 0; i--) if (this._catCards[i]._hemmaNP) this._catCards.splice(i, 1);
+      box.innerHTML = '';
+      box.style.height = '';
+      box.style.overflow = '';
+    }
+
+    // Arriving, the section opens from its old height to its new one, pushing what is below, and the new tiles rise into it.
+    // Each tile's own ha-card is faded, never an ancestor: an animated ancestor blanks the glass's blur.
+    _npGrow(box, h0, was) {
+      Object.assign(box.style, { overflow: 'clip', height: h0 + 'px' });
+      const head = !was && box.querySelector('h2');
+      if (head) head.style.marginTop = '0px';
+      const tiles = [...box.querySelectorAll('.cat-np > *')];
+      const anims = box._npAnims;
+      const t0 = performance.now();
+      const go = () => {
+        if (box._npAnims !== anims) return;
+        const ready = tiles.every((el) => el.shadowRoot && el.shadowRoot.querySelector('ha-card'));
+        if (!ready && performance.now() - t0 < 800) { requestAnimationFrame(go); return; }
+        box.style.height = '';
+        const h1 = box.getBoundingClientRect().height;
+        box.style.height = h0 + 'px';
+        const open = { duration: 420, easing: FX_SPRING };
+        const slack = was ? 0 : this._npSlack(box);
+        const grow = box.animate([{ height: h0 + 'px', marginBottom: -slack + 'px' }, { height: h1 + 'px', marginBottom: '0px' }], open);
+        anims.push(grow);
+        grow.finished.then(() => { if (box._npAnims === anims) { box.style.height = ''; box.style.overflow = ''; } }, () => {});
+        if (head) {
+          head.style.marginTop = '';
+          anims.push(head.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 60, easing: 'ease-out', fill: 'backwards' }));
+          anims.push(head.animate([{ marginTop: '0px' }, { marginTop: getComputedStyle(head).marginTop }], open));
+        }
+        tiles.forEach((el, i) => {
+          const c = i >= was && el.shadowRoot && el.shadowRoot.querySelector('ha-card');
+          if (c) anims.push(c.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }],
+            { duration: 360, delay: 100 + (i - was) * 50, easing: FX_SPRING, fill: 'backwards' }));
+        });
+      };
+      requestAnimationFrame(go);
     }
 
     _catHass(force) {

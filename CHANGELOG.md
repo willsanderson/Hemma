@@ -10,6 +10,7 @@
 - **Custom cards work in the tile row.** A card added with Custom card showed [object Object] and ignored taps; it now draws and responds like it does on any dashboard. Reported by [@aussielabber](https://github.com/aussielabber) in [#84](https://github.com/willsanderson/Hemma/issues/84).
 - **Motion and Occupancy show when they last saw someone**, like "11 hours ago", instead of Not Detected. The time comes from Home Assistant's history, so a restart doesn't reset it.
 - **Now Playing tiles on Overview share one height.** A source without playback controls matches the tiles that have them, even when the row wraps.
+- **Now Playing slides in and out on Overview.** When something starts playing, the section opens and eases the rest of the page down, and it closes the same way when playback stops, instead of popping in and out.
 - **Now Playing is the same tile on every device.** Tablets use the desktop and phone tile instead of a smaller copy, and the space above and below the artwork now matches the space beside it.
 - **Opening Notifications no longer dims the pill above it** on tablets.
 - **No more white haze above the first notification** on phones and tablets. The blur behind the Notifications title reached into the top card and smeared it upward.
