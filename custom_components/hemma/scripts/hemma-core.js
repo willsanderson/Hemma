@@ -3354,8 +3354,27 @@ window.hemmaMenuGlass = {
       window.removeEventListener('pageshow', this._onVis);
       window.removeEventListener('focus', this._onVis);
       if (this._onCategory) window.removeEventListener('ll-custom', this._onCategory, true);
+      if (this._barRO) { this._barRO.disconnect(); this._barRO = null; }
       this._closeMenu();
       this._closeSide();
+    }
+
+    // WebKit drops the half-point edge line on one side of a bar that ends between device pixels.
+    _snapBar() {
+      const bar = this._bar;
+      if (!bar) return;
+      bar.style.removeProperty('padding-left');
+      bar.style.removeProperty('padding-right');
+      const d = window.devicePixelRatio || 1;
+      const w = parseFloat(getComputedStyle(bar).width);
+      if (!w) return;
+      let n = Math.ceil(w * d - 0.01);
+      if (n % 2) n++;
+      const extra = Math.round((n / d - w) * 64);
+      if (!extra) return;
+      const pad = (x) => 'calc(var(--hemma-nav-pill-inset-x-tablet, 4px) + ' + (x / 64) + 'px)';
+      bar.style.paddingLeft = pad(Math.floor(extra / 2));
+      bar.style.paddingRight = pad(extra - Math.floor(extra / 2));
     }
 
 
@@ -3403,6 +3422,11 @@ window.hemmaMenuGlass = {
       this._scroller  = scroller;
       this._indicator = indicator;
       this._els       = [];
+      if (this._barRO) this._barRO.disconnect();
+      if (this._variant === 'tablet' && window.ResizeObserver) {
+        this._barRO = new ResizeObserver(() => this._snapBar());
+        this._barRO.observe(scroller);
+      }
 
       {
         const toggle = document.createElement('button');

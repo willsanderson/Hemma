@@ -16,6 +16,7 @@
 - **Now Playing is the same tile on every device.** Tablets use the desktop and phone tile instead of a smaller copy, and the space above and below the artwork now matches the space beside it.
 - **Opening Notifications no longer dims the pill above it** on tablets.
 - **No more white haze above the first notification** on phones and tablets. The blur behind the Notifications title reached into the top card and smeared it upward.
+- **The tablet's nav bar keeps its dark edge on both ends.** Depending on the room names, Safari could drop the line on the right side.
 - **The tablet's nav bar and top right pill catch a little more light** along their top and bottom edges, closer to the notifications' glass.
 - **Swedish picks up the newest strings**, including the greetings, thanks to [@DewGew](https://github.com/DewGew) in [#83](https://github.com/willsanderson/Hemma/pull/83).
 
