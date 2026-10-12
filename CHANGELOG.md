@@ -2,7 +2,7 @@
 
 ## 2.3.3
 
-- **Choose the sidebar's icon color.** Pick any of Hemma's colors under Layout > Sidebar icons in Hemma Studio. The default is now Ice, a lighter blue that stands out more against the sidebar's glass than the old teal.
+- **Choose the sidebar's icon color.** Pick any of Hemma's colors under Layout > Sidebar icons in Hemma Studio. The default is a slightly brighter Hemma teal, so the icons stand out against the sidebar's glass and still match the tiles and badges.
 
 ## 2.3.2
 

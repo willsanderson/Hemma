@@ -6997,9 +6997,9 @@ window.hemmaMenuGlass = {
           }
           .side-item > * { transition: opacity .12s ease; }
           .side-item:active > :not(.side-motion), .side-item:active > .side-motion.on { opacity: 0.35; transition: none; }
-          .side-item ha-icon { --mdc-icon-size: 22px; width: 22px; flex: none; color: var(--hemma-sidebar-icon, var(--hemma-color-ice, #3cd3fe)); }
+          .side-item ha-icon { --mdc-icon-size: 22px; width: 22px; flex: none; color: var(--hemma-sidebar-icon, #33CFD9); }
           .side-glyph {
-            width: 24px; height: 24px; flex: none; background: var(--hemma-sidebar-icon, var(--hemma-color-ice, #3cd3fe));
+            width: 24px; height: 24px; flex: none; background: var(--hemma-sidebar-icon, #33CFD9);
             -webkit-mask: var(--g) center / contain no-repeat; mask: var(--g) center / contain no-repeat;
           }
           .side-item + .side-item { margin-top: 4px; }

@@ -1302,7 +1302,7 @@ const SECTIONS = [
         options: ["", "focus", "overview"], optionLabels: { "": "Same as desktop", focus: "Focus", overview: "Overview" } },
       { key: "sidebar_open", label: "Open sidebar on load", type: "bool",
         boolDefault: false, auto: true, scope: "dashboard" },
-      { key: "sidebar_icon_color", label: "Sidebar icons", type: "accent", accentDefault: "ice",
+      { key: "sidebar_icon_color", label: "Sidebar icons", type: "accent", accentDefault: { label: "Bright teal", hex: "#33CFD9" },
         auto: true, scope: "dashboard" },
     ],
   },
@@ -6680,7 +6680,7 @@ class HemmaPanel extends HTMLElement {
         .mini-side .ms-item.on { background:rgba(255,255,255,0.12); }
         .mini-side .ms-item span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .mini-side .ms-g {
-          flex:none; width:14.2px; height:14.2px; background:var(--hemma-sidebar-icon, var(--hemma-color-ice, #3cd3fe));
+          flex:none; width:14.2px; height:14.2px; background:var(--hemma-sidebar-icon, #33CFD9);
           -webkit-mask:var(--g) center / contain no-repeat; mask:var(--g) center / contain no-repeat;
         }
         .mini-side .ms-h {
@@ -12716,7 +12716,7 @@ class HemmaPanel extends HTMLElement {
         }
 
         if (f.type === "accent") {
-          const def = HEMMA_ACCENTS.find((a) => a.id.indexOf("--hemma-color-" + f.accentDefault + ",") >= 0);
+          const def = f.accentDefault;
           const btn = document.createElement("button");
           btn.type = "button";
           btn.className = "colorfield";
@@ -12736,7 +12736,7 @@ class HemmaPanel extends HTMLElement {
           btn.onclick = () => {
             const now = val;
             const items = [{ id: "", label: _sx("{name} (default)", { name: _sx(def.label) }), swatch: def.hex, checked: !now }];
-            HEMMA_ACCENTS.filter((a) => a !== def).forEach((a) => items.push({
+            HEMMA_ACCENTS.forEach((a) => items.push({
               id: a.id, label: _sx(a.label), swatch: a.hex, checked: now === a.id,
             }));
             this._menuAt(btn, items, (id) => {
