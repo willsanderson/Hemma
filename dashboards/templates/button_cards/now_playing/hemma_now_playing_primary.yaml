@@ -795,8 +795,8 @@ hemma_now_playing_primary:
          enough to fit. The 999px fallback is the mobile row, which sets no slot. */
       /* The phone's tile on every device: the artwork sets the height, the text and transport sit within it. */
       --np-pad-v: min(16px, calc(var(--np-slot-h, 999px) * 0.134));
-      /* 2px less than --np-pad-v - top/bottom read as slightly heavier than left at the same value, tuned down on request. */
-      --np-pad-tb: min(14px, calc(var(--np-slot-h, 999px) * 0.117));
+      /* Top and bottom match the left: the glass rim along them already makes those bands read thinner. */
+      --np-pad-tb: min(16px, calc(var(--np-slot-h, 999px) * 0.134));
       --np-art-size: min(108px, calc(var(--np-slot-h, 999px) - 2 * var(--np-pad-tb)));
       --np-row-gap: 7px;
       --np-track-gap: 9px;
@@ -1137,22 +1137,6 @@ hemma_now_playing_primary:
       .np-fill{ animation: none !important; }
     }
 
-    /* Tablet (touch, 768-1400px) - desktop/mouse keeps the larger :host defaults above. */
-    @media (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (pointer: coarse),
-           (min-width: 768px) and (max-width: 1400px) and (min-height: 501px) and (hover: none) {
-      /* The phone's tile scaled to a tablet's corner: same layout, smaller numbers. 94px is the text column with its
-         transport row, so the art spans it top to bottom instead of the column reaching past it. */
-      :host{
-        --np-art-size: min(94px, calc(var(--np-slot-h, 999px) - 2 * var(--np-pad-tb)));
-        --np-title-size: min(14px, calc(var(--np-slot-h, 999px) * 0.30));
-        --np-sub-size: min(12px, calc(var(--np-slot-h, 999px) * 0.26));
-        --np-pad-v: min(12px, calc(var(--np-slot-h, 999px) * 0.134));
-        --np-pad-tb: min(12px, calc(var(--np-slot-h, 999px) * 0.117));
-        --np-row-gap: 6px;
-        --np-track-gap: 8px;
-      }
-    }
-
     /* Mobile */
     @media (max-width: 600px){
       :host{
@@ -1183,7 +1167,7 @@ hemma_now_playing_primary:
         --np-title-size: 16px;
         --np-sub-size: 14px;
         --np-pad-v: 12px;
-        --np-pad-tb: 10px;
+        --np-pad-tb: 12px;
         --np-row-gap: 5px;
         --np-track-gap: 6px;
         --np-elevation: 0 1px 6px rgba(0,0,0,0.10);

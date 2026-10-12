@@ -9,7 +9,8 @@
 - **Swiping a notification reveals a glass Clear button**, styled like the notifications themselves, as Apple's is. It grows out of the card's edge as you swipe, so the two never pass through each other, and it replaces the red button, whose color bled into the card beside it.
 - **Custom cards work in the tile row.** A card added with Custom card showed [object Object] and ignored taps; it now draws and responds like it does on any dashboard. Reported by [@aussielabber](https://github.com/aussielabber) in [#84](https://github.com/willsanderson/Hemma/issues/84).
 - **Motion and Occupancy show when they last saw someone**, like "11 hours ago", instead of Not Detected. The time comes from Home Assistant's history, so a restart doesn't reset it.
-- **Now Playing tiles on Overview share one height.** A source without playback controls matches the tiles that have them, even when the row wraps. On tablets the artwork now spans the title, progress and controls beside it, instead of the text reaching above and below it.
+- **Now Playing tiles on Overview share one height.** A source without playback controls matches the tiles that have them, even when the row wraps.
+- **Now Playing is the same tile on every device.** Tablets use the desktop and phone tile instead of a smaller copy, and the space above and below the artwork now matches the space beside it.
 - **Opening Notifications no longer dims the pill above it** on tablets.
 - **No more white haze above the first notification** on phones and tablets. The blur behind the Notifications title reached into the top card and smeared it upward.
 - **The tablet's nav bar and top right pill catch a little more light** along their top and bottom edges, closer to the notifications' glass.
