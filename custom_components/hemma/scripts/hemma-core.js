@@ -3906,6 +3906,7 @@ window.hemmaMenuGlass = {
         row.appendChild(el);
         this._catCards.push(el);
       }
+      this._npEqual();
     }
 
     _catHass(force) {
@@ -3919,6 +3920,7 @@ window.hemmaMenuGlass = {
       if (this._npBox) this._syncNP();
       this._syncBattery();
       this._edgeFade();
+      this._npEqual();
       this._sortSoon();
       const F = window._hemmaFilter;
       const h = this._hass && F ? F.apply(this._hass) : this._hass;
@@ -4386,6 +4388,21 @@ window.hemmaMenuGlass = {
         sr.appendChild(Object.assign(document.createElement('style'), { id: 'hemma-edge', textContent: 'ha-card{opacity:var(--cat-edge,1)}' }));
       });
       if (late && (tries || 0) < 20) setTimeout(() => this._edgeFade((tries || 0) + 1), 150);
+    }
+
+    // Tiles in one Now Playing row share a height: one without controls stretches to match one with them.
+    _npEqual(tries) {
+      const page = this._catPage;
+      if (!page) return;
+      let late = false;
+      page.querySelectorAll('.cat-np > *').forEach((el) => {
+        const sr = el.shadowRoot;
+        if (!sr || !sr.querySelector('ha-card')) { late = true; return; }
+        if (sr.getElementById('hemma-np-fill')) return;
+        sr.appendChild(Object.assign(document.createElement('style'), { id: 'hemma-np-fill',
+          textContent: 'ha-card{height:100% !important;} #container{height:100%;}' }));
+      });
+      if (late && (tries || 0) < 20) setTimeout(() => this._npEqual((tries || 0) + 1), 150);
     }
 
     _filled() {
@@ -6999,6 +7016,7 @@ window.hemmaMenuGlass = {
           :host(.compact) .cat-chrome { right: var(--cat-gutter, 20px); }
           /* A dashboard is tapped, not read: a double tap on a title must not select it. */
           .bar, .side, .cat, .cat-mini, .cat-chrome { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+          .cat.compact .cat-np { --np-col: min(var(--cat-two-tiles, 366px), 100%); }
           .cat.compact .cat-np > * { --np-tile-width: min(var(--cat-two-tiles, 366px), 100%); --np-inner-radius: 20px; }
           /* Apple Home on a Mac: 19px corners on 54px tiles, so 20 on these 62px ones. */
           .cat.compact { --hemma-tile-radius-phone: 20px; --hemma-scene-tile-radius: 20px; }
@@ -7007,7 +7025,7 @@ window.hemmaMenuGlass = {
           .cat.scenes .cat-pills, .cat.scenes .cat-chipcard { display: none; }
           .cat-warm { position: fixed; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
           /* The tile's #container is z-index 2, which would tie the veil's and paint over it: keep it in here. */
-          .cat-np { position: relative; z-index: 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; --np-elevation: 0 0 #0000; }
+          .cat-np { position: relative; z-index: 0; display: grid; grid-template-columns: repeat(auto-fill, var(--np-col, min(360px, 100%))); grid-auto-rows: 1fr; gap: 10px; --np-elevation: 0 0 #0000; }
           /* The tile's :host sizes it with !important, so it is fed variables instead. */
           .cat-np > * { flex: none; --np-tile-width: min(360px, 100%); --np-max-w: 100%; --np-inner-radius: 26px; margin: 0 !important; }
           .cat-scenes-row { margin: 0 -22px 0 calc(-1 * var(--cat-gutter, 20px)); }
