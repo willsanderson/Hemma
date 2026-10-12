@@ -11304,10 +11304,11 @@ window.hemmaMenuGlass = {
     // The bell is always on screen, so on the phone the title can open over tiles; it carries its own halo like a card.
     if (mobile) {
       var hf = halo();
-      // Kept below the row's top, or it blurs the bell's pill just above.
+      // Kept inside the row: it sits above the list, so reaching into the first card would blur the card itself.
       hf.style.top = '-4px';
+      hf.style.bottom = '-6px';
       var hm = 'linear-gradient(to right, transparent 0px, #000 30px, #000 calc(100% - 30px), transparent 100%),'
-        + ' linear-gradient(to bottom, transparent 0px, #000 14px, #000 calc(100% - 30px), transparent 100%)';
+        + ' linear-gradient(to bottom, transparent 0px, #000 14px, #000 calc(100% - 14px), transparent 100%)';
       hf.lastChild.style.webkitMaskImage = hf.lastChild.style.maskImage = hm;
       hf.lastChild.style.backdropFilter = hf.lastChild.style.webkitBackdropFilter = 'var(--hemma-perf-none, blur(10px))';
       head.appendChild(hf);
