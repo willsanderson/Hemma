@@ -11,6 +11,8 @@
 - **Motion and Occupancy show when they last saw someone**, like "11 hours ago", instead of Not Detected. The time comes from Home Assistant's history, so a restart doesn't reset it.
 - **Now Playing tiles on Overview share one height.** A source without playback controls matches the tiles that have them, even when the row wraps.
 - **Now Playing slides in and out on Overview.** When something starts playing, the section opens and eases the rest of the page down, and it closes the same way when playback stops, instead of popping in and out.
+- **Now Playing's title and artist sit closer together**, spaced like Apple's lock screen player instead of drifting apart.
+- **Discord games keep their artwork.** When the Discord integration briefly drops a game's image, the tile keeps showing the last one it had instead of going blank.
 - **Now Playing is the same tile on every device.** Tablets use the desktop and phone tile instead of a smaller copy, and the space above and below the artwork now matches the space beside it.
 - **Opening Notifications no longer dims the pill above it** on tablets.
 - **No more white haze above the first notification** on phones and tablets. The blur behind the Notifications title reached into the top card and smeared it upward.

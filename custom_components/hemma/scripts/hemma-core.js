@@ -1487,6 +1487,30 @@ window.hemmaMenuGlass = {
     };
   }
 
+  if (typeof window._hemmaGameArt !== 'function') {
+    window._hemmaGameArt = function (game, art) {
+      const k = String(game || '').trim().toLowerCase();
+      if (!k) return art || null;
+      let m = window._hemmaGameArtMap;
+      if (!m) {
+        try { m = JSON.parse(localStorage.getItem('hemma_game_art') || '{}') || {}; } catch (e) { m = {}; }
+        window._hemmaGameArtMap = m;
+      }
+      // Image-entity proxy URLs carry an expiring token, so only plain CDN URLs are worth keeping.
+      if (art && /^https?:\/\//.test(art) && !/[?&]token=/.test(art) && art.indexOf(location.origin + '/api/') !== 0) {
+        if (m[k] !== art) {
+          delete m[k];
+          m[k] = art;
+          const keys = Object.keys(m);
+          if (keys.length > 40) delete m[keys[0]];
+          try { localStorage.setItem('hemma_game_art', JSON.stringify(m)); } catch (e) {}
+        }
+        return art;
+      }
+      return art || m[k] || null;
+    };
+  }
+
   if (typeof window._hemmaPCSources !== 'function') {
     window._hemmaPCSources = function (states, V) {
       const norm = (x) => String(x ?? '').trim();
@@ -1524,7 +1548,7 @@ window.hemmaMenuGlass = {
           discord = {
             game: game,
             details: dead(details) ? '' : details,
-            img: d.img,
+            img: window._hemmaGameArt(game, d.img),
             label: norm(V.discord_label) || 'PC',
           };
         }
@@ -1787,10 +1811,10 @@ window.hemmaMenuGlass = {
             key: 'discord',
             kind: 'activity',
             entity: dcImage || dcGame || V.discord_user,
-            art: dcImage
+            art: window._hemmaGameArt(game, dcImage
               ? abs(ia.entity_picture_local || ia.entity_picture || ia.image_url
                 || (function(){ const v = String(states[dcImage]?.state || ''); return /^(https?:)?\/\//.test(v) || v.charAt(0) === '/' ? v : ''; })())
-              : abs(dcHttp(dcA.game_image_large, dcA.game_image_header, dcA.game_image_hero_capsule)),
+              : abs(dcHttp(dcA.game_image_large, dcA.game_image_header, dcA.game_image_hero_capsule))),
             title: game,
             subtitle: norm(dcSub).replace(/^(unknown|unavailable)$/i, ''),
             source: norm(V.discord_label) || 'PC',

@@ -1017,7 +1017,7 @@ hemma_now_playing_primary:
     .np-meta{
       display: flex;
       flex-direction: column;
-      gap: 1px;
+      gap: 2px;
       min-width: 0;
     }
 
@@ -1067,6 +1067,8 @@ hemma_now_playing_primary:
     .np-line{
       overflow: hidden;
       min-width: 0;
+      /* Otherwise the card's font sets each line's height, opening the title to artist gap past Apple's. */
+      line-height: 0;
     }
 
     .np-line > .np-title,
