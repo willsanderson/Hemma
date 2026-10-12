@@ -3,12 +3,13 @@
 ## 2.3.2
 
 - **New on Plex shows up in Notifications.** Movies and episodes added in the last three days appear with their poster, and tapping one opens Recently Added. Several stack into one Plex group. Turn it off with Recently Added in Hemma's notification settings.
+- **Notification settings are in alphabetical order** in every language, and the Recently Added and Plants switches take Plex's orange and the plant tiles' green.
 - **Notifications close once you clear the last one**, instead of leaving "No recent notifications" over the dashboard. That line now only appears when you open Notifications with nothing new.
 - **Opening a notification clears it**, as Apple's do.
 - **With nothing new, the phone's title stays put.** Only the weather steps aside for the "No recent notifications" line; the title waits until there are notifications to show.
 - **Swiping a notification reveals a glass Clear button**, styled like the notifications themselves, as Apple's is. It grows out of the card's edge as you swipe, so the two never pass through each other, and it replaces the red button, whose color bled into the card beside it.
 - **Custom cards work in the tile row.** A card added with Custom card showed [object Object] and ignored taps; it now draws and responds like it does on any dashboard. Reported by [@aussielabber](https://github.com/aussielabber) in [#84](https://github.com/willsanderson/Hemma/issues/84).
-- **Motion and Occupancy show when they last saw someone**, like "11 hours ago", instead of Not Detected. The time comes from Home Assistant's history, so a restart doesn't reset it.
+- **Motion and Occupancy show when they last saw someone**, like "11 hours ago", instead of Not Detected. The time comes from Home Assistant's history, so a restart doesn't reset it. On cameras it also reads the device's last-activity sensor, since Ring's motion event can stop updating.
 - **Now Playing tiles on Overview share one height.** A source without playback controls matches the tiles that have them, even when the row wraps.
 - **Now Playing slides in and out on Overview.** When something starts playing, the section opens and eases the rest of the page down, and it closes the same way when playback stops, instead of popping in and out.
 - **Now Playing's title and artist sit closer together**, spaced like Apple's lock screen player instead of drifting apart.
