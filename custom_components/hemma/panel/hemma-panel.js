@@ -1302,6 +1302,8 @@ const SECTIONS = [
         options: ["", "focus", "overview"], optionLabels: { "": "Same as desktop", focus: "Focus", overview: "Overview" } },
       { key: "sidebar_open", label: "Open sidebar on load", type: "bool",
         boolDefault: false, auto: true, scope: "dashboard" },
+      { key: "sidebar_icon_color", label: "Sidebar icons", type: "accent", accentDefault: "ice",
+        auto: true, scope: "dashboard" },
     ],
   },
   {
@@ -6678,7 +6680,7 @@ class HemmaPanel extends HTMLElement {
         .mini-side .ms-item.on { background:rgba(255,255,255,0.12); }
         .mini-side .ms-item span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .mini-side .ms-g {
-          flex:none; width:14.2px; height:14.2px; background:var(--hemma-color-teal, #00C3D0);
+          flex:none; width:14.2px; height:14.2px; background:var(--hemma-sidebar-icon, var(--hemma-color-ice, #3cd3fe));
           -webkit-mask:var(--g) center / contain no-repeat; mask:var(--g) center / contain no-repeat;
         }
         .mini-side .ms-h {
@@ -12713,6 +12715,44 @@ class HemmaPanel extends HTMLElement {
           return;
         }
 
+        if (f.type === "accent") {
+          const def = HEMMA_ACCENTS.find((a) => a.id.indexOf("--hemma-color-" + f.accentDefault + ",") >= 0);
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "colorfield";
+          const sw = document.createElement("span");
+          sw.className = "swatch";
+          const lb = document.createElement("span");
+          lb.className = "clabel";
+          btn.appendChild(sw);
+          btn.appendChild(lb);
+          const paint = (v) => {
+            const a = HEMMA_ACCENTS.find((x) => x.id === v) || def;
+            sw.style.background = a.hex;
+            lb.textContent = _sx(a.label);
+          };
+          let val = String(cur || "");
+          paint(val);
+          btn.onclick = () => {
+            const now = val;
+            const items = [{ id: "", label: _sx("{name} (default)", { name: _sx(def.label) }), swatch: def.hex, checked: !now }];
+            HEMMA_ACCENTS.filter((a) => a !== def).forEach((a) => items.push({
+              id: a.id, label: _sx(a.label), swatch: a.hex, checked: now === a.id,
+            }));
+            this._menuAt(btn, items, (id) => {
+              val = id;
+              setVar(f.key, id, f);
+              paint(id);
+              this._syncPreview();
+            });
+          };
+          row.appendChild(btn);
+          addDrop(row, f);
+          fs.appendChild(row);
+          addHint();
+          return;
+        }
+
         if (f.type === "select") {
           const c = this._combo(String(cur), f.options, "",
             (v) => { setVar(f.key, v, f); this._syncPreview(); if (f.reveals) syncWhen(); },
@@ -17697,6 +17737,7 @@ class HemmaPanel extends HTMLElement {
     if (sideOn) {
       const side = document.createElement("div");
       side.className = "mini-side";
+      if (V.sidebar_icon_color) side.style.setProperty("--hemma-sidebar-icon", V.sidebar_icon_color);
       const glyph = (name, color) => {
         const g = document.createElement("i");
         g.className = "ms-g";

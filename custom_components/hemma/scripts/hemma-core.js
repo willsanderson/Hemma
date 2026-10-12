@@ -3297,6 +3297,14 @@ window.hemmaMenuGlass = {
         if (want && !this._sideOpen) setTimeout(() => { if (!this._sideOpen) this._openSide(true); }, 0);
         else if (!want && this._sideOpen && this._sideBooted) this._closeSide();
       }
+      if (this._side) {
+        const tint = this._statusVars().sidebar_icon_color || '';
+        if (tint !== this._sideTint) {
+          this._sideTint = tint;
+          if (tint) this.style.setProperty('--hemma-sidebar-icon', tint);
+          else this.style.removeProperty('--hemma-sidebar-icon');
+        }
+      }
       this._syncBadges();
       this._renderStatus();
       this._syncOverview();
@@ -6989,9 +6997,9 @@ window.hemmaMenuGlass = {
           }
           .side-item > * { transition: opacity .12s ease; }
           .side-item:active > :not(.side-motion), .side-item:active > .side-motion.on { opacity: 0.35; transition: none; }
-          .side-item ha-icon { --mdc-icon-size: 22px; width: 22px; flex: none; color: var(--hemma-color-teal, #00C3D0); }
+          .side-item ha-icon { --mdc-icon-size: 22px; width: 22px; flex: none; color: var(--hemma-sidebar-icon, var(--hemma-color-ice, #3cd3fe)); }
           .side-glyph {
-            width: 24px; height: 24px; flex: none; background: var(--hemma-color-teal, #00C3D0);
+            width: 24px; height: 24px; flex: none; background: var(--hemma-sidebar-icon, var(--hemma-color-ice, #3cd3fe));
             -webkit-mask: var(--g) center / contain no-repeat; mask: var(--g) center / contain no-repeat;
           }
           .side-item + .side-item { margin-top: 4px; }

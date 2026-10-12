@@ -980,6 +980,8 @@
   "studio.wired_upload": "Wired upload",
   "studio.yellow": "Yellow",
   "studio.yellow_default": "Yellow (default)",
+  "studio.sidebar_icons": "Sidebar icons",
+  "studio.named_default": "{name} (default)",
   "temp.comfortable": "Comfortable",
   "temp.cool": "Cool",
   "temp.hot": "Hot",

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.3
+
+- **Choose the sidebar's icon color.** Pick any of Hemma's colors under Layout > Sidebar icons in Hemma Studio. The default is now Ice, a lighter blue that stands out more against the sidebar's glass than the old teal.
+
 ## 2.3.2
 
 - **New on Plex shows up in Notifications.** Movies and episodes added in the last three days appear with their poster, and tapping one opens Recently Added. Several stack into one Plex group. Turn it off with Recently Added in Hemma's notification settings.
