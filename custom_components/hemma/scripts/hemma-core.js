@@ -11959,7 +11959,7 @@ window.hemmaMenuGlass = {
         clearing = false;
         expand(false);
         clearRows(all, true);
-        if (fadeX) fadeX.cancel();
+        if (fadeX && _rows.length) fadeX.cancel();
       }, DUR + Math.min(Math.max(live.length - 1, 0), 8) * STEP);
     });
 
@@ -12146,7 +12146,7 @@ window.hemmaMenuGlass = {
       });
       pieces().forEach(function (el) {
         if (!el.animate) { el.style.opacity = '0'; return; }
-        el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: away }],
+        el.animate([{ opacity: getComputedStyle(el).opacity, transform: 'none' }, { opacity: 0, transform: away }],
           { duration: 260, easing: 'ease-in', fill: 'forwards' });
       });
       setTimeout(function () {
