@@ -11128,11 +11128,13 @@ window.hemmaMenuGlass = {
     var MORPH = '420ms cubic-bezier(0.4,0,0.2,1)';
     // Measured off Apple's: a hairline just outside the card, darker down the sides, and a one-pixel highlight inside top and bottom.
     // WebKit drops a masked border along curves; a half-pixel shadow ring on the card itself stays continuous.
-    var EDGE = '0 0 0 0.5px rgba(0,0,0,0.42)';
+    var EDGE = '0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.42)';
     var st = document.createElement('style');
     st.id = 'hemma-nc-style';
     st.textContent = ''
       + '.hemma-nc-scrim{position:fixed;inset:0;z-index:99998;}'
+      // 0.5px is 1.5 device pixels at 3x, which WebKit draws as one on the top and left and two on the bottom and right.
+      + '@media (min-resolution: 2.5dppx){.hemma-nc{--nc-edge:0.3333px;}}'
       + '.hemma-nc{position:fixed;z-index:99999;box-sizing:border-box;display:flex;flex-direction:column;'
       + 'color:#fff;-webkit-text-size-adjust:100%;text-size-adjust:100%;}'
       + '.hemma-nc *{box-sizing:border-box;}'
@@ -11825,6 +11827,10 @@ window.hemmaMenuGlass = {
         // The swipe Clear and the hover ✕ only travel with the card; animating their opacity shows them.
         if (el.classList.contains('hemma-nc-halo')) {
           [].forEach.call(el.children, function (f) { f.animate(frames, opts); });
+          return;
+        }
+        if (el.classList.contains('hemma-nc-ghead')) {
+          [].forEach.call(el.querySelectorAll(':scope > b, .hemma-nc-pill'), function (f) { f.animate(frames, opts); });
           return;
         }
         if (el.classList.contains('hemma-nc-clear') || el.classList.contains('hemma-nc-close')) {

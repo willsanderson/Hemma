@@ -4,6 +4,8 @@
 
 - **Choose the sidebar's icon color.** Pick any of Hemma's colors under Layout > Sidebar icons in Hemma Studio. The default is a slightly brighter Hemma teal, so the icons stand out against the sidebar's glass and still match the tiles and badges.
 - **No more blurred band behind Notifications on phones.** The title uses the same soft text shadow as on tablets and desktops, and "No recent notifications" adds only a barely visible patch behind it.
+- **Notification cards and buttons have even edges on iPhones.** Their dark outline was a pixel heavier along the bottom and right; it is now the same all the way around.
+- **A group's Show less and Clear buttons no longer shift as it opens.** They kept their glass during the animation instead of gaining it a moment after.
 - **The phone's top right pill has matching edges.** Its dark edge line was thicker on the left than the right on iPhones; both sides now match.
 - **Clear All clears everything at once.** The notifications, the Notifications title and the Clear All button leave together, instead of the title waiting for the cards and the button briefly coming back.
 
