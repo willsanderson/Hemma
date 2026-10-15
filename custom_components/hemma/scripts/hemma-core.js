@@ -11335,7 +11335,20 @@ window.hemmaMenuGlass = {
       + '-webkit-mask:linear-gradient(to bottom, transparent 6%, #000 42%, #000 58%, transparent 94%);mask:linear-gradient(to bottom, transparent 6%, #000 42%, #000 58%, transparent 94%);}'
       + '.hemma-nc.phone.handset.light .hemma-nc-ghost{box-shadow:inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.6), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6);}'
       + '.hemma-nc.phone.handset.light .hemma-nc-x, .hemma-nc.phone.handset.light .hemma-nc-pill{box-shadow:0 0.5px 0 rgba(255,255,255,0.13), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.08);}'
-      + '.hemma-nc.phone.handset.light .hemma-nc-count{background:#fff;color:rgba(0,0,0,0.86);box-shadow:0 0 0 0.5px rgba(0,0,0,0.18);font-weight:700;}'
+      // Measured off macOS's light notifications: a light gray pill with mid-gray digits, a little smaller than the dark one.
+      + '.hemma-nc.light .hemma-nc-count{min-width:14px;height:14px;line-height:14px;padding:0 3.5px;border-radius:7px;right:-5px;top:-5px;'
+      + 'background:rgb(231,231,232);color:rgb(128,128,130);font-weight:500;box-shadow:0 0 0 0.5px rgba(0,0,0,0.06);}'
+      // Desktop dark mode, calibrated against macOS: the backdrop is blurred and pressed down so bright tiles behind read as a haze,
+      // a bright top line with a short glow, a two-step bottom edge, and a dark line down the sides only.
+      + '.hemma-nc:not(.phone):not(.light) .hemma-nc-card{background-color:var(--hemma-perf-pill, rgba(255,255,255,0.20));'
+      + '-webkit-backdrop-filter:var(--hemma-perf-none, blur(30px) saturate(1.4) brightness(0.33));backdrop-filter:var(--hemma-perf-none, blur(30px) saturate(1.4) brightness(0.33));'
+      + 'background-image:linear-gradient(to bottom, rgba(255,255,255,0) 0.5px, rgba(255,255,255,0.18) 0.5px, rgba(255,255,255,0.18) 1px, rgba(255,255,255,0.055) 1px,'
+      + ' rgba(255,255,255,0.04) 2px, rgba(255,255,255,0.022) 2.5px, rgba(255,255,255,0) 5px, rgba(255,255,255,0) calc(100% - 6px),'
+      + ' rgba(255,255,255,0.03) calc(100% - 3px), rgba(255,255,255,0.06) calc(100% - 1px));'
+      + 'box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.33), inset 0 -0.5px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(255,255,255,0.19),'
+      + ' -0.5px 0 0 rgba(0,0,0,0.19), 0.5px 0 0 rgba(0,0,0,0.19), 0 4px 16px rgba(0,0,0,0.12);}'
+      + '.hemma-nc:not(.phone):not(.light) .hemma-nc-card::before{background:none;}'
+      + '.hemma-nc:not(.phone):not(.light) .hemma-nc-shades > div:not(.text){box-shadow:var(--hemma-perf-none, 0 32px 180px rgba(0,0,0,0.12));}'
       + '';
     (document.head || document.documentElement).appendChild(st);
   }
