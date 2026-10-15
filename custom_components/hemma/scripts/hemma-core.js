@@ -11337,10 +11337,17 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone.handset .hemma-nc-x, .hemma-nc.phone.handset .hemma-nc-pill{box-shadow:0 0.5px 0 rgba(255,255,255,0.13), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.08);}'
       + '.hemma-nc.phone.handset .hemma-nc-count{background:#fff;color:rgba(0,0,0,0.86);box-shadow:0 0 0 0.5px rgba(0,0,0,0.18);font-weight:700;}'
       // Dark mode mirrors the light glass: a smoky fill deep enough for white text over the dashboard's bright tiles.
+      // Its edges are measured off macOS's dark notifications: a bright top line with a short glow, a gentle rise into a two-step bottom edge, softer dark sides.
       + '.hemma-nc.phone.handset:not(.light) .hemma-nc-card, .hemma-nc.phone.handset:not(.light) .hemma-nc-clear{background-color:var(--hemma-perf-pill, rgba(30,30,34,0.5));'
-      + 'background-image:linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0) 8px, rgba(255,255,255,0) calc(100% - 8px), rgba(255,255,255,0.06));}'
+      + 'background-image:linear-gradient(to bottom, rgba(255,255,255,0.2), rgba(255,255,255,0.05) 1px, rgba(255,255,255,0.02) 2px, rgba(255,255,255,0) 4px,'
+      + ' rgba(255,255,255,0) calc(100% - 6px), rgba(255,255,255,0.07));'
+      + 'box-shadow:inset 0 var(--nc-edge, 0.5px) 0 rgba(255,255,255,0.47), inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.43),'
+      + ' inset 0 calc(-2 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.2), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.32), 0 4px 16px rgba(0,0,0,0.12);}'
+      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-card::after, .hemma-nc.phone.handset:not(.light) .hemma-nc-clear::after{box-shadow:inset 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.14);}'
+      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-count{background:rgba(60,64,72,0.92);color:#fff;box-shadow:0 0 0 0.5px rgba(0,0,0,0.45), inset 0 0.5px 0 rgba(255,255,255,0.3);}'
       + '.hemma-nc.phone.handset:not(.light) .hemma-nc-card::before, .hemma-nc.phone.handset:not(.light) .hemma-nc-clear::before{background:none;}'
-      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-x, .hemma-nc.phone.handset:not(.light) .hemma-nc-pill{background-color:var(--hemma-perf-pill, rgba(30,30,34,0.5));}'
+      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-x, .hemma-nc.phone.handset:not(.light) .hemma-nc-pill{background-color:var(--hemma-perf-pill, rgba(30,30,34,0.5));'
+      + 'box-shadow:inset 0 var(--nc-edge, 0.5px) 0 rgba(255,255,255,0.4), inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.35), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.12);}'
       + '.hemma-nc.phone.handset:not(.light) .hemma-nc-ghost{background-color:rgba(30,30,34,0.4);}';
     (document.head || document.documentElement).appendChild(st);
   }
