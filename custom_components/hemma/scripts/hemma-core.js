@@ -11946,6 +11946,8 @@ window.hemmaMenuGlass = {
       var live = [].slice.call(list.querySelectorAll('.hemma-nc-slot'));
       var DUR = 480, STEP = 40, OUT = 'cubic-bezier(0.4,0,0.2,1)';
       var fadeX = x.animate ? x.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 320, easing: OUT, fill: 'forwards' }) : null;
+      var headOut = [title].concat([].slice.call(head.querySelectorAll('.hemma-nc-halo > div'))).filter(function (el) { return el.animate; })
+        .map(function (el) { return el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: away }], { duration: DUR, easing: OUT, fill: 'forwards' }); });
       live.forEach(function (slot, i) {
         slot._gone = true;
         delete slots[slot._ukey];
@@ -11959,7 +11961,10 @@ window.hemmaMenuGlass = {
         clearing = false;
         expand(false);
         clearRows(all, true);
-        if (fadeX && _rows.length) fadeX.cancel();
+        if (_rows.length) {
+          if (fadeX) fadeX.cancel();
+          headOut.forEach(function (an) { an.cancel(); });
+        }
       }, DUR + Math.min(Math.max(live.length - 1, 0), 8) * STEP);
     });
 

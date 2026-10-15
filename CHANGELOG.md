@@ -3,7 +3,7 @@
 ## 2.3.3
 
 - **Choose the sidebar's icon color.** Pick any of Hemma's colors under Layout > Sidebar icons in Hemma Studio. The default is a slightly brighter Hemma teal, so the icons stand out against the sidebar's glass and still match the tiles and badges.
-- **Clear All stays gone.** After clearing every notification, the Clear All button no longer reappears for a moment as Notifications closes.
+- **Clear All clears everything at once.** The notifications, the Notifications title and the Clear All button leave together, instead of the title waiting for the cards and the button briefly coming back.
 
 ## 2.3.2
 
