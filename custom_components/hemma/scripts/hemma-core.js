@@ -11468,31 +11468,37 @@ window.hemmaMenuGlass = {
       return h;
     };
     // The bell is always on screen, so on the phone the title can open over tiles; it carries its own halo like a card.
+    // A rounded patch that fades out on every side, as Apple's does; a band across the row shows its flat edges over tiles.
+    var textHalo = function (top, bottom, dark, mid) {
+      var h = halo();
+      h.style.top = top;
+      h.style.bottom = bottom;
+      var d = h.lastChild;
+      d.style.webkitMaskImage = d.style.maskImage = 'radial-gradient(closest-side, #000 30%, transparent 100%)';
+      d.style.webkitMaskComposite = d.style.maskComposite = '';
+      d.style.backdropFilter = d.style.webkitBackdropFilter = 'var(--hemma-perf-none, blur(10px))';
+      d.style.background = 'var(--hemma-perf-none, radial-gradient(closest-side, rgba(0,0,0,' + dark + '), rgba(0,0,0,' + mid + ') 60%, rgba(0,0,0,0)))';
+      return h;
+    };
     if (mobile) {
-      var hf = halo();
-      // Kept inside the row: it sits above the list, so reaching into the first card would blur the card itself.
-      hf.style.top = '-4px';
-      hf.style.bottom = '-6px';
-      var hm = 'linear-gradient(to right, transparent 0px, #000 30px, #000 calc(100% - 30px), transparent 100%),'
-        + ' linear-gradient(to bottom, transparent 0px, #000 14px, #000 calc(100% - 14px), transparent 100%)';
-      hf.lastChild.style.webkitMaskImage = hf.lastChild.style.maskImage = hm;
-      hf.lastChild.style.backdropFilter = hf.lastChild.style.webkitBackdropFilter = 'var(--hemma-perf-none, blur(10px))';
+      // Kept above the first card, which would otherwise blur itself.
+      var hf = textHalo('-10px', '-9px', 0.30, 0.14);
+      hf.style.right = 'auto';
       head.appendChild(hf);
       // The empty line sits where the shared shadow layer fades out, so it carries its own halo, a shade darker than the title's.
-      var eh = halo();
-      eh.style.top = '-14px';
-      eh.style.bottom = '-14px';
+      var eh = textHalo('-14px', '-14px', 0.36, 0.17);
       eh.style.left = '-34px';
       eh.style.right = '-34px';
-      eh.lastChild.style.webkitMaskImage = eh.lastChild.style.maskImage = hm;
-      eh.lastChild.style.backdropFilter = eh.lastChild.style.webkitBackdropFilter = 'var(--hemma-perf-none, blur(10px))';
-      eh.lastChild.style.background = 'var(--hemma-perf-none, radial-gradient(closest-side, rgba(0,0,0,0.36), rgba(0,0,0,0.17) 60%, rgba(0,0,0,0)))';
       empty.insertBefore(eh, emptyText);
     }
     nc.appendChild(head);
     nc.appendChild(list);
     document.body.appendChild(scrim);
     document.body.appendChild(nc);
+    if (hf) {
+      hf.style.left = (title.offsetLeft - 26) + 'px';
+      hf.style.width = (title.offsetWidth + 52) + 'px';
+    }
     _center = nc;
     lift(anchor, true);
 
@@ -12051,17 +12057,6 @@ window.hemmaMenuGlass = {
         var css = 'left:' + (b.left - sb.left) + 'px;top:' + (b.top - sb.top) + 'px;width:' + b.width + 'px;height:' + (b.height + extra) + 'px;opacity:' + op;
         if (sh._css !== css) { sh._css = css; sh.style.cssText = css; }
       });
-      if (mobile && head.style.display !== 'none') {
-        var tb = title.getBoundingClientRect();
-        var ts = shadeOf.get(head);
-        if (!ts) { ts = shades.appendChild(document.createElement('div')); ts.className = 'text'; shadeOf.set(head, ts); }
-        seen.add(head);
-        // A gradient, not a blurred patch: a blur spills upward onto the bell's pill.
-        var tcss = 'left:' + (tb.left - sb.left - 40) + 'px;top:' + (tb.top - sb.top - 2) + 'px;width:' + (tb.width + 80) + 'px;height:' + (tb.height + 22)
-          + 'px;filter:none;border-radius:0;background:var(--hemma-perf-none, radial-gradient(closest-side, rgba(0,0,0,0.26), rgba(0,0,0,0.12) 60%, rgba(0,0,0,0)));'
-          + 'opacity:' + Number(getComputedStyle(title).opacity).toFixed(3);
-        if (ts._css !== tcss) { ts._css = tcss; ts.style.cssText = tcss; }
-      }
       if (!mobile && empty.isConnected) {
         var eb = empty.getBoundingClientRect();
         var es = shadeOf.get(empty);
