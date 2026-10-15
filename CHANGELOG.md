@@ -3,7 +3,7 @@
 ## 2.3.3
 
 - **Choose the sidebar's icon color.** Pick any of Hemma's colors under Layout > Sidebar icons in Hemma Studio. The default is a slightly brighter Hemma teal, so the icons stand out against the sidebar's glass and still match the tiles and badges.
-- **Notifications text reads better over bright tiles** on phones. The Notifications title and "No recent notifications" each sit on a soft, rounded blur and shade that fades out on every side, like Apple's, instead of a band across the row.
+- **Notifications text reads better over bright tiles** on phones. The Notifications title keeps a faint shadow on its letters instead of a blurred band across the row, as Apple's does, and "No recent notifications" gets the same shadow with a barely visible soft patch behind it.
 - **Clear All clears everything at once.** The notifications, the Notifications title and the Clear All button leave together, instead of the title waiting for the cards and the button briefly coming back.
 
 ## 2.3.2

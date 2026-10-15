@@ -11266,6 +11266,8 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone .hemma-nc-slot.stack{margin-bottom:17px;}'
       + '.hemma-nc.phone .hemma-nc-slot.stack.deep{margin-bottom:24px;}'
       + '.hemma-nc.phone .hemma-nc-title{font-size:27px;font-weight:400;letter-spacing:-0.015em;}'
+      // On the phone this text can sit over tiles; Apple keeps it legible with a shadow that hugs the letters, not a patch.
+      + '.hemma-nc.phone .hemma-nc-title, .hemma-nc.phone .hemma-nc-empty{text-shadow:0 0.5px 1px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.30), 0 0 14px rgba(0,0,0,0.20);}'
       + '.hemma-nc.phone .hemma-nc-x{height:34px;min-width:34px;padding:0 10px;border-radius:17px;font-size:15px;}'
       + '.hemma-nc.phone:not(.light) .hemma-nc-x{color:#fff;}'
       + '.hemma-nc.phone .hemma-nc-ghead{padding:12px 0 2px 12px;gap:12px;}'
@@ -11468,25 +11470,20 @@ window.hemmaMenuGlass = {
       return h;
     };
     // The bell is always on screen, so on the phone the title can open over tiles; it carries its own halo like a card.
-    // A rounded patch that fades out on every side, as Apple's does; a band across the row shows its flat edges over tiles.
-    var textHalo = function (top, bottom, dark, mid) {
+    var textHalo = function (top, bottom, dark, mid, blur) {
       var h = halo();
       h.style.top = top;
       h.style.bottom = bottom;
       var d = h.lastChild;
       d.style.webkitMaskImage = d.style.maskImage = 'radial-gradient(closest-side, #000 30%, transparent 100%)';
       d.style.webkitMaskComposite = d.style.maskComposite = '';
-      d.style.backdropFilter = d.style.webkitBackdropFilter = 'var(--hemma-perf-none, blur(10px))';
+      d.style.backdropFilter = d.style.webkitBackdropFilter = 'var(--hemma-perf-none, blur(' + blur + 'px))';
       d.style.background = 'var(--hemma-perf-none, radial-gradient(closest-side, rgba(0,0,0,' + dark + '), rgba(0,0,0,' + mid + ') 60%, rgba(0,0,0,0)))';
       return h;
     };
     if (mobile) {
-      // Kept above the first card, which would otherwise blur itself.
-      var hf = textHalo('-10px', '-9px', 0.30, 0.14);
-      hf.style.right = 'auto';
-      head.appendChild(hf);
-      // The empty line sits where the shared shadow layer fades out, so it carries its own halo, a shade darker than the title's.
-      var eh = textHalo('-14px', '-14px', 0.36, 0.17);
+      // The small empty line needs a faint rounded patch as well; the shared shadow layer fades out where it sits.
+      var eh = textHalo('-14px', '-14px', 0.14, 0.06, 6);
       eh.style.left = '-34px';
       eh.style.right = '-34px';
       empty.insertBefore(eh, emptyText);
@@ -11495,10 +11492,6 @@ window.hemmaMenuGlass = {
     nc.appendChild(list);
     document.body.appendChild(scrim);
     document.body.appendChild(nc);
-    if (hf) {
-      hf.style.left = (title.offsetLeft - 26) + 'px';
-      hf.style.width = (title.offsetWidth + 52) + 'px';
-    }
     _center = nc;
     lift(anchor, true);
 
