@@ -11206,12 +11206,14 @@ window.hemmaMenuGlass = {
       + '.hemma-nc-ghost.far{left:18px;right:18px;top:16px;bottom:-16px;z-index:-1;clip-path:inset(calc(100% - 12px) -2px -2px -2px);' + glass.replace('0.08)', '0.09)') + '}'
       + '.hemma-nc-ghead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 1px 4px;}'
       + '.hemma-nc-ghead b{font-size:15px;font-weight:700;letter-spacing:-0.01em;color:rgba(255,255,255,0.92);'
-      + 'text-shadow:0 1px 8px rgba(0,0,0,0.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+      // Ellipsis clips at the padding box, so the padding makes room for the shadow and the margin takes it back.
+      + 'text-shadow:0 1px 8px rgba(0,0,0,0.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:10px 12px;margin:-10px -12px;}'
       + '.hemma-nc-pills{display:flex;gap:6px;flex:none;}'
       + '.hemma-nc-pill{position:relative;height:24px;min-width:24px;padding:0 10px;border:0;border-radius:12px;cursor:pointer;'
       + 'display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:11px;font-weight:500;'
       + 'color:rgba(255,255,255,0.8);' + glass + 'box-shadow:' + EDGE + ';-webkit-tap-highlight-color:transparent;}'
       + '.hemma-nc-pill.round{padding:0;width:24px;}'
+      + '.hemma-nc-pill:not(.round){gap:5px;padding-left:8px;}'
       + '.hemma-nc-pill svg{width:8px;height:8px;}'
       + '.hemma-nc-pill::before' + rim
       + '.hemma-nc-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}'
@@ -11267,7 +11269,7 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone .hemma-nc-slot{margin-bottom:8px;}'
       + '.hemma-nc.phone .hemma-nc-slot.stack{margin-bottom:17px;}'
       + '.hemma-nc.phone .hemma-nc-slot.stack.deep{margin-bottom:24px;}'
-      + '.hemma-nc.phone .hemma-nc-title{font-size:27px;font-weight:400;letter-spacing:-0.015em;}'
+      + '.hemma-nc.phone .hemma-nc-title{font-size:22px;letter-spacing:-0.01em;}'
       + '.hemma-nc.phone .hemma-nc-x{height:34px;min-width:34px;padding:0 10px;border-radius:17px;font-size:15px;}'
       + '.hemma-nc.phone:not(.light) .hemma-nc-x{color:#fff;}'
       + '.hemma-nc.phone .hemma-nc-ghead{padding:12px 0 2px 12px;gap:12px;}'
@@ -11275,12 +11277,16 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone .hemma-nc-pills{gap:8px;}'
       + '.hemma-nc.phone .hemma-nc-pill{height:34px;min-width:34px;padding:0 14px;border-radius:17px;font-size:15px;}'
       + '.hemma-nc.phone .hemma-nc-pill.round{width:34px;padding:0;}'
+      + '.hemma-nc.phone .hemma-nc-pill:not(.round){gap:7px;padding-left:12px;}'
+      + '.hemma-nc.phone .hemma-nc-pill:not(.round) svg{width:11px;height:8px;}'
       + '.hemma-nc.phone .hemma-nc-pill svg{width:12px;height:12px;}'
       + '.hemma-nc.phone .hemma-nc-pill path{stroke-width:1.35;}'
       + '.hemma-nc.phone:not(.light) .hemma-nc-pill{color:#fff;}'
       + '.hemma-nc.phone .hemma-nc-x::after, .hemma-nc.phone .hemma-nc-pill::after{content:"";position:absolute;inset:-5px;}'
       + '.hemma-nc.phone.light .hemma-nc-card, .hemma-nc.phone.light .hemma-nc-clear{--nc-glow-t:0.19;background-image:linear-gradient(to bottom, rgba(255,255,255,var(--nc-glow-t, 0.03)), rgba(255,255,255,0) 8px,'
       + ' rgba(255,255,255,0) calc(100% - 8px), rgba(255,255,255,var(--nc-glow-b, 0.05)));}'
+      + '.hemma-nc.phone.light .hemma-nc-x, .hemma-nc.phone.light .hemma-nc-pill{background-image:linear-gradient(to bottom, rgba(255,255,255,0.19), rgba(255,255,255,0) 8px,'
+      + ' rgba(255,255,255,0) calc(100% - 8px), rgba(255,255,255,0.05));box-shadow:0 0.5px 0 rgba(255,255,255,0.13), ' + EDGE + ', 0 4px 16px rgba(0,0,0,0.08);}'
       + '.hemma-nc.phone .hemma-nc-x.open{padding:0 14px;}'
       + '.hemma-nc.phone .hemma-nc-x svg{width:14px;height:14px;}'
       + '.hemma-nc.phone .hemma-nc-x.open svg{width:0;}'
@@ -11310,7 +11316,11 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone:not(.light) .hemma-nc-card, .hemma-nc.phone:not(.light) .hemma-nc-clear{background-color:var(--hemma-perf-pill, rgba(255,255,255,0.1));'
       + 'background-image:linear-gradient(to bottom, rgba(255,255,255,0.12) 1px, rgba(255,255,255,0.07) 2px, rgba(255,255,255,0.035) 3.5px,'
       + ' rgba(255,255,255,0.015) 5.5px, rgba(255,255,255,0) 8px, rgba(255,255,255,0) calc(100% - 5.5px), rgba(255,255,255,0.012) calc(100% - 4.3px),'
-      + ' rgba(255,255,255,0.031) calc(100% - 3.3px), rgba(255,255,255,0.066) calc(100% - 2px), rgba(255,255,255,0.12) calc(100% - 1px));}';
+      + ' rgba(255,255,255,0.031) calc(100% - 3.3px), rgba(255,255,255,0.066) calc(100% - 2px), rgba(255,255,255,0.12) calc(100% - 1px));}'
+      + '.hemma-nc.phone:not(.light) .hemma-nc-x, .hemma-nc.phone:not(.light) .hemma-nc-pill{'
+      + 'background-image:linear-gradient(to bottom, rgba(255,255,255,0.12) 1px, rgba(255,255,255,0.035) 3.5px, rgba(255,255,255,0) 8px,'
+      + ' rgba(255,255,255,0) calc(100% - 5.5px), rgba(255,255,255,0.031) calc(100% - 3.3px), rgba(255,255,255,0.12) calc(100% - 1px));'
+      + 'box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.10);}';
     (document.head || document.documentElement).appendChild(st);
   }
 
@@ -11432,8 +11442,8 @@ window.hemmaMenuGlass = {
     var x = document.createElement('button');
     x.type = 'button';
     x.className = 'hemma-nc-x';
-    x.setAttribute('aria-label', _hemmaT('notify.clear_all', 'Clear All'));
-    x.innerHTML = X_SVG + '<span>' + window._hemmaUI.esc(_hemmaT('notify.clear_all', 'Clear All')) + '</span>';
+    x.setAttribute('aria-label', _hemmaT('notify.clear', 'Clear'));
+    x.innerHTML = X_SVG + '<span>' + window._hemmaUI.esc(_hemmaT('notify.clear', 'Clear')) + '</span>';
     head.appendChild(title);
     head.appendChild(x);
 
@@ -11598,7 +11608,9 @@ window.hemmaMenuGlass = {
       var less = document.createElement('button');
       less.type = 'button';
       less.className = 'hemma-nc-pill';
-      less.textContent = _hemmaT('notify.show_less', 'Show less');
+      less.innerHTML = '<svg viewBox="0 0 12 8" width="10" height="7" aria-hidden="true" style="display:block;flex:none;">'
+        + '<path d="M1.5 1.75l4.5 4.5 4.5-4.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        + '<span>' + window._hemmaUI.esc(_hemmaT('notify.show_less', 'Show less')) + '</span>';
       var drop = document.createElement('button');
       drop.type = 'button';
       drop.className = 'hemma-nc-pill round';
