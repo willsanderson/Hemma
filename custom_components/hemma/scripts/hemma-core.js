@@ -11231,7 +11231,9 @@ window.hemmaMenuGlass = {
       + 'padding:0;cursor:pointer;font:inherit;font-size:15px;font-weight:400;letter-spacing:-0.01em;color:rgba(255,255,255,0.92);'
       + glass + 'box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.10);opacity:0;pointer-events:none;-webkit-tap-highlight-color:transparent;}'
       + '@keyframes hemma-nc-fade{from{opacity:0;}}'
-      + '.hemma-nc-empty{position:relative;width:fit-content;margin:2px 0 0 auto;padding:4px 2px;border-radius:22px;animation:hemma-nc-in 320ms ' + EASE + ' backwards;'
+      + '.hemma-nc-empty > span{display:inline-block;animation:hemma-nc-in 320ms ' + EASE + ' backwards;}'
+      + '.hemma-nc-empty > .hemma-nc-halo > div{animation:hemma-nc-fade 320ms ' + EASE + ' backwards;}'
+      + '.hemma-nc-empty{position:relative;width:fit-content;margin:2px 0 0 auto;padding:4px 2px;border-radius:22px;'
       + 'font-size:15px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;'
       + 'color:rgba(255,255,255,0.92);text-shadow:0 1px 8px rgba(0,0,0,0.35);}'
       + '.hemma-nc.light .hemma-nc-card, .hemma-nc.light .hemma-nc-clear, .hemma-nc.light .hemma-nc-x, .hemma-nc.light .hemma-nc-close, .hemma-nc.light .hemma-nc-pill{'
@@ -11437,7 +11439,9 @@ window.hemmaMenuGlass = {
     list.className = 'hemma-nc-list';
     var empty = document.createElement('div');
     empty.className = 'hemma-nc-empty';
-    empty.textContent = _hemmaT('notify.none', 'No recent notifications');
+    var emptyText = document.createElement('span');
+    emptyText.textContent = _hemmaT('notify.none', 'No recent notifications');
+    empty.appendChild(emptyText);
 
     // Apple's column blur grows in strength toward the cards; one blur faded by opacity shows a sharp and a soft copy at once.
     var ramp = function (from, len) {
@@ -11474,6 +11478,16 @@ window.hemmaMenuGlass = {
       hf.lastChild.style.webkitMaskImage = hf.lastChild.style.maskImage = hm;
       hf.lastChild.style.backdropFilter = hf.lastChild.style.webkitBackdropFilter = 'var(--hemma-perf-none, blur(10px))';
       head.appendChild(hf);
+      // The empty line sits where the shared shadow layer fades out, so it carries its own halo, a shade darker than the title's.
+      var eh = halo();
+      eh.style.top = '-14px';
+      eh.style.bottom = '-14px';
+      eh.style.left = '-34px';
+      eh.style.right = '-34px';
+      eh.lastChild.style.webkitMaskImage = eh.lastChild.style.maskImage = hm;
+      eh.lastChild.style.backdropFilter = eh.lastChild.style.webkitBackdropFilter = 'var(--hemma-perf-none, blur(10px))';
+      eh.lastChild.style.background = 'var(--hemma-perf-none, radial-gradient(closest-side, rgba(0,0,0,0.36), rgba(0,0,0,0.17) 60%, rgba(0,0,0,0)))';
+      empty.insertBefore(eh, emptyText);
     }
     nc.appendChild(head);
     nc.appendChild(list);
@@ -12048,13 +12062,13 @@ window.hemmaMenuGlass = {
           + 'opacity:' + Number(getComputedStyle(title).opacity).toFixed(3);
         if (ts._css !== tcss) { ts._css = tcss; ts.style.cssText = tcss; }
       }
-      if (empty.isConnected) {
+      if (!mobile && empty.isConnected) {
         var eb = empty.getBoundingClientRect();
         var es = shadeOf.get(empty);
         if (!es) { es = shades.appendChild(document.createElement('div')); es.className = 'text'; shadeOf.set(empty, es); }
         seen.add(empty);
         var ecss = 'left:' + (eb.left - sb.left - 24) + 'px;top:' + (eb.top - sb.top - 14) + 'px;width:' + (eb.width + 48) + 'px;height:' + (eb.height + 28)
-          + 'px;opacity:' + Number(getComputedStyle(empty).opacity).toFixed(3);
+          + 'px;opacity:' + Number(getComputedStyle(emptyText).opacity).toFixed(3);
         if (es._css !== ecss) { es._css = ecss; es.style.cssText = ecss; }
       }
       shadeOf.forEach(function (sh, slot) {
@@ -12070,7 +12084,7 @@ window.hemmaMenuGlass = {
     // Each glass piece moves on its own: an animated ancestor leaves their blur blank until it settles.
     var pieces = function () {
       var clears = [].slice.call(list.querySelectorAll('.hemma-nc-clear')).filter(function (el) { return Number(getComputedStyle(el).opacity) > 0.05; });
-      return [title, x, empty].concat(clears, [].slice.call(head.querySelectorAll('.hemma-nc-halo > div')), [].slice.call(list.querySelectorAll('.hemma-nc-card, .hemma-nc-ghost, .hemma-nc-ghead, .hemma-nc-halo > div')));
+      return [title, x, emptyText].concat(clears, [].slice.call(head.querySelectorAll('.hemma-nc-halo > div')), [].slice.call(list.querySelectorAll('.hemma-nc-card, .hemma-nc-ghost, .hemma-nc-ghead, .hemma-nc-halo > div')));
     };
     var away = phone ? 'translateY(-14px)' : 'translateX(28px)';
     pieces().forEach(function (el) {
