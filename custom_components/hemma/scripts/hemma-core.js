@@ -11269,7 +11269,8 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone .hemma-nc-slot{margin-bottom:8px;}'
       + '.hemma-nc.phone .hemma-nc-slot.stack{margin-bottom:17px;}'
       + '.hemma-nc.phone .hemma-nc-slot.stack.deep{margin-bottom:24px;}'
-      + '.hemma-nc.phone .hemma-nc-title{font-size:22px;letter-spacing:-0.01em;}'
+      + '.hemma-nc.phone .hemma-nc-title{font-size:27px;font-weight:400;letter-spacing:-0.015em;}'
+      + '.hemma-nc.phone.handset .hemma-nc-title{font-size:22px;font-weight:700;letter-spacing:-0.01em;}'
       + '.hemma-nc.phone .hemma-nc-x{height:34px;min-width:34px;padding:0 10px;border-radius:17px;font-size:15px;}'
       + '.hemma-nc.phone:not(.light) .hemma-nc-x{color:#fff;}'
       + '.hemma-nc.phone .hemma-nc-ghead{padding:12px 0 2px 12px;gap:12px;}'
@@ -11277,9 +11278,11 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone .hemma-nc-pills{gap:8px;}'
       + '.hemma-nc.phone .hemma-nc-pill{height:34px;min-width:34px;padding:0 14px;border-radius:17px;font-size:15px;}'
       + '.hemma-nc.phone .hemma-nc-pill.round{width:34px;padding:0;}'
-      + '.hemma-nc.phone .hemma-nc-pill:not(.round){gap:7px;padding-left:12px;}'
-      + '.hemma-nc.phone .hemma-nc-pill:not(.round) svg{width:11px;height:8px;}'
-      + '.hemma-nc.phone .hemma-nc-pill svg{width:12px;height:12px;}'
+      // Measured off iOS 27's Show less: a 13.7 by 7.7pt chevron, 1.6pt stroke, 12pt from the text.
+      + '.hemma-nc.phone .hemma-nc-pill:not(.round){gap:12px;padding:0 13px 0 11px;}'
+      + '.hemma-nc.phone .hemma-nc-pill svg.chev{width:13.7px;height:7.7px;}'
+      + '.hemma-nc.phone .hemma-nc-pill svg.chev path{stroke-width:1.6;}'
+      + '.hemma-nc.phone .hemma-nc-pill svg{width:14px;height:14px;}'
       + '.hemma-nc.phone .hemma-nc-pill path{stroke-width:1.35;}'
       + '.hemma-nc.phone:not(.light) .hemma-nc-pill{color:#fff;}'
       + '.hemma-nc.phone .hemma-nc-x::after, .hemma-nc.phone .hemma-nc-pill::after{content:"";position:absolute;inset:-5px;}'
@@ -11320,7 +11323,11 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone:not(.light) .hemma-nc-x, .hemma-nc.phone:not(.light) .hemma-nc-pill{'
       + 'background-image:linear-gradient(to bottom, rgba(255,255,255,0.12) 1px, rgba(255,255,255,0.035) 3.5px, rgba(255,255,255,0) 8px,'
       + ' rgba(255,255,255,0) calc(100% - 5.5px), rgba(255,255,255,0.031) calc(100% - 3.3px), rgba(255,255,255,0.12) calc(100% - 1px));'
-      + 'box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.10);}';
+      + 'box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.10);}'
+      + '.hemma-nc.phone.handset .hemma-nc-card, .hemma-nc.phone.handset .hemma-nc-clear{background-color:var(--hemma-perf-pill, rgba(28,28,34,0.30));}'
+      + '.hemma-nc.phone.handset .hemma-nc-ghost{background-color:rgba(28,28,34,0.22);}'
+      + '.hemma-nc.phone.handset .hemma-nc-count{background:#fff;color:rgba(0,0,0,0.86);box-shadow:0 0 0 0.5px rgba(0,0,0,0.18);font-weight:700;}'
+      + '.hemma-nc.phone.handset .hemma-nc-tag{text-transform:none;font-size:15px;font-weight:600;letter-spacing:-0.01em;line-height:20px;color:rgba(255,255,255,0.96);}';
     (document.head || document.documentElement).appendChild(st);
   }
 
@@ -11423,7 +11430,8 @@ window.hemmaMenuGlass = {
     // A touchscreen tablet gets the phone's notifications; the Mac's, sized for a mouse, are too small to tap.
     var touch = !phone && !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
     var mobile = phone || touch;
-    nc.className = 'hemma-nc' + (mobile ? ' phone' : '') + (dark ? '' : ' light');
+    // Phones take iOS's lock-screen look, white on smoky glass in either theme; tablets and desktops follow the theme.
+    nc.className = 'hemma-nc' + (mobile ? ' phone' : '') + (phone ? ' handset' : '') + (dark || phone ? '' : ' light');
     nc.setAttribute('role', 'dialog');
     nc.setAttribute('aria-label', _hemmaT('notify.title', 'Notifications'));
     nc.style.fontFamily = window._hemmaUI.tokens.font;
@@ -11608,8 +11616,8 @@ window.hemmaMenuGlass = {
       var less = document.createElement('button');
       less.type = 'button';
       less.className = 'hemma-nc-pill';
-      less.innerHTML = '<svg viewBox="0 0 12 8" width="10" height="7" aria-hidden="true" style="display:block;flex:none;">'
-        + '<path d="M1.5 1.75l4.5 4.5 4.5-4.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      less.innerHTML = '<svg class="chev" viewBox="0 0 13.7 7.7" width="10" height="5.6" aria-hidden="true" style="display:block;flex:none;">'
+        + '<path d="M0.8 0.8L6.85 6.9L12.9 0.8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         + '<span>' + window._hemmaUI.esc(_hemmaT('notify.show_less', 'Show less')) + '</span>';
       var drop = document.createElement('button');
       drop.type = 'button';
