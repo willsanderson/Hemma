@@ -11213,7 +11213,8 @@ window.hemmaMenuGlass = {
       + 'display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:11px;font-weight:500;'
       + 'color:rgba(255,255,255,0.8);' + glass + 'box-shadow:' + EDGE + ';-webkit-tap-highlight-color:transparent;}'
       + '.hemma-nc-pill.round{padding:0;width:24px;}'
-      + '.hemma-nc-pill:not(.round){gap:5px;padding-left:8px;}'
+      + '.hemma-nc-pill:not(.round){padding-left:8px;}'
+      + '.hemma-nc-pill svg.chev{display:inline-block;vertical-align:baseline;margin-right:5px;}'
       + '.hemma-nc-pill svg{width:8px;height:8px;}'
       + '.hemma-nc-pill::before' + rim
       + '.hemma-nc-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}'
@@ -11278,8 +11279,9 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone .hemma-nc-pills{gap:8px;}'
       + '.hemma-nc.phone .hemma-nc-pill{height:34px;min-width:34px;padding:0 14px;border-radius:17px;font-size:15px;}'
       + '.hemma-nc.phone .hemma-nc-pill.round{width:34px;padding:0;}'
-      // Measured off iOS 27's Show less: a 13.7 by 7.7pt chevron, 1.6pt stroke, 12pt from the text.
-      + '.hemma-nc.phone .hemma-nc-pill:not(.round){gap:12px;padding:0 13px 0 11px;}'
+      // Measured off iOS 27's Show less: 13pt text, a 13.7 by 7.7pt chevron on the baseline, 10pt from the text.
+      + '.hemma-nc.phone .hemma-nc-pill:not(.round){padding:0 13px 0 11px;font-size:12.5px;}'
+      + '.hemma-nc.phone .hemma-nc-pill svg.chev{margin-right:9px;vertical-align:-0.67px;}'
       + '.hemma-nc.phone .hemma-nc-pill svg.chev{width:13.7px;height:7.7px;}'
       + '.hemma-nc.phone .hemma-nc-pill svg.chev path{stroke-width:1.6;}'
       + '.hemma-nc.phone .hemma-nc-pill svg{width:14px;height:14px;}'
@@ -11617,9 +11619,10 @@ window.hemmaMenuGlass = {
       var less = document.createElement('button');
       less.type = 'button';
       less.className = 'hemma-nc-pill';
-      less.innerHTML = '<svg class="chev" viewBox="0 0 13.7 7.7" width="10" height="5.6" aria-hidden="true" style="display:block;flex:none;">'
+      // Inside the text line, so the chevron rests on the baseline as iOS's does.
+      less.innerHTML = '<span><svg class="chev" viewBox="0 0 13.7 7.7" width="10" height="5.6" aria-hidden="true">'
         + '<path d="M0.8 0.8L6.85 6.9L12.9 0.8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-        + '<span>' + window._hemmaUI.esc(_hemmaT('notify.show_less', 'Show less')) + '</span>';
+        + window._hemmaUI.esc(_hemmaT('notify.show_less', 'Show less')) + '</span>';
       var drop = document.createElement('button');
       drop.type = 'button';
       drop.className = 'hemma-nc-pill round';

@@ -7,7 +7,7 @@
 - **Notification cards and buttons have even edges on iPhones.** Their dark outline was a pixel heavier along the bottom and right; it is now the same all the way around.
 - **Crisper notification edges on iPhones**, measured off iOS 27: a clear dark hairline down the sides, a bright line along the top and a brighter one along the bottom, on the cards and their buttons alike. Stacked notifications show their count in a white circle, as Apple's do. Tablets and desktops keep their macOS-style look.
 - **Notification buttons match the cards on phones.** Show less, Clear and the top Clear button have the cards' soft glow and shadow instead of looking flat, and a group's name no longer shows a clipped box around its shadow.
-- **Show less has a down arrow** sized like iOS's, both Clear buttons are the same size, and the expanded top button reads Clear instead of Clear All.
+- **Show less has a down arrow** matched to iOS 27's, resting on the text's baseline with the same spacing and text size, both Clear buttons are the same size, and the expanded top button reads Clear instead of Clear All.
 - **The Notifications title on phones is bold**, matching tablets and desktops, at a size just above the group names.
 - **A group's Show less and Clear buttons no longer shift as it opens.** They kept their glass during the animation instead of gaining it a moment after.
 - **The phone's top right pill has matching edges.** Its dark edge line was thicker on the left than the right on iPhones; both sides now match.
