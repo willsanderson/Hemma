@@ -11328,7 +11328,11 @@ window.hemmaMenuGlass = {
       + 'box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.10);}'
       // Measured off iOS 27: a crisp dark hairline down the sides, a bright line along the top and a brighter one along the bottom.
       + '.hemma-nc.phone.handset .hemma-nc-card, .hemma-nc.phone.handset .hemma-nc-clear{--nc-glow-b:0.12;box-shadow:inset 0 var(--nc-edge, 0.5px) 0 rgba(255,255,255,0.6),'
-      + ' inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.75), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.08);}'
+      + ' inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.75), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.42), 0 4px 16px rgba(0,0,0,0.08);}'
+      // A ring as dark on the sides as Apple's draws half as dark where it turns the corner, which reads as a cut; the extra darkness fades out before the curve.
+      + '.hemma-nc.phone.handset .hemma-nc-card::after, .hemma-nc.phone.handset .hemma-nc-clear::after{content:"";position:absolute;inset:calc(-1 * var(--nc-edge, 0.5px));border-radius:inherit;pointer-events:none;'
+      + 'box-shadow:inset 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.3);'
+      + '-webkit-mask:linear-gradient(to bottom, transparent 6%, #000 42%, #000 58%, transparent 94%);mask:linear-gradient(to bottom, transparent 6%, #000 42%, #000 58%, transparent 94%);}'
       + '.hemma-nc.phone.handset .hemma-nc-ghost{box-shadow:inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.6), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6);}'
       + '.hemma-nc.phone.handset .hemma-nc-x, .hemma-nc.phone.handset .hemma-nc-pill{box-shadow:0 0.5px 0 rgba(255,255,255,0.13), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.08);}'
       + '.hemma-nc.phone.handset .hemma-nc-count{background:#fff;color:rgba(0,0,0,0.86);box-shadow:0 0 0 0.5px rgba(0,0,0,0.18);font-weight:700;}';
