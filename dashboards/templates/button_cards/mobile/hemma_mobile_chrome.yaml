@@ -184,8 +184,12 @@ hemma_mobile_chrome:
       backdrop-filter: var(--hemma-pill-backdrop, blur(12px) saturate(1.4));
       -webkit-backdrop-filter: var(--hemma-pill-backdrop, blur(12px) saturate(1.4));
       box-shadow: var(--hemma-pill-rim, inset 0 0.5px 0 rgba(255,255,255,0.10), inset 0 -0.5px 0 rgba(255,255,255,0.10)),
-        -0.5px 0 0 var(--hemma-pill-edge, rgba(0,0,0,0.50)), 0.5px 0 0 var(--hemma-pill-edge, rgba(0,0,0,0.50));
+        calc(-1 * var(--hemma-pill-edge-w, 0.5px)) 0 0 var(--hemma-pill-edge, rgba(0,0,0,0.50)), var(--hemma-pill-edge-w, 0.5px) 0 0 var(--hemma-pill-edge, rgba(0,0,0,0.50));
       pointer-events: none;
+    }
+    /* 0.5px is 1.5 device pixels at 3x, which WebKit rounds up on one side and down on the other. */
+    @media (min-resolution: 2.5dppx) {
+      :host ha-card::before { --hemma-pill-edge-w: 0.6667px; }
     }
     :host ha-card::after{
       content: "";

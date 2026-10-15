@@ -11266,8 +11266,6 @@ window.hemmaMenuGlass = {
       + '.hemma-nc.phone .hemma-nc-slot.stack{margin-bottom:17px;}'
       + '.hemma-nc.phone .hemma-nc-slot.stack.deep{margin-bottom:24px;}'
       + '.hemma-nc.phone .hemma-nc-title{font-size:27px;font-weight:400;letter-spacing:-0.015em;}'
-      // On the phone this text can sit over tiles; Apple keeps it legible with a shadow that hugs the letters, not a patch.
-      + '.hemma-nc.phone .hemma-nc-title, .hemma-nc.phone .hemma-nc-empty{text-shadow:0 0.5px 1px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.30), 0 0 14px rgba(0,0,0,0.20);}'
       + '.hemma-nc.phone .hemma-nc-x{height:34px;min-width:34px;padding:0 10px;border-radius:17px;font-size:15px;}'
       + '.hemma-nc.phone:not(.light) .hemma-nc-x{color:#fff;}'
       + '.hemma-nc.phone .hemma-nc-ghead{padding:12px 0 2px 12px;gap:12px;}'
