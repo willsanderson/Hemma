@@ -10,6 +10,7 @@
 - **Show less has a down arrow** matched to iOS 27's, resting on the text's baseline with the same spacing and text size, both Clear buttons are the same size, and the expanded top button reads Clear instead of Clear All.
 - **The Notifications title on phones is bold**, matching tablets and desktops, at a size just above the group names.
 - **A group's Show less and Clear buttons no longer shift as it opens.** They kept their glass during the animation instead of gaining it a moment after.
+- **Notifications keep clear of the header on phones.** Opened after scrolling down, the panel's Clear button no longer touches the bottom of the header's frosted band.
 - **The phone's top right pill has matching edges.** Its dark edge line was thicker on the left than the right on iPhones; both sides now match.
 - **Clear All clears everything at once.** The notifications, the Notifications title and the Clear All button leave together, instead of the title waiting for the cards and the button briefly coming back.
 

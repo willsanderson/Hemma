@@ -11443,6 +11443,15 @@ window.hemmaMenuGlass = {
     nc.setAttribute('aria-label', _hemmaT('notify.title', 'Notifications'));
     nc.style.fontFamily = window._hemmaUI.tokens.font;
     var top = Math.round(r.bottom + (phone ? 12 : 14));
+    if (phone) {
+      // The scrolled header's veil ends on this line (filter-overlay's st(52)); the head row keeps clear of it.
+      var probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;left:0;width:0;height:0;visibility:hidden;'
+        + 'top:calc(env(safe-area-inset-top, 0px) + var(--hemma-mobile-chrome-drop, 4px) + 8px * var(--hemma-landscape-phone, 0) + 52px);';
+      document.body.appendChild(probe);
+      top = Math.max(top, Math.round(probe.getBoundingClientRect().top) + 6);
+      probe.remove();
+    }
     nc.style.top = top + 'px';
     nc.style.maxHeight = 'calc(100% - ' + (top + 12) + 'px)';
     var gutter = Math.max(12, Math.round(window.innerWidth - rowRight(anchor, r)));
