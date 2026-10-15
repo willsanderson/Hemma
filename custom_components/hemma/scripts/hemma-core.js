@@ -11327,32 +11327,16 @@ window.hemmaMenuGlass = {
       + ' rgba(255,255,255,0) calc(100% - 5.5px), rgba(255,255,255,0.031) calc(100% - 3.3px), rgba(255,255,255,0.12) calc(100% - 1px));'
       + 'box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.10);}'
       // Measured off iOS 27: a crisp dark hairline down the sides, a bright line along the top and a brighter one along the bottom.
-      + '.hemma-nc.phone.handset .hemma-nc-card, .hemma-nc.phone.handset .hemma-nc-clear{--nc-glow-b:0.12;box-shadow:inset 0 var(--nc-edge, 0.5px) 0 rgba(255,255,255,0.6),'
+      + '.hemma-nc.phone.handset.light .hemma-nc-card, .hemma-nc.phone.handset.light .hemma-nc-clear{--nc-glow-b:0.12;box-shadow:inset 0 var(--nc-edge, 0.5px) 0 rgba(255,255,255,0.6),'
       + ' inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.75), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.42), 0 4px 16px rgba(0,0,0,0.08);}'
       // A ring as dark on the sides as Apple's draws half as dark where it turns the corner, which reads as a cut; the extra darkness fades out before the curve.
-      + '.hemma-nc.phone.handset .hemma-nc-card::after, .hemma-nc.phone.handset .hemma-nc-clear::after{content:"";position:absolute;inset:calc(-1 * var(--nc-edge, 0.5px));border-radius:inherit;pointer-events:none;'
+      + '.hemma-nc.phone.handset.light .hemma-nc-card::after, .hemma-nc.phone.handset.light .hemma-nc-clear::after{content:"";position:absolute;inset:calc(-1 * var(--nc-edge, 0.5px));border-radius:inherit;pointer-events:none;'
       + 'box-shadow:inset 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.3);'
       + '-webkit-mask:linear-gradient(to bottom, transparent 6%, #000 42%, #000 58%, transparent 94%);mask:linear-gradient(to bottom, transparent 6%, #000 42%, #000 58%, transparent 94%);}'
-      + '.hemma-nc.phone.handset .hemma-nc-ghost{box-shadow:inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.6), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6);}'
-      + '.hemma-nc.phone.handset .hemma-nc-x, .hemma-nc.phone.handset .hemma-nc-pill{box-shadow:0 0.5px 0 rgba(255,255,255,0.13), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.08);}'
-      + '.hemma-nc.phone.handset .hemma-nc-count{background:#fff;color:rgba(0,0,0,0.86);box-shadow:0 0 0 0.5px rgba(0,0,0,0.18);font-weight:700;}'
-      // Dark mode matches macOS's dark notifications, measured: glass a touch lighter than what is behind it, a bright top line with a short glow,
-      // a rise into a two-step bottom edge, and one soft dark hairline down the sides.
-      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-card, .hemma-nc.phone.handset:not(.light) .hemma-nc-clear,'
-      + ' .hemma-nc.phone.handset:not(.light) .hemma-nc-x, .hemma-nc.phone.handset:not(.light) .hemma-nc-pill{'
-      + 'background-color:var(--hemma-perf-pill, rgba(255,255,255,0.10));'
-      + '-webkit-backdrop-filter:var(--hemma-perf-none, blur(24px) saturate(1.3));backdrop-filter:var(--hemma-perf-none, blur(24px) saturate(1.3));'
-      + 'background-image:linear-gradient(to bottom, rgba(255,255,255,0.40) 0.5px, rgba(255,255,255,0.12) 1px, rgba(255,255,255,0.08) 1.5px, rgba(255,255,255,0.05) 2px,'
-      + ' rgba(255,255,255,0.03) 3px, rgba(255,255,255,0) 5px, rgba(255,255,255,0) calc(100% - 6px), rgba(255,255,255,0.05) calc(100% - 3px),'
-      + ' rgba(255,255,255,0.12) calc(100% - 1.5px), rgba(255,255,255,0.32) calc(100% - 1px));'
-      // Sideways offsets, not a ring: macOS's dark line runs down the sides only and thins away through the corners.
-      + 'box-shadow:inset 0 calc(2 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.16), inset 0 calc(-2 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.22),'
-      + ' calc(-1 * var(--nc-edge, 0.5px)) 0 0 rgba(0,0,0,0.18), var(--nc-edge, 0.5px) 0 0 rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.12);}'
-      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-shades > div:not(.text){box-shadow:var(--hemma-perf-none, 0 32px 180px rgba(0,0,0,0.12));}'
-      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-card::before, .hemma-nc.phone.handset:not(.light) .hemma-nc-clear::before{background:none;}'
-      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-card::after, .hemma-nc.phone.handset:not(.light) .hemma-nc-clear::after{display:none;}'
-      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-count{background:rgba(60,64,72,0.92);color:#fff;box-shadow:0 0 0 0.5px rgba(0,0,0,0.45), inset 0 0.5px 0 rgba(255,255,255,0.3);}'
-      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-ghost{background-color:rgba(255,255,255,0.08);}';
+      + '.hemma-nc.phone.handset.light .hemma-nc-ghost{box-shadow:inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.6), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6);}'
+      + '.hemma-nc.phone.handset.light .hemma-nc-x, .hemma-nc.phone.handset.light .hemma-nc-pill{box-shadow:0 0.5px 0 rgba(255,255,255,0.13), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.08);}'
+      + '.hemma-nc.phone.handset.light .hemma-nc-count{background:#fff;color:rgba(0,0,0,0.86);box-shadow:0 0 0 0.5px rgba(0,0,0,0.18);font-weight:700;}'
+      + '';
     (document.head || document.documentElement).appendChild(st);
   }
 
