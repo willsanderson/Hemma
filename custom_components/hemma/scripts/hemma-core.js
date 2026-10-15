@@ -11335,7 +11335,13 @@ window.hemmaMenuGlass = {
       + '-webkit-mask:linear-gradient(to bottom, transparent 6%, #000 42%, #000 58%, transparent 94%);mask:linear-gradient(to bottom, transparent 6%, #000 42%, #000 58%, transparent 94%);}'
       + '.hemma-nc.phone.handset .hemma-nc-ghost{box-shadow:inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.6), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6);}'
       + '.hemma-nc.phone.handset .hemma-nc-x, .hemma-nc.phone.handset .hemma-nc-pill{box-shadow:0 0.5px 0 rgba(255,255,255,0.13), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.08);}'
-      + '.hemma-nc.phone.handset .hemma-nc-count{background:#fff;color:rgba(0,0,0,0.86);box-shadow:0 0 0 0.5px rgba(0,0,0,0.18);font-weight:700;}';
+      + '.hemma-nc.phone.handset .hemma-nc-count{background:#fff;color:rgba(0,0,0,0.86);box-shadow:0 0 0 0.5px rgba(0,0,0,0.18);font-weight:700;}'
+      // Dark mode mirrors the light glass: a smoky fill deep enough for white text over the dashboard's bright tiles.
+      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-card, .hemma-nc.phone.handset:not(.light) .hemma-nc-clear{background-color:var(--hemma-perf-pill, rgba(30,30,34,0.5));'
+      + 'background-image:linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0) 8px, rgba(255,255,255,0) calc(100% - 8px), rgba(255,255,255,0.06));}'
+      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-card::before, .hemma-nc.phone.handset:not(.light) .hemma-nc-clear::before{background:none;}'
+      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-x, .hemma-nc.phone.handset:not(.light) .hemma-nc-pill{background-color:var(--hemma-perf-pill, rgba(30,30,34,0.5));}'
+      + '.hemma-nc.phone.handset:not(.light) .hemma-nc-ghost{background-color:rgba(30,30,34,0.4);}';
     (document.head || document.documentElement).appendChild(st);
   }
 
