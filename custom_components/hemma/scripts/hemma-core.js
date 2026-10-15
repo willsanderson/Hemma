@@ -11324,10 +11324,12 @@ window.hemmaMenuGlass = {
       + 'background-image:linear-gradient(to bottom, rgba(255,255,255,0.12) 1px, rgba(255,255,255,0.035) 3.5px, rgba(255,255,255,0) 8px,'
       + ' rgba(255,255,255,0) calc(100% - 5.5px), rgba(255,255,255,0.031) calc(100% - 3.3px), rgba(255,255,255,0.12) calc(100% - 1px));'
       + 'box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.10);}'
-      + '.hemma-nc.phone.handset .hemma-nc-card, .hemma-nc.phone.handset .hemma-nc-clear{background-color:var(--hemma-perf-pill, rgba(28,28,34,0.30));}'
-      + '.hemma-nc.phone.handset .hemma-nc-ghost{background-color:rgba(28,28,34,0.22);}'
-      + '.hemma-nc.phone.handset .hemma-nc-count{background:#fff;color:rgba(0,0,0,0.86);box-shadow:0 0 0 0.5px rgba(0,0,0,0.18);font-weight:700;}'
-      + '.hemma-nc.phone.handset .hemma-nc-tag{text-transform:none;font-size:15px;font-weight:600;letter-spacing:-0.01em;line-height:20px;color:rgba(255,255,255,0.96);}';
+      // Measured off iOS 27: a crisp dark hairline down the sides, a bright line along the top and a brighter one along the bottom.
+      + '.hemma-nc.phone.handset .hemma-nc-card, .hemma-nc.phone.handset .hemma-nc-clear{--nc-glow-b:0.12;box-shadow:inset 0 var(--nc-edge, 0.5px) 0 rgba(255,255,255,0.6),'
+      + ' inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.75), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.08);}'
+      + '.hemma-nc.phone.handset .hemma-nc-ghost{box-shadow:inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.6), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6);}'
+      + '.hemma-nc.phone.handset .hemma-nc-x, .hemma-nc.phone.handset .hemma-nc-pill{box-shadow:0 0.5px 0 rgba(255,255,255,0.13), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.08);}'
+      + '.hemma-nc.phone.handset .hemma-nc-count{background:#fff;color:rgba(0,0,0,0.86);box-shadow:0 0 0 0.5px rgba(0,0,0,0.18);font-weight:700;}';
     (document.head || document.documentElement).appendChild(st);
   }
 
@@ -11430,8 +11432,7 @@ window.hemmaMenuGlass = {
     // A touchscreen tablet gets the phone's notifications; the Mac's, sized for a mouse, are too small to tap.
     var touch = !phone && !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
     var mobile = phone || touch;
-    // Phones take iOS's lock-screen look, white on smoky glass in either theme; tablets and desktops follow the theme.
-    nc.className = 'hemma-nc' + (mobile ? ' phone' : '') + (phone ? ' handset' : '') + (dark || phone ? '' : ' light');
+    nc.className = 'hemma-nc' + (mobile ? ' phone' : '') + (phone ? ' handset' : '') + (dark ? '' : ' light');
     nc.setAttribute('role', 'dialog');
     nc.setAttribute('aria-label', _hemmaT('notify.title', 'Notifications'));
     nc.style.fontFamily = window._hemmaUI.tokens.font;

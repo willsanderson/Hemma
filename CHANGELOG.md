@@ -5,7 +5,7 @@
 - **Choose the sidebar's icon color.** Pick any of Hemma's colors under Layout > Sidebar icons in Hemma Studio. The default is a slightly brighter Hemma teal, so the icons stand out against the sidebar's glass and still match the tiles and badges.
 - **No more blurred band behind Notifications on phones.** The title uses the same soft text shadow as on tablets and desktops, and "No recent notifications" adds only a barely visible patch behind it.
 - **Notification cards and buttons have even edges on iPhones.** Their dark outline was a pixel heavier along the bottom and right; it is now the same all the way around.
-- **On phones, Notifications take the iOS lock screen look**: white text on smoky glass in light and dark mode, a white count on stacked notifications, and the label line above each title in white like Apple's. Tablets and desktops keep their macOS-style look.
+- **Crisper notification edges on iPhones**, measured off iOS 27: a clear dark hairline down the sides, a bright line along the top and a brighter one along the bottom, on the cards and their buttons alike. Stacked notifications show their count in a white circle, as Apple's do. Tablets and desktops keep their macOS-style look.
 - **Notification buttons match the cards on phones.** Show less, Clear and the top Clear button have the cards' soft glow and shadow instead of looking flat, and a group's name no longer shows a clipped box around its shadow.
 - **Show less has a down arrow** sized like iOS's, both Clear buttons are the same size, and the expanded top button reads Clear instead of Clear All.
 - **The Notifications title on phones is bold**, matching tablets and desktops, at a size just above the group names.
