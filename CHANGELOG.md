@@ -13,7 +13,7 @@
 - **A group's Show less and Clear buttons no longer shift as it opens.** They kept their glass during the animation instead of gaining it a moment after.
 - **Notifications keep clear of the header on phones.** Opened after scrolling down, the panel's Clear button no longer touches the bottom of the header's frosted band.
 - **The phone's top right pill has matching edges.** Its dark edge line was thicker on the left than the right on iPhones; both sides now match.
-- **Clear All clears everything at once.** The notifications, the Notifications title and the Clear All button leave together, instead of the title waiting for the cards and the button briefly coming back.
+- **Clear All clears everything at once.** The notifications, the Notifications title and the Clear All button leave together, instead of the title waiting for the cards and the button briefly coming back. On phones, the page title and weather fade back in as they go, as one cross-fade.
 
 ## 2.3.2
 
