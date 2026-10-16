@@ -2,6 +2,7 @@
 
 ## 2.3.3
 
+- **Hemma Studio no longer says UI eXtension is missing when it is only waiting to be added.** Downloading it in HACS is half the setup; Studio now tells you it still needs adding under Settings > Devices & services and links straight there, or says when it was added but failed to start. Reported by [@mauromortier](https://github.com/mauromortier) in [#85](https://github.com/willsanderson/Hemma/issues/85).
 - **Choose the sidebar's icon color.** Pick any of Hemma's colors under Layout > Sidebar icons in Hemma Studio. The default is a slightly brighter Hemma teal, so the icons stand out against the sidebar's glass and still match the tiles and badges.
 - **No more blurred band behind Notifications on phones.** The title uses the same soft text shadow as on tablets and desktops, and "No recent notifications" adds only a barely visible patch behind it.
 - **Desktop notifications in dark mode diffuse what is behind them like macOS's**, so a bright tile under a card reads as a soft glow instead of a shape.

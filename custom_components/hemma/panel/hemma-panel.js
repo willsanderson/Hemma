@@ -10653,11 +10653,25 @@ class HemmaPanel extends HTMLElement {
     }
     const components = (this._hass && this._hass.config
       && this._hass.config.components) || [];
-    return REQUIREMENTS.filter((r) => {
+    const missing = REQUIREMENTS.filter((r) => {
       if (r.kind === "integration") return !components.includes(r.id);
       if (customElements.get(r.id)) return false;
       return urls === null ? false : !urls.some((u) => u.includes(r.id));
     });
+    // Downloading from HACS is only half of an integration; one that is not running may be waiting to be added, or added and failing.
+    return Promise.all(missing.map(async (r) => {
+      if (r.kind !== "integration") return r;
+      try {
+        const entries = await this._ws({ type: "config_entries/get", domain: r.id });
+        if (entries && entries.length) return { ...r, state: "failed" };
+      } catch (e) { /* older cores: fall through */ }
+      try {
+        await this._ws({ type: "manifest/get", integration: r.id });
+        return { ...r, state: "downloaded" };
+      } catch (e) {
+        return r;
+      }
+    }));
   }
 
   async _syncMods() {
@@ -10702,15 +10716,26 @@ class HemmaPanel extends HTMLElement {
     });
     const list = this._flowGroup(s.body);
     blockers.forEach((r) => {
-      // my.home-assistant.io deep-links straight into the reader's own HACS.
+      // my.home-assistant.io deep-links straight into the reader's own HACS or integration pages.
       const [owner, repository] = r.repo.split("/");
+      let sub = r.why, get = _sx("Get");
+      let href = "https://my.home-assistant.io/redirect/hacs_repository/?owner="
+        + encodeURIComponent(owner) + "&repository=" + encodeURIComponent(repository);
+      if (r.state === "downloaded") {
+        sub = _sx("Downloaded, but not added yet. Add it under Settings > Devices & services.");
+        get = _sx("Add");
+        href = "https://my.home-assistant.io/redirect/config_flow_start/?domain=" + encodeURIComponent(r.id);
+      } else if (r.state === "failed") {
+        sub = _sx("Added, but it did not start. It needs Home Assistant 2026.10 or newer; see Settings > System > Logs.");
+        get = _sx("Open");
+        href = "https://my.home-assistant.io/redirect/integration/?domain=" + encodeURIComponent(r.id);
+      }
       const row = this._flowRow(list, {
-        tag: "a", icon: "get", tint: FLOW_TINT.teal, title: r.label, sub: r.why, get: _sx("Get"),
+        tag: "a", icon: "get", tint: FLOW_TINT.teal, title: r.label, sub, get,
       }).row;
       row.target = "_blank";
       row.rel = "noreferrer";
-      row.href = "https://my.home-assistant.io/redirect/hacs_repository/?owner="
-        + encodeURIComponent(owner) + "&repository=" + encodeURIComponent(repository);
+      row.href = href;
     });
     this._flowButton(s.acts, _sx("Check Again"), () => {
       this._saveBlocked = false;
