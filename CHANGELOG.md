@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.4
+
+- **Now Playing keeps its glass while it slides in and out on Overview.** The tiles' blur stayed off until the animation finished; now the tile's contents fade while the glass itself stays frosted the whole way.
+
 ## 2.3.3
 
 - **Hemma Studio no longer says UI eXtension is missing when it is only waiting to be added.** Downloading it in HACS is half the setup; Studio now tells you it still needs adding under Settings > Devices & services and links straight there, or says when it was added but failed to start. Reported by [@mauromortier](https://github.com/mauromortier) in [#85](https://github.com/willsanderson/Hemma/issues/85).

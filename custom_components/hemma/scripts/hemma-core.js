@@ -3948,9 +3948,10 @@ window.hemmaMenuGlass = {
         const out = box._npAnims = [];
         Object.assign(box.style, { overflow: 'clip', height: h0 + 'px' });
         const fade = { duration: 180, easing: 'ease-in', fill: 'forwards' };
+        // The card keeps full opacity, or its glass loses its blur; what is inside it fades, and the closing section clips the glass away.
         box.querySelectorAll('.cat-np > *').forEach((el) => {
           const c = el.shadowRoot && el.shadowRoot.querySelector('ha-card');
-          if (c) out.push(c.animate([{ opacity: 1 }, { opacity: 0 }], fade));
+          if (c) [...c.children].forEach((k) => { if (k.localName !== 'style') out.push(k.animate([{ opacity: 1 }, { opacity: 0 }], fade)); });
         });
         const head = box.querySelector('h2');
         const close = { duration: 380, delay: 120, easing: FX_SPRING, fill: 'forwards' };
@@ -4046,8 +4047,11 @@ window.hemmaMenuGlass = {
         }
         tiles.forEach((el, i) => {
           const c = i >= was && el.shadowRoot && el.shadowRoot.querySelector('ha-card');
-          if (c) anims.push(c.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }],
-            { duration: 360, delay: 100 + (i - was) * 50, easing: FX_SPRING, fill: 'backwards' }));
+          if (!c) return;
+          const enter = { duration: 360, delay: 100 + (i - was) * 50, easing: FX_SPRING, fill: 'backwards' };
+          // Moving the glass itself keeps its blur; only its contents fade, since an element below full opacity cannot blur what is behind it.
+          anims.push(c.animate([{ transform: 'translateY(10px)' }, { transform: 'none' }], enter));
+          [...c.children].forEach((k) => { if (k.localName !== 'style') anims.push(k.animate([{ opacity: 0 }, { opacity: 1 }], enter)); });
         });
       };
       requestAnimationFrame(go);
