@@ -2,6 +2,7 @@
 
 ## 2.3.4
 
+- **The phone dashboard no longer jumps up and down.** A row whose tiles were all hidden, such as a Favorites row with nothing to show, kept reappearing for half a second whenever any entity updated, pushing everything below it down and back. Reported by [@furiaceka87](https://github.com/furiaceka87) in [#87](https://github.com/willsanderson/Hemma/issues/87).
 - **Now Playing opens and closes smoothly on Overview and on phones.** The page below eases into motion and settles gently instead of being shoved, and each tile fades in with a slight settle, its glass, tint and blur included, instead of being wiped in by the opening section. Press Save once in Hemma for the full fade; until then the tiles fade their contents and blur.
 
 ## 2.3.3

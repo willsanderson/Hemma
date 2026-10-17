@@ -537,6 +537,9 @@ class HemmaSmartRow extends HTMLElement {
     const snap = !!window._hemmaNoFilterAnim;
 
     const show = (firstCall) => {
+      let anyShown = false;
+      // WebKit reports every card inside a hidden row as hidden, so the row is shown while it checks; nothing paints in between.
+      if (this.style.display === 'none') this.style.display = '';
       this._wrappers.forEach((wrapper, i) => {
         const card = this._cards[i];
         if (!card) return;
@@ -557,8 +560,12 @@ class HemmaSmartRow extends HTMLElement {
         }
         if (this._heldClosed(i)) return;
         showWrapper(wrapper, !snap && (was === true || (firstCall && filterChanged)));
+        anyShown = true;
       });
-      this.style.display = '';
+      // A row with every tile hidden stays hidden once the sweep has settled it; showing it on each state update
+      // and hiding it again 500ms later made the page below jump up and down (#87).
+      const busy = this._animHiding.size > 0 || this._animShowing.size > 0;
+      this.style.display = (anyShown || busy || !this._swept) ? '' : 'none';
     };
 
     show(true);
@@ -576,6 +583,7 @@ class HemmaSmartRow extends HTMLElement {
       this._vizSweep = null;
       if (!this._initialized) return;
       this._config.cards.forEach((_, i) => this._reported.add(i));
+      this._swept = true;
       let anyVisible = false;
       this._wrappers.forEach((wrapper, i) => {
         const card = this._cards[i];
