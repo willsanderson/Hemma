@@ -251,10 +251,11 @@ hemma_mobile_now_playing:
               const filter = states['input_select.hemma_mobile_filter']?.state ?? 'all';
               if (filter === 'media') return 'block';
               if (filter !== 'all') return 'none';
-              const npList = (typeof window._hemmaNPView === 'function')
-                ? window._hemmaNPView(states, variables.cfg) : [];
-              return npList.length ? 'block' : 'none';
+              const plan = (typeof window._hemmaNPPlan === 'function')
+                ? window._hemmaNPPlan(states, variables.cfg) : [];
+              return plan.some(Boolean) ? 'block' : 'none';
             ]]]
+        - opacity: 'var(--np-reveal, 1)'
         - font-size: 18px
         - font-weight: 700
         - color: "#ffffff"
@@ -269,10 +270,9 @@ hemma_mobile_now_playing:
               const filter = states['input_select.hemma_mobile_filter']?.state ?? 'all';
               if (filter === 'media') return 'block';
               if (filter !== 'all') return 'none';
-              const npList = (typeof window._hemmaNPView === 'function')
-                ? (typeof window._hemmaNPView === "function" ? window._hemmaNPView(states, variables.cfg) : [])
-                : [];
-              return npList.length ? 'block' : 'none';
+              const plan = (typeof window._hemmaNPPlan === 'function')
+                ? window._hemmaNPPlan(states, variables.cfg) : [];
+              return plan.some(Boolean) ? 'block' : 'none';
             ]]]
         - overflow-x: auto
         - overflow-y: hidden
@@ -404,8 +404,15 @@ hemma_mobile_now_playing:
                exit record no longer carries one. */
             const planPos = planState.pos || {};
             const planPending = planState.pending || {};
+            const liveN = liveList.filter(Boolean).length;
+            const allGone = liveN === 0;
+            if (this._npLiveN !== liveN) {
+              this._npLiveN = liveN;
+              try { window._hemmaNPMobileRecheck?.(states); } catch (e) {}
+            }
+            /* The last tile out stays put while the row closes around it; a sideways exit would leave the row nothing to collapse. */
             const exitSlots = {};
-            for (const e of (planState.exits || [])) {
+            if (!allGone) for (const e of (planState.exits || [])) {
               if (planPos[e.key] !== undefined) exitSlots[planPos[e.key]] = true;
             }
             /* Declared here, above the probe that reads it - not down beside the CSS that uses it. */
@@ -448,7 +455,7 @@ hemma_mobile_now_playing:
             const snapOn = planState.snapGen !== planGen;
             planState.snapGen = planGen;
             const slotSnapped = snapOn ? (planState.changed || {}) : {};
-            const usesPeek = !useColumn && liveList.filter(Boolean).length > 1;
+            const usesPeek = !useColumn && (allGone ? plan.filter(Boolean).length : liveN) > 1;
             /* --hemma-measured-safe-left is measured for the LEFT only (smart-row.js), and the
                right gutter was a flat 11px — so in landscape, where the notch/inset sits on the
                right, the tile ran underneath it and got clipped. env() covers the right directly;

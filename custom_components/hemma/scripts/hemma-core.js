@@ -2024,7 +2024,7 @@ window.hemmaMenuGlass = {
         const isNpCard  = outerTpl === 'hemma_mobile_now_playing'
           || (Array.isArray(outerTpl) && outerTpl.includes('hemma_mobile_now_playing'));
         if (outerHost && isNpCard) {
-          const shown = activeCount > 0;
+          const shown = activeCount > 0 && outerHost._npLiveN !== 0;
           if (outerHost._npAnyActive !== shown) {
             outerHost._npAnyActive = shown;
             const ov = shown ? 'visible' : 'hidden';
@@ -2032,11 +2032,14 @@ window.hemmaMenuGlass = {
             outerHost.style.setProperty('overflow', ov, 'important');
             outerHost.style.setProperty('grid-template-rows', shown ? '1fr' : '0fr', 'important');
             outerHost.style.setProperty('grid-template-columns', 'minmax(0,1fr)', 'important');
-            outerHost.style.setProperty('opacity', shown ? '1' : '0');
+            // --np-reveal, not opacity: this host is an ancestor of the tiles' glass, and below full opacity it drops their blur.
+            outerHost.style.removeProperty('opacity');
+            outerHost.style.setProperty('--np-reveal', shown ? '1' : '0');
             outerHost.style.setProperty('pointer-events', shown ? 'auto' : 'none');
             outerHost.style.setProperty(
               'transition',
-              `grid-template-rows .5s cubic-bezier(0.32,0.72,0,1), opacity ${shown ? '.35s ease .12s' : '.25s ease'}`
+              `grid-template-rows .56s cubic-bezier(0.45,0,0.55,1) ${shown ? '0s' : '.08s'}, `
+              + `--np-reveal ${shown ? '.42s cubic-bezier(0.25,0.1,0.25,1) .14s' : '.3s ease-in'}`
             );
             const aspectRatio = outerHost.shadowRoot?.getElementById('aspect-ratio');
             if (aspectRatio) aspectRatio.style.setProperty('overflow', ov, 'important');
@@ -2179,6 +2182,8 @@ window.hemmaMenuGlass = {
     if (typeof window._hemmaNPPlan !== 'function') {
       window._hemmaNPPlan = function (states, V) {
         const EXIT_MS = 480;
+        // The last source out holds until the phone row has finished closing around it.
+        const LAST_EXIT_MS = 760;
         // Cap on waiting for artwork before opening an arrival anyway.
         const ART_CAP = 400;
         const OPEN_MIN = 60;
@@ -2216,7 +2221,7 @@ window.hemmaMenuGlass = {
 
         const alive = [];
         for (const e of S.exits) {
-          if ((now - e.at) < EXIT_MS) alive.push(e);
+          if ((now - e.at) < (liveKeys.length ? EXIT_MS : LAST_EXIT_MS)) alive.push(e);
           else S.done[e.key] = 1;
         }
 
@@ -2319,7 +2324,7 @@ window.hemmaMenuGlass = {
 
           try { clearTimeout(S.timer); } catch (err) {}
           if (S.exits.length) {
-            const due = Math.min.apply(null, S.exits.map((e) => e.at + EXIT_MS));
+            const due = Math.min.apply(null, S.exits.map((e) => e.at + (liveKeys.length ? EXIT_MS : LAST_EXIT_MS)));
             const delay = Math.max(30, (due - Date.now()) + 40);
             if (window._hemmaNPDebug === true) {
               console.log('%c[NP release scheduled]', 'color:#fa0', delay + 'ms');
