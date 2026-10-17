@@ -623,16 +623,20 @@ hemma_now_playing_primary:
             try { this.style.setProperty('--np-scrim-mult', isDark ? '1' : '0.55'); } catch (e) {}
             return v;
           ]]]
+      # --np-reveal (0 to 1, registered by hemma-core) fades every layer of the glass in or out without touching opacity, which would drop the blur.
       - background: >
           color-mix(in srgb,
-            rgba(0,0,0,calc(var(--hemma-badge-body-tint, 0.25) + (var(--np-inner-glass, 1) * 0.05)))
-              calc(var(--np-has-art, 0) * 100%),
-            var(--badge-background, rgba(10,12,14,0.65))) !important
+            color-mix(in srgb,
+              rgba(0,0,0,calc(var(--hemma-badge-body-tint, 0.25) + (var(--np-inner-glass, 1) * 0.05)))
+                calc(var(--np-has-art, 0) * 100%),
+              var(--badge-background, rgba(10,12,14,0.65)))
+              calc(var(--np-reveal, 1) * 100%),
+            transparent) !important
       - -webkit-backdrop-filter: >
-          var(--hemma-perf-none, blur(calc(var(--np-inner-glass, 1) * 22px))
+          var(--hemma-perf-none, blur(calc(var(--np-inner-glass, 1) * var(--np-reveal, 1) * 22px))
           saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1))))) !important
       - backdrop-filter: >
-          var(--hemma-perf-none, blur(calc(var(--np-inner-glass, 1) * 22px))
+          var(--hemma-perf-none, blur(calc(var(--np-inner-glass, 1) * var(--np-reveal, 1) * 22px))
           saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1))))) !important
       - border-radius: var(--np-inner-radius, calc(var(--hemma-u-np, 10px) * 2.6))
       # ── ARTWORK CORNER RADIUS - tune this value ── Strictly concentric with the card (--np-inner-radius - --np-pad-v) is 10px but reads too square; 15px is deliberately rounder. Range ~10-20px.
@@ -897,7 +901,7 @@ hemma_now_playing_primary:
       background-size: cover;
       background-position: center;
       filter: blur(52px) saturate(150%);
-      opacity: calc(var(--np-has-art, 0) * var(--np-bloom-strength, 0.30));
+      opacity: calc(var(--np-has-art, 0) * var(--np-bloom-strength, 0.30) * var(--np-reveal, 1));
       transform: translateZ(0);
       pointer-events: none;
       transition: opacity .45s ease;
@@ -913,6 +917,7 @@ hemma_now_playing_primary:
         rgba(0,0,0,calc(var(--np-has-art, 0) * 0.42 * var(--np-scrim-mult, 1))) 0%,
         rgba(0,0,0,calc(var(--np-has-art, 0) * 0.16 * var(--np-scrim-mult, 1))) 62%,
         rgba(0,0,0,calc(var(--np-has-art, 0) * 0.30 * var(--np-scrim-mult, 1))) 100%);
+      opacity: var(--np-reveal, 1);
       pointer-events: none;
     }
 
@@ -942,7 +947,7 @@ hemma_now_playing_primary:
          HOST, outside the card, so the card fading out left the rim and its
          drop shadow still painting. One tile per panel never showed it; a stack
          of seven with six empty drew six empty rectangles. */
-      opacity: calc(var(--np-glass, 1) * var(--np-enter-t, 1) * var(--np-has-src, 1));
+      opacity: calc(var(--np-glass, 1) * var(--np-enter-t, 1) * var(--np-has-src, 1) * var(--np-reveal, 1));
     }
 
     /* Specular ring + inner hairline - ONE pseudo-element. These used to be two separate #container::before
@@ -981,12 +986,13 @@ hemma_now_playing_primary:
         linear-gradient(#000 0 0);
       -webkit-mask-composite: source-in, xor;
               mask-composite: intersect, exclude;
-      opacity: var(--np-glass, 1);
+      opacity: calc(var(--np-glass, 1) * var(--np-reveal, 1));
       transform: translateZ(0);
       backface-visibility: hidden;
     }
 
     #container{
+      opacity: var(--np-reveal, 1);
       position: relative;
       z-index: 2;
       /* button-card's shadow DOM makes this a flex/grid child of ha-card (default min-width:auto refuses to shrink below content) - without this, an unwrapped long title could grow ha-card past its max-width caps. */

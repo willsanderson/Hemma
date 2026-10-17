@@ -1487,6 +1487,10 @@ window.hemmaMenuGlass = {
     };
   }
 
+  // The Now Playing tile multiplies every layer of its glass by this, so it fades in and out with its blur intact.
+  try { CSS.registerProperty({ name: '--np-reveal', syntax: '<number>', inherits: true, initialValue: '1' }); } catch (_) {}
+  try { CSS.registerProperty({ name: '--np-inner-glass', syntax: '<number>', inherits: true, initialValue: '1' }); } catch (_) {}
+
   if (typeof window._hemmaGameArt !== 'function') {
     window._hemmaGameArt = function (game, art) {
       const k = String(game || '').trim().toLowerCase();
@@ -3948,12 +3952,13 @@ window.hemmaMenuGlass = {
         const out = box._npAnims = [];
         Object.assign(box.style, { overflow: 'clip', height: h0 + 'px' });
         const fade = { duration: 180, easing: 'ease-in', fill: 'forwards' };
-        // The card keeps full opacity, or its glass loses its blur; what is inside it fades, and the closing section clips the glass away.
+        // --np-reveal fades the whole tile, glass included, without the opacity that would switch its blur off.
         box.querySelectorAll('.cat-np > *').forEach((el) => {
           const c = el.shadowRoot && el.shadowRoot.querySelector('ha-card');
           if (!c) return;
-          [...c.children].forEach((k) => { if (k.localName !== 'style') out.push(k.animate([{ opacity: 1 }, { opacity: 0 }], fade)); });
-          out.push(...this._npGlass(el, c, { duration: 260, easing: 'ease-in', fill: 'forwards' }, true));
+          const leave = { duration: 300, easing: 'ease-in', fill: 'forwards' };
+          out.push(...this._npFade(el, c, leave, true));
+          out.push(c.animate([{ transform: 'none' }, { transform: 'scale(0.98)' }], leave));
         });
         const head = box.querySelector('h2');
         // An even ease in and out: the whole page below moves with this, so it must start and land gently.
@@ -3997,15 +4002,16 @@ window.hemmaMenuGlass = {
       if (move) this._npGrow(box, h0, Math.max(0, was));
     }
 
-    // The glass fades by its tint, blur, sheen and rim; fading its opacity would switch the blur off for the whole animation.
-    _npGlass(el, c, opts, leaving) {
-      // The tile's glass is set with !important, out of an animation's reach, but its blur scales by --np-inner-glass.
-      try { CSS.registerProperty({ name: '--np-inner-glass', syntax: '<number>', inherits: true, initialValue: '1' }); } catch (_) {}
-      const show = leaving ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 1 }];
-      const out = [c.animate(leaving ? [{ '--np-inner-glass': 1 }, { '--np-inner-glass': 0 }] : [{ '--np-inner-glass': 0 }, { '--np-inner-glass': 1 }], opts)];
-      [[c, '::after'], [el, '::after']].forEach(([n, pe]) => {
-        try { out.push(n.animate(show, Object.assign({ pseudoElement: pe }, opts))); } catch (_) {}
-      });
+    // A dashboard not yet saved since --np-reveal arrived has the old tile template; it gets the older fade, contents and blur only.
+    _npFade(el, c, opts, leaving) {
+      const k = c.querySelector('#container');
+      el.style.setProperty('--np-reveal', '0');
+      const reveal = !!k && parseFloat(getComputedStyle(k).opacity) < 0.5;
+      el.style.removeProperty('--np-reveal');
+      const ends = (name) => (leaving ? [{ [name]: 1 }, { [name]: 0 }] : [{ [name]: 0 }, { [name]: 1 }]);
+      if (reveal) return [el.animate(ends('--np-reveal'), opts)];
+      const out = [c.animate(ends('--np-inner-glass'), opts)];
+      [...c.children].forEach((n) => { if (n.localName !== 'style') out.push(n.animate(ends('opacity'), opts)); });
       return out;
     }
 
@@ -4063,11 +4069,10 @@ window.hemmaMenuGlass = {
         tiles.forEach((el, i) => {
           const c = i >= was && el.shadowRoot && el.shadowRoot.querySelector('ha-card');
           if (!c) return;
-          const enter = { duration: 360, delay: 100 + (i - was) * 50, easing: FX_SPRING, fill: 'backwards' };
-          // Moving the glass itself keeps its blur; only its contents fade, since an element below full opacity cannot blur what is behind it.
-          anims.push(c.animate([{ transform: 'translateY(10px)' }, { transform: 'none' }], enter));
-          [...c.children].forEach((k) => { if (k.localName !== 'style') anims.push(k.animate([{ opacity: 0 }, { opacity: 1 }], enter)); });
-          anims.push(...this._npGlass(el, c, enter, false));
+          const enter = { duration: 420, delay: 140 + (i - was) * 50, easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)', fill: 'backwards' };
+          // A fade and a slight settle, as Apple's do; the scale is on the glass itself, which keeps its blur.
+          anims.push(...this._npFade(el, c, enter, false));
+          anims.push(c.animate([{ transform: 'scale(0.98)' }, { transform: 'none' }], enter));
         });
       };
       requestAnimationFrame(go);

@@ -222,7 +222,8 @@ hemma_mobile_now_playing:
       this.toggleAttribute('data-hemma-np-empty', !shown);
 
       return staticCSS + npCSS +
-        `:host{display:grid!important;overflow:${ov}!important;grid-template-rows:${shown?'1fr':'0fr'}!important;grid-template-columns:minmax(0,1fr)!important;opacity:${shown?'1':'0'};pointer-events:${shown?'auto':'none'};transition:grid-template-rows .5s cubic-bezier(0.32,0.72,0,1),opacity ${shown?'.35s ease .12s':'.25s ease'}}` +
+        // An even ease in and out for the row, since the page below moves with it; --np-reveal fades the tiles with their glass intact, where opacity here would drop their blur.
+        `:host{display:grid!important;overflow:${ov}!important;grid-template-rows:${shown?'1fr':'0fr'}!important;grid-template-columns:minmax(0,1fr)!important;--np-reveal:${shown?'1':'0'};pointer-events:${shown?'auto':'none'};transition:grid-template-rows .56s cubic-bezier(0.45,0,0.55,1) ${shown?'0s':'.08s'},--np-reveal ${shown?'.42s cubic-bezier(0.25,0.1,0.25,1) .14s':'.3s ease-in'}}` +
         `#aspect-ratio{overflow:${ov}!important}` +
         `ha-card.button-card-main{min-height:0!important;overflow:${ov}!important}`;
     ]]]

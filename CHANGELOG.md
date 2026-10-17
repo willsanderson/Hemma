@@ -2,7 +2,7 @@
 
 ## 2.3.4
 
-- **Now Playing opens and closes more smoothly on Overview.** The page below now eases into motion and settles gently instead of being shoved, and the tiles fade in and out with their glass intact: the blur builds up and fades away instead of being missing until the animation ends.
+- **Now Playing opens and closes smoothly on Overview and on phones.** The page below eases into motion and settles gently instead of being shoved, and each tile fades in with a slight settle, its glass, tint and blur included, instead of being wiped in by the opening section. Press Save once in Hemma for the full fade; until then the tiles fade their contents and blur.
 
 ## 2.3.3
 
