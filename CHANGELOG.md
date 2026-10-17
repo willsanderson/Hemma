@@ -2,7 +2,7 @@
 
 ## 2.3.4
 
-- **Now Playing keeps its glass while it slides in and out on Overview.** The tiles' blur stayed off until the animation finished; now the tile's contents fade while the glass itself stays frosted the whole way.
+- **Now Playing opens and closes more smoothly on Overview.** The page below now eases into motion and settles gently instead of being shoved, and the tiles fade in and out with their glass intact: the blur builds up and fades away instead of being missing until the animation ends.
 
 ## 2.3.3
 

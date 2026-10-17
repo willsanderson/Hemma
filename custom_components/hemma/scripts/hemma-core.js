@@ -3951,10 +3951,13 @@ window.hemmaMenuGlass = {
         // The card keeps full opacity, or its glass loses its blur; what is inside it fades, and the closing section clips the glass away.
         box.querySelectorAll('.cat-np > *').forEach((el) => {
           const c = el.shadowRoot && el.shadowRoot.querySelector('ha-card');
-          if (c) [...c.children].forEach((k) => { if (k.localName !== 'style') out.push(k.animate([{ opacity: 1 }, { opacity: 0 }], fade)); });
+          if (!c) return;
+          [...c.children].forEach((k) => { if (k.localName !== 'style') out.push(k.animate([{ opacity: 1 }, { opacity: 0 }], fade)); });
+          out.push(...this._npGlass(el, c, { duration: 260, easing: 'ease-in', fill: 'forwards' }, true));
         });
         const head = box.querySelector('h2');
-        const close = { duration: 380, delay: 120, easing: FX_SPRING, fill: 'forwards' };
+        // An even ease in and out: the whole page below moves with this, so it must start and land gently.
+        const close = { duration: 520, delay: 80, easing: 'cubic-bezier(0.45, 0, 0.55, 1)', fill: 'forwards' };
         if (head) head.style.marginTop = '0px';
         const slack = this._npSlack(box);
         if (head) head.style.marginTop = '';
@@ -3964,7 +3967,7 @@ window.hemmaMenuGlass = {
           out.push(head.animate([{ marginTop: getComputedStyle(head).marginTop }, { marginTop: '0px' }], close));
         }
         out.push(box.animate([{ height: h0 + 'px', marginBottom: '0px' }, { height: '0px', marginBottom: -slack + 'px' }], close));
-        box._npT = setTimeout(() => { if (box._hemmaN === 0) this._npClear(box); }, 520);
+        box._npT = setTimeout(() => { if (box._hemmaN === 0) this._npClear(box); }, 640);
         return;
       }
       this._npClear(box);
@@ -3992,6 +3995,18 @@ window.hemmaMenuGlass = {
       }
       this._npEqual();
       if (move) this._npGrow(box, h0, Math.max(0, was));
+    }
+
+    // The glass fades by its tint, blur, sheen and rim; fading its opacity would switch the blur off for the whole animation.
+    _npGlass(el, c, opts, leaving) {
+      // The tile's glass is set with !important, out of an animation's reach, but its blur scales by --np-inner-glass.
+      try { CSS.registerProperty({ name: '--np-inner-glass', syntax: '<number>', inherits: true, initialValue: '1' }); } catch (_) {}
+      const show = leaving ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 1 }];
+      const out = [c.animate(leaving ? [{ '--np-inner-glass': 1 }, { '--np-inner-glass': 0 }] : [{ '--np-inner-glass': 0 }, { '--np-inner-glass': 1 }], opts)];
+      [[c, '::after'], [el, '::after']].forEach(([n, pe]) => {
+        try { out.push(n.animate(show, Object.assign({ pseudoElement: pe }, opts))); } catch (_) {}
+      });
+      return out;
     }
 
     _npSlack(box) {
@@ -4035,7 +4050,7 @@ window.hemmaMenuGlass = {
         box.style.height = '';
         const h1 = box.getBoundingClientRect().height;
         box.style.height = h0 + 'px';
-        const open = { duration: 420, easing: FX_SPRING };
+        const open = { duration: 560, easing: 'cubic-bezier(0.45, 0, 0.55, 1)' };
         const slack = was ? 0 : this._npSlack(box);
         const grow = box.animate([{ height: h0 + 'px', marginBottom: -slack + 'px' }, { height: h1 + 'px', marginBottom: '0px' }], open);
         anims.push(grow);
@@ -4052,6 +4067,7 @@ window.hemmaMenuGlass = {
           // Moving the glass itself keeps its blur; only its contents fade, since an element below full opacity cannot blur what is behind it.
           anims.push(c.animate([{ transform: 'translateY(10px)' }, { transform: 'none' }], enter));
           [...c.children].forEach((k) => { if (k.localName !== 'style') anims.push(k.animate([{ opacity: 0 }, { opacity: 1 }], enter)); });
+          anims.push(...this._npGlass(el, c, enter, false));
         });
       };
       requestAnimationFrame(go);
