@@ -27,6 +27,9 @@ def _under(base: str, rel: str) -> str | None:
 class HemmaAssetsView(HomeAssistantView):
     """Shipped assets win; the user's www/hemma fills the gaps.
 
+    Room photos are the exception: the user's own copy wins, so a replaced
+    demo photo keeps showing.
+
     Unauthenticated because these are loaded by bare <img> and @font-face,
     which send no token. Same reach as /local, which serves the same files.
     """
@@ -43,7 +46,8 @@ class HemmaAssetsView(HomeAssistantView):
         user = hass.config.path(USER_ASSETS_DIR)
 
         def _find() -> str | None:
-            for base in (self._shipped, user):
+            order = (user, self._shipped) if path.startswith("rooms/") else (self._shipped, user)
+            for base in order:
                 full = _under(base, path)
                 if full and os.path.isfile(full):
                     return full

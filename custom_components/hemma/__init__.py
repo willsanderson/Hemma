@@ -18,9 +18,12 @@ from .images import HemmaImagesView
 from .templates import HemmaTemplatesView, rebuild_if_stale
 from .i18n import rebuild_if_stale as rebuild_translations_if_stale
 from .notify import async_setup_notify
+from .theme import async_setup_theme
 from .const import (
     ASSETS_DIR,
+    ASSETS_URL_BASE,
     DOMAIN,
+    FONT_CSS,
     PANEL_ICON,
     PANEL_TITLE,
     LEGACY_PANEL_URL,
@@ -62,15 +65,18 @@ async def _sync_script_resources(hass: HomeAssistant, scripts_dir: str) -> None:
     the user adds them. An entry still loading from /local is repointed rather
     than duplicated: two entries for one script run it twice.
     """
-    def _present() -> dict[str, int]:
+    font_path = hass.config.path(ASSETS_DIR, FONT_CSS)
+
+    def _present() -> tuple[dict[str, int], int]:
         found = {}
         for n in SHARED_SCRIPTS:
             path = os.path.join(scripts_dir, n)
             if os.path.isfile(path):
                 found[n] = int(os.path.getmtime(path))
-        return found
+        font = int(os.path.getmtime(font_path)) if os.path.isfile(font_path) else 0
+        return found, font
 
-    stamps = await hass.async_add_executor_job(_present)
+    stamps, font_stamp = await hass.async_add_executor_job(_present)
     names = list(stamps)
     if not names:
         _LOGGER.warning(
@@ -79,14 +85,16 @@ async def _sync_script_resources(hass: HomeAssistant, scripts_dir: str) -> None:
         )
         return
 
-    wanted = {n: f"{SCRIPTS_URL_BASE}/{n}?v={stamps[n]}" for n in names}
+    wanted = {n: (f"{SCRIPTS_URL_BASE}/{n}?v={stamps[n]}", "module") for n in names}
+    if font_stamp:
+        wanted[FONT_CSS] = (f"{ASSETS_URL_BASE}/{FONT_CSS}?v={font_stamp}", "css")
     res = _lovelace_resources(hass)
 
     if res is None or not hasattr(res, "async_create_item"):
         _LOGGER.warning(
             "Hemma: Lovelace resources are not writable (yaml mode). Add these "
-            "under lovelace: resources: as type module: %s",
-            ", ".join(wanted[n] for n in names),
+            "under lovelace: resources: %s",
+            ", ".join(f"{url} (type {kind})" for url, kind in wanted.values()),
         )
         return
 
@@ -103,7 +111,7 @@ async def _sync_script_resources(hass: HomeAssistant, scripts_dir: str) -> None:
 
     added: list[str] = []
     moved: list[str] = []
-    for name, url in wanted.items():
+    for name, (url, kind) in wanted.items():
         if url in by_url:
             continue
         existing = next(
@@ -111,9 +119,8 @@ async def _sync_script_resources(hass: HomeAssistant, scripts_dir: str) -> None:
                 i
                 for i in items
                 if str(i.get("url", "")).partition("?")[0].endswith("/" + name)
-                and (
-                    str(i.get("url", "")).startswith("/local/")
-                    or str(i.get("url", "")).startswith(SCRIPTS_URL_BASE + "/")
+                and str(i.get("url", "")).startswith(
+                    ("/local/", SCRIPTS_URL_BASE + "/", ASSETS_URL_BASE + "/")
                 )
             ),
             None,
@@ -123,7 +130,7 @@ async def _sync_script_resources(hass: HomeAssistant, scripts_dir: str) -> None:
                 await res.async_update_item(existing["id"], {"url": url})
                 moved.append(name)
             else:
-                await res.async_create_item({"res_type": "module", "url": url})
+                await res.async_create_item({"res_type": kind, "url": url})
                 added.append(name)
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Hemma: could not register %s", url)
@@ -174,6 +181,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.debug("Hemma: %s is already served", url)
 
     await _sync_script_resources(hass, scripts_dir)
+    await async_setup_theme(hass)
     await async_setup_notify(hass)
 
     def _stamp() -> int:

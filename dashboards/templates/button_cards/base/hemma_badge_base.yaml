@@ -9,7 +9,7 @@ hemma_badge_base:
           if (typeof window.hemmaIconUrl !== 'function') {
             window.hemmaIconUrl = (name) =>
               (window.HEMMA_ICONS && window.HEMMA_ICONS[name]) ||
-              `/local/hemma/icons/${name}.svg`;
+              `/hemma_assets/icons/${name}.svg`;
           }
           return true;
         ]]]

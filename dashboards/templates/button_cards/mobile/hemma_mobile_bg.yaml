@@ -15,7 +15,7 @@ hemma_mobile_bg:
     preload_rooms: []
     # The phone dashboard has ONE hero photo, not one per room - its rooms are
     # sections of a single view. Same naming as a room card: a base name under
-    # /local/hemma/rooms/, with -night alongside it. Left null, the theme's own
+    # /hemma_assets/rooms/, with -night alongside it. Left null, the theme's own
     # --hemma-mobile-hero-img-day/-night win, which is how this shipped.
     image: null
     image_night: null
@@ -31,7 +31,7 @@ hemma_mobile_bg:
           return '';
         }
         const night = variables.image_night || (base + '-night');
-        const dir = '/local/hemma/rooms/';
+        const dir = '/hemma_assets/rooms/';
         const css = ':root{'
           + '--hemma-mobile-hero-img-day:url("' + dir + base + '.jpg") !important;'
           + '--hemma-mobile-hero-img-night:url("' + dir + night + '.jpg") !important;'

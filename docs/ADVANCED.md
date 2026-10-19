@@ -74,9 +74,9 @@ Copy these folders/files from this repo into your HA `/config`:
 
 - `dashboards/hemma/` → `/config/dashboards/hemma/`
 - `dashboards/templates/` → `/config/dashboards/templates/` (merge if you already have templates)
-- `themes/hemma/` → `/config/themes/hemma/`
 - `packages/hemma_helpers.yaml` → `/config/packages/`
-- `www/hemma/` → `/config/www/hemma/`
+
+Hemma's icons, fonts, room images and theme come with the integration, which serves them and installs the theme in `/config/themes/hemma/` for you. Since 2.3.4 the dashboard needs the integration for these.
 
 ### 3) Add Lovelace resources
 
@@ -100,7 +100,7 @@ Then the rest, in any order:
 - `/local/hemma/scripts/smart-row.js` (from this repo, required for Smart Row)
 - `/local/hemma/scripts/filter-overlay.js` (from this repo, required for the mobile dashboard)
 - `/local/hemma/scripts/hemma-redirect.js` (from this repo, recommended - routes phones to the mobile dashboard and back)
-- `/local/hemma/fonts/hanken-grotesk.css` (from this repo)
+- `/hemma_assets/fonts/hanken-grotesk.css` (type: stylesheet)
 - `/hacsfiles/button-card/button-card.js` (should already be present if installed via HACS)
 
 ### 4) Register the Hemma dashboards
@@ -159,14 +159,14 @@ These are the only files you edit to map Hemma to your devices/entities - all be
 ### 6) Enable the Hemma theme
 
 - Settings → Appearance → Themes → choose **Hemma**
-  *(You may need to reload themes or restart after copying.)*
+  *(If it is missing, check Settings → Repairs.)*
 
 ### 7) Add your room images + icons
 
-- Room images live in: `/config/www/hemma/rooms/`
+- Your own room images go in: `/config/www/hemma/rooms/`
   - Example: `home.jpg` (light) and `home-night.jpg` (dark)
-  - Eight **demo room images** are included (`*-demo.jpg` / `*-demo-night.jpg`) so you can get started without your own photos
-- Icons live in: `/config/www/hemma/icons/`
+  - Eight **demo room images** come with the integration (`*-demo.jpg` / `*-demo-night.jpg`) so you can get started without your own photos. A photo of yours with the same name takes their place.
+- Extra icons of your own go in: `/config/www/hemma/icons/`
 
 ---
 
@@ -571,7 +571,7 @@ Replace `N` with `1` or `2`.
 | `action_N_navigation_path` | - | Path for the `navigate` action |
 | `action_N_service` | - | `domain.service` for the `call-service` action |
 | `action_N_service_data` | `{}` | Service data map. `entity_id` defaults to `action_N_entity` |
-| `svg_path` | `/local/hemma/icons` | Base path used to resolve bare SVG icon names |
+| `svg_path` | `/hemma_assets/icons` | Base path used to resolve bare SVG icon names |
 
 #### Driving the tile's active state from the buttons
 
@@ -648,7 +648,7 @@ Optionally add a `room_chips:` entry for its sensor chips, and set `mobile_filte
 This repo is intended as a starting point:
 
 - Swap out room/background images in `www/hemma/rooms/`.
-- Tweak theme colors, shadows, and typography in `themes/hemma/hemma.yaml`.
+- Tweak theme colors, shadows, and typography in a copy of the Hemma theme with a new name. Hemma replaces `themes/hemma/hemma.yaml` on every update.
 - Adjust layouts (`hemma_screen_layout.yaml`, etc.) to match your devices and preferences.
 
 ### HA Companion App iOS Settings

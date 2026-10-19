@@ -9,5 +9,19 @@
     "abort": {
       "already_configured": "Hemma är redan konfigurerad."
     }
+  },
+  "issues": {
+    "theme_not_loaded": {
+      "title": "Hemma-temat laddas inte",
+      "description": "Hemma lägger sitt tema i `themes/hemma/`, men Home Assistant läser inte den mappen. Lägg till det här i `configuration.yaml` och starta om Home Assistant:\n\n```yaml\nfrontend:\n  themes: !include_dir_merge_named themes\n```\n\nOm du redan har en `frontend:`-sektion lägger du bara till raden `themes:` i den."
+    },
+    "theme_replaced": {
+      "title": "Hemma-temat har uppdaterats",
+      "description": "Hemma håller nu sitt tema uppdaterat åt dig, så kopian i `themes/hemma/` ersattes. Den kopian hade ändringar, så den sparades i `{path}`.\n\nVill du behålla egna ändringar kopierar du temat till en ny fil och ger temat ett nytt namn."
+    },
+    "theme_duplicate": {
+      "title": "Det finns en andra kopia av Hemma-temat",
+      "description": "Hemma lägger sitt tema i `themes/hemma/hemma.yaml` och uppdaterar det åt dig, men den här filen definierar också ett tema som heter Hemma: `{paths}`.\n\nTa bort den kopian, eller ge dess tema ett nytt namn, så att Hemma kan hålla temat uppdaterat."
+    }
   }
 }

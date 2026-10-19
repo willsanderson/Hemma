@@ -139,7 +139,7 @@ hemma_badge_activity:
       const appName = String(a.app_name || a.source || '').toLowerCase();
       const appId   = String(a.app_id || '').toLowerCase();
       if (appName.includes('youtube') || appId.includes('youtube'))
-        return '/local/hemma/icons/youtube.png';
+        return '/hemma_assets/icons/youtube.png';
 
       return null;
     ]]]

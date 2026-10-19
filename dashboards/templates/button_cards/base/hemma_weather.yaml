@@ -207,7 +207,7 @@ hemma_weather:
           };
           const file = svgMap[condRaw];
           if (file) {
-            iconHtml = `<img src="/local/hemma/weather/${file}.svg" style="width:auto;height:calc(var(--weather-icon-size,34px) * 0.68);object-fit:contain;opacity:0.92;flex-shrink:0;" />`;
+            iconHtml = `<img src="/hemma_assets/weather/${file}.svg" style="width:auto;height:calc(var(--weather-icon-size,34px) * 0.68);object-fit:contain;opacity:0.92;flex-shrink:0;" />`;
           }
         }
 
@@ -290,7 +290,7 @@ hemma_weather:
       const file = svgMap[condRaw];
       if (!file) return null;
 
-      return `/local/hemma/weather/${file}.svg`;
+      return `/hemma_assets/weather/${file}.svg`;
     ]]]
 
   label: >

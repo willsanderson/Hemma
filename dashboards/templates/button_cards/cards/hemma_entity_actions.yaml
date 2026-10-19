@@ -22,7 +22,7 @@ hemma_entity_actions:
           valve: 'curtain-open', siren: 'person-walking-motion',
         })[dom] || 'default';
       ]]]
-    svg_path: /local/hemma/icons
+    svg_path: /hemma_assets/icons
 
     # The compact phone tile puts the name in the top right corner, which is
     # where the action glyphs go. hemma-core's HEMMA_TEMPLATE_SIZES carries the

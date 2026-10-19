@@ -141,7 +141,7 @@ hemma_settings_button:
         if (spec.glyph) {
           const u = (typeof window.hemmaIconUrl === 'function'
             ? window.hemmaIconUrl(spec.glyph)
-            : '/local/hemma/icons/' + spec.glyph + '.svg');
+            : '/hemma_assets/icons/' + spec.glyph + '.svg');
           gl.style.background = 'var(--hemma-menu-ink, rgba(255,255,255,0.92))';
           gl.style.setProperty('-webkit-mask', 'url("' + u + '") no-repeat center / contain');
           gl.style.setProperty('mask', 'url("' + u + '") no-repeat center / contain');

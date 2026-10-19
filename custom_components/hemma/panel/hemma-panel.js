@@ -2107,7 +2107,7 @@ const FONT_STACKS = {
   hanken: '"Hanken Grotesk", -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
   system: '-apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif',
 };
-const FONT_CSS = "/local/hemma/fonts/hanken-grotesk.css";
+const FONT_CSS = "/hemma_assets/fonts/hanken-grotesk.css";
 function ensureFontCss() {
   const ID = "hemma-panel-fontfaces";
   if (document.getElementById(ID)) return;

@@ -668,7 +668,7 @@ hemma_popup_lock:
 
                   // The real glyphs, not a hand-written path.
                   const ic = (n) => (typeof window.hemmaIconUrl === 'function')
-                    ? window.hemmaIconUrl(n) : '/local/hemma/icons/' + n + '.svg';
+                    ? window.hemmaIconUrl(n) : '/hemma_assets/icons/' + n + '.svg';
                   const glyph = busy ? ic('lock-unlocking-fill')
                     : atTop ? ic('lock-fill') : ic('lock-open-fill');
 

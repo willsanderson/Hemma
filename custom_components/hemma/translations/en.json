@@ -9,5 +9,19 @@
     "abort": {
       "already_configured": "Hemma is already set up."
     }
+  },
+  "issues": {
+    "theme_not_loaded": {
+      "title": "The Hemma theme isn't loading",
+      "description": "Hemma keeps its theme in `themes/hemma/`, but Home Assistant isn't reading that folder. Add this to `configuration.yaml` and restart Home Assistant:\n\n```yaml\nfrontend:\n  themes: !include_dir_merge_named themes\n```\n\nIf you already have a `frontend:` section, add just the `themes:` line to it."
+    },
+    "theme_replaced": {
+      "title": "The Hemma theme was updated",
+      "description": "Hemma now keeps its theme up to date for you, so it replaced the copy in `themes/hemma/`. That copy had changes, so it was saved to `{path}`.\n\nTo keep changes of your own, copy the theme to a new file and give the theme a new name."
+    },
+    "theme_duplicate": {
+      "title": "There's a second copy of the Hemma theme",
+      "description": "Hemma keeps its theme in `themes/hemma/hemma.yaml` and updates it for you, but this file also defines a theme called Hemma: `{paths}`.\n\nDelete that copy, or give its theme a new name, so Hemma can keep the theme up to date."
+    }
   }
 }

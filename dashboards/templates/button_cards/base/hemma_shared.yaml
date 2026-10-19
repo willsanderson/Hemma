@@ -6,7 +6,7 @@ hemma_shared:
     # Add your room names here - both light and dark variants will be preloaded
     preload_rooms: []  # Set in your dashboard file — see hemma.yaml for example
     preload_night_suffix: "-night"
-    preload_path: "/local/hemma/rooms"
+    preload_path: "/hemma_assets/rooms"
     preload_extension: ".jpg"
 
   styles:
@@ -21,7 +21,7 @@ hemma_shared:
     [[[
       const rooms = variables.preload_rooms || [];
       const suffix = variables.preload_night_suffix || '-night';
-      const basePath = variables.preload_path || '/local/hemma/rooms';
+      const basePath = variables.preload_path || '/hemma_assets/rooms';
       const ext = variables.preload_extension || '.jpg';
 
       const isDark =

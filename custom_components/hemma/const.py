@@ -32,6 +32,7 @@ SHARED_SCRIPTS = (
 ASSETS_URL_BASE = "/hemma_assets"
 ASSETS_DIR = f"custom_components/{DOMAIN}/assets"
 USER_ASSETS_DIR = "www/hemma"
+FONT_CSS = "fonts/hanken-grotesk.css"
 
 # The panel keeps the url it was given in 2.0.5; only its title changed.
 PANEL_URL = "hemma-studio"

@@ -1071,7 +1071,7 @@ window.hemmaMenuGlass = {
       if (/^(\/|https?:\/\/)/.test(raw) || /\.(svg|png|webp)$/.test(raw)) {
         src = raw;
       } else {
-        var base = String(variables.svg_path || '/local/hemma/icons').replace(/\/$/, '');
+        var base = String(variables.svg_path || '/hemma_assets/icons').replace(/\/$/, '');
         src = base + '/' + raw + '.svg';
       }
       return '<img class="hemma-act-icon hemma-act-svg ' + cls + '" src="' + esc(src) + '" alt="">';
@@ -1698,7 +1698,7 @@ window.hemmaMenuGlass = {
         let art = abs(a.entity_picture || a.media_image_url || a.media_album_cover_url || a.image_url);
         if (!art) {
           const app = low(a.app_name || a.source) + ' ' + low(a.app_id);
-          if (app.includes('youtube')) art = '/local/hemma/icons/youtube.png';
+          if (app.includes('youtube')) art = '/hemma_assets/icons/youtube.png';
         }
 
         out.push({
@@ -2845,7 +2845,7 @@ window.hemmaMenuGlass = {
       + ` ${off('var(--hemma-mobile-hero-p-lower, 83%)')},`
       + ' var(--hemma-mobile-hero-c-base, #3b352e)'
       + ` ${off('var(--hemma-mobile-hero-p-base, 100%)')}),`
-      + ' var(--hemma-mobile-hero-img, url("/local/hemma/rooms/home-demo.jpg"))',
+      + ' var(--hemma-mobile-hero-img, url("/hemma_assets/rooms/home-demo.jpg"))',
     sizePortrait: '100% 100%, 100% 100%, 100% 100%, 100% 100%, auto '
       + off('var(--hemma-mobile-hero-height, 36.5%)'),
     sizeLandscape: '100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% auto',
@@ -3706,7 +3706,7 @@ window.hemmaMenuGlass = {
       if (badge !== undefined) {
         const m = document.createElement('span');
         m.className = 'side-motion' + (badge ? ' on' : '');
-        const url = typeof window.hemmaIconUrl === 'function' ? window.hemmaIconUrl('person-walking-motion') : '/local/hemma/icons/person-walking-motion.svg';
+        const url = typeof window.hemmaIconUrl === 'function' ? window.hemmaIconUrl('person-walking-motion') : '/hemma_assets/icons/person-walking-motion.svg';
         m.innerHTML = '<img src="' + url + '" alt="">';
         b.appendChild(m);
         b._motion = m;
@@ -4978,7 +4978,7 @@ window.hemmaMenuGlass = {
       const t = this._hass && this._hass.themes;
       const dark = t && typeof t.darkMode === 'boolean' ? t.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches;
       const base = v.image || 'default';
-      return { url: '/local/hemma/rooms/' + (dark ? (v.night || base + '-night') : base) + '.jpg', pos: v.pos || 'center center' };
+      return { url: '/hemma_assets/rooms/' + (dark ? (v.night || base + '-night') : base) + '.jpg', pos: v.pos || 'center center' };
     }
 
     // The arriving photo fades in over the leaving one and is dropped once that room's card shows the same photo.
@@ -5296,8 +5296,8 @@ window.hemmaMenuGlass = {
           const v = c.variables || {};
           if (view != null && !rooms[view]) rooms[view] = { image: v.image, night: v.image_night, pos: v.image_position };
           const base = v.image || 'default';
-          urls.add('/local/hemma/rooms/' + base + '.jpg');
-          urls.add('/local/hemma/rooms/' + (v.image_night || base + '-night') + '.jpg');
+          urls.add('/hemma_assets/rooms/' + base + '.jpg');
+          urls.add('/hemma_assets/rooms/' + (v.image_night || base + '-night') + '.jpg');
         }
         (c.cards || []).forEach(walk);
         if (c.card) walk(c.card);
@@ -9009,7 +9009,7 @@ window.hemmaMenuGlass = {
         + 'line-height:0;"></ha-icon></div>';
     }
     var url = (typeof window.hemmaIconUrl === 'function')
-      ? window.hemmaIconUrl(name) : '/local/hemma/icons/' + name + '.svg';
+      ? window.hemmaIconUrl(name) : '/hemma_assets/icons/' + name + '.svg';
     return '<div style="' + tile + '"><div style="width:calc(' + tsz + ' * .586);height:calc(' + tsz + ' * .586);'
       + 'background-color:#fff;'
       + "-webkit-mask:url('" + url + "') center / contain no-repeat;"
@@ -9874,7 +9874,7 @@ window.hemmaMenuGlass = {
     var glyph = '';
     if (o.icon) {
       var url = (typeof window.hemmaIconUrl === 'function')
-        ? window.hemmaIconUrl(o.icon) : '/local/hemma/icons/' + o.icon + '.svg';
+        ? window.hemmaIconUrl(o.icon) : '/hemma_assets/icons/' + o.icon + '.svg';
       glyph = '<div class="hui-sl-ic" style="-webkit-mask:url(\'' + url + '\') center / contain no-repeat;'
         + 'mask:url(\'' + url + '\') center / contain no-repeat;"></div>';
     }
@@ -10053,7 +10053,7 @@ window.hemmaMenuGlass = {
 
   function iconUrl(name) {
     return (typeof window.hemmaIconUrl === 'function')
-      ? window.hemmaIconUrl(name) : '/local/hemma/icons/' + name + '.svg';
+      ? window.hemmaIconUrl(name) : '/hemma_assets/icons/' + name + '.svg';
   }
 
   function ha() { return document.querySelector('home-assistant'); }

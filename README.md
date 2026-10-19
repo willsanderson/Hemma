@@ -51,15 +51,11 @@ HACS > **Integrations** > menu > **Custom repositories**, add `https://github.co
 
 While you are there, install **uix**, **button-card** and **apexcharts-card**.
 
-### 2. Copy the assets
+### 2. Copy the helpers
 
-Hemma's icons, fonts, room images and theme live in your config folder. From this repo, copy:
+From this repo, copy `packages/hemma_helpers.yaml` into `/config/packages/`.
 
-- `www/hemma/` into `/config/www/hemma/`
-- `themes/hemma/` into `/config/themes/hemma/`
-- `packages/hemma_helpers.yaml` into `/config/packages/`
-
-Without the last one, the phone's badges and filter pills do nothing. Hemma keeps the room list in it up to date for you once your dashboard is saved, and you never edit that file by hand.
+Without it, the phone's badges and filter pills do nothing. Hemma keeps the room list in it up to date for you once your dashboard is saved, and you never edit that file by hand.
 
 ### 3. Restart Home Assistant
 
@@ -69,12 +65,14 @@ Settings > Devices & Services > **Add Integration** > **Hemma**.
 
 Hemma registers its own dashboard resources at this point. You do not need to add anything under Settings > Dashboards > Resources.
 
+Hemma's icons, fonts and room images come with the integration, and Hemma installs its theme in `/config/themes/hemma/` for you. It replaces that theme on every update, so don't edit it: to make your own version, copy the file and give the theme a new name.
+
 ### 5. Select the theme
 
 Click your user name at the bottom of the sidebar and set **Theme** to **Hemma**.
 
 If Hemma is not in the list, the `frontend: themes:` line above is missing from
-`configuration.yaml`.
+`configuration.yaml`. Hemma also says so under Settings > Repairs.
 
 ### 6. Build your dashboard
 

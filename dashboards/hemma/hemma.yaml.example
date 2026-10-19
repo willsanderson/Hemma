@@ -262,7 +262,7 @@ views:
               # the registry, so nothing else is normally needed. Override any
               # that come out wrong:
               # device_icons:
-              #   sensor.YOUR_DOORBELL_BATTERY: doorbell  # /local/hemma/icons name, or mdi:cctv
+              #   sensor.YOUR_DOORBELL_BATTERY: doorbell  # /hemma_assets/icons name, or mdi:cctv
               # device_names:
               #   sensor.YOUR_DOORBELL_BATTERY: Doorbell
               # battery_entities:                         # force the icon/name source entity

@@ -363,7 +363,7 @@ hemma_room:
 
             const base = variables.image || 'default';
             const picked = isDark ? (variables.image_night || `${base}-night`) : base;
-            return `url("/local/hemma/rooms/${picked}.jpg")`;
+            return `url("/hemma_assets/rooms/${picked}.jpg")`;
           ]]]
       - --hero-img-pos: >
           [[[
