@@ -3,11 +3,14 @@
     "step": {
       "user": {
         "title": "Hemma",
-        "description": "Adds the Hemma configuration panel to the sidebar."
+        "description": "Adds Hemma to the sidebar, where you'll set up your dashboard."
       }
     },
     "abort": {
       "already_configured": "Hemma is already set up."
+    },
+    "create_entry": {
+      "default": "Hemma is ready. [Open Hemma](/hemma-studio) to create your dashboard, or find it in the sidebar any time."
     }
   },
   "issues": {

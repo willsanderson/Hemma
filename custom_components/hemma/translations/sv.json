@@ -3,11 +3,14 @@
     "step": {
       "user": {
         "title": "Hemma",
-        "description": "Lägger till Hemma-konfigurationspanelen i sidofältet."
+        "description": "Lägger till Hemma i sidomenyn, där du skapar din instrumentpanel."
       }
     },
     "abort": {
       "already_configured": "Hemma är redan konfigurerad."
+    },
+    "create_entry": {
+      "default": "Hemma är redo. [Öppna Hemma](/hemma-studio) för att skapa din instrumentpanel, eller hitta det i sidomenyn när du vill."
     }
   },
   "issues": {
