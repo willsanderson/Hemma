@@ -112,6 +112,7 @@ hemma_mobile_filter_badges:
     card:
       - "--hemma-badge-order-climate": >
           [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('climate', variables);
             const o = variables.badge_order;
             if (!Array.isArray(o)) return 1;
             const i = o.indexOf('climate');
@@ -119,6 +120,7 @@ hemma_mobile_filter_badges:
           ]]]
       - "--hemma-badge-order-lights": >
           [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('lights', variables);
             const o = variables.badge_order;
             if (!Array.isArray(o)) return 2;
             const i = o.indexOf('lights');
@@ -126,6 +128,7 @@ hemma_mobile_filter_badges:
           ]]]
       - "--hemma-badge-order-people": >
           [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('people', variables);
             const o = variables.badge_order;
             if (!Array.isArray(o)) return 3;
             const i = o.indexOf('people');
@@ -133,6 +136,7 @@ hemma_mobile_filter_badges:
           ]]]
       - "--hemma-badge-order-media": >
           [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('media', variables);
             const o = variables.badge_order;
             if (!Array.isArray(o)) return 4;
             const i = o.indexOf('media');
@@ -140,6 +144,7 @@ hemma_mobile_filter_badges:
           ]]]
       - "--hemma-badge-order-security": >
           [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('security', variables);
             const o = variables.badge_order;
             if (!Array.isArray(o)) return 5;
             const i = o.indexOf('security');
@@ -147,6 +152,7 @@ hemma_mobile_filter_badges:
           ]]]
       - "--hemma-badge-order-energy": >
           [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('energy', variables);
             const o = variables.badge_order;
             if (!Array.isArray(o)) return 6;
             const i = o.indexOf('energy');
@@ -219,7 +225,7 @@ hemma_mobile_filter_badges:
                   return cur === 'climate' ? 'all' : 'climate';
                 ]]]
             variables:
-              enabled: '[[[ return variables.show_climate !== false ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("climate", variables, "row") : (variables.show_climate !== false) ]]]'
               temp_sensor: '[[[ return variables.temp_sensor_1 || variables.temp_sensor ]]]'
               temp_sensor_2: '[[[ return variables.temp_sensor_2 ]]]'
               temp_sensor_3: '[[[ return variables.temp_sensor_3 ]]]'
@@ -242,7 +248,7 @@ hemma_mobile_filter_badges:
                   return cur === 'lights' ? 'all' : 'lights';
                 ]]]
             variables:
-              enabled: '[[[ return variables.show_lights !== false ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("lights", variables, "row") : (variables.show_lights !== false) ]]]'
               light_group_entity: '[[[ return variables.light_group_entity ]]]'
               entity_1: '[[[ return variables.light_entity_1 ]]]'
               entity_2: '[[[ return variables.light_entity_2 ]]]'
@@ -260,7 +266,7 @@ hemma_mobile_filter_badges:
                   return cur === 'presence' ? 'all' : 'presence';
                 ]]]
             variables:
-              enabled: '[[[ return variables.show_people !== false ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("people", variables, "row") : (variables.show_people !== false) ]]]'
               entity_1: '[[[ return variables.presence_entity_1 ]]]'
               entity_2: '[[[ return variables.presence_entity_2 ]]]'
 
@@ -275,7 +281,7 @@ hemma_mobile_filter_badges:
                   return cur === 'media' ? 'all' : 'media';
                 ]]]
             variables:
-              enabled: '[[[ return variables.show_media !== false ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("media", variables, "row") : (variables.show_media !== false) ]]]'
               always_visible: true
               entity_1: '[[[ return variables.media_player_1 || variables.media_entity_1 ]]]'
               entity_2: '[[[ return variables.media_player_2 || variables.media_entity_2 ]]]'
@@ -311,7 +317,7 @@ hemma_mobile_filter_badges:
                   return cur === 'security' ? 'all' : 'security';
                 ]]]
             variables:
-              enabled: '[[[ return variables.show_security !== false ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("security", variables, "row") : (variables.show_security !== false) ]]]'
               lock_entity: '[[[ return variables.security_lock_entity || variables.lock_entity ]]]'
               lock_entity_2: '[[[ return variables.security_lock_entity_2 || variables.lock_entity_2 ]]]'
 
@@ -327,6 +333,6 @@ hemma_mobile_filter_badges:
                   return cur === 'energy' ? 'all' : 'energy';
                 ]]]
             variables:
-              enabled: '[[[ return variables.show_energy !== false ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("energy", variables, "row") : (variables.show_energy !== false) ]]]'
               row_entity: input_select.hemma_mobile_filter
               power_entity: '[[[ return variables.energy_power_entity || variables.power_entity ]]]'

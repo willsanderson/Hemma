@@ -259,6 +259,7 @@ hemma_room:
 
       - "--hemma-badge-order-climate": >
           [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('climate', variables);
             const o = variables.badge_order;
             if (!Array.isArray(o)) return 1;
             const i = o.indexOf('climate');
@@ -266,6 +267,7 @@ hemma_room:
           ]]]
       - "--hemma-badge-order-lights": >
           [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('lights', variables);
             const o = variables.badge_order;
             if (!Array.isArray(o)) return 2;
             const i = o.indexOf('lights');
@@ -273,6 +275,7 @@ hemma_room:
           ]]]
       - "--hemma-badge-order-people": >
           [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('people', variables);
             const o = variables.badge_order;
             if (!Array.isArray(o)) return 3;
             const i = o.indexOf('people');
@@ -280,6 +283,7 @@ hemma_room:
           ]]]
       - "--hemma-badge-order-media": >
           [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('media', variables);
             const o = variables.badge_order;
             if (!Array.isArray(o)) return 4;
             const i = o.indexOf('media');
@@ -287,6 +291,7 @@ hemma_room:
           ]]]
       - "--hemma-badge-order-security": >
           [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('security', variables);
             const o = variables.badge_order;
             if (!Array.isArray(o)) return 5;
             const i = o.indexOf('security');
@@ -294,6 +299,7 @@ hemma_room:
           ]]]
       - "--hemma-badge-order-energy": >
           [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('energy', variables);
             const o = variables.badge_order;
             if (!Array.isArray(o)) return 6;
             const i = o.indexOf('energy');
@@ -889,7 +895,7 @@ hemma_room:
           - type: custom:button-card
             template: hemma_badge_climate_group
             variables:
-              enabled: '[[[ return (variables.show_climate!==false&&(!!variables.climate_entity_1||!!variables.temp_sensor_1||!!variables.humidity_sensor||!!variables.quality_sensor)) && !variables.show_climate_inline ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("climate", variables, "room") : ((variables.show_climate!==false&&(!!variables.climate_entity_1||!!variables.temp_sensor_1||!!variables.humidity_sensor||!!variables.quality_sensor)) && !variables.show_climate_inline) ]]]'
               temp_sensor: '[[[ return variables.temp_sensor_1 ]]]'
               temp_sensor_2: '[[[ return variables.temp_sensor_2 ]]]'
               temp_sensor_3: '[[[ return variables.temp_sensor_3 ]]]'
@@ -905,7 +911,7 @@ hemma_room:
             template: hemma_badge_temp
             entity: '[[[ return variables.temp_sensor_1 ]]]'
             variables:
-              enabled: '[[[ return !!((variables.show_climate!==false&&(!!variables.climate_entity_1||!!variables.temp_sensor_1||!!variables.humidity_sensor||!!variables.quality_sensor)) && variables.show_climate_inline && variables.temp_sensor_1) ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("temp", variables, "room") : (!!((variables.show_climate!==false&&(!!variables.climate_entity_1||!!variables.temp_sensor_1||!!variables.humidity_sensor||!!variables.quality_sensor)) && variables.show_climate_inline && variables.temp_sensor_1)) ]]]'
               temp_unit: '[[[ return variables.temp_unit ]]]'
               room_name: '[[[ const n = String(this._config?.name || ""); return variables.aqi_room_name || (n.indexOf("hemmaGreeting") >= 0 ? "" : n) || hass?.config?.location_name || "" ]]]'
               entity_quality: '[[[ return variables.quality_sensor ]]]'
@@ -920,7 +926,7 @@ hemma_room:
             template: hemma_badge_humidity
             entity: '[[[ return variables.humidity_sensor ]]]'
             variables:
-              enabled: '[[[ return !!((variables.show_climate!==false&&(!!variables.climate_entity_1||!!variables.temp_sensor_1||!!variables.humidity_sensor||!!variables.quality_sensor)) && variables.show_climate_inline && variables.humidity_sensor) ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("humidity", variables, "room") : (!!((variables.show_climate!==false&&(!!variables.climate_entity_1||!!variables.temp_sensor_1||!!variables.humidity_sensor||!!variables.quality_sensor)) && variables.show_climate_inline && variables.humidity_sensor)) ]]]'
               room_name: '[[[ const n = String(this._config?.name || ""); return variables.aqi_room_name || (n.indexOf("hemmaGreeting") >= 0 ? "" : n) || hass?.config?.location_name || "" ]]]'
               entity_quality: '[[[ return variables.quality_sensor ]]]'
               entity_temp: '[[[ return variables.aqi_entity_temp ]]]'
@@ -934,7 +940,7 @@ hemma_room:
             template: hemma_badge_air_quality
             entity: '[[[ return variables.quality_sensor ]]]'
             variables:
-              enabled: '[[[ return !!((variables.show_climate!==false&&(!!variables.climate_entity_1||!!variables.temp_sensor_1||!!variables.humidity_sensor||!!variables.quality_sensor)) && variables.show_climate_inline && variables.quality_sensor) ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("air_quality", variables, "room") : (!!((variables.show_climate!==false&&(!!variables.climate_entity_1||!!variables.temp_sensor_1||!!variables.humidity_sensor||!!variables.quality_sensor)) && variables.show_climate_inline && variables.quality_sensor)) ]]]'
               room_name: '[[[ const n = String(this._config?.name || ""); return variables.aqi_room_name || (n.indexOf("hemmaGreeting") >= 0 ? "" : n) || hass?.config?.location_name || "" ]]]'
               entity_quality: '[[[ return variables.quality_sensor ]]]'
               entity_temp: '[[[ return variables.aqi_entity_temp ]]]'
@@ -947,7 +953,7 @@ hemma_room:
           - type: custom:button-card
             template: hemma_badge_light_group
             variables:
-              enabled: '[[[ return (variables.show_lights!==false&&(!!variables.light_entity_1||!!variables.light_group_entity)) ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("lights", variables, "room") : ((variables.show_lights!==false&&(!!variables.light_entity_1||!!variables.light_group_entity))) ]]]'
               light_group_entity: '[[[ return (variables.show_lights!==false&&(!!variables.light_entity_1||!!variables.light_group_entity)) ? variables.light_group_entity : null ]]]'
               entity_1: '[[[ return (variables.show_lights!==false&&(!!variables.light_entity_1||!!variables.light_group_entity)) ? variables.light_entity_1 : null ]]]'
               entity_2: '[[[ return (variables.show_lights!==false&&(!!variables.light_entity_1||!!variables.light_group_entity)) ? variables.light_entity_2 : null ]]]'
@@ -963,7 +969,7 @@ hemma_room:
           - type: custom:button-card
             template: hemma_badge_presence_group
             variables:
-              enabled: '[[[ return variables.show_people!==false && !!variables.presence_entity_1 && !!variables.presence_entity_2 ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("people", variables, "room") : (variables.show_people!==false && !!variables.presence_entity_1 && !!variables.presence_entity_2) ]]]'
               entity_1: '[[[ return variables.presence_entity_1 ]]]'
               entity_2: '[[[ return variables.presence_entity_2 ]]]'
               entity_3: '[[[ return variables.presence_entity_3 ]]]'
@@ -973,12 +979,12 @@ hemma_room:
             template: hemma_badge_presence
             entity: '[[[ return variables.presence_entity_1 ]]]'
             variables:
-              enabled: '[[[ return variables.show_people!==false && !!(!!variables.presence_entity_1 && variables.presence_entity_1 && !variables.presence_entity_2) ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("person", variables, "room") : (variables.show_people!==false && !!(!!variables.presence_entity_1 && variables.presence_entity_1 && !variables.presence_entity_2)) ]]]'
 
           - type: custom:button-card
             template: hemma_badge_media_group
             variables:
-              enabled: '[[[ return variables.show_media!==false && !!variables.media_player_1 ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("media", variables, "room") : (variables.show_media!==false && !!variables.media_player_1) ]]]'
               always_visible: true
               pause_timeout_minutes: '[[[ return variables.pause_timeout_minutes ]]]'
               entity_1: '[[[ return !!variables.media_player_1 ? variables.media_player_1 : null ]]]'
@@ -1000,7 +1006,7 @@ hemma_room:
           - type: custom:button-card
             template: hemma_badge_security_group
             variables:
-              enabled: '[[[ return (variables.show_security!==false&&(!!variables.security_lock_entity||!!variables.security_entity_1||!!(variables.security_locks||[]).length||!!(variables.security_cameras||[]).length)) ]]]'
+              enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("security", variables, "room") : ((variables.show_security!==false&&(!!variables.security_lock_entity||!!variables.security_entity_1||!!(variables.security_locks||[]).length||!!(variables.security_cameras||[]).length))) ]]]'
               locks: '[[[ return variables.security_locks || [] ]]]'
               lock_entity: '[[[ return variables.security_lock_entity ]]]'
               lock_entity_2: '[[[ return variables.security_lock_entity_2 ]]]'
@@ -1011,6 +1017,7 @@ hemma_room:
             variables:
               enabled: >
                 [[[
+                  if (window.hemmaBadges) return window.hemmaBadges.on('energy', variables, 'room');
                   return window._hemmaEnergyOn
                     ? window._hemmaEnergyOn(variables)
                     : (variables.show_energy!==false && !!variables.energy_power_entity);

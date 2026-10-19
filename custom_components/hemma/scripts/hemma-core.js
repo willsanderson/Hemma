@@ -12829,6 +12829,38 @@ window.hemmaMenuGlass = {
     return out;
   }
 
+  // Which badge shows, and where it sorts, for both badge builders: the room card's row ('room') and the phone's row ('row').
+  var BADGE_ORDER = ['climate', 'lights', 'people', 'media', 'security', 'energy'];
+  function badgeOrder(id, V) {
+    var o = V && V.badge_order, base = BADGE_ORDER.indexOf(id) + 1;
+    if (!Array.isArray(o)) return base;
+    var i = o.indexOf(id);
+    return i < 0 ? o.length + base : i + 1;
+  }
+  function badgeOn(id, V, surface) {
+    V = V || {};
+    if (surface === 'row') {
+      var cat = { temp: 'climate', humidity: 'climate', air_quality: 'climate', person: 'people' }[id] || id;
+      return V['show_' + cat] !== false;
+    }
+    var clim = V.show_climate !== false && !!(V.climate_entity_1 || V.temp_sensor_1 || V.humidity_sensor || V.quality_sensor);
+    switch (id) {
+      case 'climate': return clim && !V.show_climate_inline;
+      case 'temp': return !!(clim && V.show_climate_inline && V.temp_sensor_1);
+      case 'humidity': return !!(clim && V.show_climate_inline && V.humidity_sensor);
+      case 'air_quality': return !!(clim && V.show_climate_inline && V.quality_sensor);
+      case 'lights': return V.show_lights !== false && !!(V.light_entity_1 || V.light_group_entity);
+      case 'people': return V.show_people !== false && !!V.presence_entity_1 && !!V.presence_entity_2;
+      case 'person': return V.show_people !== false && !!V.presence_entity_1 && !V.presence_entity_2;
+      case 'media': return V.show_media !== false && !!V.media_player_1;
+      case 'security': return V.show_security !== false && !!(V.security_lock_entity || V.security_entity_1
+        || (V.security_locks || []).length || (V.security_cameras || []).length);
+      case 'energy': return window._hemmaEnergyOn ? window._hemmaEnergyOn(V) : (V.show_energy !== false && !!V.energy_power_entity);
+    }
+    return false;
+  }
+  window.hemmaBadges = { ORDER: BADGE_ORDER, order: badgeOrder, on: badgeOn };
+
   window.hemmaHome = { CATS: CATS, SLOTS: SLOTS, keyOf: keyOf, categoryOf: categoryOf, derive: derive, read: read, compare: compare,
     debug: debug, tileFor: tileFor, roomCards: roomCards };
 })();
