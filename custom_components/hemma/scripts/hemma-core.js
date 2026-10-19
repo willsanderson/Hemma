@@ -12861,6 +12861,25 @@ window.hemmaMenuGlass = {
   }
   window.hemmaBadges = { ORDER: BADGE_ORDER, order: badgeOrder, on: badgeOn };
 
+  // Every lock in the home, once: a lock reached through two integrations is two devices with the same name.
+  function homeLocks(hass) {
+    var ents = hass.entities || {}, devs = hass.devices || {}, st = hass.states || {}, seen = {};
+    return Object.keys(ents).filter(function (id) {
+      var e = ents[id];
+      return id.indexOf('lock.') === 0 && st[id] && !e.hidden && !e.entity_category;
+    }).sort().filter(function (id) {
+      var d = devs[ents[id].device_id] || {}, key = (d.name_by_user || d.name || id).toLowerCase() + '|' + (areaOf(hass, id) || '');
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+  }
+  window.hemmaSecurityLocks = function (V, hass) {
+    var set = (Array.isArray(V && V.locks) && V.locks.length) ? V.locks.filter(Boolean)
+      : [V && V.lock_entity, V && V.lock_entity_2].filter(Boolean);
+    return set.length || !hass ? set : homeLocks(hass);
+  };
+
   window.hemmaHome = { CATS: CATS, SLOTS: SLOTS, keyOf: keyOf, categoryOf: categoryOf, derive: derive, read: read, compare: compare,
     debug: debug, tileFor: tileFor, roomCards: roomCards };
 })();

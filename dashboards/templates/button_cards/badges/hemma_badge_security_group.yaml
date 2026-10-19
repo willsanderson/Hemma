@@ -22,9 +22,9 @@ hemma_badge_security_group:
 
   icon: >
     [[[
-      const locks = (Array.isArray(variables?.locks) && variables.locks.length)
+      const locks = window.hemmaSecurityLocks ? window.hemmaSecurityLocks(variables, hass) : ((Array.isArray(variables?.locks) && variables.locks.length)
         ? variables.locks.filter(Boolean)
-        : [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean);
+        : [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean));
       const open = locks.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
       return open ? 'mdi:lock-open-variant' : 'mdi:lock';
     ]]]
@@ -65,9 +65,9 @@ hemma_badge_security_group:
   name: >
     [[[
       const T = window._hemmaT || ((k, en, v) => { let s = String(en); if (v) for (const p in v) s = s.split('{' + p + '}').join(String(v[p])); return s; });
-      const locks = (Array.isArray(variables?.locks) && variables.locks.length)
+      const locks = window.hemmaSecurityLocks ? window.hemmaSecurityLocks(variables, hass) : ((Array.isArray(variables?.locks) && variables.locks.length)
         ? variables.locks.filter(Boolean)
-        : [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean);
+        : [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean));
       const open = locks.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
       const sub = open === 0 ? T('security.no_alerts', 'No Alerts') : T('locks.n_unlocked', '{n} Unlocked', { n: open });
       return `
@@ -86,9 +86,9 @@ hemma_badge_security_group:
         (typeof ev === 'number') ? ev !== 0 :
         !['false','0','no','off','disabled'].includes(String(ev).trim().toLowerCase());
 
-      const ids = (Array.isArray(variables?.locks) && variables.locks.length)
+      const ids = window.hemmaSecurityLocks ? window.hemmaSecurityLocks(variables, hass) : ((Array.isArray(variables?.locks) && variables.locks.length)
         ? variables.locks.filter(Boolean)
-        : [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean);
+        : [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean));
       const open = ids.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
       const URL = window.hemmaIconUrl(open === 0 ? 'lock-fill' : 'lock-open-fill');
 
