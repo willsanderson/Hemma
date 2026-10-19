@@ -4424,6 +4424,10 @@ window.hemmaMenuGlass = {
         if (n) sections = [{ scenes: true, category: k, name: _hemmaT('nav.scenes', 'Scenes') }].concat(sections);
       }
       const devices = k === 'energy' && helpers && !scope ? await this._energyDevices() : false;
+      if (scope && k !== 'home' && k !== 'scenes' && window.hemmaHome && !sections.some((sec) => sec.cards && sec.cards.length)) {
+        const fill = window.hemmaHome.roomCards(this._hass, scope, k, await this._roomSlotIds(scope, k));
+        if (fill.length) sections = sections.concat([{ cards: k === 'lights' ? this._expandLights(scope, fill) : fill }]);
+      }
       if (this._cat !== k || this._catPage !== page) return false;
       if ((!sections.length && !devices) || !helpers) {
         body.style.visibility = '';
@@ -4649,6 +4653,19 @@ window.hemmaMenuGlass = {
         });
       };
       idle(next);
+    }
+
+    async _roomSlotIds(scope, k) {
+      try {
+        if (!this._deskCfg || Date.now() - this._deskCfgAt > 60000) {
+          const seg = location.pathname.split('/')[1];
+          this._deskCfg = await this._hass.callWS({ type: 'lovelace/config', url_path: seg && seg !== 'lovelace' ? seg : null });
+          this._deskCfgAt = Date.now();
+        }
+        const key = window.hemmaHome.keyOf(scope);
+        const room = window.hemmaHome.read(this._deskCfg, this._hass).rooms.filter((r) => r.key === key)[0];
+        return (room && room.slots[k]) || [];
+      } catch (_) { return []; }
     }
 
     async _energyDevices() {
@@ -12763,5 +12780,55 @@ window.hemmaMenuGlass = {
     return rep;
   }
 
-  window.hemmaHome = { CATS: CATS, keyOf: keyOf, categoryOf: categoryOf, derive: derive, read: read, compare: compare, debug: debug };
+  var TILE = { light: 'hemma_light', climate: 'hemma_thermostat', fan: 'hemma_fan', cover: 'hemma_cover',
+    humidifier: 'hemma_humidifier', lock: 'hemma_lock', media_player: 'hemma_media', camera: 'hemma_camera' };
+  var SENSOR_ICON = { temperature: 'temp-medium', humidity: 'humidity', aqi: 'aqi-medium', pm25: 'aqi-medium', pm10: 'aqi-medium',
+    pm1: 'aqi-medium', volatile_organic_compounds: 'aqi-medium', volatile_organic_compounds_parts: 'aqi-medium',
+    carbon_dioxide: 'co2', power: 'energy', energy: 'energy', door: 'door-closed', garage_door: 'door-closed',
+    opening: 'door-closed', window: 'window-shade-closed', tamper: 'exclamation', lock: 'lock', doorbell: 'doorbell' };
+
+  function tileFor(hass, id) {
+    var d = id.split('.')[0], st = (hass.states || {})[id], dc = st && st.attributes && st.attributes.device_class;
+    if (TILE[d]) return { type: 'custom:button-card', template: TILE[d], entity: id };
+    if (d === 'sensor' && dc === 'power') return { type: 'custom:button-card', template: 'hemma_energy', entity: id, variables: { entity_power: id } };
+    var card = { type: 'custom:button-card', template: 'hemma_entity_actions', entity: id };
+    var icon = SENSOR_ICON[dc] || (/air_quality|aqi/.test(id) ? 'aqi-medium' : null);
+    if (icon) card.variables = { icon: icon };
+    return card;
+  }
+
+  // A room's page for one category: what its badge summarizes first, then the rest of the room, one tile per device.
+  function roomCards(hass, roomName, cat, slotIds) {
+    var model = derive(hass), key = keyOf(roomName), ents = hass.entities || {}, st = hass.states || {};
+    var room = model.rooms.filter(function (r) { return r.key === key; })[0];
+    var seen = {}, used = {}, out = [];
+    var devs = hass.devices || {};
+    var fits = function (id) {
+      if (cat !== 'energy') return true;
+      var a = st[id] && st[id].attributes;
+      return a && a.device_class === 'power' && !NOT_ROOM_AIR.test(id);
+    };
+    var add = function (id, chosen) {
+      var e = ents[id] || {}, dev = e.device_id || id, d = devs[e.device_id] || {};
+      // One lock reached through two integrations is two devices with the same name.
+      var twin = e.device_id ? (d.name_by_user || d.name || '') + '|' + id.split('.')[0] : null;
+      if (!st[id] || seen[id] || !fits(id) || (!chosen && (used[dev] || (twin && used[twin])))) return;
+      seen[id] = used[dev] = true;
+      if (twin) used[twin] = true;
+      out.push(tileFor(hass, id));
+    };
+    (slotIds || []).forEach(function (id) {
+      var kids = st[id] && st[id].attributes && st[id].attributes.entity_id;
+      if (Array.isArray(kids) && kids.length && id.indexOf('light.') === 0) kids.forEach(function (k) { add(k, true); }); else add(id, true);
+    });
+    if (room && room.devices[cat]) Object.keys(room.devices[cat]).forEach(function (dev) {
+      var list = room.devices[cat][dev].filter(fits), pick = list.filter(function (id) { return TILE[id.split('.')[0]]; })[0] || list[0];
+      if (!pick) return;
+      if (!list.some(function (id) { return seen[id]; })) add(pick);
+    });
+    return out;
+  }
+
+  window.hemmaHome = { CATS: CATS, SLOTS: SLOTS, keyOf: keyOf, categoryOf: categoryOf, derive: derive, read: read, compare: compare,
+    debug: debug, tileFor: tileFor, roomCards: roomCards };
 })();
