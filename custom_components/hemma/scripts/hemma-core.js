@@ -12541,3 +12541,227 @@ window.hemmaMenuGlass = {
     },
   };
 })();
+(function () {
+  if (window.hemmaHome) return;
+
+  var CATS = ['climate', 'lights', 'media', 'security', 'energy'];
+  var BY_DOMAIN = {
+    light: 'lights', media_player: 'media', remote: 'media',
+    climate: 'climate', fan: 'climate', humidifier: 'climate', cover: 'climate', water_heater: 'climate',
+    lock: 'security', alarm_control_panel: 'security', camera: 'security', person: 'people',
+  };
+  var SENSOR = {
+    temperature: 'climate', humidity: 'climate', aqi: 'climate', pm25: 'climate', pm10: 'climate', pm1: 'climate',
+    carbon_dioxide: 'climate', volatile_organic_compounds: 'climate', volatile_organic_compounds_parts: 'climate',
+    power: 'energy', energy: 'energy',
+  };
+  var NOT_ROOM_AIR = /cpu|gpu|disk|nvme|ssd|chip|soil|processor|parity|cache|battery|board|core|drive/;
+  var BINARY = { door: 'security', window: 'security', garage_door: 'security', opening: 'security', lock: 'security', tamper: 'security' };
+  var SLOTS = {
+    climate: ['climate_entity_1', 'climate_entity_2', 'climate_entity_3', 'temp_sensor_1', 'temp_sensor_2', 'temp_sensor_3',
+      'temp_sensor_4', 'temp_sensor_5', 'humidity_sensor', 'quality_sensor', 'aqi_entity_pm25', 'aqi_entity_pm10',
+      'aqi_entity_voc', 'aqi_entity_co2', 'aqi_entity_temp', 'aqi_entity_humidity'],
+    lights: ['light_group_entity'].concat(seq('light_entity_', 10)),
+    people: seq('presence_entity_', 4),
+    media: seq('media_player_', 10).concat(['plex_stream_1', 'plex_stream_2', 'psn_1', 'psn_2']),
+    security: ['security_locks', 'security_lock_entity', 'security_lock_entity_2', 'security_cameras'].concat(seq('security_entity_', 8)),
+    energy: ['energy_power_entity', 'energy_usage_today', 'energy_usage_month', 'energy_cost_today', 'energy_cost_month'].concat(seq('energy_entity_', 6)),
+  };
+
+  function seq(p, n) { var o = []; for (var i = 1; i <= n; i++) o.push(p + i); return o; }
+  function keyOf(name) { return 'room_' + String(name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+  function ids(v) {
+    if (!v) return [];
+    if (Array.isArray(v)) return v.filter(function (x) { return typeof x === 'string' && x.indexOf('.') > 0; });
+    return typeof v === 'string' && v.indexOf('.') > 0 && v.indexOf('[[[') < 0 ? [v] : [];
+  }
+  function tplList(c) { return Array.isArray(c.template) ? c.template : (c.template ? [c.template] : []); }
+
+  function categoryOf(id, st) {
+    var d = String(id || '').split('.')[0];
+    if (BY_DOMAIN[d]) return BY_DOMAIN[d];
+    var dc = st && st.attributes && st.attributes.device_class;
+    if (d === 'sensor') return SENSOR[dc] || null;
+    if (d === 'binary_sensor') return BINARY[dc] || null;
+    if (d === 'event' && dc === 'doorbell') return 'security';
+    return null;
+  }
+
+  function areaOf(hass, id) {
+    var e = hass.entities && hass.entities[id];
+    if (!e) return null;
+    return e.area_id || (e.device_id && hass.devices && hass.devices[e.device_id] && hass.devices[e.device_id].area_id) || null;
+  }
+
+  function plantDevices(hass) {
+    var out = {};
+    Object.keys(hass.entities || {}).forEach(function (id) {
+      var e = hass.entities[id];
+      var dc = id.indexOf('sensor.') === 0 && hass.states[id] && hass.states[id].attributes.device_class;
+      if (e.device_id && (id.indexOf('plant.') === 0 || dc === 'moisture' || dc === 'conductivity')) out[e.device_id] = true;
+    });
+    return out;
+  }
+
+  function roomCategory(hass, id, plants) {
+    var e = (hass.entities || {})[id] || {}, st = (hass.states || {})[id];
+    if (e.device_id && plants[e.device_id]) return 'plants';
+    var c = categoryOf(id, st);
+    if (c === 'climate' && id.indexOf('sensor.') === 0
+      && NOT_ROOM_AIR.test(id + ' ' + (e.translation_key || ''))) return null;
+    return c;
+  }
+
+  function derive(hass) {
+    var st = hass.states || {}, ents = hass.entities || {}, areas = hass.areas || {};
+    var rooms = [], byArea = {}, plants = plantDevices(hass);
+    Object.keys(areas).forEach(function (aid) {
+      var r = { key: keyOf(areas[aid].name), name: areas[aid].name, area_id: aid, members: {}, devices: {}, plants: [], uncategorized: 0 };
+      CATS.forEach(function (c) { r.members[c] = []; r.devices[c] = {}; });
+      rooms.push(r); byArea[aid] = r;
+    });
+    Object.keys(ents).forEach(function (id) {
+      var e = ents[id];
+      if (!st[id] || e.hidden || e.entity_category) return;
+      var r = byArea[areaOf(hass, id)];
+      if (!r) return;
+      var c = roomCategory(hass, id, plants);
+      if (c === 'plants') { if (id.indexOf('plant.') === 0) r.plants.push(id); return; }
+      if (!r.members[c]) { r.uncategorized++; return; }
+      r.members[c].push(id);
+      var dev = e.device_id || id;
+      (r.devices[c][dev] = r.devices[c][dev] || []).push(id);
+    });
+    return { rooms: rooms, byArea: byArea };
+  }
+
+  function tileEntity(c) {
+    if (!c) return null;
+    if (c.type === 'conditional' && c.card) return tileEntity(c.card);
+    return c.entity || (c.custom_fields && c.custom_fields.card && c.custom_fields.card.entity) || null;
+  }
+  function tileCategory(c, st) {
+    if (c && c.type === 'conditional' && c.card) c = c.card;
+    if (!c) return null;
+    var v = c.variables && c.variables.mobile_filter_category;
+    if (v !== null && v !== undefined) return v;
+    var table = window.HEMMA_FILTER_CATEGORIES || {}, list = tplList(c);
+    for (var i = 0; i < list.length; i++) {
+      if (!Object.prototype.hasOwnProperty.call(table, list[i])) continue;
+      return table[list[i]] === 'by_entity' ? categoryOf(tileEntity(c), st[tileEntity(c)]) : table[list[i]];
+    }
+    var id = tileEntity(c);
+    return id ? categoryOf(id, st[id]) : null;
+  }
+  function readTiles(cards, st) {
+    var out = {};
+    (cards || []).forEach(function (c) {
+      var id = tileEntity(c);
+      if (!id) return;
+      var cat = tileCategory(c, st) || 'other';
+      (out[cat] = out[cat] || []).push(id);
+    });
+    return out;
+  }
+
+  function read(config, hass) {
+    var st = (hass && hass.states) || {}, views = (config && config.views) || [], rooms = [];
+    var first = (views[0] && views[0].cards) || [];
+    var mobile = first.some(function (c) { return tplList(c).indexOf('hemma_mobile_bg') >= 0; });
+    if (mobile) {
+      var kids = (first[1] && first[1].cards) || [], pending = null;
+      kids.forEach(function (c) {
+        if (tplList(c).indexOf('hemma_mobile_header') >= 0) { pending = c; return; }
+        if (pending && c.type === 'custom:hemma-smart-row') {
+          var fav = !!(pending.variables && pending.variables.favorites) || /^favou?rites$/i.test(String(pending.name || '').trim());
+          rooms.push({ key: keyOf(pending.name), name: pending.name, overview: fav, slots: {}, tiles: readTiles(c.cards, st) });
+          pending = null;
+        }
+      });
+      return { surface: 'phone', rooms: rooms };
+    }
+    views.forEach(function (v, i) {
+      var cards = v.cards || [], hero = cards[0];
+      if (!hero || tplList(hero).indexOf('hemma_room') < 0) return;
+      var vars = hero.variables || {}, slots = {};
+      Object.keys(SLOTS).forEach(function (cat) {
+        var got = [];
+        SLOTS[cat].forEach(function (k) { got = got.concat(ids(vars[k])); });
+        if (got.length) slots[cat] = got;
+      });
+      var row = cards.filter(function (c) { return c && c.type === 'custom:hemma-smart-row'; })[0];
+      var name = typeof hero.name === 'string' && hero.name.indexOf('[[[') < 0 ? hero.name : (v.title || v.path);
+      rooms.push({ key: keyOf(name), name: name, path: v.path, overview: v.path === 'home' || i === 0,
+        slots: slots, tiles: readTiles(row && row.cards, st) });
+    });
+    return { surface: 'desktop', rooms: rooms };
+  }
+
+  function compare(hass, dash) {
+    var model = derive(hass), st = hass.states || {}, byKey = {}, seen = {};
+    model.rooms.forEach(function (r) { byKey[r.key] = r; });
+    var expand = function (list) {
+      var out = [];
+      (list || []).forEach(function (id) {
+        var kids = st[id] && st[id].attributes && st[id].attributes.entity_id;
+        out.push(id);
+        if (Array.isArray(kids)) out = out.concat(kids);
+      });
+      return out;
+    };
+    var rooms = dash.rooms.map(function (d) {
+      var area = byKey[d.key];
+      var out = { room: d.name, area: area ? area.name : null, overview: !!d.overview,
+        emptyBadges: [], notShown: {}, elsewhere: [], uncategorized: area ? area.uncategorized : 0 };
+      if (d.overview) return out;
+      if (area) seen[area.area_id] = true;
+      Object.keys(d.slots).forEach(function (cat) {
+        if (cat !== 'people' && !(d.tiles[cat] || []).length) out.emptyBadges.push(cat);
+      });
+      var onDash = {};
+      Object.keys(d.slots).concat(Object.keys(d.tiles)).forEach(function (cat) {
+        expand((d.slots[cat] || []).concat(d.tiles[cat] || [])).forEach(function (id) { onDash[id] = true; });
+      });
+      if (area) CATS.forEach(function (cat) {
+        var devs = area.devices[cat], miss = [];
+        Object.keys(devs).forEach(function (dev) {
+          if (!devs[dev].some(function (id) { return onDash[id]; })) miss.push(devs[dev][0]);
+        });
+        if (miss.length) out.notShown[cat] = miss;
+      });
+      Object.keys(onDash).forEach(function (id) {
+        var aid = areaOf(hass, id), cat = categoryOf(id, st[id]);
+        if (!cat || cat === 'people' || !hass.entities || !hass.entities[id]) return;
+        if (!area || aid !== area.area_id) {
+          var a = aid && hass.areas && hass.areas[aid];
+          out.elsewhere.push(id + ' (' + (a ? a.name : 'no area') + ')');
+        }
+      });
+      return out;
+    });
+    var orphanAreas = model.rooms.filter(function (r) {
+      return !seen[r.area_id] && CATS.some(function (c) { return r.members[c].length; });
+    }).map(function (r) { return r.name; });
+    return { surface: dash.surface, rooms: rooms, areasWithoutRoom: orphanAreas };
+  }
+
+  async function debug(urlPath) {
+    var hass = document.querySelector('home-assistant').hass;
+    var seg = urlPath === undefined ? location.pathname.split('/')[1] : urlPath;
+    var config = await hass.callWS({ type: 'lovelace/config', url_path: seg && seg !== 'lovelace' ? seg : null });
+    var rep = compare(hass, read(config, hass));
+    console.groupCollapsed('%c[hemmaHome] ' + (seg || 'lovelace') + ' (' + rep.surface + ')', 'color:#33CFD9');
+    rep.rooms.forEach(function (r) {
+      if (r.overview) return;
+      var n = function (o) { return Object.keys(o).reduce(function (t, k) { return t + o[k].length; }, 0); };
+      console.log(r.room + (r.area ? '' : '  [no matching area]')
+        + (r.emptyBadges.length ? '  empty badge pages: ' + r.emptyBadges.join(', ') : '')
+        + '  not shown: ' + n(r.notShown) + '  in another area: ' + r.elsewhere.length, r);
+    });
+    if (rep.areasWithoutRoom.length) console.log('Areas with devices but no room:', rep.areasWithoutRoom);
+    console.groupEnd();
+    return rep;
+  }
+
+  window.hemmaHome = { CATS: CATS, keyOf: keyOf, categoryOf: categoryOf, derive: derive, read: read, compare: compare, debug: debug };
+})();
