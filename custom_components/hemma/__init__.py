@@ -17,6 +17,7 @@ from .assets import HemmaAssetsView
 from .images import HemmaImagesView
 from .templates import HemmaTemplatesView, rebuild_if_stale
 from .i18n import rebuild_if_stale as rebuild_translations_if_stale
+from .home import async_setup_home
 from .notify import async_setup_notify
 from .theme import async_setup_theme
 from .const import (
@@ -183,6 +184,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _sync_script_resources(hass, scripts_dir)
     await async_setup_theme(hass)
     await async_setup_notify(hass)
+    await async_setup_home(hass)
 
     def _stamp() -> int:
         try:

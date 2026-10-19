@@ -433,7 +433,7 @@ function isFav(sec) {
 
 const PHONE_FILTERS = ["climate", "lights", "people", "media", "security", "energy"];
 
-const BADGE_ORDER_IDS = ["climate", "lights", "people", "media", "security", "energy"];
+const BADGE_ORDER_IDS = ["climate", "lights", "people", "media", "security", "energy", "status"];
 const ROOM_SECTION_ORDER = ["climate", "lights", "media", "security", "energy", "presence"];
 const ROOM_SECTION_LABEL = {
   get climate() { return _studioT("filter.climate", "Climate"); },
@@ -8086,6 +8086,7 @@ class HemmaPanel extends HTMLElement {
           margin:8px 0 0; font-size:14.5px; line-height:1.45; color:var(--ink-2); text-wrap:pretty;
         }
         .askcard .flist { margin:20px 0 0; text-align:left; }
+        .askstack.statussheet .askcard { max-height:calc(100dvh - 48px); overflow-y:auto; overscroll-behavior:contain; }
         .askacts {
           display:flex; flex-direction:column-reverse; align-items:stretch; gap:4px; margin-top:22px;
         }
@@ -12965,6 +12966,7 @@ class HemmaPanel extends HTMLElement {
     // the switcher.
     if (isPhone(this)) this._phoneSectionList(bandFor, room);
 
+    this._statusSection(room, bandFor.badges && bandFor.badges.colA);
     this._orderBadgeCards(room, bandFor.badges && bandFor.badges.colA);
     // Inside the Scenes card, under its own fields.
     this._renderSceneColors(room,
@@ -18379,6 +18381,244 @@ class HemmaPanel extends HTMLElement {
     if (!ok || (dirty && !(await this._save()))) return;
     history.pushState(null, "", path);
     window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
+  }
+
+  // Status badges live in the integration, home-wide, so this section reads and writes hemma/home rather than room.variables.
+  _homeStoreSub() {
+    const conn = this._hass && this._hass.connection;
+    if (!conn || this._homeConn === conn) return;
+    this._homeConn = conn;
+    conn.subscribeMessage((data) => {
+      this._homeData = data || { status_badges: [] };
+      (this._homeListeners || []).forEach((fn) => { try { fn(); } catch (_) {} });
+    }, { type: "hemma/home/subscribe" }).catch(() => {
+      this._homeData = null;
+      (this._homeListeners || []).forEach((fn) => { try { fn(); } catch (_) {} });
+    });
+  }
+
+  _statusRoomKey(room) {
+    const rooms = (this._state && this._state.compact.rooms) || [];
+    return rooms.indexOf(room) === 0 || room.path === "home" ? "home" : roomKeyOf(room.name || room.title);
+  }
+
+  _statusSection(room, col) {
+    if (!col) return;
+    this._homeStoreSub();
+    const key = this._statusRoomKey(room);
+    const fs = document.createElement("section");
+    fs.className = "card";
+    fs.dataset.k = "Status";
+    fs.dataset.bid = "status";
+    const head = document.createElement("div");
+    head.className = "chead";
+    const g = document.createElement("span");
+    g.className = "sicon";
+    g.style.setProperty("--i", "url('" + iconUrl("power_on") + "')");
+    g.style.setProperty("--sc", "var(--hemma-color-blue, #0088FF)");
+    head.appendChild(g);
+    const h2 = document.createElement("h2");
+    h2.textContent = _sx("Status");
+    head.appendChild(h2);
+    const count = document.createElement("span");
+    count.className = "count";
+    head.appendChild(count);
+    head.appendChild(this._foldButton("Status", head, fs, _sx("Status")));
+    fs.appendChild(head);
+    const body = document.createElement("div");
+    fs.appendChild(body);
+    let painted = false;
+    const paint = () => {
+      if (painted && !fs.isConnected) {
+        this._homeListeners = (this._homeListeners || []).filter((f) => f !== paint);
+        return;
+      }
+      painted = true;
+      body.replaceChildren();
+      if (this._homeData === null) {
+        const p = document.createElement("p");
+        p.className = "blurb";
+        p.textContent = _sx("Restart Home Assistant to finish updating Hemma, then Status badges can be added here.");
+        body.appendChild(p);
+        return;
+      }
+      const mine = ((this._homeData && this._homeData.status_badges) || []).filter((b) => (b.rooms || ["home"]).indexOf(key) >= 0);
+      count.textContent = mine.length ? _sx("{n} set", { n: mine.length }) : "";
+      const list = this._flowGroup(body);
+      mine.forEach((b) => {
+        const st = this._hass && this._hass.states[b.entity];
+        this._flowRow(list, {
+          mask: iconUrl(this._statusIconOf(b, st)), tint: "var(--hemma-color-blue, #0088FF)",
+          title: b.name || (st && st.attributes.friendly_name) || b.entity,
+          sub: st ? this._hass.formatEntityState(st) : b.entity, chevron: true,
+          onTap: () => this._statusSheet(b, key),
+        });
+      });
+      this._flowRow(list, { icon: "plus", tint: FLOW_TINT.teal, title: _sx("Add Status Badge"),
+        onTap: () => this._statusSheet(null, key) });
+    };
+    this._homeListeners = (this._homeListeners || []).concat([paint]);
+    paint();
+    col.appendChild(fs);
+  }
+
+  _statusIconOf(b, st) {
+    const conf = st && (b.states || {})[st.state];
+    return (conf && conf.icon) || Object.values(b.states || {}).map((x) => x.icon).filter(Boolean)[0] || "power_on";
+  }
+
+  // First guess at each state's look, from its name: the badge should be right before anyone touches it.
+  _statusGuess(state) {
+    const v = String(state).toLowerCase();
+    const label = v.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+    if (/error|fault|jam|fail|problem/.test(v)) return { label, color: "red", icon: "exclamation", show: true };
+    if (/pause/.test(v)) return { label, color: "yellow", icon: "pause", show: true };
+    if (/finish|done|complete|end/.test(v)) return { label: _sx("Done"), color: "green", icon: "power_on", show: true };
+    if (/^(idle|off|standby|ready|closed|docked|unplugged|sleep|stopped|charging)/.test(v)) return { label, color: "neutral", icon: "power_off", show: false };
+    return { label, color: "blue", icon: "power_on", show: true };
+  }
+
+  _statusSheet(badge, roomKey) {
+    const b = badge ? JSON.parse(JSON.stringify(badge))
+      : { id: "", entity: "", name: "", time_entity: null, rooms: roomKey === "home" ? ["home"] : ["home", roomKey], states: {} };
+    const pane = document.createElement("div");
+    pane.className = "askpane";
+    const scrim = document.createElement("div");
+    scrim.className = "fscrim";
+    const stack = document.createElement("div");
+    stack.className = "askstack wide statussheet";
+    const frost = document.createElement("div");
+    frost.className = "fglass";
+    const box = document.createElement("div");
+    box.className = "askcard";
+    box.setAttribute("role", "dialog");
+    box.setAttribute("aria-modal", "true");
+    stack.appendChild(frost); stack.appendChild(box);
+    pane.appendChild(scrim); pane.appendChild(stack);
+    const close = () => {
+      document.removeEventListener("keydown", onKey, true);
+      this._flowLockScroll(false);
+      pane.remove();
+    };
+    const onKey = (ev) => { if (ev.key === "Escape" && !this._openCombo) { ev.preventDefault(); close(); } };
+    const H = this._hass;
+    const statesOf = () => {
+      const st = H.states[b.entity];
+      const opts = st && Array.isArray(st.attributes.options) ? st.attributes.options.slice() : [];
+      if (st && opts.indexOf(st.state) < 0 && st.state !== "unknown" && st.state !== "unavailable") opts.push(st.state);
+      if (st && /^(binary_sensor|switch|input_boolean)\./.test(b.entity)) ["on", "off"].forEach((x) => { if (opts.indexOf(x) < 0) opts.push(x); });
+      Object.keys(b.states).forEach((x) => { if (opts.indexOf(x) < 0) opts.push(x); });
+      opts.forEach((x) => { if (!b.states[x]) b.states[x] = this._statusGuess(x); });
+      return opts;
+    };
+    const timeFor = () => {
+      const dev = H.entities[b.entity] && H.entities[b.entity].device_id;
+      if (!dev) return null;
+      return Object.keys(H.entities).find((id) => H.entities[id].device_id === dev && id.indexOf("sensor.") === 0
+        && /remain|time_left|finish|end_time|completion/.test(id)) || null;
+    };
+    const paint = () => {
+      box.replaceChildren();
+      const h = document.createElement("h3");
+      h.textContent = badge ? _sx("Status Badge") : _sx("Add Status Badge");
+      box.appendChild(h);
+      const main = this._flowGroup(box);
+      const st = H.states[b.entity];
+      this._flowRow(main, { title: _sx("Entity"), detail: b.entity ? (st && st.attributes.friendly_name) || b.entity : _sx("Choose"), chevron: true,
+        onTap: () => this._pickSheet({ title: _sx("Entity"), list: Object.keys(H.states).sort(), current: b.entity,
+          onPick: (v) => {
+            const fresh = v !== b.entity;
+            b.entity = v;
+            if (fresh) { b.states = {}; b.name = ""; if (!b.time_entity) b.time_entity = timeFor(); }
+            paint();
+          } }) });
+      const nameRow = this._flowRow(main, { title: _sx("Label"), input: b.name, placeholder: (st && st.attributes.friendly_name) || _sx("Washer") });
+      nameRow.input.oninput = () => { b.name = nameRow.input.value; };
+      this._flowRow(main, { title: _sx("Time left"), detail: b.time_entity ? (H.states[b.time_entity] ? H.states[b.time_entity].attributes.friendly_name || b.time_entity : b.time_entity) : _sx("None"), chevron: true,
+        onTap: () => this._pickSheet({ title: _sx("Time left"), current: b.time_entity || "",
+          list: [""].concat(Object.keys(H.states).filter((id) => id.indexOf("sensor.") === 0).sort()),
+          label: (v) => (v ? this._prettyEntity(v) : _sx("None")),
+          onPick: (v) => { b.time_entity = v || null; paint(); } }) });
+
+      const where = this._flowGroup(box, { header: _sx("Shows on") });
+      const rooms = ((this._state && this._state.compact.rooms) || []).map((r) => ({ key: this._statusRoomKey(r), name: this._statusRoomKey(r) === "home" ? _sx("Home") : (r.name || r.title) }));
+      rooms.forEach((r) => {
+        const on = b.rooms.indexOf(r.key) >= 0;
+        this._flowRow(where, { title: r.name, check: on, onTap: () => {
+          b.rooms = on ? b.rooms.filter((k) => k !== r.key) : b.rooms.concat([r.key]);
+          paint();
+        } });
+      });
+
+      if (b.entity) {
+        const list = this._flowGroup(box, { header: _sx("States"), footer: _sx("Tap a state to change how it looks. Hidden states remove the badge.") });
+        statesOf().forEach((x) => {
+          const c = b.states[x];
+          const accent = HEMMA_ACCENTS.find((a) => a.id.indexOf("--hemma-color-" + c.color + ",") >= 0);
+          const r = this._flowRow(list, { mask: iconUrl(c.icon), tint: c.show ? (accent ? accent.hex : "#CDCDCF") : "#5c5c60",
+            title: c.label || x, sub: x + (c.show ? "" : " · " + _sx("Hidden")), chevron: true });
+          r.row.onclick = () => this._menuAt(r.row, [
+            { id: "label", label: _sx("Rename…") },
+            { id: "icon", label: _sx("Change Icon…") },
+            ...HEMMA_ACCENTS.map((a) => ({ id: "color:" + a.label.toLowerCase(), label: _sx(a.label), group: _sx("Color") })),
+            { id: "show", label: c.show ? _sx("Hide in this state") : _sx("Show in this state"), group: _sx("Visibility") },
+          ], async (id) => {
+            if (id === "label") {
+              const v = await this._ask({ title: _sx("Label"), value: c.label || "", confirmLabel: _sx("Set") });
+              if (typeof v === "string") c.label = v.trim();
+            } else if (id === "icon") {
+              this._pickSheet({ title: _sx("Icon"), list: Object.keys(ICON_DATA).filter((k) => k !== "default").sort(), current: c.icon,
+                free: false, glyph: (o) => iconUrl(o), label: (o) => o.replace(/[-_]/g, " "), onPick: (v) => { c.icon = v; paint(); } });
+              return;
+            } else if (id.indexOf("color:") === 0) c.color = id.slice(6);
+            else if (id === "show") c.show = !c.show;
+            paint();
+          });
+        });
+      }
+
+      const acts = document.createElement("div");
+      acts.className = "askacts";
+      if (badge) {
+        const del = document.createElement("button");
+        del.className = "ghost danger";
+        del.textContent = _sx("Delete");
+        del.onclick = async () => {
+          try {
+            await H.callWS({ type: "hemma/home/remove_status_badge", badge_id: badge.id });
+            this._status(_sx("Status badge removed"), "ok");
+            close();
+          } catch (e) { this._status(this._plainError(e, _sx("Hemma couldn't remove the badge.")), "err"); }
+        };
+        acts.appendChild(del);
+      }
+      const cancel = document.createElement("button");
+      cancel.className = "ghost";
+      cancel.textContent = _sx("Cancel");
+      cancel.onclick = close;
+      acts.appendChild(cancel);
+      const save = document.createElement("button");
+      save.textContent = _sx("Save");
+      save.disabled = !b.entity || !b.rooms.length;
+      save.onclick = async () => {
+        if (!b.id) b.id = (b.entity.split(".")[1] || "badge").replace(/[^a-z0-9_-]/g, "").slice(0, 28) + "-" + Date.now().toString(36).slice(-6);
+        const keep = statesOf().reduce((o, x) => { o[x] = b.states[x]; return o; }, {});
+        try {
+          await H.callWS({ type: "hemma/home/set_status_badge",
+            badge: { id: b.id, entity: b.entity, name: b.name || "", time_entity: b.time_entity || null, rooms: b.rooms, states: keep } });
+          this._status(_sx("Status badge saved"), "ok");
+          close();
+        } catch (e) { this._status(this._plainError(e, _sx("Hemma couldn't save the badge.")), "err"); }
+      };
+      acts.appendChild(save);
+      box.appendChild(acts);
+    };
+    paint();
+    scrim.onclick = close;
+    document.addEventListener("keydown", onKey, true);
+    this._blockDrag(pane);
+    this._flowLockScroll(true);
+    this.shadowRoot.appendChild(pane);
   }
 
   _orderBadgeCards(room, col) {

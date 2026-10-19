@@ -385,3 +385,5 @@ hemma_mobile_sensor_chips:
                   : L('state.default.unavailable', 'Unavailable');
                 return `<div class="badge-wrap"><div class="badge-title">${T('occupancy.title', 'Occupancy')}</div><div class="badge-sub">${sub}</div></div>`;
               ]]]
+          - type: custom:hemma-status-badges
+            room: filter

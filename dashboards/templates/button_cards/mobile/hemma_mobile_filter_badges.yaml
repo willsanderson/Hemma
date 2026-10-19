@@ -158,6 +158,14 @@ hemma_mobile_filter_badges:
             const i = o.indexOf('energy');
             return i < 0 ? o.length + 6 : i + 1;
           ]]]
+      - "--hemma-badge-order-status": >
+          [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('status', variables);
+            const o = variables.badge_order;
+            if (!Array.isArray(o)) return 7;
+            const i = o.indexOf('status');
+            return i < 0 ? o.length + 7 : i + 1;
+          ]]]
       - background: transparent !important
       - backdrop-filter: none !important
       - -webkit-backdrop-filter: none !important
@@ -336,3 +344,5 @@ hemma_mobile_filter_badges:
               enabled: '[[[ return window.hemmaBadges ? window.hemmaBadges.on("energy", variables, "row") : (variables.show_energy !== false) ]]]'
               row_entity: input_select.hemma_mobile_filter
               power_entity: '[[[ return variables.energy_power_entity || variables.power_entity ]]]'
+          - type: custom:hemma-status-badges
+            room: home

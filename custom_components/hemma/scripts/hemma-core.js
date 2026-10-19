@@ -12830,7 +12830,7 @@ window.hemmaMenuGlass = {
   }
 
   // Which badge shows, and where it sorts, for both badge builders: the room card's row ('room') and the phone's row ('row').
-  var BADGE_ORDER = ['climate', 'lights', 'people', 'media', 'security', 'energy'];
+  var BADGE_ORDER = ['climate', 'lights', 'people', 'media', 'security', 'energy', 'status'];
   function badgeOrder(id, V) {
     var o = V && V.badge_order, base = BADGE_ORDER.indexOf(id) + 1;
     if (!Array.isArray(o)) return base;

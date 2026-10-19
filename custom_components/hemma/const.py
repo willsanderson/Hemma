@@ -27,6 +27,7 @@ SHARED_SCRIPTS = (
     "smart-row.js",
     "swipe-card-patch.js",
     "filter-overlay.js",
+    "hemma-cards.js",
 )
 
 ASSETS_URL_BASE = "/hemma_assets"

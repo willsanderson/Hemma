@@ -305,6 +305,14 @@ hemma_room:
             const i = o.indexOf('energy');
             return i < 0 ? o.length + 6 : i + 1;
           ]]]
+      - "--hemma-badge-order-status": >
+          [[[
+            if (window.hemmaBadges) return window.hemmaBadges.order('status', variables);
+            const o = variables.badge_order;
+            if (!Array.isArray(o)) return 7;
+            const i = o.indexOf('status');
+            return i < 0 ? o.length + 7 : i + 1;
+          ]]]
 
       - --hemma-font-set: >
           [[[
@@ -1030,6 +1038,8 @@ hemma_room:
               entity_usage_month: '[[[ return variables.energy_usage_month ]]]'
               entity_cost_today: '[[[ return variables.energy_cost_today ]]]'
               entity_cost_month: '[[[ return variables.energy_cost_month ]]]'
+          - type: custom:hemma-status-badges
+            room: '[[[ const n = String(this._config?.name || ""); return (!n || n.indexOf("hemmaGreeting") >= 0) ? "home" : "room_" + n.trim().toLowerCase().replace(/[^a-z0-9]+/g, ""); ]]]'
 
 
   extra_styles: |
