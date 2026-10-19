@@ -2038,8 +2038,8 @@ window.hemmaMenuGlass = {
             outerHost.style.setProperty('pointer-events', shown ? 'auto' : 'none');
             outerHost.style.setProperty(
               'transition',
-              `grid-template-rows .56s cubic-bezier(0.45,0,0.55,1) ${shown ? '0s' : '.08s'}, `
-              + `--np-reveal ${shown ? '.42s cubic-bezier(0.25,0.1,0.25,1) .14s' : '.3s ease-in'}`
+              `grid-template-rows .4s cubic-bezier(0.45,0,0.55,1) ${shown ? '0s' : '.04s'}, `
+              + `--np-reveal ${shown ? '.3s cubic-bezier(0.25,0.1,0.25,1) .1s' : '.22s ease-in'}`
             );
             const aspectRatio = outerHost.shadowRoot?.getElementById('aspect-ratio');
             if (aspectRatio) aspectRatio.style.setProperty('overflow', ov, 'important');
@@ -2183,7 +2183,7 @@ window.hemmaMenuGlass = {
       window._hemmaNPPlan = function (states, V) {
         const EXIT_MS = 480;
         // The last source out holds until the phone row has finished closing around it.
-        const LAST_EXIT_MS = 760;
+        const LAST_EXIT_MS = 560;
         // Cap on waiting for artwork before opening an arrival anyway.
         const ART_CAP = 400;
         const OPEN_MIN = 60;
@@ -3961,13 +3961,13 @@ window.hemmaMenuGlass = {
         box.querySelectorAll('.cat-np > *').forEach((el) => {
           const c = el.shadowRoot && el.shadowRoot.querySelector('ha-card');
           if (!c) return;
-          const leave = { duration: 300, easing: 'ease-in', fill: 'forwards' };
+          const leave = { duration: 220, easing: 'ease-in', fill: 'forwards' };
           out.push(...this._npFade(el, c, leave, true));
           out.push(c.animate([{ transform: 'none' }, { transform: 'scale(0.98)' }], leave));
         });
         const head = box.querySelector('h2');
         // An even ease in and out: the whole page below moves with this, so it must start and land gently.
-        const close = { duration: 520, delay: 80, easing: 'cubic-bezier(0.45, 0, 0.55, 1)', fill: 'forwards' };
+        const close = { duration: 400, delay: 40, easing: 'cubic-bezier(0.45, 0, 0.55, 1)', fill: 'forwards' };
         if (head) head.style.marginTop = '0px';
         const slack = this._npSlack(box);
         if (head) head.style.marginTop = '';
@@ -3977,7 +3977,7 @@ window.hemmaMenuGlass = {
           out.push(head.animate([{ marginTop: getComputedStyle(head).marginTop }, { marginTop: '0px' }], close));
         }
         out.push(box.animate([{ height: h0 + 'px', marginBottom: '0px' }, { height: '0px', marginBottom: -slack + 'px' }], close));
-        box._npT = setTimeout(() => { if (box._hemmaN === 0) this._npClear(box); }, 640);
+        box._npT = setTimeout(() => { if (box._hemmaN === 0) this._npClear(box); }, 480);
         return;
       }
       this._npClear(box);
@@ -4061,20 +4061,20 @@ window.hemmaMenuGlass = {
         box.style.height = '';
         const h1 = box.getBoundingClientRect().height;
         box.style.height = h0 + 'px';
-        const open = { duration: 560, easing: 'cubic-bezier(0.45, 0, 0.55, 1)' };
+        const open = { duration: 400, easing: 'cubic-bezier(0.45, 0, 0.55, 1)' };
         const slack = was ? 0 : this._npSlack(box);
         const grow = box.animate([{ height: h0 + 'px', marginBottom: -slack + 'px' }, { height: h1 + 'px', marginBottom: '0px' }], open);
         anims.push(grow);
         grow.finished.then(() => { if (box._npAnims === anims) { box.style.height = ''; box.style.overflow = ''; } }, () => {});
         if (head) {
           head.style.marginTop = '';
-          anims.push(head.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 60, easing: 'ease-out', fill: 'backwards' }));
+          anims.push(head.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, delay: 40, easing: 'ease-out', fill: 'backwards' }));
           anims.push(head.animate([{ marginTop: '0px' }, { marginTop: getComputedStyle(head).marginTop }], open));
         }
         tiles.forEach((el, i) => {
           const c = i >= was && el.shadowRoot && el.shadowRoot.querySelector('ha-card');
           if (!c) return;
-          const enter = { duration: 420, delay: 140 + (i - was) * 50, easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)', fill: 'backwards' };
+          const enter = { duration: 300, delay: 100 + (i - was) * 40, easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)', fill: 'backwards' };
           // A fade and a slight settle, as Apple's do; the scale is on the glass itself, which keeps its blur.
           anims.push(...this._npFade(el, c, enter, false));
           anims.push(c.animate([{ transform: 'scale(0.98)' }, { transform: 'none' }], enter));
