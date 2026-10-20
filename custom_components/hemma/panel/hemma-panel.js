@@ -2618,6 +2618,8 @@ const STATUS_SHEET_CSS = `
   .ssh-gh { margin-left:14px; font-size:12.5px; font-weight:560; color:var(--ink-2); }
   .ssh-list { background:var(--ssh-group); border-radius:12px; overflow:hidden; isolation:isolate; }
   .ssh-foot { margin:0 14px; font-size:12px; line-height:1.4; color:var(--ink-3); }
+  .ssh .ssh-foot.hint { padding:0; font-size:12px; }
+  :host(.nohints) .ssh-foot.hint { display:none; }
   .ssh-empty { margin:auto; max-width:30ch; text-align:center; color:var(--ink-2); font-size:14px; }
   .ssh-row { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:42px; padding:0 14px; box-sizing:border-box;
     background:none; border:0; font:inherit; color:inherit; text-align:left; }
@@ -5193,7 +5195,8 @@ class HemmaPanel extends HTMLElement {
         :host(:not(.narrow)) .inspector .sheet { padding-bottom:8px; }
         :host(:not(.narrow)) .band.detail .col > .card.sel,
         :host(:not(.narrow)) .band.detail .tilegrid > .tile.sel { padding-top:3px; }
-        :host(:not(.narrow)) .band.detail .col > .card.sel[data-k="Status"] { padding-top:var(--card-pad-v); }
+        :host(:not(.narrow)) .band.detail .col > .card.sel[data-k="Status"],
+        .band.detail .card.sel[data-k="Status"] { padding-top:6px; padding-bottom:6px; }
         :host(:not(.narrow)) .band.detail .col > .card.sel.grouped,
         :host(:not(.narrow)) .band.detail .tilegrid > .tile.sel.grouped { padding-top:0; }
         :host(.narrow) { --insp-w:0px; }
@@ -15907,6 +15910,8 @@ class HemmaPanel extends HTMLElement {
       });
     }
     // In the dashboard's order (hemma_room's --hemma-badge-order-*): the saved order, then the default.
+    out.push(...this._statusBadgesFor((opts && opts.statusKey)
+      || ((room.name || room.path || room.title) ? this._statusRoomKey(room) : "home")));
     const rank = (Array.isArray(V.badge_order) ? V.badge_order : []).filter((id) => BADGE_ORDER_IDS.includes(id))
       .concat(BADGE_ORDER_IDS);
     const at = (b) => { const i = rank.indexOf(String(b.id).split(":")[0]); return i < 0 ? rank.length : i; };
@@ -16506,8 +16511,8 @@ class HemmaPanel extends HTMLElement {
     const wideRoom = (wideHome.find((r) => r.path === "home") || wideHome[0] || {});
     const border = this._badgeOrder(wideRoom);
     const model = this._miniModel({ variables: { ...bvv, ...wideV } }, { phone: true })
-      .filter((b) => PHONE_FILTERS.indexOf(b.id) !== -1)
-      .sort((a, b) => border.indexOf(a.id) - border.indexOf(b.id));
+      .filter((b) => PHONE_FILTERS.indexOf(b.id) !== -1 || String(b.id).indexOf("status:") === 0)
+      .sort((a, b) => border.indexOf(String(a.id).split(":")[0]) - border.indexOf(String(b.id).split(":")[0]));
 
     model.forEach((b) => {
       const el = this._paintBadge(b, false);
@@ -16795,6 +16800,7 @@ class HemmaPanel extends HTMLElement {
           text: n === 0 ? _studioT("lights.all_off", "All Off") : n === eids.length ? _studioT("lights.all_on", "All On") : _studioT("lights.n_on", "{n} On", { n }) }, "b:lights");
       }
       this._presenceChips(roomKeyOf(roomPop), chipsV.room_chips).forEach((b) => bareChip(b, null));
+      this._statusBadgesFor(roomKeyOf(roomPop)).forEach((b) => bareChip(b, null));
       if (crow.children.length) body.appendChild(crow);
 
       const scenes = this._scenesOn() ? this._sceneListForRoom(roomPop) : [];
@@ -17134,6 +17140,7 @@ class HemmaPanel extends HTMLElement {
         text: n === 0 ? _studioT("lights.all_off", "All Off") : n === eids.length ? _studioT("lights.all_on", "All On") : _studioT("lights.n_on", "{n} On", { n }) }));
     }
     this._presenceChips(roomKeyOf(name), chipsV.room_chips).forEach((b) => crow.appendChild(this._paintChip(b)));
+    this._statusBadgesFor(roomKeyOf(name)).forEach((b) => crow.appendChild(this._paintChip({ ...b, bare: true })));
     return crow.children.length ? crow : null;
   }
 
@@ -17377,6 +17384,7 @@ class HemmaPanel extends HTMLElement {
     if (this._ovOn(((rooms[0] || {}).variables) || {})) { brow.style.gap = (11 * scale).toFixed(2) + "px"; page.classList.add("ov"); }
     this._miniModel(rooms[0] || {}).forEach((b) => {
       const id = b.id === "people" ? "presence" : String(b.id).split(":")[0];
+      if (id === "status") { brow.appendChild(this._paintBadge(b)); return; }
       if (!PV_CATS.some((c) => c[0] === id)) return;
       const el = this._paintBadge(b);
       el.classList.toggle("mc-on", id === k);
@@ -18590,6 +18598,7 @@ class HemmaPanel extends HTMLElement {
     conn.subscribeMessage((data) => {
       this._homeData = data || { status_badges: [] };
       (this._homeListeners || []).forEach((fn) => { try { fn(); } catch (_) {} });
+      try { this._syncPreview(); } catch (_) {}
     }, { type: "hemma/home/subscribe" }).catch(() => {
       this._homeData = null;
       (this._homeListeners || []).forEach((fn) => { try { fn(); } catch (_) {} });
@@ -18713,6 +18722,23 @@ class HemmaPanel extends HTMLElement {
     if (dirty) { this._status(_sx("Status badge saved. Save your changes to show it on the dashboard."), "ok"); return; }
     await this._save();
     this._status(_sx("Status badge saved, and the dashboard updated to show it"), "ok");
+  }
+
+  // The preview's Status badges for one room, drawn the way the dashboard draws them.
+  _statusBadgesFor(key) {
+    const S = (this._hass && this._hass.states) || {};
+    const out = [];
+    ((this._homeData && this._homeData.status_badges) || []).filter((b) => (b.rooms || ["home"]).indexOf(key) >= 0).forEach((b) => {
+      const e = S[b.entity];
+      if (!e || e.state === "unavailable" || e.state === "unknown") return;
+      const conf = (b.states || {})[e.state];
+      if (conf && conf.show === false) return;
+      const tone = conf && HEMMA_ACCENTS.find((x) => x.label.toLowerCase() === conf.color);
+      out.push({ id: "status:" + b.id, label: b.name || (e.attributes && e.attributes.friendly_name) || b.entity,
+        icon: (conf && conf.icon) || "power_on", color: tone ? tone.id : "var(--hemma-color-neutral, #CDCDCF)",
+        text: (conf && conf.label) || this._hass.formatEntityState(e), subs: [] });
+    });
+    return out;
   }
 
   _statusIconOf(b, st) {
@@ -18848,7 +18874,7 @@ class HemmaPanel extends HTMLElement {
       if (head) g.appendChild(el("div", "ssh-gh", head));
       const list = el("div", "ssh-list");
       g.appendChild(list);
-      if (foot) g.appendChild(el("p", "ssh-foot", foot));
+      if (foot) g.appendChild(el("p", "ssh-foot hint", foot));
       parent.appendChild(g);
       return list;
     };
@@ -18918,7 +18944,7 @@ class HemmaPanel extends HTMLElement {
         onInput: (v) => { b.name = v; const t = sheet.querySelectorAll(".ssh-badge .t1"); t.forEach((n) => { n.textContent = v || (b.entity ? nameOf(b.entity) : _sx("Status")); }); } });
       const timer = b.entity ? timeFor() : null;
       if (timer) {
-        const tl = group(box, "", _sx("Adds how long is left to the badge while it's running, like Running · 32 min left."));
+        const tl = group(box, "", _sx("Shows how long is left while it's running."));
         row(tl, { title: _sx("Show Time Left"), sub: nameOf(timer), toggle: !!b.time_entity,
           onToggle: () => { b.time_entity = b.time_entity ? null : timer; paint(); } });
       }
@@ -18931,7 +18957,7 @@ class HemmaPanel extends HTMLElement {
         };
         const shown = all.filter((x) => b.states[x].show !== false), hidden = all.filter((x) => b.states[x].show === false);
         if (shown.length) { const l = group(box, _sx("Shown"), hidden.length ? "" : _sx("The badge appears in these states.")); shown.forEach((x) => stateRow(l, x)); }
-        if (hidden.length) { const l = group(box, _sx("Hidden"), _sx("In these states the badge isn't shown, so it only appears when there's something to know.")); hidden.forEach((x) => stateRow(l, x)); }
+        if (hidden.length) { const l = group(box, _sx("Hidden"), _sx("The badge is hidden in these states.")); hidden.forEach((x) => stateRow(l, x)); }
       }
       const where = group(box, _sx("Shows On"));
       ((this._state && this._state.compact.rooms) || []).forEach((r) => {
@@ -18966,7 +18992,7 @@ class HemmaPanel extends HTMLElement {
         sheet.querySelectorAll(".ssh-row.sel .kt, .ssh-badge .t2").forEach((n) => { n.textContent = v || autoText(x); });
       } });
       const tf = box.lastElementChild;
-      if (tf) tf.appendChild(el("p", "ssh-foot", _sx("The badge shows the state in Home Assistant's own words. Type here only to say it differently, like Done instead of Finished.")));
+      if (tf) tf.appendChild(el("p", "ssh-foot hint", _sx("Leave empty to use the state's name.")));
       const sw = group(box, _sx("Color"));
       sw.classList.add("ssh-swatches");
       HEMMA_ACCENTS.forEach((a) => {
@@ -19056,7 +19082,7 @@ class HemmaPanel extends HTMLElement {
           row(none, { title: _sx("None"), tick: !cur, onTap: () => pick(null) });
         }
         if (suggested.length) {
-          const sl = group(results, _sx("Suggested"), kind === "entity" && !needle ? _sx("Appliances and sensors with a set list of states.") : "");
+          const sl = group(results, _sx("Suggested"), kind === "entity" && !needle ? _sx("Devices and sensors with a set list of states.") : "");
           suggested.slice(0, 40).forEach((id) => entRow(sl, id));
         }
         const rest = ids.filter((id) => suggested.indexOf(id) < 0 && (kind === "entity" || id.indexOf("sensor.") === 0));
