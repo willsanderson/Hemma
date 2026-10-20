@@ -2161,13 +2161,74 @@ const roomSensors = (hass, key, chips) => {
     : own((id) => !isCam(id) && id.indexOf("binary_sensor.") === 0 && ["motion", "occupancy", "presence"].indexOf(cls(id)) >= 0);
   return { motion, occupancy };
 };
-const sensorsOn = (states, ids) => {
+// Ring's motion event can go quiet while the same device's last-activity sensor keeps the real time; the later one wins.
+const eventStamp = (hass, id) => {
+  const S = (hass && hass.states) || {};
+  const ents = (hass && hass.entities) || {};
+  let t = S[id] ? Date.parse(S[id].state) : NaN;
+  const dev = (ents[id] || {}).device_id;
+  if (dev) Object.keys(ents).forEach((x) => {
+    if (x.indexOf("sensor.") !== 0 || (ents[x] || {}).device_id !== dev || !/last_(motion|activity)/.test(x)) return;
+    const v = Date.parse((S[x] || {}).state);
+    if (Number.isFinite(v) && !(v <= t)) t = v;
+  });
+  return t;
+};
+// hemma-core's hemmaLastSeen: a binary sensor's last_changed resets on every restart, so its time comes from history.
+const seenAt = {};
+const seenAsk = new Set();
+let seenTimer = 0;
+const lastSeen = (hass, ids, done) => {
+  let best = null;
+  let wait = false;
+  for (const id of ids || []) {
+    const s = hass && hass.states && hass.states[id];
+    if (!s) continue;
+    let t = null;
+    if (id.indexOf("event.") === 0) t = eventStamp(hass, id);
+    else if (s.state === "on") t = Date.now();
+    else if (s.state === "off") {
+      const c = seenAt[id];
+      if (c && c.key === s.last_changed) t = c.at;
+      else if (c && c.key === "asking") wait = true;
+      else { wait = true; seenAsk.add(id); }
+    }
+    if (Number.isFinite(t) && (best == null || t > best)) best = t;
+  }
+  if (seenAsk.size && !seenTimer && hass && hass.callWS) seenTimer = setTimeout(() => {
+    seenTimer = 0;
+    const ask = [...seenAsk];
+    seenAsk.clear();
+    ask.forEach((id) => { seenAt[id] = { key: "asking" }; });
+    const settle = (id, at) => { const s = hass.states[id]; seenAt[id] = { key: s && s.last_changed, at }; };
+    Promise.resolve(hass.callWS({
+      type: "history/history_during_period",
+      start_time: new Date(Date.now() - 7 * 864e5).toISOString(),
+      entity_ids: ask, minimal_response: true, no_attributes: true, significant_changes_only: false,
+    })).then((res) => {
+      ask.forEach((id) => {
+        const list = (res && res[id]) || [];
+        let at = null;
+        for (let i = list.length - 1; i >= 0; i--) {
+          if (list[i].s !== "on") continue;
+          const next = list[i + 1];
+          at = next ? Math.round(Number(next.lc || next.lu) * 1000) : Date.now();
+          break;
+        }
+        settle(id, at);
+      });
+    }).catch(() => ask.forEach((id) => settle(id, null))).then(() => { if (done) done(); });
+  }, 0);
+  return wait ? undefined : best;
+};
+const sensorsOn = (hass, ids) => {
+  const states = (hass && hass.states) || {};
   let seen = false;
   for (const id of ids || []) {
     const s = states && states[id];
     if (!s) continue;
     if (id.indexOf("event.") === 0) {
-      const t = Date.parse(s.state);
+      const t = eventStamp(hass, id);
       seen = true;
       if (Number.isFinite(t) && Date.now() - t < 60000) return true;
     } else if (s.state === "on") return true;
@@ -17124,14 +17185,8 @@ class HemmaPanel extends HTMLElement {
 
   // Motion and Occupancy, as the phone's chip row draws them: Detected while any of the room's sensors detects.
   _presenceChips(key, chips) {
-    const S = (this._hass && this._hass.states) || {};
     const R = roomSensors(this._hass, key, chips);
-    // Off, the dashboard shows when the sensor last saw someone; without its history helper, only an event's own time is known.
-    const seen = (ids) => {
-      if (window.hemmaLastSeen) return window.hemmaLastSeen(this._hass, ids, null);
-      const ev = ids.map((id) => id.indexOf("event.") === 0 && S[id] ? Date.parse(S[id].state) : NaN).filter(Number.isFinite);
-      return ids.every((id) => id.indexOf("event.") === 0) && ev.length ? Math.max(...ev) : null;
-    };
+    const seen = (ids) => lastSeen(this._hass, ids, () => this._liveRefresh());
     const ago = (t) => {
       if (window.hemmaAgo) return window.hemmaAgo(t);
       const m = Math.floor((Date.now() - t) / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24);
@@ -17147,8 +17202,8 @@ class HemmaPanel extends HTMLElement {
       return Number.isFinite(t) ? ago(t) : _studioT("motion.not_detected", "Not Detected");
     };
     const out = [];
-    if (R.motion.length) out.push({ icon: "motion", label: _studioT("motion.title", "Motion"), glyphHeight: "70%", color: "#fff", bare: true, text: word(sensorsOn(S, R.motion), R.motion) });
-    const occ = sensorsOn(S, R.occupancy);
+    if (R.motion.length) out.push({ icon: "motion", label: _studioT("motion.title", "Motion"), glyphHeight: "70%", color: "#fff", bare: true, text: word(sensorsOn(this._hass, R.motion), R.motion) });
+    const occ = sensorsOn(this._hass, R.occupancy);
     if (R.occupancy.length) out.push({ icon: occ ? "person-walking-motion" : "person-walking", label: _studioT("occupancy.title", "Occupancy"), glyphHeight: "70%", color: "#fff", bare: true, text: word(occ, R.occupancy) });
     return out;
   }

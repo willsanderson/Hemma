@@ -62,9 +62,9 @@
       box-sizing: border-box; padding: 10%; background: var(--c);
       -webkit-mask: var(--m) no-repeat center / contain; mask: var(--m) no-repeat center / contain; -webkit-mask-origin: content-box; mask-origin: content-box; }
     .w { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; text-align: left; }
-    .t { font-size: var(--badge-font-size-current, var(--badge-font-size, 13px)); font-weight: 600; line-height: 1.2;
+    .t { font-size: var(--badge-font-size-current, 13px); font-weight: 600; line-height: 1.2;
       color: var(--hemma-badge-title-color, var(--primary-text-color)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .s { font-size: calc(var(--badge-font-size-current, var(--badge-font-size, 13px)) - 1px); font-weight: 500; line-height: 1.2;
+    .s { font-size: calc(var(--badge-font-size-current, 13px) - 1px); font-weight: 500; line-height: 1.2;
       opacity: var(--hemma-badge-sub-opacity, .80); color: var(--hemma-badge-sub-color, var(--secondary-text-color));
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     @media (max-width: 767px) and (orientation: portrait) {
