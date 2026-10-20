@@ -2619,7 +2619,6 @@ const STATUS_SHEET_CSS = `
   .ssh-list { background:var(--ssh-group); border-radius:12px; overflow:hidden; isolation:isolate; }
   .ssh-foot { margin:0 14px; font-size:12px; line-height:1.4; color:var(--ink-3); }
   .ssh .ssh-foot.hint { padding:0; font-size:12px; }
-  :host(.nohints) .ssh-foot.hint { display:none; }
   .ssh-empty { margin:auto; max-width:30ch; text-align:center; color:var(--ink-2); font-size:14px; }
   .ssh-row { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:42px; padding:0 14px; box-sizing:border-box;
     background:none; border:0; font:inherit; color:inherit; text-align:left; }
@@ -15910,7 +15909,7 @@ class HemmaPanel extends HTMLElement {
       });
     }
     // In the dashboard's order (hemma_room's --hemma-badge-order-*): the saved order, then the default.
-    out.push(...this._statusBadgesFor((opts && opts.statusKey)
+    if (this._statusBadgesFor) out.push(...this._statusBadgesFor((opts && opts.statusKey)
       || ((room.name || room.path || room.title) ? this._statusRoomKey(room) : "home")));
     const rank = (Array.isArray(V.badge_order) ? V.badge_order : []).filter((id) => BADGE_ORDER_IDS.includes(id))
       .concat(BADGE_ORDER_IDS);
