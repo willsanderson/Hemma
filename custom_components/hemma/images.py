@@ -51,13 +51,18 @@ def _scan(path: str) -> list[dict[str, Any]]:
     ]
 
 
-def _scan_icons(directory: str) -> list[str]:
+def _svg_names(directory: str) -> set[str]:
     if not os.path.isdir(directory):
-        return []
-    return sorted(
+        return set()
+    return {
         n[:-4] for n in os.listdir(directory)
         if n.lower().endswith(".svg") and re.fullmatch(r"[a-z0-9_-]+", n[:-4])
-    )
+    }
+
+
+def _scan_icons(directory: str, shipped: str) -> list[str]:
+    # Older installs copied Hemma's own icons into www/hemma; only the ones Hemma doesn't ship are the user's.
+    return sorted(_svg_names(directory) - _svg_names(shipped))
 
 
 class HemmaIconsView(HomeAssistantView):
@@ -69,7 +74,8 @@ class HemmaIconsView(HomeAssistantView):
 
     async def get(self, request: web.Request) -> web.Response:
         hass: HomeAssistant = request.app["hass"]
-        icons = await hass.async_add_executor_job(_scan_icons, hass.config.path(ICONS_DIR))
+        icons = await hass.async_add_executor_job(
+            _scan_icons, hass.config.path(ICONS_DIR), os.path.join(os.path.dirname(__file__), "assets", "icons"))
         return self.json({"icons": icons})
 
 

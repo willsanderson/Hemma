@@ -5546,7 +5546,7 @@ window.hemmaMenuGlass = {
         const group = this._sideSection(list, 'rooms', _hemmaT('nav.rooms', 'Rooms'));
         rooms.forEach((i) => {
           const el = this._els[i];
-          const auto = { 'living room': 'living-room', kitchen: 'kitchen', bedroom: 'bedroom', office: 'desktop' };
+          const auto = { 'living room': 'living-room', kitchen: 'kitchen', 'dining room': 'dining', dining: 'dining', bedroom: 'bedroom', office: 'desktop' };
           const item = this._sideItem(el.route.glyph || auto[String(el.label.textContent).toLowerCase()]
             || el.route.icon || 'default', el.label.textContent,
             this._activeIdx === i, go(i), badgeOf(el.route));
