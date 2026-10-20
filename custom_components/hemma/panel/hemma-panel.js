@@ -11207,6 +11207,7 @@ class HemmaPanel extends HTMLElement {
       this._paintDashes();
       this._syncSizeOpts();
       this._renderReconcile();
+      this._tapEdits = {};
       this._clean = this._print();
       this._resetUndo(false);
       this._renderTabs();
@@ -11624,10 +11625,18 @@ class HemmaPanel extends HTMLElement {
         pair.mobileRaw = clone(mcfg);
         this._log(`saved phone layout  ${JSON.stringify(mcfg).length.toLocaleString()} bytes`, "ok");
       }
+      const tapLeft = {};
+      let tapErr = null;
+      for (const [eid, tap] of Object.entries(this._tapEdits || {})) {
+        try { await this._hass.callWS({ type: "hemma/home/set_entity", entity_id: eid, options: { tap } }); }
+        catch (e) { tapLeft[eid] = tap; tapErr = e; }
+      }
+      this._tapEdits = {};
       this._clean = this._print();
+      this._tapEdits = tapLeft;
       this._resetUndo(true);
       this._markDirty();
-      this._status("");
+      this._status(tapErr ? this._plainError(tapErr, _sx("Hemma couldn't save the Tap setting.")) : "", tapErr ? "err" : undefined);
       this._saveFlash();
       ok = true;
     } catch (e) {
@@ -11687,7 +11696,7 @@ class HemmaPanel extends HTMLElement {
     const p = this._pair;
     return stable([s.compact, s.scaffold, s.extras, s.chrome,
       p && p.safe !== false
-        ? [p.mobile.compact, p.mobile.chrome, p.mobile.scaffold] : null]);
+        ? [p.mobile.compact, p.mobile.chrome, p.mobile.scaffold] : null, this._tapEdits || {}]);
   }
 
   _snap() {
@@ -11696,6 +11705,7 @@ class HemmaPanel extends HTMLElement {
     return {
       s: [s.compact, s.scaffold, s.extras, s.chrome].map(clone),
       m: p && p.safe !== false ? [p.mobile.compact, p.mobile.chrome, p.mobile.scaffold].map(clone) : null,
+      t: clone(this._tapEdits || {}),
     };
   }
 
@@ -11717,6 +11727,7 @@ class HemmaPanel extends HTMLElement {
     [s.compact, s.scaffold, s.extras, s.chrome] = snap.s;
     const p = this._pair;
     if (snap.m && p && p.safe !== false) [p.mobile.compact, p.mobile.chrome, p.mobile.scaffold] = snap.m;
+    this._tapEdits = snap.t || {};
     this._room = Math.max(0, Math.min(this._room, s.compact.rooms.length - 1));
     const now = s.compact.rooms[this._room];
     if (tileIdx >= 0 && now && (now.tiles || [])[tileIdx]) this._sel.key = this._tileKey(now.tiles[tileIdx]);
@@ -20241,10 +20252,15 @@ class HemmaPanel extends HTMLElement {
         }
       } else {
         const eid = tile.entity;
-        const cur = ((this._homeData.entities || {})[eid] || {}).tap || "normal";
+        const stored = ((this._homeData.entities || {})[eid] || {}).tap || "normal";
+        const edits = this._tapEdits || {};
+        const cur = eid in edits ? edits[eid] : stored;
         addRow(_sx("Tap"), this._combo(cur, ["normal", "confirm", "view"], "", (v) => {
-          this._hass.callWS({ type: "hemma/home/set_entity", entity_id: eid, options: { tap: v || "normal" } })
-            .catch((e) => this._status(this._plainError(e, _sx("Hemma couldn't save the Tap setting.")), "err"));
+          const next = { ...(this._tapEdits || {}) };
+          if ((v || "normal") === stored) delete next[eid];
+          else next[eid] = v || "normal";
+          this._tapEdits = next;
+          this._markDirty();
         }, { fixed: true, labels: { normal: _sx("Normal"), confirm: _sx("Ask First"), view: _sx("View Only") } }).wrap);
       }
     }
