@@ -211,14 +211,17 @@
     return T('tap.continue', 'Continue');
   };
 
+  // The glass never fades by opacity: below 1 it, or any ancestor, samples nothing to blur until the animation ends.
   const ASK_CSS = `
     .scrim { position:fixed; inset:0; z-index:2147483000; display:grid; place-items:center; padding:0 24px; background:rgba(0,0,0,0.22);
-      animation:f .30s ease both; font-family:var(--hemma-font, -apple-system, system-ui, sans-serif); -webkit-tap-highlight-color:transparent; }
-    .box { width:min(290px, 100%); box-sizing:border-box; padding:22px 16px 16px; border-radius:28px; text-align:center; color:#fff;
-      background:rgba(30,33,38,0.30); -webkit-backdrop-filter:blur(40px) saturate(170%); backdrop-filter:blur(40px) saturate(170%);
+      animation:dim .30s ease both; font-family:var(--hemma-font, -apple-system, system-ui, sans-serif); -webkit-tap-highlight-color:transparent; }
+    .box { position:relative; width:min(290px, 100%); border-radius:28px; text-align:center; color:#fff; }
+    .glass { position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+      background-color:rgba(30,33,38,0.30); -webkit-backdrop-filter:blur(40px) saturate(170%); backdrop-filter:blur(40px) saturate(170%);
       box-shadow:inset 0 1px 0 rgba(255,255,255,0.26), inset 0 -1px 0 rgba(255,255,255,0.10),
         inset 1px 0 0 rgba(0,0,0,0.18), inset -1px 0 0 rgba(0,0,0,0.18), 0 12px 34px rgba(0,0,0,0.22);
-      animation:bloom .48s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
+      animation:glassIn .48s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
+    .content { position:relative; box-sizing:border-box; padding:22px 16px 16px; animation:contentIn .48s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
     .t { font-size:17px; font-weight:600; line-height:1.3; letter-spacing:-0.01em; margin:0 4px 16px; overflow-wrap:anywhere; }
     .r { display:flex; gap:10px; }
     button { position:relative; flex:1; height:44px; border:0; border-radius:999px; font:inherit; font-size:16px; cursor:pointer; color:#fff;
@@ -229,13 +232,27 @@
     @media (hover: hover) { button:hover::after { opacity:.07; transition:opacity .18s ease; } }
     button:active::after { opacity:.12; transition:opacity .08s ease; }
     button:focus-visible { outline:2px solid rgba(255,255,255,0.6); outline-offset:2px; }
-    .out { animation:fo .28s ease both; }
-    .out .box { animation:shrink .24s cubic-bezier(0.4, 0, 1, 1) both; }
-    @keyframes f { from { opacity:0; } }
-    @keyframes fo { to { opacity:0; } }
-    @keyframes bloom { from { opacity:0; transform:scale(0.88); } 40% { opacity:1; } }
-    @keyframes shrink { to { opacity:0; transform:scale(0.92); } }
-    @media (prefers-reduced-motion: reduce) { .box { animation:f .2s ease both; } .out .box { animation:fo .2s ease both; } }
+    .out { animation:undim .28s ease both; }
+    .out .glass { animation:glassOut .24s cubic-bezier(0.4, 0, 1, 1) both; }
+    .out .content { animation:contentOut .24s cubic-bezier(0.4, 0, 1, 1) both; }
+    @keyframes dim { from { background-color:rgba(0,0,0,0); } }
+    @keyframes undim { to { background-color:rgba(0,0,0,0); } }
+    @keyframes glassIn {
+      from { transform:scale(0.88); background-color:rgba(30,33,38,0);
+        -webkit-backdrop-filter:blur(0px) saturate(100%); backdrop-filter:blur(0px) saturate(100%);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,0), inset 0 -1px 0 rgba(255,255,255,0),
+          inset 1px 0 0 rgba(0,0,0,0), inset -1px 0 0 rgba(0,0,0,0), 0 12px 34px rgba(0,0,0,0); } }
+    @keyframes glassOut {
+      to { transform:scale(0.92); background-color:rgba(30,33,38,0);
+        -webkit-backdrop-filter:blur(0px) saturate(100%); backdrop-filter:blur(0px) saturate(100%);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,0), inset 0 -1px 0 rgba(255,255,255,0),
+          inset 1px 0 0 rgba(0,0,0,0), inset -1px 0 0 rgba(0,0,0,0), 0 12px 34px rgba(0,0,0,0); } }
+    @keyframes contentIn { from { opacity:0; transform:scale(0.88); } 40% { opacity:1; } }
+    @keyframes contentOut { to { opacity:0; transform:scale(0.92); } }
+    @media (prefers-reduced-motion: reduce) {
+      .glass, .content, .out .glass, .out .content { animation-duration:.2s; animation-timing-function:ease; }
+      @keyframes glassIn { from { background-color:rgba(30,33,38,0); -webkit-backdrop-filter:blur(0px) saturate(100%); backdrop-filter:blur(0px) saturate(100%); } }
+    }
   `;
   let asking = null;
   const ask = (title, verb) => new Promise((done) => {
@@ -243,8 +260,8 @@
     const host = document.createElement('div');
     const root = host.attachShadow({ mode: 'open' });
     root.innerHTML = `<style>${ASK_CSS}</style><div class="scrim"><div class="box" role="alertdialog" aria-modal="true" aria-label="${esc(title)}">`
-      + `<div class="t">${esc(title)}</div><div class="r"><button class="no" type="button">${esc(T('tap.cancel', 'Cancel'))}</button>`
-      + `<button class="ok" type="button">${esc(verb)}</button></div></div></div>`;
+      + `<div class="glass"></div><div class="content"><div class="t">${esc(title)}</div><div class="r"><button class="no" type="button">${esc(T('tap.cancel', 'Cancel'))}</button>`
+      + `<button class="ok" type="button">${esc(verb)}</button></div></div></div></div>`;
     const scrim = root.querySelector('.scrim');
     const finish = (yes) => {
       document.removeEventListener('keydown', key, true);
