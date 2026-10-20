@@ -1642,6 +1642,7 @@ const dashScopedKeys = () => {
 
 const FINGERPRINT_KEY = "hemma_template_fingerprint";
 const LAST_DASH_KEY = "hemma_panel_last_dashboard";
+const USER_DASH_KEY = "hemma_studio_dashboard";
 const NOT_HEMMA_KEY = "hemma_panel_not_hemma_v1";
 
 const hashStr = (str) => {
@@ -9391,12 +9392,32 @@ class HemmaPanel extends HTMLElement {
 
   _remember(url_path) {
     try { if (url_path) localStorage.setItem(LAST_DASH_KEY, url_path); } catch (e) { /* private mode */ }
+    if (url_path) this._userDash().then((mine) => { if (mine !== url_path) this._setUserDash(url_path); });
   }
 
   _forget(url_path) {
     try {
       if (localStorage.getItem(LAST_DASH_KEY) === url_path) localStorage.removeItem(LAST_DASH_KEY);
     } catch (e) { /* private mode */ }
+    if (this._userDashSeen === url_path) this._setUserDash(null);
+  }
+
+  async _userDash() {
+    if (this._userDashSeen === undefined) {
+      try {
+        const r = await this._hass.callWS({ type: "frontend/get_user_data", key: USER_DASH_KEY });
+        this._userDashSeen = (r && r.value) || null;
+      } catch (e) {
+        this._userDashSeen = null;
+      }
+    }
+    return this._userDashSeen;
+  }
+
+  _setUserDash(url_path) {
+    this._userDashSeen = url_path;
+    this._hass.callWS({ type: "frontend/set_user_data", key: USER_DASH_KEY, value: url_path })
+      .catch((e) => this._log("could not remember the dashboard for this user: " + e.message, "warn"));
   }
 
   _homeHalves(url_path) {
@@ -9499,6 +9520,10 @@ class HemmaPanel extends HTMLElement {
       let remembered = null;
       try { remembered = localStorage.getItem(LAST_DASH_KEY); } catch (e) { /* private mode */ }
       if (remembered && list.some((d) => d.url_path === remembered)) pick = remembered;
+    }
+    if (!pick) {
+      const mine = await this._userDash();
+      if (mine && list.some((d) => d.url_path === mine)) pick = mine;
     }
     if (!pick) pick = await this._findHemmaDash(list);
     if (!pick) {
@@ -11213,8 +11238,17 @@ class HemmaPanel extends HTMLElement {
       templates = { ...(live.button_card_templates || {}), ...(this._ownTemplates || {}) };
       extras = omit(live, ["views", "button_card_templates"]);
       if (this._raw && stable(live.views) !== stable(this._raw.views)) {
-        this._log("this dashboard's rooms changed somewhere else since it was "
-          + "opened - saving replaces them with what is on screen", "warn");
+        const pick = await this._ask({
+          title: _sx("Dashboard Changed Elsewhere"),
+          message: _sx("It was saved from another tab, browser or editor since you opened it. "
+            + "Saving replaces those changes with yours."),
+          confirmLabel: _sx("Replace"),
+          altLabel: _sx("Reload"),
+          destructive: true,
+        });
+        if (pick === "alt") { await this._load(); return false; }
+        if (!pick) return false;
+        this._log("replaced rooms that were changed somewhere else", "warn");
       }
     }
 
@@ -14501,6 +14535,13 @@ class HemmaPanel extends HTMLElement {
       if (opts.destructive) ok.className = "danger";
       ok.textContent = opts.confirmLabel || "OK";
       acts.appendChild(cancel);
+      let alt = null;
+      if (opts.altLabel) {
+        alt = document.createElement("button");
+        alt.className = "ghost";
+        alt.textContent = opts.altLabel;
+        acts.appendChild(alt);
+      }
       acts.appendChild(ok);
       box.appendChild(acts);
 
@@ -14524,6 +14565,7 @@ class HemmaPanel extends HTMLElement {
       };
 
       cancel.onclick = () => finish(null);
+      if (alt) alt.onclick = () => finish("alt");
       let warn = null;
       ok.onclick = () => {
         if (!input) return finish(true);
