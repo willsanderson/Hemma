@@ -2540,6 +2540,95 @@ const HEMMA_ACCENTS = [
 ].map(([label, key, hex]) => ({
   label, hex, id: "var(--hemma-color-" + key + ", " + hex + ")",
 }));
+const STATUS_SHEET_CSS = `
+  .ssh-wrap { position:fixed; inset:0; z-index:500; display:grid; place-items:center; }
+  .ssh-scrim { position:absolute; inset:0; background:rgba(0,0,0,0.36); animation:ssh-fade .22s ease both; }
+  .ssh { --ssh-bg:rgba(30,31,35,0.94); --ssh-group:rgba(255,255,255,0.07); --ssh-sel:color-mix(in srgb, var(--accent) 20%, transparent);
+    position:relative; display:flex; flex-direction:column; width:min(440px, calc(100vw - 32px)); height:min(720px, calc(100dvh - 48px));
+    background:var(--ssh-bg); color:var(--ink); border-radius:26px; overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,0.5), inset 0 0 0 0.5px var(--hair);
+    -webkit-backdrop-filter:blur(40px) saturate(1.4); backdrop-filter:blur(40px) saturate(1.4);
+    animation:ssh-rise .34s var(--ease) both; font-size:15px; }
+  :host(.phone.is-light) .ssh { --ssh-bg:#f2f2f7; --ssh-group:#ffffff; }
+  .ssh.two { width:min(860px, calc(100vw - 48px)); }
+  .ssh-wrap.out .ssh { animation:ssh-sink .2s ease both; }
+  .ssh-wrap.out .ssh-scrim { animation:ssh-fade .2s ease reverse both; }
+  @keyframes ssh-rise { from { opacity:0; transform:translateY(18px) scale(.985); } }
+  @keyframes ssh-sink { to { opacity:0; transform:translateY(12px) scale(.985); } }
+  @keyframes ssh-fade { from { opacity:0; } }
+  .ssh-bar { flex:none; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:14px 18px 8px; gap:8px; }
+  .ssh-bar .t { font-weight:600; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ssh-bar button { background:none; border:0; padding:6px 0; font:inherit; font-size:16px; color:var(--accent); cursor:pointer; display:inline-flex; align-items:center; gap:4px; }
+  .ssh-bar .l { justify-self:start; }
+  .ssh-bar .r { justify-self:end; font-weight:600; }
+  .ssh-bar .r:disabled { color:var(--ink-3); cursor:default; }
+  .ssh-bar .r[hidden] { display:inline-flex !important; visibility:hidden; }
+  .ssh-bar .b svg { width:11px; height:18px; display:block; }
+  .ssh-panes { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr); }
+  .ssh.two .ssh-panes { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .ssh-pane { min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:4px 16px 24px; display:flex; flex-direction:column; gap:22px; }
+  .ssh-pane.side { border-left:0.5px solid var(--hair); }
+  .ssh-pane.in { animation:ssh-in .32s var(--ease) both; }
+  .ssh-pane.back { animation:ssh-back .32s var(--ease) both; }
+  @keyframes ssh-in { from { transform:translateX(28%); opacity:0; } }
+  @keyframes ssh-back { from { transform:translateX(-22%); opacity:0; } }
+  @media (prefers-reduced-motion: reduce) { .ssh, .ssh-scrim, .ssh-pane.in, .ssh-pane.back { animation:none !important; } }
+  .ssh-prev { display:grid; place-items:center; gap:8px; padding:14px 0 2px; }
+  .ssh-prev small { font-size:12px; color:var(--ink-3); }
+  .ssh-badge { display:inline-grid; grid-template-columns:min-content auto; align-items:center; column-gap:10px; min-height:44px;
+    padding:6px 16px 6px 9px; border-radius:999px; background:rgba(10,12,14,0.65); color:#fff; box-shadow:inset 0 0 0 0.5px rgba(255,255,255,0.14); transition:opacity .2s; }
+  .ssh-badge.hid { opacity:.4; }
+  .ssh-badge .i { width:26px; height:26px; background:var(--c); -webkit-mask:var(--i) no-repeat center / auto 80%; mask:var(--i) no-repeat center / auto 80%; }
+  .ssh-badge .w { display:flex; flex-direction:column; line-height:1.15; }
+  .ssh-badge .t1 { font-size:13px; font-weight:600; }
+  .ssh-badge .t2 { font-size:12px; font-weight:500; opacity:.8; }
+  .ssh-grp { display:flex; flex-direction:column; gap:6px; }
+  .ssh-gh { margin-left:16px; font-size:13px; color:var(--ink-2); }
+  .ssh-list { background:var(--ssh-group); border-radius:12px; overflow:hidden; }
+  .ssh-foot { margin:0 16px; font-size:12.5px; line-height:1.4; color:var(--ink-2); }
+  .ssh-empty { margin:auto; max-width:30ch; text-align:center; color:var(--ink-2); font-size:14px; }
+  .ssh-row { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:0 14px; box-sizing:border-box;
+    background:none; border:0; font:inherit; color:inherit; text-align:left; }
+  button.ssh-row { cursor:pointer; }
+  button.ssh-row:hover { background:color-mix(in srgb, var(--ink) 5%, transparent); }
+  .ssh-row + .ssh-row::before { content:""; position:absolute; top:0; right:0; left:14px; height:0.5px; background:var(--hair); }
+  .ssh-row.ic + .ssh-row.ic::before { left:55px; }
+  .ssh-row.sel { background:var(--ssh-sel); }
+  .ssh-row.danger { justify-content:center; color:#FF4245; }
+  .ssh-row .k { flex:1; min-width:0; display:flex; flex-direction:column; padding:9px 0; }
+  .ssh-row .kt { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ssh-row small { font-size:12.5px; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ssh-row .v { flex:none; max-width:58%; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ssh-row .v.ph { color:var(--ink-3); }
+  .ssh-row .chev svg { width:8px; height:13px; display:block; color:var(--ink-3); }
+  .ssh-row .tick svg { width:16px; height:16px; display:block; color:var(--accent); }
+  .ssh .ssh-row input.ssh-in { flex:0 1 58%; min-width:0; height:auto; margin:0; background:none; border:0; box-shadow:none; border-radius:0; font:inherit; color:var(--ink-2); text-align:right; padding:10px 0; outline:none; }
+  .ssh-in::placeholder { color:var(--ink-3); }
+  .ssh-tile { flex:none; width:29px; height:29px; border-radius:7px; display:grid; place-items:center; background:var(--c, #8e8e93); color:#fff; }
+  .ssh-tile.off { background:rgba(120,120,128,0.36); }
+  .ssh-tile .m { width:17px; height:17px; background:#fff; -webkit-mask:var(--i) no-repeat center / contain; mask:var(--i) no-repeat center / contain; }
+  .ssh-tile ha-state-icon, .ssh-tile ha-icon { --mdc-icon-size:18px; color:#fff; }
+  .ssh-sw { flex:none; width:51px; height:31px; border-radius:999px; border:0; background:var(--sw-off); position:relative; cursor:pointer; transition:background .2s; }
+  .ssh-sw::after { content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,0.25); transition:transform .25s var(--sw-ease); }
+  .ssh-sw[aria-checked="true"] { background:var(--sw-on); }
+  .ssh-sw[aria-checked="true"]::after { transform:translateX(20px); }
+  .ssh-list.ssh-swatches { display:grid; grid-template-columns:repeat(7, 1fr); justify-items:center; gap:14px 8px; padding:16px 12px; overflow:visible; }
+  .ssh .ssh-dot { flex:none; width:30px; height:30px; min-width:0; min-height:0; padding:0; margin:0; border-radius:50%; border:0; background:var(--c); cursor:pointer; }
+  .ssh .ssh-dot.on { box-shadow:0 0 0 2.5px var(--ssh-bg), 0 0 0 4.5px var(--ink); }
+  .ssh-icons { display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; padding:10px; }
+  .ssh-ico { aspect-ratio:1; width:100%; max-width:46px; justify-self:center; border-radius:10px; border:0; background:none; display:grid; place-items:center; cursor:pointer; color:var(--ink); }
+  .ssh-ico .m { width:22px; height:22px; background:currentColor; -webkit-mask:var(--i) no-repeat center / contain; mask:var(--i) no-repeat center / contain; }
+  .ssh-ico.on { background:var(--ssh-sel); color:var(--accent); }
+  .ssh-ptitle { font-size:20px; font-weight:700; letter-spacing:-0.01em; padding:14px 2px 0; }
+  .ssh-search { flex:none; display:flex; align-items:center; gap:8px; height:36px; padding:0 10px; border-radius:10px; background:rgba(118,118,128,0.24); color:var(--ink-2); position:sticky; top:0; z-index:1; }
+  .ssh-search .s svg { width:15px; height:15px; display:block; }
+  .ssh .ssh-search input { flex:1; min-width:0; height:auto; margin:0; padding:0; background:none; border:0; box-shadow:none; outline:none; font:inherit; color:var(--ink); }
+  .ssh-results { display:flex; flex-direction:column; gap:22px; }
+  @media (max-width: 699px) {
+    .ssh-wrap { place-items:end center; }
+    .ssh { width:100vw; height:calc(100dvh - env(safe-area-inset-top, 0px) - 10px); border-radius:14px 14px 0 0; }
+  }
+`;
 const swatchOf = (v) => {
   const raw = String(v || "").trim();
   if (!raw) return null;
@@ -18516,30 +18605,68 @@ class HemmaPanel extends HTMLElement {
     return { label, color: "blue", icon: "power_on", show: true };
   }
 
+  // One sheet that never opens anything behind or over itself: two panes when there is room, pages that slide in on a phone.
   _statusSheet(badge, roomKey) {
+    const H = this._hass;
     const b = badge ? JSON.parse(JSON.stringify(badge))
       : { id: "", entity: "", name: "", time_entity: null, rooms: roomKey === "home" ? ["home"] : ["home", roomKey], states: {} };
-    const pane = document.createElement("div");
-    pane.className = "askpane";
+    if (!this.shadowRoot.getElementById("ssh-style")) {
+      const css = document.createElement("style");
+      css.id = "ssh-style";
+      css.textContent = STATUS_SHEET_CSS;
+      this.shadowRoot.appendChild(css);
+    }
+    const two = !isPhone(this);
+    const wrap = document.createElement("div");
+    wrap.className = "ssh-wrap";
     const scrim = document.createElement("div");
-    scrim.className = "fscrim";
-    const stack = document.createElement("div");
-    stack.className = "askstack wide statussheet";
-    const frost = document.createElement("div");
-    frost.className = "fglass";
-    const box = document.createElement("div");
-    box.className = "askcard";
-    box.setAttribute("role", "dialog");
-    box.setAttribute("aria-modal", "true");
-    stack.appendChild(frost); stack.appendChild(box);
-    pane.appendChild(scrim); pane.appendChild(stack);
-    const close = () => {
-      document.removeEventListener("keydown", onKey, true);
-      this._flowLockScroll(false);
-      pane.remove();
+    scrim.className = "ssh-scrim";
+    const sheet = document.createElement("div");
+    sheet.className = "ssh" + (two ? " two" : "");
+    sheet.setAttribute("role", "dialog");
+    sheet.setAttribute("aria-modal", "true");
+    wrap.appendChild(scrim); wrap.appendChild(sheet);
+    const bar = document.createElement("div");
+    bar.className = "ssh-bar";
+    const panes = document.createElement("div");
+    panes.className = "ssh-panes";
+    const main = document.createElement("div");
+    main.className = "ssh-pane";
+    const side = document.createElement("div");
+    side.className = "ssh-pane side";
+    panes.appendChild(main);
+    if (two) panes.appendChild(side);
+    sheet.appendChild(bar); sheet.appendChild(panes);
+
+    let page = two ? null : "main";
+    let sidePage = null;
+    let query = "";
+    const el = (tag, cls, text) => {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (text !== undefined) n.textContent = text;
+      return n;
     };
-    const onKey = (ev) => { if (ev.key === "Escape" && !this._openCombo) { ev.preventDefault(); close(); } };
-    const H = this._hass;
+    const svg = (d, cls) => {
+      const n = el("span", cls);
+      n.innerHTML = d;
+      return n;
+    };
+    const CHEV = '<svg viewBox="0 0 8 13"><path d="M1.5 1.5 6.5 6.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const TICK = '<svg viewBox="0 0 16 16"><path d="M2.5 8.5 6.5 12.5 13.5 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const BACK = '<svg viewBox="0 0 11 18"><path d="M9.5 1.5 2 9l7.5 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const SEARCH = '<svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m11 11 3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    const colorOf = (key) => {
+      const a = HEMMA_ACCENTS.find((x) => x.label.toLowerCase() === key);
+      return a ? a.hex : "#CDCDCF";
+    };
+    const ICONS = ["power_on", "power_off", "pause", "exclamation", "clock", "bell", "plug", "energy", "fan", "light", "lamp",
+      "vacuum", "vacuum-clean", "vacuum-charge", "door-closed", "door-open", "window-shade-closed", "lock", "lock-open",
+      "stove", "fridge", "hot_water", "humidifier", "purifier", "heating", "cooling", "tv", "speaker", "music", "gas"]
+      .filter((n) => ICON_DATA[n]);
+    const nameOf = (id) => (H.states[id] && H.states[id].attributes.friendly_name) || id;
+    const areaName = (id) => hemmaAreaOf(H, id) || "";
+
     const statesOf = () => {
       const st = H.states[b.entity];
       const opts = st && Array.isArray(st.attributes.options) ? st.attributes.options.slice() : [];
@@ -18555,108 +18682,307 @@ class HemmaPanel extends HTMLElement {
       return Object.keys(H.entities).find((id) => H.entities[id].device_id === dev && id.indexOf("sensor.") === 0
         && /remain|time_left|finish|end_time|completion/.test(id)) || null;
     };
-    const paint = () => {
-      box.replaceChildren();
-      const h = document.createElement("h3");
-      h.textContent = badge ? _sx("Status Badge") : _sx("Add Status Badge");
-      box.appendChild(h);
-      const main = this._flowGroup(box);
-      const st = H.states[b.entity];
-      this._flowRow(main, { title: _sx("Entity"), detail: b.entity ? (st && st.attributes.friendly_name) || b.entity : _sx("Choose"), chevron: true,
-        onTap: () => this._pickSheet({ title: _sx("Entity"), list: Object.keys(H.states).sort(), current: b.entity,
-          onPick: (v) => {
-            const fresh = v !== b.entity;
-            b.entity = v;
-            if (fresh) { b.states = {}; b.name = ""; if (!b.time_entity) b.time_entity = timeFor(); }
-            paint();
-          } }) });
-      const nameRow = this._flowRow(main, { title: _sx("Label"), input: b.name, placeholder: (st && st.attributes.friendly_name) || _sx("Washer") });
-      nameRow.input.oninput = () => { b.name = nameRow.input.value; };
-      this._flowRow(main, { title: _sx("Time left"), detail: b.time_entity ? (H.states[b.time_entity] ? H.states[b.time_entity].attributes.friendly_name || b.time_entity : b.time_entity) : _sx("None"), chevron: true,
-        onTap: () => this._pickSheet({ title: _sx("Time left"), current: b.time_entity || "",
-          list: [""].concat(Object.keys(H.states).filter((id) => id.indexOf("sensor.") === 0).sort()),
-          label: (v) => (v ? this._prettyEntity(v) : _sx("None")),
-          onPick: (v) => { b.time_entity = v || null; paint(); } }) });
+    const stateLabel = (x) => (b.states[x] && b.states[x].label) || x;
+    const close = () => {
+      document.removeEventListener("keydown", onKey, true);
+      this._flowLockScroll(false);
+      wrap.classList.add("out");
+      setTimeout(() => wrap.remove(), 220);
+    };
+    const go = (to, sideTo) => {
+      if (two) { sidePage = sideTo === undefined ? to : sideTo; paint("side"); return; }
+      const fwd = to !== "main";
+      page = to;
+      paint(fwd ? "push" : "pop");
+    };
+    const onKey = (ev) => {
+      if (ev.key !== "Escape") return;
+      ev.preventDefault();
+      if (!two && page !== "main") go("main"); else close();
+    };
 
-      const where = this._flowGroup(box, { header: _sx("Shows on") });
-      const rooms = ((this._state && this._state.compact.rooms) || []).map((r) => ({ key: this._statusRoomKey(r), name: this._statusRoomKey(r) === "home" ? _sx("Home") : (r.name || r.title) }));
-      rooms.forEach((r) => {
-        const on = b.rooms.indexOf(r.key) >= 0;
-        this._flowRow(where, { title: r.name, check: on, onTap: () => {
-          b.rooms = on ? b.rooms.filter((k) => k !== r.key) : b.rooms.concat([r.key]);
+    const group = (parent, head, foot) => {
+      const g = el("div", "ssh-grp");
+      if (head) g.appendChild(el("div", "ssh-gh", head));
+      const list = el("div", "ssh-list");
+      g.appendChild(list);
+      if (foot) g.appendChild(el("p", "ssh-foot", foot));
+      parent.appendChild(g);
+      return list;
+    };
+    const row = (list, o) => {
+      const r = el(o.onTap ? "button" : "div", "ssh-row" + (o.tile ? " ic" : "") + (o.sel ? " sel" : "") + (o.cls ? " " + o.cls : ""));
+      if (o.onTap) { r.type = "button"; r.onclick = o.onTap; }
+      if (o.tile) {
+        const t = el("span", "ssh-tile" + (o.tileOff ? " off" : ""));
+        if (o.tileColor) t.style.setProperty("--c", o.tileColor);
+        if (o.mask) { const m = el("span", "m"); m.style.setProperty("--i", "url('" + o.mask + "')"); t.appendChild(m); }
+        else if (o.iconEl) t.appendChild(o.iconEl);
+        r.appendChild(t);
+      }
+      const k = el("span", "k");
+      k.appendChild(el("span", "kt", o.title));
+      if (o.sub) k.appendChild(el("small", "", o.sub));
+      r.appendChild(k);
+      if (o.input !== undefined) {
+        const i = el("input", "ssh-in");
+        i.value = o.input; i.placeholder = o.placeholder || ""; i.spellcheck = false;
+        i.setAttribute("aria-label", o.title);
+        i.oninput = () => o.onInput(i.value);
+        r.appendChild(i);
+      }
+      if (o.value !== undefined) r.appendChild(el("span", "v" + (o.placeholderValue ? " ph" : ""), o.value));
+      if (o.toggle !== undefined) {
+        const t = el("button", "ssh-sw");
+        t.type = "button";
+        t.setAttribute("role", "switch");
+        t.setAttribute("aria-checked", o.toggle ? "true" : "false");
+        t.setAttribute("aria-label", o.title);
+        t.onclick = (ev) => { ev.stopPropagation(); o.onToggle(); };
+        r.appendChild(t);
+      }
+      if (o.tick) r.appendChild(svg(TICK, "tick"));
+      if (o.chevron) r.appendChild(svg(CHEV, "chev"));
+      list.appendChild(r);
+      return r;
+    };
+
+    const preview = (parent, x) => {
+      const st = H.states[b.entity];
+      const cur = x || (st && st.state);
+      const conf = cur && b.states[cur];
+      const p = el("div", "ssh-prev");
+      const pill = el("span", "ssh-badge" + (conf && conf.show === false ? " hid" : ""));
+      const ic = el("span", "i");
+      ic.style.setProperty("--c", colorOf(conf && conf.color));
+      ic.style.setProperty("--i", "url('" + iconUrl((conf && conf.icon) || "power_on") + "')");
+      pill.appendChild(ic);
+      const w = el("span", "w");
+      w.appendChild(el("span", "t1", b.name || (st && st.attributes.friendly_name) || _sx("Status")));
+      w.appendChild(el("span", "t2", conf ? (conf.label || cur) : (st ? H.formatEntityState(st) : _sx("Choose an entity"))));
+      pill.appendChild(w);
+      p.appendChild(pill);
+      p.appendChild(el("small", "", !b.entity ? _sx("Preview")
+        : conf && conf.show === false ? _sx("Hidden in this state")
+        : x ? _sx("When it reports {state}", { state: x }) : _sx("Preview, current state")));
+      parent.appendChild(p);
+    };
+
+    const paintMain = (box) => {
+      preview(box, null);
+      const top = group(box);
+      row(top, { title: _sx("Entity"), value: b.entity ? nameOf(b.entity) : _sx("Choose"), placeholderValue: !b.entity, chevron: true,
+        sel: two && sidePage === "entity", onTap: () => go("entity") });
+      row(top, { title: _sx("Label"), input: b.name, placeholder: b.entity ? nameOf(b.entity) : _sx("Washer"),
+        onInput: (v) => { b.name = v; const t = sheet.querySelectorAll(".ssh-badge .t1"); t.forEach((n) => { n.textContent = v || (b.entity ? nameOf(b.entity) : _sx("Status")); }); } });
+      row(top, { title: _sx("Time Left"), value: b.time_entity ? nameOf(b.time_entity) : _sx("None"), placeholderValue: !b.time_entity, chevron: true,
+        sel: two && sidePage === "time", onTap: () => go("time") });
+      if (b.entity) {
+        const list = group(box, _sx("States"), _sx("Hidden states remove the badge, so it only appears when there's something to know."));
+        statesOf().forEach((x) => {
+          const c = b.states[x];
+          row(list, { tile: true, mask: iconUrl(c.icon || "power_on"), tileColor: colorOf(c.color), tileOff: c.show === false,
+            title: stateLabel(x), sub: x + (c.show === false ? " · " + _sx("hidden") : ""), chevron: true,
+            sel: two && sidePage === "state:" + x, onTap: () => go("state:" + x) });
+        });
+      }
+      const where = group(box, _sx("Shows On"));
+      ((this._state && this._state.compact.rooms) || []).forEach((r) => {
+        const key = this._statusRoomKey(r);
+        const on = b.rooms.indexOf(key) >= 0;
+        row(where, { title: key === "home" ? _sx("Home") : (r.name || r.title), tick: on, onTap: () => {
+          b.rooms = on ? b.rooms.filter((k) => k !== key) : b.rooms.concat([key]);
           paint();
         } });
       });
-
-      if (b.entity) {
-        const list = this._flowGroup(box, { header: _sx("States"), footer: _sx("Tap a state to change how it looks. Hidden states remove the badge.") });
-        statesOf().forEach((x) => {
-          const c = b.states[x];
-          const accent = HEMMA_ACCENTS.find((a) => a.id.indexOf("--hemma-color-" + c.color + ",") >= 0);
-          const r = this._flowRow(list, { mask: iconUrl(c.icon), tint: c.show ? (accent ? accent.hex : "#CDCDCF") : "#5c5c60",
-            title: c.label || x, sub: x + (c.show ? "" : " · " + _sx("Hidden")), chevron: true });
-          r.row.onclick = () => this._menuAt(r.row, [
-            { id: "label", label: _sx("Rename…") },
-            { id: "icon", label: _sx("Change Icon…") },
-            ...HEMMA_ACCENTS.map((a) => ({ id: "color:" + a.label.toLowerCase(), label: _sx(a.label), group: _sx("Color") })),
-            { id: "show", label: c.show ? _sx("Hide in this state") : _sx("Show in this state"), group: _sx("Visibility") },
-          ], async (id) => {
-            if (id === "label") {
-              const v = await this._ask({ title: _sx("Label"), value: c.label || "", confirmLabel: _sx("Set") });
-              if (typeof v === "string") c.label = v.trim();
-            } else if (id === "icon") {
-              this._pickSheet({ title: _sx("Icon"), list: Object.keys(ICON_DATA).filter((k) => k !== "default").sort(), current: c.icon,
-                free: false, glyph: (o) => iconUrl(o), label: (o) => o.replace(/[-_]/g, " "), onPick: (v) => { c.icon = v; paint(); } });
-              return;
-            } else if (id.indexOf("color:") === 0) c.color = id.slice(6);
-            else if (id === "show") c.show = !c.show;
-            paint();
-          });
-        });
-      }
-
-      const acts = document.createElement("div");
-      acts.className = "askacts";
       if (badge) {
-        const del = document.createElement("button");
-        del.className = "ghost danger";
-        del.textContent = _sx("Delete");
-        del.onclick = async () => {
+        const del = group(box);
+        row(del, { title: _sx("Delete Status Badge"), cls: "danger", onTap: async () => {
           try {
             await H.callWS({ type: "hemma/home/remove_status_badge", badge_id: badge.id });
             this._status(_sx("Status badge removed"), "ok");
             close();
           } catch (e) { this._status(this._plainError(e, _sx("Hemma couldn't remove the badge.")), "err"); }
-        };
-        acts.appendChild(del);
+        } });
       }
-      const cancel = document.createElement("button");
-      cancel.className = "ghost";
-      cancel.textContent = _sx("Cancel");
-      cancel.onclick = close;
-      acts.appendChild(cancel);
-      const save = document.createElement("button");
-      save.textContent = _sx("Save");
+    };
+
+    const paintState = (box, x) => {
+      const c = b.states[x];
+      if (!c) return;
+      if (two) box.appendChild(el("div", "ssh-ptitle", stateLabel(x)));
+      else preview(box, x);
+      const top = group(box);
+      row(top, { title: _sx("Show Badge"), toggle: c.show !== false, onToggle: () => { c.show = c.show === false; paint(); } });
+      row(top, { title: _sx("Label"), input: c.label || "", placeholder: x, onInput: (v) => {
+        c.label = v;
+        sheet.querySelectorAll(".ssh-row.sel .kt").forEach((n) => { n.textContent = v || x; });
+      } });
+      const sw = group(box, _sx("Color"));
+      sw.classList.add("ssh-swatches");
+      HEMMA_ACCENTS.forEach((a) => {
+        const key = a.label.toLowerCase();
+        const d = el("button", "ssh-dot" + (c.color === key ? " on" : ""));
+        d.type = "button";
+        d.title = _sx(a.label);
+        d.setAttribute("aria-label", _sx(a.label));
+        d.style.setProperty("--c", a.hex);
+        d.onclick = () => { c.color = key; paint(); };
+        sw.appendChild(d);
+      });
+      const ig = group(box, _sx("Icon"));
+      ig.classList.add("ssh-icons");
+      ICONS.forEach((n) => {
+        const d = el("button", "ssh-ico" + (c.icon === n ? " on" : ""));
+        d.type = "button";
+        d.title = n.replace(/[-_]/g, " ");
+        d.setAttribute("aria-label", d.title);
+        const m = el("span", "m");
+        m.style.setProperty("--i", "url('" + iconUrl(n) + "')");
+        d.appendChild(m);
+        d.onclick = () => { c.icon = n; paint(); };
+        ig.appendChild(d);
+      });
+    };
+
+    const paintPick = (box, kind) => {
+      const search = el("label", "ssh-search");
+      search.appendChild(svg(SEARCH, "s"));
+      const q = el("input");
+      q.placeholder = _sx("Search");
+      q.value = query;
+      q.spellcheck = false;
+      q.setAttribute("autocomplete", "off");
+      search.appendChild(q);
+      box.appendChild(search);
+      const results = el("div", "ssh-results");
+      box.appendChild(results);
+      const pick = (id) => {
+        query = "";
+        if (kind === "entity") {
+          const fresh = id !== b.entity;
+          b.entity = id;
+          if (fresh) { b.states = {}; if (!b.time_entity) b.time_entity = timeFor(); }
+          const first = statesOf()[0];
+          if (two) { sidePage = first ? "state:" + first : null; paint("side"); } else go("main");
+        } else {
+          b.time_entity = id || null;
+          if (two) { sidePage = null; paint("side"); } else go("main");
+        }
+      };
+      const draw = () => {
+        results.replaceChildren();
+        const needle = q.value.trim().toLowerCase();
+        const hit = (id) => !needle || id.toLowerCase().includes(needle) || nameOf(id).toLowerCase().includes(needle);
+        const ids = Object.keys(H.states).filter((id) => !/^(automation|script|scene|update|button|zone|sun|conversation|tts|stt|event|camera|image|person|device_tracker|todo|calendar|weather)\./.test(id) && hit(id));
+        const cur = kind === "entity" ? b.entity : b.time_entity;
+        const entRow = (list, id) => {
+          const st = H.states[id];
+          const where = areaName(id);
+          row(list, { tile: true, iconEl: entityIconEl(H, st), title: nameOf(id),
+            sub: (where ? where + " · " : "") + H.formatEntityState(st), tick: id === cur, onTap: () => pick(id) });
+        };
+        let suggested;
+        if (kind === "entity") {
+          suggested = ids.filter((id) => {
+            const st = H.states[id], reg = H.entities[id] || {};
+            if (reg.entity_category || reg.hidden || /hemma|backup/.test(id)) return false;
+            return (id.indexOf("sensor.") === 0 && st.attributes.device_class === "enum" && (st.attributes.options || []).length > 1)
+              || /^(vacuum|lawn_mower|valve|water_heater)\./.test(id);
+          });
+        } else {
+          const dev = H.entities[b.entity] && H.entities[b.entity].device_id;
+          suggested = ids.filter((id) => id.indexOf("sensor.") === 0 && dev && H.entities[id] && H.entities[id].device_id === dev);
+          const none = group(results);
+          row(none, { title: _sx("None"), tick: !cur, onTap: () => pick(null) });
+        }
+        if (suggested.length) {
+          const sl = group(results, _sx("Suggested"), kind === "entity" && !needle ? _sx("Appliances and sensors with a set list of states.") : "");
+          suggested.slice(0, 40).forEach((id) => entRow(sl, id));
+        }
+        const rest = ids.filter((id) => suggested.indexOf(id) < 0 && (kind === "entity" || id.indexOf("sensor.") === 0));
+        const byArea = {};
+        rest.forEach((id) => { const a = areaName(id) || _sx("No Room"); (byArea[a] = byArea[a] || []).push(id); });
+        let shown = 0;
+        Object.keys(byArea).sort((x, y) => (x === _sx("No Room")) - (y === _sx("No Room")) || x.localeCompare(y)).forEach((a) => {
+          if (shown >= 200) return;
+          const list = group(results, a);
+          byArea[a].sort((x, y) => nameOf(x).localeCompare(nameOf(y))).slice(0, 200 - shown).forEach((id) => { entRow(list, id); shown++; });
+        });
+        if (!results.childElementCount) results.appendChild(el("p", "ssh-foot", _sx("Nothing matches that.")));
+      };
+      q.oninput = () => { query = q.value; draw(); };
+      draw();
+      if (!isPhone(this)) setTimeout(() => q.focus(), 60);
+    };
+
+    const paintBar = () => {
+      bar.replaceChildren();
+      const sub = !two && page !== "main";
+      const left = el("button", "l");
+      left.type = "button";
+      if (sub) { left.appendChild(svg(BACK, "b")); left.appendChild(document.createTextNode(_sx("Back"))); left.onclick = () => go("main"); }
+      else { left.textContent = _sx("Cancel"); left.onclick = close; }
+      bar.appendChild(left);
+      const t = !sub ? (badge ? _sx("Status Badge") : _sx("Add Status Badge"))
+        : page === "entity" ? _sx("Entity") : page === "time" ? _sx("Time Left") : stateLabel(page.slice(6));
+      bar.appendChild(el("span", "t", t));
+      const save = el("button", "r", _sx("Save"));
+      save.type = "button";
       save.disabled = !b.entity || !b.rooms.length;
+      save.hidden = sub;
       save.onclick = async () => {
         if (!b.id) b.id = (b.entity.split(".")[1] || "badge").replace(/[^a-z0-9_-]/g, "").slice(0, 28) + "-" + Date.now().toString(36).slice(-6);
         const keep = statesOf().reduce((o, x) => { o[x] = b.states[x]; return o; }, {});
+        save.disabled = true;
         try {
           await H.callWS({ type: "hemma/home/set_status_badge",
             badge: { id: b.id, entity: b.entity, name: b.name || "", time_entity: b.time_entity || null, rooms: b.rooms, states: keep } });
           this._status(_sx("Status badge saved"), "ok");
           close();
-        } catch (e) { this._status(this._plainError(e, _sx("Hemma couldn't save the badge.")), "err"); }
+        } catch (e) {
+          save.disabled = false;
+          this._status(this._plainError(e, _sx("Hemma couldn't save the badge.")), "err");
+        }
       };
-      acts.appendChild(save);
-      box.appendChild(acts);
+      bar.appendChild(save);
     };
+
+    const paint = (how) => {
+      paintBar();
+      const keep = main.scrollTop;
+      if (two && !sidePage && b.entity) { const f = statesOf()[0]; if (f) sidePage = "state:" + f; }
+      if (two) {
+        main.replaceChildren();
+        paintMain(main);
+        main.scrollTop = keep;
+        const sk = side.scrollTop;
+        side.replaceChildren();
+        if (sidePage === "entity" || sidePage === "time") paintPick(side, sidePage);
+        else if (sidePage) paintState(side, sidePage.slice(6));
+        else side.appendChild(el("p", "ssh-empty", _sx("Choose an entity to set how each of its states looks.")));
+        if (how !== "side") side.scrollTop = sk;
+        return;
+      }
+      main.replaceChildren();
+      if (page === "main") paintMain(main);
+      else if (page === "entity" || page === "time") paintPick(main, page);
+      else paintState(main, page.slice(6));
+      if (how === "push" || how === "pop") {
+        main.scrollTop = 0;
+        main.classList.remove("in", "back");
+        void main.offsetWidth;
+        main.classList.add(how === "push" ? "in" : "back");
+      } else main.scrollTop = keep;
+    };
+
+    if (!badge) { if (two) sidePage = "entity"; }
     paint();
     scrim.onclick = close;
     document.addEventListener("keydown", onKey, true);
-    this._blockDrag(pane);
+    this._blockDrag(wrap);
     this._flowLockScroll(true);
-    this.shadowRoot.appendChild(pane);
+    this.shadowRoot.appendChild(wrap);
   }
 
   _orderBadgeCards(room, col) {
