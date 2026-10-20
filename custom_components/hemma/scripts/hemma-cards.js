@@ -59,7 +59,8 @@
       opacity: var(--hemma-row-fade, 1); transition: background-color .22s ease, opacity .2s ease; -webkit-tap-highlight-color: transparent; }
     .i { width: var(--hemma-badge-icon-override, var(--badge-icon-size-current, var(--badge-icon-size, 30px)));
       height: var(--hemma-badge-icon-override, var(--badge-icon-size-current, var(--badge-icon-size, 30px)));
-      background: var(--c); -webkit-mask: var(--m) no-repeat center / auto 80%; mask: var(--m) no-repeat center / auto 80%; }
+      box-sizing: border-box; padding: 10%; background: var(--c);
+      -webkit-mask: var(--m) no-repeat center / contain; mask: var(--m) no-repeat center / contain; -webkit-mask-origin: content-box; mask-origin: content-box; }
     .w { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; text-align: left; }
     .t { font-size: var(--badge-font-size-current, var(--badge-font-size, 13px)); font-weight: 600; line-height: 1.2;
       color: var(--hemma-badge-title-color, var(--primary-text-color)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

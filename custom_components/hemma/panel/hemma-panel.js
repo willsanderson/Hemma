@@ -2546,6 +2546,19 @@ const HEMMA_ACCENTS = [
 ].map(([label, key, hex]) => ({
   label, hex, id: "var(--hemma-color-" + key + ", " + hex + ")",
 }));
+// The states a domain can report, for entities that do not publish their own list.
+const STATUS_DOMAIN_STATES = {
+  vacuum: ["cleaning", "returning", "paused", "error", "docked", "idle"],
+  lawn_mower: ["mowing", "returning", "paused", "error", "docked"],
+  lock: ["unlocked", "open", "jammed", "locking", "unlocking", "locked"],
+  cover: ["opening", "closing", "open", "closed"],
+  valve: ["opening", "closing", "open", "closed"],
+  alarm_control_panel: ["triggered", "pending", "arming", "armed_away", "armed_home", "armed_night", "disarmed"],
+  water_heater: ["eco", "electric", "gas", "heat_pump", "high_demand", "performance", "off"],
+  binary_sensor: ["on", "off"], switch: ["on", "off"], input_boolean: ["on", "off"], fan: ["on", "off"], light: ["on", "off"],
+  media_player: ["playing", "paused", "idle", "on", "off"],
+  update: ["on", "off"],
+};
 const STATUS_SHEET_CSS = `
   .ssh-wrap { position:fixed; inset:0; z-index:500; display:grid; place-items:center; }
   .ssh-scrim { position:absolute; inset:0; background:rgba(0,0,0,0.36); animation:ssh-fade .22s ease both; }
@@ -2596,7 +2609,8 @@ const STATUS_SHEET_CSS = `
   .ssh-badge { display:inline-grid; grid-template-columns:min-content auto; align-items:center; column-gap:10px; min-height:44px;
     padding:6px 16px 6px 9px; border-radius:999px; background:rgba(10,12,14,0.65); color:#fff; box-shadow:inset 0 0 0 0.5px rgba(255,255,255,0.14); transition:opacity .2s; }
   .ssh-badge.hid { opacity:.4; }
-  .ssh-badge .i { width:26px; height:26px; background:var(--c); -webkit-mask:var(--i) no-repeat center / auto 80%; mask:var(--i) no-repeat center / auto 80%; }
+  .ssh-badge .i { width:26px; height:26px; box-sizing:border-box; padding:3px; background:var(--c);
+    -webkit-mask:var(--i) no-repeat center / contain; mask:var(--i) no-repeat center / contain; -webkit-mask-origin:content-box; mask-origin:content-box; }
   .ssh-badge .w { display:flex; flex-direction:column; line-height:1.15; }
   .ssh-badge .t1 { font-size:13px; font-weight:600; }
   .ssh-badge .t2 { font-size:12px; font-weight:500; opacity:.8; }
@@ -2629,11 +2643,8 @@ const STATUS_SHEET_CSS = `
   .ssh-tile { flex:none; width:28px; height:28px; border-radius:7px; display:grid; place-items:center; background:var(--c, #8e8e93); color:#fff; }
   .ssh-tile.off { background:rgba(120,120,128,0.36); }
   .ssh-tile .m { width:17px; height:17px; background:#fff; -webkit-mask:var(--i) no-repeat center / contain; mask:var(--i) no-repeat center / contain; }
+  .ssh .ssh-row .sw { flex:0 0 42px; margin:0; }
   .ssh-tile ha-state-icon, .ssh-tile ha-icon { --mdc-icon-size:18px; color:#fff; }
-  .ssh-sw { flex:none; width:51px; height:31px; border-radius:999px; border:0; background:var(--sw-off); position:relative; cursor:pointer; transition:background .2s; }
-  .ssh-sw::after { content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,0.25); transition:transform .25s var(--sw-ease); }
-  .ssh-sw[aria-checked="true"] { background:var(--sw-on); }
-  .ssh-sw[aria-checked="true"]::after { transform:translateX(20px); }
   .ssh-list.ssh-swatches { display:grid; grid-template-columns:repeat(7, 1fr); justify-items:center; gap:14px 8px; padding:16px 12px; overflow:visible; }
   .ssh .ssh-dot { flex:none; width:28px; height:28px; min-width:0; min-height:0; padding:0; margin:0; border-radius:50%; border:0; background:var(--c); cursor:pointer; transform:none; filter:none; }
   .ssh .ssh-dot.on { box-shadow:0 0 0 2.5px var(--ssh-bg), 0 0 0 4.5px var(--ink); }
@@ -5182,6 +5193,7 @@ class HemmaPanel extends HTMLElement {
         :host(:not(.narrow)) .inspector .sheet { padding-bottom:8px; }
         :host(:not(.narrow)) .band.detail .col > .card.sel,
         :host(:not(.narrow)) .band.detail .tilegrid > .tile.sel { padding-top:3px; }
+        :host(:not(.narrow)) .band.detail .col > .card.sel[data-k="Status"] { padding-top:var(--card-pad-v); }
         :host(:not(.narrow)) .band.detail .col > .card.sel.grouped,
         :host(:not(.narrow)) .band.detail .tilegrid > .tile.sel.grouped { padding-top:0; }
         :host(.narrow) { --insp-w:0px; }
@@ -18658,6 +18670,7 @@ class HemmaPanel extends HTMLElement {
         sub.className = "extrasub";
         sub.textContent = !st ? _sx("Unavailable") : (conf && conf.show === false ? _sx("Hidden now")
           : (conf && conf.label) || this._hass.formatEntityState(st));
+        row.classList.add("statusrow");
         row.appendChild(sub);
         const dots = document.createElement("button");
         dots.className = "mini icon rowmenu";
@@ -18685,20 +18698,42 @@ class HemmaPanel extends HTMLElement {
     col.appendChild(fs);
   }
 
+  // A dashboard saved before Status badges existed has no slot for them; saving it again brings in the current templates.
+  async _statusEnsureSlot() {
+    const urls = [this._dashUrl].concat(this._pair && this._pair.mobileUrl ? [this._pair.mobileUrl] : []);
+    let missing = false;
+    for (const u of urls) {
+      try {
+        const cfg = await this._ws({ type: "lovelace/config", url_path: u });
+        if (JSON.stringify(cfg.button_card_templates || {}).indexOf("hemma-status-badges") < 0) missing = true;
+      } catch (_) {}
+    }
+    if (!missing) { this._status(_sx("Status badge saved"), "ok"); return; }
+    const dirty = !!this._clean && this._print() !== this._clean;
+    if (dirty) { this._status(_sx("Status badge saved. Save your changes to show it on the dashboard."), "ok"); return; }
+    await this._save();
+    this._status(_sx("Status badge saved, and the dashboard updated to show it"), "ok");
+  }
+
   _statusIconOf(b, st) {
     const conf = st && (b.states || {})[st.state];
     return (conf && conf.icon) || Object.values(b.states || {}).map((x) => x.icon).filter(Boolean)[0] || "power_on";
   }
 
   // First guess at each state's look, from its name: the badge should be right before anyone touches it.
-  _statusGuess(state) {
+  _statusGuess(state, entity) {
     const v = String(state).toLowerCase();
-    const label = v.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
-    if (/error|fault|jam|fail|problem/.test(v)) return { label, color: "red", icon: "exclamation", show: true };
+    const dom = String(entity || "").split(".")[0];
+    const base = ({ vacuum: /dock|charg|return/.test(v) ? "vacuum-charge" : /clean/.test(v) ? "vacuum-clean" : "vacuum",
+      lock: /unlock|open/.test(v) ? "lock-open" : "lock", cover: /clos/.test(v) ? "window-shade-closed" : "window-shade-open",
+      fan: "fan", light: "light", humidifier: "humidifier", water_heater: "hot_water", media_player: "speaker",
+      binary_sensor: "door-closed", switch: "plug" })[dom];
+    const label = "";
+    if (/error|fault|jam|fail|problem|triggered/.test(v)) return { label, color: "red", icon: "exclamation", show: true };
     if (/pause/.test(v)) return { label, color: "yellow", icon: "pause", show: true };
-    if (/finish|done|complete|end/.test(v)) return { label: _sx("Done"), color: "green", icon: "power_on", show: true };
-    if (/^(idle|off|standby|ready|closed|docked|unplugged|sleep|stopped|charging)/.test(v)) return { label, color: "neutral", icon: "power_off", show: false };
-    return { label, color: "blue", icon: "power_on", show: true };
+    if (/finish|done|complete|end/.test(v)) return { label, color: "green", icon: base || "power_on", show: true };
+    if (/^(idle|off|standby|ready|closed|docked|unplugged|sleep|stopped|charging|locked|disarmed)/.test(v)) return { label, color: "neutral", icon: base || "power_off", show: false };
+    return { label, color: "blue", icon: base || "power_on", show: true };
   }
 
   // One sheet that never opens anything behind or over itself: two panes when there is room, pages that slide in on a phone.
@@ -18773,9 +18808,10 @@ class HemmaPanel extends HTMLElement {
       const st = H.states[b.entity];
       const opts = st && Array.isArray(st.attributes.options) ? st.attributes.options.slice() : [];
       if (st && opts.indexOf(st.state) < 0 && st.state !== "unknown" && st.state !== "unavailable") opts.push(st.state);
-      if (st && /^(binary_sensor|switch|input_boolean)\./.test(b.entity)) ["on", "off"].forEach((x) => { if (opts.indexOf(x) < 0) opts.push(x); });
+      const dom = b.entity.split(".")[0];
+      (STATUS_DOMAIN_STATES[dom] || []).forEach((x) => { if (opts.indexOf(x) < 0) opts.push(x); });
       Object.keys(b.states).forEach((x) => { if (opts.indexOf(x) < 0) opts.push(x); });
-      opts.forEach((x) => { if (!b.states[x]) b.states[x] = this._statusGuess(x); });
+      opts.forEach((x) => { if (!b.states[x]) b.states[x] = this._statusGuess(x, b.entity); });
       return opts;
     };
     const timeFor = () => {
@@ -18784,7 +18820,11 @@ class HemmaPanel extends HTMLElement {
       return Object.keys(H.entities).find((id) => H.entities[id].device_id === dev && id.indexOf("sensor.") === 0
         && /remain|time_left|finish|end_time|completion/.test(id)) || null;
     };
-    const stateLabel = (x) => (b.states[x] && b.states[x].label) || x;
+    const autoText = (x) => {
+      const st = H.states[b.entity];
+      try { return st ? H.formatEntityState(st, x) : x; } catch (_) { return x; }
+    };
+    const stateLabel = (x) => (b.states[x] && b.states[x].label) || autoText(x);
     const close = () => {
       document.removeEventListener("keydown", onKey, true);
       this._flowLockScroll(false);
@@ -18835,7 +18875,7 @@ class HemmaPanel extends HTMLElement {
       }
       if (o.value !== undefined) r.appendChild(el("span", "v" + (o.placeholderValue ? " ph" : ""), o.value));
       if (o.toggle !== undefined) {
-        const t = el("button", "ssh-sw");
+        const t = el("button", "sw");
         t.type = "button";
         t.setAttribute("role", "switch");
         t.setAttribute("aria-checked", o.toggle ? "true" : "false");
@@ -18861,7 +18901,7 @@ class HemmaPanel extends HTMLElement {
       pill.appendChild(ic);
       const w = el("span", "w");
       w.appendChild(el("span", "t1", b.name || (st && st.attributes.friendly_name) || _sx("Status")));
-      w.appendChild(el("span", "t2", conf ? (conf.label || cur) : (st ? H.formatEntityState(st) : _sx("Choose an entity"))));
+      w.appendChild(el("span", "t2", cur ? stateLabel(cur) : _sx("Choose an entity")));
       pill.appendChild(w);
       p.appendChild(pill);
       const cap = conf && conf.show === false ? _sx("Hidden in this state") : "";
@@ -18887,7 +18927,7 @@ class HemmaPanel extends HTMLElement {
         const stateRow = (list, x) => {
           const c = b.states[x];
           row(list, { tile: true, mask: iconUrl(c.icon || "power_on"), tileColor: colorOf(c.color), tileOff: c.show === false,
-            title: stateLabel(x), sub: x, chevron: true, sel: two && picked && sidePage === "state:" + x, onTap: () => go("state:" + x) });
+            title: stateLabel(x), chevron: true, sel: two && picked && sidePage === "state:" + x, onTap: () => go("state:" + x) });
         };
         const shown = all.filter((x) => b.states[x].show !== false), hidden = all.filter((x) => b.states[x].show === false);
         if (shown.length) { const l = group(box, _sx("Shown"), hidden.length ? "" : _sx("The badge appears in these states.")); shown.forEach((x) => stateRow(l, x)); }
@@ -18921,10 +18961,12 @@ class HemmaPanel extends HTMLElement {
       else preview(box, x);
       const top = group(box);
       row(top, { title: _sx("Show Badge"), toggle: c.show !== false, onToggle: () => { c.show = c.show === false; paint(); } });
-      row(top, { title: _sx("Text"), input: c.label || "", placeholder: x, onInput: (v) => {
+      row(top, { title: _sx("Custom Text"), input: c.label || "", placeholder: autoText(x), onInput: (v) => {
         c.label = v;
-        sheet.querySelectorAll(".ssh-row.sel .kt").forEach((n) => { n.textContent = v || x; });
+        sheet.querySelectorAll(".ssh-row.sel .kt, .ssh-badge .t2").forEach((n) => { n.textContent = v || autoText(x); });
       } });
+      const tf = box.lastElementChild;
+      if (tf) tf.appendChild(el("p", "ssh-foot", _sx("The badge shows the state in Home Assistant's own words. Type here only to say it differently, like Done instead of Finished.")));
       const sw = group(box, _sx("Color"));
       sw.classList.add("ssh-swatches");
       HEMMA_ACCENTS.forEach((a) => {
@@ -18995,7 +19037,8 @@ class HemmaPanel extends HTMLElement {
         const entRow = (list, id) => {
           const st = H.states[id];
           const where = areaName(id);
-          row(list, { tile: true, iconEl: entityIconEl(H, st), title: nameOf(id),
+          const ie = entityIconEl(H, st);
+          row(list, { tile: true, iconEl: ie, mask: ie ? null : iconUrl("power_on"), title: nameOf(id),
             sub: (where ? where + " · " : "") + H.formatEntityState(st), tick: id === cur, onTap: () => pick(id) });
         };
         let suggested;
@@ -19056,8 +19099,8 @@ class HemmaPanel extends HTMLElement {
         try {
           await H.callWS({ type: "hemma/home/set_status_badge",
             badge: { id: b.id, entity: b.entity, name: b.name || "", time_entity: b.time_entity || null, rooms: b.rooms, states: keep } });
-          this._status(_sx("Status badge saved"), "ok");
           close();
+          await this._statusEnsureSlot();
         } catch (e) {
           save.disabled = false;
           this._status(this._plainError(e, _sx("Hemma couldn't save the badge.")), "err");
