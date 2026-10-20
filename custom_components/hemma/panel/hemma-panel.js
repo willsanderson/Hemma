@@ -7292,6 +7292,11 @@ class HemmaPanel extends HTMLElement {
         }
         /* The same turn hemma_badge_climate_group runs, at the same rate. */
         .pglyph.spin { animation:hemma-preview-fan 0.9s linear infinite; }
+        /* Any icon can be a Status badge's, so it fits the box the way the dashboard's badge does rather than by height. */
+        .pglyph.fit {
+          box-sizing:border-box; padding:calc(var(--bgl) * 0.08);
+          -webkit-mask-size:contain; mask-size:contain; -webkit-mask-origin:content-box; mask-origin:content-box;
+        }
         @keyframes hemma-preview-fan {
           from { transform:rotate(0deg); }
           to { transform:rotate(360deg); }
@@ -17245,6 +17250,7 @@ class HemmaPanel extends HTMLElement {
     } else {
       g = document.createElement("span");
       g.className = "pglyph" + (b.spin ? " spin" : "") + (b.icon === "media" ? " wide" : "")
+        + (String(b.id || "").indexOf("status:") === 0 ? " fit" : "")
         + (/^rgba\(255,\s*255,\s*255/.test(String(b.color || "")) ? " neutral" : "");
       g.style.setProperty("--i", "url('" + iconUrl(b.icon) + "')");
       g.style.setProperty("--sc", b.color);
