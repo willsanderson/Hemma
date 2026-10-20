@@ -2562,24 +2562,36 @@ const STATUS_SHEET_CSS = `
   @keyframes ssh-rise { from { opacity:0; transform:translateY(18px) scale(.985); } }
   @keyframes ssh-sink { to { opacity:0; transform:translateY(12px) scale(.985); } }
   @keyframes ssh-fade { from { opacity:0; } }
-  .ssh-bar { flex:none; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:14px 18px 8px; gap:8px; }
-  .ssh-bar .t { font-weight:600; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .ssh-bar button { background:none; border:0; padding:6px 0; font:inherit; font-size:16px; color:var(--accent); cursor:pointer; display:inline-flex; align-items:center; gap:4px; }
+  .ssh-bar { flex:none; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:16px 18px 10px; gap:10px; }
+  .ssh-bar .t { font-weight:600; font-size:15px; letter-spacing:-0.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ssh-bar .l { justify-self:start; }
-  .ssh-bar .r { justify-self:end; font-weight:600; }
-  .ssh-bar .r:disabled { color:var(--ink-3); cursor:default; }
+  .ssh-bar .r { justify-self:end; }
+  .ssh .ssh-round { --back:32px; width:var(--back); height:var(--back); flex:0 0 var(--back); padding:0; margin:0; border:0; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center; color:var(--ink); cursor:pointer;
+    background:linear-gradient(to bottom, rgba(255,255,255,0.24), rgba(255,255,255,0.11));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.40), inset 0 0 0 1px rgba(255,255,255,0.20), 0 1px 2px rgba(0,0,0,0.08);
+    transition:background .16s ease, transform .12s ease; }
+  .ssh .ssh-round svg { width:17px; height:17px; display:block; }
+  .ssh .ssh-round:hover:not(:disabled) { filter:none; background:linear-gradient(to bottom, rgba(255,255,255,0.32), rgba(255,255,255,0.17)); }
+  .ssh .ssh-round:active:not(:disabled) { transform:scale(0.93); }
+  :host(.phone.is-light) .ssh .ssh-round { color:#1d1d1f; background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.80)); box-shadow:inset 0 0 0 1px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.08); }
+  .ssh .ssh-pill { height:32px; padding:0 16px; border:0; border-radius:999px; font:inherit; font-size:13.5px; font-weight:600; cursor:pointer;
+    display:inline-flex; align-items:center; background:var(--fill); color:var(--on-fill); box-shadow:none; transition:opacity .2s, background .16s; }
+  .ssh .ssh-pill:hover:not(:disabled) { filter:none; background:#fff; }
+  :host(.phone.is-light) .ssh .ssh-pill:hover:not(:disabled) { background:#000; }
+  .ssh .ssh-pill:disabled { background:var(--chip); color:var(--ink); opacity:.4; }
   .ssh-bar .r[hidden] { display:inline-flex !important; visibility:hidden; }
   .ssh-bar .b svg { width:11px; height:18px; display:block; }
   .ssh-panes { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr); }
   .ssh.two .ssh-panes { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
-  .ssh-pane { min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:6px 20px 36px; display:flex; flex-direction:column; gap:24px; }
+  .ssh-pane { min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:6px 20px 36px; display:flex; flex-direction:column; gap:22px; font-size:14px; }
   .ssh-pane.side { border-left:0.5px solid var(--hair); }
   .ssh-pane.in { animation:ssh-in .32s var(--ease) both; }
   .ssh-pane.back { animation:ssh-back .32s var(--ease) both; }
   @keyframes ssh-in { from { transform:translateX(28%); opacity:0; } }
   @keyframes ssh-back { from { transform:translateX(-22%); opacity:0; } }
   @media (prefers-reduced-motion: reduce) { .ssh, .ssh-scrim, .ssh-pane.in, .ssh-pane.back { animation:none !important; } }
-  .ssh-prev { display:grid; place-items:center; gap:8px; padding:14px 0 2px; }
+  .ssh-prev { display:grid; place-items:center; gap:8px; padding:12px 0 4px; }
   .ssh-prev small { font-size:12px; color:var(--ink-3); }
   .ssh-badge { display:inline-grid; grid-template-columns:min-content auto; align-items:center; column-gap:10px; min-height:44px;
     padding:6px 16px 6px 9px; border-radius:999px; background:rgba(10,12,14,0.65); color:#fff; box-shadow:inset 0 0 0 0.5px rgba(255,255,255,0.14); transition:opacity .2s; }
@@ -2589,28 +2601,32 @@ const STATUS_SHEET_CSS = `
   .ssh-badge .t1 { font-size:13px; font-weight:600; }
   .ssh-badge .t2 { font-size:12px; font-weight:500; opacity:.8; }
   .ssh-grp { display:flex; flex-direction:column; gap:6px; }
-  .ssh-gh { margin-left:16px; font-size:13px; color:var(--ink-2); }
-  .ssh-list { background:var(--ssh-group); border-radius:12px; overflow:hidden; }
-  .ssh-foot { margin:0 16px; font-size:12.5px; line-height:1.4; color:var(--ink-2); }
+  .ssh-gh { margin-left:14px; font-size:12.5px; font-weight:560; color:var(--ink-2); }
+  .ssh-list { background:var(--ssh-group); border-radius:12px; overflow:hidden; isolation:isolate; }
+  .ssh-foot { margin:0 14px; font-size:12px; line-height:1.4; color:var(--ink-3); }
   .ssh-empty { margin:auto; max-width:30ch; text-align:center; color:var(--ink-2); font-size:14px; }
-  .ssh-row { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:0 14px; box-sizing:border-box;
+  .ssh-row { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:42px; padding:0 14px; box-sizing:border-box;
     background:none; border:0; font:inherit; color:inherit; text-align:left; }
-  .ssh button.ssh-row { cursor:pointer; border-radius:0; margin:0; min-width:0; box-shadow:none; }
-  .ssh button.ssh-row:hover { background:var(--ssh-hover); }
+  .ssh button.ssh-row { cursor:pointer; border-radius:0; margin:0; min-width:0; box-shadow:none; transform:none; filter:none; transition:background .12s ease; }
+  .ssh button.ssh-row:hover:not(:disabled) { background:var(--ssh-hover); filter:none; }
+  .ssh button.ssh-row:active:not(:disabled) { background:var(--ssh-sel); transform:none; }
+  .ssh-row.sel::before, .ssh-row.sel + .ssh-row::before,
+  .ssh button.ssh-row:hover::before, .ssh button.ssh-row:hover + .ssh-row::before,
+  .ssh button.ssh-row:active::before, .ssh button.ssh-row:active + .ssh-row::before { background:transparent !important; }
   .ssh-row + .ssh-row::before { content:""; position:absolute; top:0; right:0; left:14px; height:0.5px; background:var(--hair); }
-  .ssh-row.ic + .ssh-row.ic::before { left:55px; }
+  .ssh-row.ic + .ssh-row.ic::before { left:54px; }
   .ssh .ssh-row.sel, .ssh button.ssh-row.sel:hover { background:var(--ssh-sel); }
   .ssh-row.danger { justify-content:center; color:#FF4245; }
-  .ssh-row .k { flex:1; min-width:0; display:flex; flex-direction:column; padding:9px 0; }
+  .ssh-row .k { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; padding:10px 0; }
   .ssh-row .kt { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .ssh-row small { font-size:12.5px; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ssh-row small { font-size:12px; color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ssh-row .v { flex:none; max-width:58%; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ssh-row .v.ph { color:var(--ink-3); }
   .ssh-row .chev svg { width:8px; height:13px; display:block; color:var(--ink-3); }
   .ssh-row .tick svg { width:16px; height:16px; display:block; color:var(--accent); }
   .ssh .ssh-row input.ssh-in { flex:0 1 58%; min-width:0; height:auto; margin:0; background:none; border:0; box-shadow:none; border-radius:0; font:inherit; color:var(--ink-2); text-align:right; padding:10px 0; outline:none; }
   .ssh-in::placeholder { color:var(--ink-3); }
-  .ssh-tile { flex:none; width:29px; height:29px; border-radius:7px; display:grid; place-items:center; background:var(--c, #8e8e93); color:#fff; }
+  .ssh-tile { flex:none; width:28px; height:28px; border-radius:7px; display:grid; place-items:center; background:var(--c, #8e8e93); color:#fff; }
   .ssh-tile.off { background:rgba(120,120,128,0.36); }
   .ssh-tile .m { width:17px; height:17px; background:#fff; -webkit-mask:var(--i) no-repeat center / contain; mask:var(--i) no-repeat center / contain; }
   .ssh-tile ha-state-icon, .ssh-tile ha-icon { --mdc-icon-size:18px; color:#fff; }
@@ -2619,12 +2635,13 @@ const STATUS_SHEET_CSS = `
   .ssh-sw[aria-checked="true"] { background:var(--sw-on); }
   .ssh-sw[aria-checked="true"]::after { transform:translateX(20px); }
   .ssh-list.ssh-swatches { display:grid; grid-template-columns:repeat(7, 1fr); justify-items:center; gap:14px 8px; padding:16px 12px; overflow:visible; }
-  .ssh .ssh-dot { flex:none; width:30px; height:30px; min-width:0; min-height:0; padding:0; margin:0; border-radius:50%; border:0; background:var(--c); cursor:pointer; }
+  .ssh .ssh-dot { flex:none; width:28px; height:28px; min-width:0; min-height:0; padding:0; margin:0; border-radius:50%; border:0; background:var(--c); cursor:pointer; transform:none; filter:none; }
   .ssh .ssh-dot.on { box-shadow:0 0 0 2.5px var(--ssh-bg), 0 0 0 4.5px var(--ink); }
   .ssh-icons { display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; padding:10px; }
-  .ssh-ico { aspect-ratio:1; width:100%; max-width:46px; justify-self:center; border-radius:10px; border:0; background:none; display:grid; place-items:center; cursor:pointer; color:var(--ink); }
+  .ssh .ssh-ico { aspect-ratio:1; width:100%; max-width:44px; justify-self:center; border-radius:10px; border:0; margin:0; padding:0; background:none; display:grid; place-items:center; cursor:pointer; color:var(--ink-2); transform:none; filter:none; }
+  .ssh .ssh-ico:hover { background:var(--ssh-hover); color:var(--ink); }
   .ssh-ico .m { width:22px; height:22px; background:currentColor; -webkit-mask:var(--i) no-repeat center / contain; mask:var(--i) no-repeat center / contain; }
-  .ssh-ico.on { background:var(--ssh-sel); color:var(--accent); }
+  .ssh .ssh-ico.on { background:var(--ssh-sel); color:var(--ink); }
   .ssh-ptitle { font-size:20px; font-weight:700; letter-spacing:-0.01em; padding:14px 2px 0; }
   .ssh-search { flex:none; display:flex; align-items:center; gap:8px; height:36px; padding:0 10px; border-radius:10px; background:rgba(118,118,128,0.24); color:var(--ink-2); position:sticky; top:0; z-index:1; }
   .ssh-search .s svg { width:15px; height:15px; display:block; }
@@ -18602,8 +18619,6 @@ class HemmaPanel extends HTMLElement {
     add.onclick = () => this._statusSheet(null, key);
     head.appendChild(add);
     fs.appendChild(head);
-    const body = document.createElement("div");
-    fs.appendChild(body);
     let painted = false;
     const paint = () => {
       if (painted && !fs.isConnected) {
@@ -18611,7 +18626,8 @@ class HemmaPanel extends HTMLElement {
         return;
       }
       painted = true;
-      body.replaceChildren();
+      [...fs.children].forEach((n) => { if (n !== head) n.remove(); });
+      const body = fs;
       const offline = this._homeData === null;
       add.disabled = offline;
       const mine = offline ? [] : ((this._homeData && this._homeData.status_badges) || []).filter((b) => (b.rooms || ["home"]).indexOf(key) >= 0);
@@ -18720,6 +18736,7 @@ class HemmaPanel extends HTMLElement {
 
     let page = two ? null : "main";
     let sidePage = null;
+    let picked = false;
     let query = "";
     const el = (tag, cls, text) => {
       const n = document.createElement(tag);
@@ -18734,7 +18751,8 @@ class HemmaPanel extends HTMLElement {
     };
     const CHEV = '<svg viewBox="0 0 8 13"><path d="M1.5 1.5 6.5 6.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     const TICK = '<svg viewBox="0 0 16 16"><path d="M2.5 8.5 6.5 12.5 13.5 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    const BACK = '<svg viewBox="0 0 11 18"><path d="M9.5 1.5 2 9l7.5 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>';
+    const CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 7l10 10M17 7 7 17"/></svg>';
     const SEARCH = '<svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m11 11 3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
     const colorOf = (key) => {
       const a = HEMMA_ACCENTS.find((x) => x.label.toLowerCase() === key);
@@ -18774,7 +18792,7 @@ class HemmaPanel extends HTMLElement {
       setTimeout(() => wrap.remove(), 220);
     };
     const go = (to, sideTo) => {
-      if (two) { sidePage = sideTo === undefined ? to : sideTo; paint("side"); return; }
+      if (two) { picked = true; sidePage = sideTo === undefined ? to : sideTo; paint("side"); return; }
       const fwd = to !== "main";
       page = to;
       paint(fwd ? "push" : "pop");
@@ -18846,17 +18864,16 @@ class HemmaPanel extends HTMLElement {
       w.appendChild(el("span", "t2", conf ? (conf.label || cur) : (st ? H.formatEntityState(st) : _sx("Choose an entity"))));
       pill.appendChild(w);
       p.appendChild(pill);
-      p.appendChild(el("small", "", !b.entity ? _sx("Preview")
-        : conf && conf.show === false ? _sx("Hidden in this state")
-        : x ? _sx("When it reports {state}", { state: x }) : _sx("Preview, current state")));
+      const cap = conf && conf.show === false ? _sx("Hidden in this state") : "";
+      if (cap) p.appendChild(el("small", "", cap));
       parent.appendChild(p);
     };
 
     const paintMain = (box) => {
-      preview(box, null);
+      preview(box, two && picked && sidePage && sidePage.indexOf("state:") === 0 ? sidePage.slice(6) : null);
       const top = group(box);
       row(top, { title: _sx("Entity"), value: b.entity ? nameOf(b.entity) : _sx("Choose"), placeholderValue: !b.entity, chevron: true,
-        sel: two && sidePage === "entity", onTap: () => go("entity") });
+        sel: two && picked && sidePage === "entity", onTap: () => go("entity") });
       row(top, { title: _sx("Name"), input: b.name, placeholder: b.entity ? deviceName(b.entity) : _sx("Name"),
         onInput: (v) => { b.name = v; const t = sheet.querySelectorAll(".ssh-badge .t1"); t.forEach((n) => { n.textContent = v || (b.entity ? nameOf(b.entity) : _sx("Status")); }); } });
       const timer = b.entity ? timeFor() : null;
@@ -18870,7 +18887,7 @@ class HemmaPanel extends HTMLElement {
         const stateRow = (list, x) => {
           const c = b.states[x];
           row(list, { tile: true, mask: iconUrl(c.icon || "power_on"), tileColor: colorOf(c.color), tileOff: c.show === false,
-            title: stateLabel(x), sub: x, chevron: true, sel: two && sidePage === "state:" + x, onTap: () => go("state:" + x) });
+            title: stateLabel(x), sub: x, chevron: true, sel: two && picked && sidePage === "state:" + x, onTap: () => go("state:" + x) });
         };
         const shown = all.filter((x) => b.states[x].show !== false), hidden = all.filter((x) => b.states[x].show === false);
         if (shown.length) { const l = group(box, _sx("Shown"), hidden.length ? "" : _sx("The badge appears in these states.")); shown.forEach((x) => stateRow(l, x)); }
@@ -18963,7 +18980,7 @@ class HemmaPanel extends HTMLElement {
             if (!badge && rk && known && b.rooms.indexOf(rk) < 0) b.rooms = b.rooms.concat([rk]);
           }
           const sts = statesOf(), first = sts.find((x) => b.states[x].show !== false) || sts[0];
-          if (two) { sidePage = first ? "state:" + first : null; paint("side"); } else go("main");
+          if (two) { picked = false; sidePage = null; paint("side"); } else go("main");
         } else {
           b.time_entity = id || null;
           if (two) { sidePage = null; paint("side"); } else go("main");
@@ -19018,15 +19035,17 @@ class HemmaPanel extends HTMLElement {
     const paintBar = () => {
       bar.replaceChildren();
       const sub = !two && page !== "main";
-      const left = el("button", "l");
+      const left = el("button", "l ssh-round");
       left.type = "button";
-      if (sub) { left.appendChild(svg(BACK, "b")); left.appendChild(document.createTextNode(_sx("Back"))); left.onclick = () => go("main"); }
-      else { left.textContent = _sx("Cancel"); left.onclick = close; }
+      left.innerHTML = sub ? BACK : CLOSE;
+      left.title = sub ? _sx("Back") : _sx("Cancel");
+      left.setAttribute("aria-label", left.title);
+      left.onclick = sub ? () => go("main") : close;
       bar.appendChild(left);
       const t = !sub ? (badge ? _sx("Status Badge") : _sx("Add Status Badge"))
         : page === "entity" ? _sx("Entity") : stateLabel(page.slice(6));
       bar.appendChild(el("span", "t", t));
-      const save = el("button", "r", _sx("Save"));
+      const save = el("button", "r ssh-pill", _sx("Save"));
       save.type = "button";
       save.disabled = !b.entity || !b.rooms.length;
       save.hidden = sub;
@@ -19050,7 +19069,6 @@ class HemmaPanel extends HTMLElement {
     const paint = (how) => {
       paintBar();
       const keep = main.scrollTop;
-      if (two && !sidePage && b.entity) { const all = statesOf(), f = all.find((x) => b.states[x].show !== false) || all[0]; if (f) sidePage = "state:" + f; }
       if (two) {
         main.replaceChildren();
         paintMain(main);
@@ -19059,7 +19077,7 @@ class HemmaPanel extends HTMLElement {
         side.replaceChildren();
         if (sidePage === "entity" || sidePage === "time") paintPick(side, sidePage);
         else if (sidePage) paintState(side, sidePage.slice(6));
-        else side.appendChild(el("p", "ssh-empty", _sx("Choose an entity to set how each of its states looks.")));
+        else side.appendChild(el("p", "ssh-empty", b.entity ? _sx("Choose a state to change how the badge looks in it.") : _sx("Choose an entity to set how each of its states looks.")));
         if (how !== "side") side.scrollTop = sk;
         return;
       }
