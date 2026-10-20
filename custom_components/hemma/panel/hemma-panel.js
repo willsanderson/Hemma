@@ -20086,28 +20086,6 @@ class HemmaPanel extends HTMLElement {
         }, { icon: true, iconFallback: null }).wrap);
     }
 
-    // Tap lives in the integration, per entity, so it applies on every dashboard and device at once.
-    if (tile.entity && !noEntityRow && this._hass && this._homeStoreSub) {
-      if (!this._homeData) {
-        this._homeStoreSub();
-        if (!this._tapWait) {
-          this._tapWait = true;
-          this._homeListeners = (this._homeListeners || []).concat([() => {
-            if (!this._tapWait || !this._homeData) return;
-            this._tapWait = false;
-            this._renderForm();
-          }]);
-        }
-      } else {
-        const eid = tile.entity;
-        const cur = ((this._homeData.entities || {})[eid] || {}).tap || "normal";
-        addRow(_sx("Tap"), this._combo(cur, ["normal", "confirm", "view"], "", (v) => {
-          this._hass.callWS({ type: "hemma/home/set_entity", entity_id: eid, options: { tap: v || "normal" } })
-            .catch((e) => this._status(this._plainError(e, _sx("Hemma couldn't save the Tap setting.")), "err"));
-        }, { fixed: true, labels: { normal: _sx("Normal"), confirm: _sx("Ask First"), view: _sx("View Only") } }).wrap);
-      }
-    }
-
     if (grp) {
       const v = tile.variables || {};
       const list = Array.isArray(v[grp.list]) ? v[grp.list] : [];
@@ -20246,6 +20224,28 @@ class HemmaPanel extends HTMLElement {
           this._renderForm();
         };
         body.appendChild(add);
+      }
+    }
+
+    // Tap lives in the integration, per entity, so it applies on every dashboard and device at once.
+    if (tile.entity && !noEntityRow && this._hass && this._homeStoreSub) {
+      if (!this._homeData) {
+        this._homeStoreSub();
+        if (!this._tapWait) {
+          this._tapWait = true;
+          this._homeListeners = (this._homeListeners || []).concat([() => {
+            if (!this._tapWait || !this._homeData) return;
+            this._tapWait = false;
+            this._renderForm();
+          }]);
+        }
+      } else {
+        const eid = tile.entity;
+        const cur = ((this._homeData.entities || {})[eid] || {}).tap || "normal";
+        addRow(_sx("Tap"), this._combo(cur, ["normal", "confirm", "view"], "", (v) => {
+          this._hass.callWS({ type: "hemma/home/set_entity", entity_id: eid, options: { tap: v || "normal" } })
+            .catch((e) => this._status(this._plainError(e, _sx("Hemma couldn't save the Tap setting.")), "err"));
+        }, { fixed: true, labels: { normal: _sx("Normal"), confirm: _sx("Ask First"), view: _sx("View Only") } }).wrap);
       }
     }
 
