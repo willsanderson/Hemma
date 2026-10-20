@@ -2798,7 +2798,7 @@ const STATUS_SHEET_CSS = `
     .ssh-pane { padding:8px 16px 44px; gap:28px; font-size:17px; }
     .ssh-grp { gap:8px; }
     .ssh-gh { margin-left:18px; font-size:15px; font-weight:600; }
-    .ssh-list { border-radius:26px; }
+    .ssh-list { border-radius:22px; }
     .ssh-foot, .ssh .ssh-foot.hint { margin:0 18px; font-size:13px; }
     .ssh-row { min-height:52px; padding:0 18px; gap:14px; }
     .ssh-row.ic { min-height:56px; }
@@ -6190,6 +6190,7 @@ class HemmaPanel extends HTMLElement {
         :host(.phone) .sw::after { top:2px; left:2px; width:37px; height:23px; }
         :host(.phone) .sw[aria-checked="true"]::after { transform:translateX(21px); }
         :host(.phone) .thead { touch-action:auto; }
+        :host(.phone) { --r-group:22px; }
         .cols { display:flex; gap:var(--gap); align-items:flex-start; }
         .col, .tilegrid {
           position:relative;
