@@ -2656,6 +2656,8 @@ const STATUS_SHEET_CSS = `
   .ssh-tile.off { background:rgba(120,120,128,0.36); }
   .ssh-tile .m { width:18px; height:18px; background:#fff; -webkit-mask:var(--i) no-repeat center / contain; mask:var(--i) no-repeat center / contain; }
   .ssh .ssh-row .sw { flex:0 0 42px; margin:0; }
+  .ssh-roomg { flex:0 0 20px; width:20px; height:20px; background-color:var(--hemma-color-teal, #00C3D0);
+    -webkit-mask:var(--i) center / contain no-repeat; mask:var(--i) center / contain no-repeat; }
   .ssh-tile ha-state-icon, .ssh-tile ha-icon { --mdc-icon-size:18px; color:#fff; }
   .ssh-list.ssh-swatches { display:grid; grid-template-columns:repeat(7, 1fr); justify-items:center; gap:14px 8px; padding:14px 10px; overflow:visible; }
   .ssh .ssh-dot { flex:none; width:28px; height:28px; min-width:0; min-height:0; padding:0; margin:0; border-radius:50%; border:0; background:var(--c); cursor:pointer; transform:none; filter:none; }
@@ -18931,6 +18933,11 @@ class HemmaPanel extends HTMLElement {
         else if (o.iconEl) t.appendChild(o.iconEl);
         r.appendChild(t);
       }
+      if (o.glyph) {
+        const g = el("span", "ssh-roomg");
+        g.style.setProperty("--i", "url('" + o.glyph + "')");
+        r.appendChild(g);
+      }
       const k = el("span", "k");
       k.appendChild(el("span", "kt", o.title));
       if (o.sub) k.appendChild(el("small", "", o.sub));
@@ -19006,7 +19013,8 @@ class HemmaPanel extends HTMLElement {
       ((this._state && this._state.compact.rooms) || []).forEach((r) => {
         const key = this._statusRoomKey(r);
         const on = b.rooms.indexOf(key) >= 0;
-        row(where, { title: key === "home" ? _sx("Home") : (r.name || r.title), tick: on, onTap: () => {
+        row(where, { title: key === "home" ? _sx("Home") : (r.name || r.title), tick: on,
+          glyph: iconUrl(key === "home" ? ((r.variables || {}).room_icon || "home") : roomGlyph(r.name, r)), onTap: () => {
           b.rooms = on ? b.rooms.filter((k) => k !== key) : b.rooms.concat([key]);
           paint();
         } });
