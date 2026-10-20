@@ -7540,6 +7540,14 @@ window.hemmaMenuGlass = {
 
   var SHEET_MAX = 768;
 
+  function morphOn() {
+    try {
+      var q = new URLSearchParams(location.search).get('hemma_morph');
+      if (q === '1' || q === '0') localStorage.setItem('hemma_morph', q);
+      return localStorage.getItem('hemma_morph') === '1';
+    } catch (e) { return false; }
+  }
+
   function flagOn() {
     if (typeof window.HEMMA_POPUP === 'boolean') return window.HEMMA_POPUP;
     try {
@@ -8237,9 +8245,12 @@ window.hemmaMenuGlass = {
       this._bindSheetDrag(this.surface, root.querySelector('.grab'), this.content);
     }
 
-    async open(data) {
+    async open(data, origin) {
       var cfg = data || {};
       var wasOpen = this.hasAttribute('open');
+      var morph = !wasOpen && origin && morphOn() && window.hemmaMorph && !this._isSheet()
+        && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? origin : null;
+      if (morph) this.surface.style.visibility = 'hidden';
 
       this._dismissable = cfg.dismissable !== false;
       this._bgDismiss = cfg.dismiss_on_background === true;
@@ -8282,6 +8293,7 @@ window.hemmaMenuGlass = {
       else if (cfg.content) this.container.textContent = String(cfg.content);
 
       if (!wasOpen) this._replayChrome();
+      if (morph) this._morphIn(morph);
 
       setTimeout(() => this._probe(), 900);   // after card_mod has landed
 
@@ -8429,6 +8441,134 @@ window.hemmaMenuGlass = {
       if (this._dismissable) this.close();
     }
 
+    // Grown out of the tapped tile: the glass animates its own box from the tile's, never by scale or opacity, so the blur stays live.
+    async _morphIn(card) {
+      var s = this.surface;
+      var M = window.hemmaMorph;
+      var h = -1;
+      for (var i = 0; i < 15; i++) {
+        await new Promise(function (r) { requestAnimationFrame(r); });
+        var nh = s.offsetHeight;
+        if (nh === h && nh > 60) break;
+        h = nh;
+      }
+      if (!this.hasAttribute('open') || this.hasAttribute('closing')) { s.style.visibility = ''; return; }
+      var look = M.look(card);
+      s.style.visibility = '';
+      if (!look) return;
+      var root = this.shadowRoot;
+      var g = root.querySelector('.glass');
+      var S = s.getBoundingClientRect();
+      var t = look.rect, m = 16;
+      var x = Math.max(m, Math.min(window.innerWidth - m - S.width, t.left + t.width / 2 - S.width / 2));
+      var y = Math.max(m, Math.min(window.innerHeight - m - S.height, t.top + t.height / 2 - S.height / 2));
+      s.style.left = (x - S.left) + 'px';
+      s.style.top = (y - S.top) + 'px';
+      var gcs = getComputedStyle(g);
+      var end = { bg: gcs.backgroundColor, filter: gcs.backdropFilter || gcs.webkitBackdropFilter || 'none',
+        shadow: gcs.boxShadow, radius: parseFloat(getComputedStyle(s).borderTopLeftRadius) || 38 };
+      var box = { x: x, y: y, w: S.width, h: S.height };
+      this._morph = { card: card, look: look, box: box, end: end };
+      s.style.overflow = 'visible';
+      s.style.animation = 'none';
+      var rim = root.querySelector('.rim');
+      [g, rim, this.content].forEach(function (e) { if (e) e.style.animation = 'none'; });
+      Object.assign(g.style, { inset: 'auto', left: '0px', top: '0px', width: S.width + 'px', height: S.height + 'px', overflow: 'hidden' });
+      look.ghost.style.width = t.width + 'px';
+      look.ghost.style.height = t.height + 'px';
+      g.appendChild(look.ghost);
+      card.style.visibility = 'hidden';
+      var G = M.grow;
+      var mo = this._morph;
+      g.animate([this._morphFrame(t, box, look, 0), this._morphFrame(null, box, look, 1)], { duration: G.dur, easing: G.ease, fill: 'backwards' })
+        .finished.then(() => {
+          if (this._morph !== mo) return;
+          ['inset', 'left', 'top', 'width', 'height', 'overflow'].forEach(function (k) { g.style.removeProperty(k); });
+          s.style.removeProperty('overflow');
+          look.ghost.remove();
+        }).catch(function () {});
+      look.ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: G.dur * 0.3, easing: 'ease-out', fill: 'forwards' });
+      var self = this;
+      var full = { left: x, top: y, right: x + S.width, bottom: y + S.height };
+      [this._header, this.content, root.querySelector('.grab')].forEach(function (e) {
+        if (!e || e.hidden) return;
+        e.animate([{ clipPath: self._morphClip(e, t, look.radius) }, { clipPath: self._morphClip(e, full, end.radius) }],
+          { duration: G.dur, easing: G.ease, fill: 'backwards' });
+        e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: G.dur * 0.45, delay: G.dur * 0.25, easing: 'ease-out', fill: 'backwards' });
+      });
+    }
+
+    _morphFrame(t, box, look, k) {
+      var e = this._morph.end;
+      if (k) return { left: '0px', top: '0px', width: box.w + 'px', height: box.h + 'px', borderRadius: e.radius + 'px',
+        backgroundColor: e.bg, backdropFilter: e.filter, webkitBackdropFilter: e.filter, boxShadow: e.shadow };
+      var f = 'blur(' + look.blur + 'px) saturate(100%)';
+      return { left: (t.left - box.x) + 'px', top: (t.top - box.y) + 'px', width: t.width + 'px', height: t.height + 'px',
+        borderRadius: look.radius + 'px', backgroundColor: look.fill, backdropFilter: f, webkitBackdropFilter: f,
+        boxShadow: e.shadow.replace(/rgba\(([^)]*),\s*[\d.]+\)/g, 'rgba($1, 0)') };
+    }
+
+    _morphClip(el, t, radius) {
+      var r = el.getBoundingClientRect();
+      return 'inset(' + (t.top - r.top) + 'px ' + (r.right - t.right) + 'px ' + (r.bottom - t.bottom) + 'px '
+        + (t.left - r.left) + 'px round ' + radius + 'px)';
+    }
+
+    _morphOut() {
+      var mo = this._morph;
+      if (!mo) return 0;
+      var card = mo.card;
+      if (!card.isConnected) { card.style.visibility = ''; return 0; }
+      var M = window.hemmaMorph;
+      var back = M.look(card) || mo.look;
+      card.style.visibility = 'hidden';
+      var root = this.shadowRoot;
+      var g = root.querySelector('.glass');
+      var S = M.shrink;
+      var R = this.surface.getBoundingClientRect();
+      mo.box = { x: R.left, y: R.top, w: R.width, h: R.height };
+      this.surface.style.animation = 'none';
+      this.surface.style.overflow = 'visible';
+      g.getAnimations().forEach(function (a) { a.cancel(); });
+      Object.assign(g.style, { inset: 'auto', left: '0px', top: '0px', width: R.width + 'px', height: R.height + 'px', overflow: 'hidden' });
+      g.animate([this._morphFrame(null, mo.box, back, 1), this._morphFrame(back.rect, mo.box, back, 0)],
+        { duration: S.dur, easing: S.ease, fill: 'forwards' });
+      if (mo.look.ghost) mo.look.ghost.remove();
+      back.ghost.style.width = back.rect.width + 'px';
+      back.ghost.style.height = back.rect.height + 'px';
+      g.appendChild(back.ghost);
+      mo.look = back;
+      back.ghost.animate([{ opacity: 0 }, { opacity: 0, offset: 0.45 }, { opacity: 1 }], { duration: S.dur, fill: 'forwards' });
+      var self = this;
+      var full = { left: R.left, top: R.top, right: R.right, bottom: R.bottom };
+      var radius = mo.end.radius;
+      [this._header, this.content, root.querySelector('.grab')].forEach(function (e) {
+        if (!e || e.hidden) return;
+        e.animate([{ clipPath: self._morphClip(e, full, radius) }, { clipPath: self._morphClip(e, back.rect, back.radius) }],
+          { duration: S.dur, easing: S.ease, fill: 'forwards' });
+        e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: S.dur * 0.35, easing: 'ease-in', fill: 'forwards' });
+      });
+      return S.dur;
+    }
+
+    _morphReset() {
+      var mo = this._morph;
+      if (!mo) return;
+      this._morph = null;
+      mo.card.style.visibility = '';
+      var root = this.shadowRoot;
+      var g = root.querySelector('.glass');
+      var rim = root.querySelector('.rim');
+      [g, this._header, this.content, root.querySelector('.grab')].forEach(function (e) {
+        if (e) e.getAnimations().forEach(function (a) { a.cancel(); });
+      });
+      if (mo.look.ghost) mo.look.ghost.remove();
+      ['inset', 'left', 'top', 'width', 'height', 'overflow', 'animation'].forEach(function (k) { g.style.removeProperty(k); });
+      ['left', 'top', 'overflow', 'animation', 'visibility'].forEach((k) => this.surface.style.removeProperty(k));
+      if (rim) rim.style.removeProperty('animation');
+      this.content.style.removeProperty('animation');
+    }
+
     close() {
       if (!this.hasAttribute('open') || this.hasAttribute('closing')) return;
       document.removeEventListener('keydown', this._onKey, true);
@@ -8457,6 +8597,12 @@ window.hemmaMenuGlass = {
         this._dyn.textContent = '';
         this.dispatchEvent(new CustomEvent('hemma-popup-closed', { bubbles: true, composed: true }));
       };
+      var morphMs = this._morphOut();
+      if (morphMs) {
+        setTimeout(() => { finish(); this._morphReset(); }, morphMs);
+        return;
+      }
+      this._morphReset();
       this.surface.addEventListener('animationend', finish, { once: true });
       setTimeout(finish, 400);
     }
@@ -8639,7 +8785,7 @@ window.hemmaMenuGlass = {
   };
 
   window.hemmaPopup = {
-    open: function (data) { return instance().open(data || {}); },
+    open: function (data, origin) { return instance().open(data || {}, origin); },
     close: function () { if (_el) _el.close(); },
     moreInfo: function (entityId, view) {
       var ha = document.querySelector('home-assistant');
@@ -8667,7 +8813,16 @@ window.hemmaMenuGlass = {
     // event can carry both intentions.
     if (ev.detail.hemma_filter !== undefined || ev.detail.hemma_category !== undefined) return;
     ev.stopPropagation();
-    window.hemmaPopup.open(cfg);
+    var from = _lastTap && Date.now() - _lastTap.at < 1000 ? _lastTap.card : null;
+    _lastTap = null;
+    window.hemmaPopup.open(cfg, from);
+  }, true);
+
+  // ll-custom is fired from <home-assistant>, so the tile that asked for the popup is read off the hass-action before it.
+  var _lastTap = null;
+  window.addEventListener('hass-action', function (ev) {
+    var card = ev.composedPath().find(function (n) { return n && n.tagName === 'BUTTON-CARD' && n._stateObj; });
+    if (card) _lastTap = { card: card, at: Date.now() };
   }, true);
 })();
 

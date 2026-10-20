@@ -312,6 +312,8 @@
     boxShadow: `0 12px 34px rgba(0,0,0,${0.22 * lit})`,
   });
 
+  window.hemmaMorph = { look: tileLook, grow: GROW, shrink: SHRINK };
+
   const ask = (title, verb, card) => new Promise((done) => {
     if (asking) return done(false);
     const host = document.createElement('div');
@@ -344,8 +346,8 @@
       glass.animate([from, frame(0, 0, W, H, 28, 'rgba(30,33,38,0.30)', 40, 1)], { duration: GROW.dur, easing: GROW.ease, fill: 'backwards' });
       Object.assign(tile.ghost.style, { width: t.width + 'px', height: t.height + 'px' });
       tile.ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: GROW.dur * 0.3, easing: 'ease-out', fill: 'forwards' });
-      content.animate([{ opacity: 0, transform: 'scale(0.94)' }, { opacity: 0, offset: 0.32 }, { opacity: 1, transform: 'scale(1)' }],
-        { duration: GROW.dur * 0.8, easing: GROW.ease, fill: 'backwards' });
+      content.animate([{ transform: 'scale(0.94)' }, { transform: 'scale(1)' }], { duration: GROW.dur, easing: GROW.ease, fill: 'backwards' });
+      content.animate([{ opacity: 0 }, { opacity: 1 }], { duration: GROW.dur * 0.45, delay: GROW.dur * 0.25, easing: 'ease-out', fill: 'backwards' });
     }
 
     const finish = (yes) => {
