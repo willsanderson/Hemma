@@ -7544,7 +7544,7 @@ window.hemmaMenuGlass = {
     try {
       var q = new URLSearchParams(location.search).get('hemma_morph');
       if (q === '1' || q === '0') localStorage.setItem('hemma_morph', q);
-      return localStorage.getItem('hemma_morph') === '1';
+      return localStorage.getItem('hemma_morph') !== '0';
     } catch (e) { return false; }
   }
   morphOn();
@@ -8475,9 +8475,6 @@ window.hemmaMenuGlass = {
       var rim = root.querySelector('.rim');
       [g, rim, this.content].forEach(function (e) { if (e) e.style.animation = 'none'; });
       Object.assign(g.style, { inset: 'auto', left: '0px', top: '0px', width: S.width + 'px', height: S.height + 'px', overflow: 'hidden' });
-      look.ghost.style.width = t.width + 'px';
-      look.ghost.style.height = t.height + 'px';
-      g.appendChild(look.ghost);
       card.style.visibility = 'hidden';
       var G = M.grow;
       var mo = this._morph;
@@ -8486,9 +8483,7 @@ window.hemmaMenuGlass = {
           if (this._morph !== mo) return;
           ['inset', 'left', 'top', 'width', 'height', 'overflow'].forEach(function (k) { g.style.removeProperty(k); });
           s.style.removeProperty('overflow');
-          look.ghost.remove();
         }).catch(function () {});
-      look.ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: G.dur * 0.3, easing: 'ease-out', fill: 'forwards' });
       var self = this;
       var full = { left: x, top: y, right: x + S.width, bottom: y + S.height };
       [this._header, this.content, root.querySelector('.grab')].forEach(function (e) {
@@ -8534,12 +8529,7 @@ window.hemmaMenuGlass = {
       Object.assign(g.style, { inset: 'auto', left: '0px', top: '0px', width: R.width + 'px', height: R.height + 'px', overflow: 'hidden' });
       g.animate([this._morphFrame(null, mo.box, back, 1), this._morphFrame(back.rect, mo.box, back, 0)],
         { duration: S.dur, easing: S.ease, fill: 'forwards' });
-      if (mo.look.ghost) mo.look.ghost.remove();
-      back.ghost.style.width = back.rect.width + 'px';
-      back.ghost.style.height = back.rect.height + 'px';
-      g.appendChild(back.ghost);
       mo.look = back;
-      back.ghost.animate([{ opacity: 0 }, { opacity: 0, offset: 0.45 }, { opacity: 1 }], { duration: S.dur, fill: 'forwards' });
       var self = this;
       var full = { left: R.left, top: R.top, right: R.right, bottom: R.bottom };
       var radius = mo.end.radius;
@@ -8563,7 +8553,6 @@ window.hemmaMenuGlass = {
       [g, this._header, this.content, root.querySelector('.grab')].forEach(function (e) {
         if (e) e.getAnimations().forEach(function (a) { a.cancel(); });
       });
-      if (mo.look.ghost) mo.look.ghost.remove();
       ['inset', 'left', 'top', 'width', 'height', 'overflow', 'animation'].forEach(function (k) { g.style.removeProperty(k); });
       ['left', 'top', 'overflow', 'animation', 'visibility'].forEach((k) => this.surface.style.removeProperty(k));
       if (rim) rim.style.removeProperty('animation');
