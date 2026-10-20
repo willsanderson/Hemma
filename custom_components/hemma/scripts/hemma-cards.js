@@ -4,8 +4,28 @@
   window._hemmaCards = true;
 
   const T = (k, en, v) => (window._hemmaT ? window._hemmaT(k, en, v) : String(en).replace(/\{(\w+)\}/g, (m, p) => (v && p in v ? v[p] : m)));
-  const iconUrl = (name) => (window.hemmaIconUrl ? window.hemmaIconUrl(name)
-    : (window.HEMMA_ICONS && window.HEMMA_ICONS[name]) || `/hemma_assets/icons/${name}.svg`);
+  // Material Design Icons come from Home Assistant's own /static/mdi files, cropped to their 20px drawing area.
+  const mdi = window.hemmaMdi = window.hemmaMdi || { paths: {}, files: {}, meta: null };
+  mdi.load = mdi.load || function (n) {
+    if (n in mdi.paths) return Promise.resolve(mdi.paths[n]);
+    mdi.meta = mdi.meta || fetch('/static/mdi/iconMetadata.json').then((r) => r.json()).catch(() => ({ parts: [] }));
+    return mdi.meta.then((m) => {
+      let file = null;
+      for (const p of m.parts || []) { if (p.start && n < p.start) break; file = p.file; }
+      if (!file) return {};
+      mdi.files[file] = mdi.files[file] || fetch(`/static/mdi/${file}.json`).then((r) => r.json()).catch(() => ({}));
+      return mdi.files[file];
+    }).then((map) => (mdi.paths[n] = (map && map[n]) || null));
+  };
+  mdi.url = mdi.url || function (n) {
+    const d = mdi.paths[n];
+    return d ? 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20"><path d="${d}"/></svg>`) : null;
+  };
+  const iconUrl = (name) => {
+    if (/^mdi:/.test(name)) return mdi.url(name.slice(4)) || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E';
+    return window.hemmaIconUrl ? window.hemmaIconUrl(name)
+      : (window.HEMMA_ICONS && window.HEMMA_ICONS[name]) || `/hemma_assets/icons/${name}.svg`;
+  };
   const COLORS = {
     yellow: '#FFCC00', amber: '#ffb254', orange: '#FF9230', red: '#FF4245', pink: '#ff4d70', purple: '#9333ea',
     blue: '#0088FF', ice: '#3cd3fe', teal: '#00C3D0', mint: '#00C8B3', green: '#30D158', gold: '#e5a00d', neutral: '#CDCDCF',
@@ -132,7 +152,11 @@
           icon: (conf && conf.icon) || anyIcon || 'status',
           color: colorOf(conf && conf.color),
         };
-      }).filter(Boolean);
+      }).filter(Boolean).map((it) => {
+        it.url = iconUrl(it.icon);
+        if (/^mdi:/.test(it.icon) && !(it.icon.slice(4) in mdi.paths)) mdi.load(it.icon.slice(4)).then(() => this._render());
+        return it;
+      });
     }
     _render() {
       const items = this._items();
@@ -142,7 +166,7 @@
       this.toggleAttribute('empty', !items.length);
       this.shadowRoot.innerHTML = `<style>${CSS}</style>` + items.map((it) =>
         `<button class="b" data-entity="${esc(it.entity)}" aria-label="${esc(it.name + ', ' + it.sub)}">`
-        + `<span class="i" style="--c:${it.color};--m:url('${esc(iconUrl(it.icon))}')"></span>`
+        + `<span class="i" style="--c:${it.color};--m:url('${esc(it.url)}')"></span>`
         + `<span class="w"><span class="t">${esc(it.name)}</span><span class="s">${esc(it.sub)}</span></span></button>`).join('');
       this.shadowRoot.querySelectorAll('.b').forEach((el) => el.addEventListener('click', (ev) => {
         ev.stopPropagation();

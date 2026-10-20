@@ -2239,8 +2239,50 @@ const sensorsOn = (hass, ids) => {
 
 // The user's own icons in www/hemma/icons, filled in from /api/hemma/icons once the panel has hass.
 const USER_ICONS = [];
+// Material Design Icons come from Home Assistant's own /static/mdi files. Until a shape arrives its icon is an empty
+// placeholder named after it, which mdiFill swaps in place, so a sheet being typed in is never repainted.
+const MDI = { paths: {}, files: {}, meta: null, list: null, roots: new Set() };
+const mdiHole = (n) => "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" id="mdi-' + n + '"/>');
+const mdiUrl = (n) => "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20"><path d="' + MDI.paths[n] + '"/></svg>');
+const mdiFill = (n) => {
+  const key = encodeURIComponent('id="mdi-' + n + '"');
+  const hole = mdiHole(n), real = MDI.paths[n] ? mdiUrl(n) : null;
+  if (!real) return;
+  const walk = (root) => {
+    root.querySelectorAll("[style]").forEach((e) => {
+      const v = e.getAttribute("style");
+      if (v.indexOf(key) >= 0) e.setAttribute("style", v.split(hole).join(real));
+    });
+    root.querySelectorAll("*").forEach((e) => { if (e.shadowRoot) walk(e.shadowRoot); });
+  };
+  MDI.roots.forEach((r) => { if (r.host && r.host.isConnected) walk(r); });
+};
+const mdiLoad = (n) => {
+  if (n in MDI.paths) return Promise.resolve(MDI.paths[n]);
+  MDI.meta = MDI.meta || fetch("/static/mdi/iconMetadata.json").then((r) => r.json()).catch(() => ({ parts: [] }));
+  return MDI.meta.then((m) => {
+    let file = null;
+    for (const p of m.parts || []) { if (p.start && n < p.start) break; file = p.file; }
+    if (!file) return {};
+    MDI.files[file] = MDI.files[file] || fetch("/static/mdi/" + file + ".json").then((r) => r.json()).catch(() => ({}));
+    return MDI.files[file];
+  }).then((map) => {
+    if (!(n in MDI.paths)) { MDI.paths[n] = (map && map[n]) || null; mdiFill(n); }
+    return MDI.paths[n];
+  });
+};
+const mdiList = () => {
+  MDI.list = MDI.list || fetch("/static/mdi/iconList.json").then((r) => r.json()).catch(() => []);
+  return MDI.list;
+};
 const iconUrl = (name) => {
   const n = String(name || "").trim();
+  if (n.indexOf("mdi:") === 0) {
+    const k = n.slice(4);
+    if (MDI.paths[k]) return mdiUrl(k);
+    if (!(k in MDI.paths)) mdiLoad(k);
+    return mdiHole(k);
+  }
   const k = !n || n === ICON_DEFAULT ? "default" : n;
   return ICON_DATA[k] || (USER_ICONS.indexOf(k) >= 0 ? "/hemma_assets/icons/" + k + ".svg" : ICON_DATA.default);
 };
@@ -2728,6 +2770,11 @@ const STATUS_SHEET_CSS = `
   .ssh .ssh-ico:hover { background:var(--ssh-hover); color:var(--ink); }
   .ssh-ico .m { width:22px; height:22px; background:currentColor; -webkit-mask:var(--i) no-repeat center / contain; mask:var(--i) no-repeat center / contain; }
   .ssh .ssh-ico.on { background:var(--ssh-sel); color:var(--ink); }
+  .ssh-mdi { display:flex; flex-direction:column; padding:8px 0 0; }
+  .ssh-mdi .ssh-search { margin:0 8px 8px; }
+  .ssh-mdi .ssh-icons { padding-top:0; }
+  .ssh-mdi .ssh-icons[hidden] { display:none; }
+  .ssh-mdi .ssh-icons .ssh-foot { grid-column:1 / -1; margin:2px 2px 6px; }
   .ssh-ptitle { font-size:20px; font-weight:700; letter-spacing:-0.01em; padding:14px 2px 0; }
   .ssh-search { display:flex; align-items:center; gap:8px; height:34px; padding:0 10px; border-radius:10px; background:rgba(118,118,128,0.24); color:var(--ink-2); }
   .ssh-pane.picking { overflow:hidden; padding-bottom:0; gap:0; }
@@ -4086,6 +4133,7 @@ class HemmaPanel extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    MDI.roots.add(this.shadowRoot);
     this._built = false;
     this._state = null;
     this._room = 0;
@@ -18898,6 +18946,7 @@ class HemmaPanel extends HTMLElement {
     let sidePage = null;
     let picked = false;
     let query = "";
+    let mdiQuery = "";
     const el = (tag, cls, text) => {
       const n = document.createElement(tag);
       if (cls) n.className = cls;
@@ -19115,14 +19164,14 @@ class HemmaPanel extends HTMLElement {
         sw.appendChild(d);
       });
       const all = HEMMA_ICONS.filter((n) => n !== "default");
-      const sug = [c.icon].concat(SUGGEST).filter((n, i, a) => n && a.indexOf(n) === i && all.indexOf(n) >= 0);
+      const sug = [c.icon].concat(SUGGEST).filter((n, i, a) => n && a.indexOf(n) === i && (all.indexOf(n) >= 0 || n.indexOf("mdi:") === 0));
       const grid = (title, names) => {
         const ig = group(box, title);
         ig.classList.add("ssh-icons");
         names.forEach((n) => {
           const d = el("button", "ssh-ico" + (c.icon === n ? " on" : ""));
           d.type = "button";
-          d.title = n.replace(/[-_]/g, " ");
+          d.title = n.replace(/^mdi:/, "").replace(/[-_]/g, " ");
           d.setAttribute("aria-label", d.title);
           const m = el("span", "m");
           m.style.setProperty("--i", "url('" + iconUrl(n) + "')");
@@ -19130,9 +19179,54 @@ class HemmaPanel extends HTMLElement {
           d.onclick = () => { c.icon = n; paint(); };
           ig.appendChild(d);
         });
+        return ig;
       };
       grid(_sx("Suggested"), sug);
       grid(_sx("All Icons"), all.filter((n) => sug.indexOf(n) < 0));
+      const mg = grid(_sx("Material Design Icons"), []);
+      mg.classList.replace("ssh-icons", "ssh-mdi");
+      const search = el("label", "ssh-search");
+      search.appendChild(svg(SEARCH, "s"));
+      const q = el("input");
+      q.placeholder = _sx("Search");
+      q.value = mdiQuery;
+      q.spellcheck = false;
+      q.setAttribute("autocomplete", "off");
+      search.appendChild(q);
+      mg.appendChild(search);
+      const hits = el("div", "ssh-icons");
+      mg.appendChild(hits);
+      let ask = 0;
+      const find = () => {
+        const needle = q.value.trim().toLowerCase().replace(/^mdi:/, "").replace(/\s+/g, "-");
+        const mine = ++ask;
+        if (!needle) { hits.replaceChildren(); hits.hidden = true; return; }
+        mdiList().then((list) => {
+          if (mine !== ask) return;
+          const rank = (x) => x.name.indexOf(needle) === 0 ? 0 : x.name.indexOf(needle) > 0 ? 1
+            : (x.keywords || []).some((k) => k.toLowerCase().indexOf(needle.replace(/-/g, " ")) >= 0) ? 2 : 3;
+          const found = list.map((x) => [rank(x), x.name]).filter(([r]) => r < 3)
+            .sort((x, y) => x[0] - y[0] || x[1].length - y[1].length || x[1].localeCompare(y[1])).slice(0, 60);
+          hits.replaceChildren();
+          hits.hidden = false;
+          if (!found.length) { hits.appendChild(el("p", "ssh-foot", _sx("Nothing matches that."))); return; }
+          found.forEach(([, name]) => {
+            const n = "mdi:" + name;
+            const d = el("button", "ssh-ico" + (c.icon === n ? " on" : ""));
+            d.type = "button";
+            d.title = name.replace(/-/g, " ");
+            d.setAttribute("aria-label", d.title);
+            const m = el("span", "m");
+            m.style.setProperty("--i", "url('" + iconUrl(n) + "')");
+            d.appendChild(m);
+            d.onclick = () => { c.icon = n; paint(); };
+            hits.appendChild(d);
+          });
+        });
+      };
+      let wait = 0;
+      q.oninput = () => { mdiQuery = q.value; clearTimeout(wait); wait = setTimeout(find, 120); };
+      find();
     };
 
     const paintPick = (box, kind) => {
