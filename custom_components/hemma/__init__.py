@@ -14,7 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .assets import HemmaAssetsView
-from .images import HemmaImagesView
+from .images import HemmaIconsView, HemmaImagesView
 from .templates import HemmaTemplatesView, rebuild_if_stale
 from .i18n import rebuild_if_stale as rebuild_translations_if_stale
 from .home import async_setup_home
@@ -197,6 +197,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if not hass.data.get(f"{DOMAIN}_views"):
         hass.http.register_view(HemmaAssetsView(hass.config.path(ASSETS_DIR)))
         hass.http.register_view(HemmaImagesView())
+        hass.http.register_view(HemmaIconsView())
         hass.http.register_view(HemmaTemplatesView())
         hass.data[f"{DOMAIN}_views"] = True
 

@@ -3204,7 +3204,8 @@ window.hemmaMenuGlass = {
 
   // Will's Apple glyphs from hemma-icons.js when loaded, else the drawn fallback.
   const navGlyph = (name, fallback) => {
-    const d = window.HEMMA_ICONS && (window.HEMMA_ICONS[name] || (name === 'navbar' && window.HEMMA_ICONS.sidebar));
+    const d = (window.HEMMA_ICONS && (window.HEMMA_ICONS[name] || (name === 'navbar' && window.HEMMA_ICONS.sidebar)))
+      || (/^[a-z0-9_-]+$/.test(String(name || '')) ? '/hemma_assets/icons/' + name + '.svg' : null);
     return d ? '<i class="gl" style="--g:url(&quot;' + d + '&quot;)"></i>' : fallback;
   };
 
@@ -3688,6 +3689,12 @@ window.hemmaMenuGlass = {
         const g = document.createElement('i');
         g.className = 'side-glyph';
         g.style.setProperty('--g', 'url("' + data + '")');
+        b.appendChild(g);
+      } else if (window.HEMMA_ICONS && /^[a-z0-9_-]+$/.test(String(icon || ''))) {
+        // A user's own icon in www/hemma/icons, served beside the shipped ones.
+        const g = document.createElement('i');
+        g.className = 'side-glyph';
+        g.style.setProperty('--g', 'url("/hemma_assets/icons/' + icon + '.svg")');
         b.appendChild(g);
       } else if (!window.HEMMA_ICONS && String(icon || '').indexOf(':') < 0) {
         // hemma-icons.js can load after the sidebar first fills: hold the glyph's place, _fillSide redraws it.

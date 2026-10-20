@@ -14,6 +14,7 @@ from homeassistant.core import HomeAssistant
 _LOGGER = logging.getLogger(__name__)
 
 ROOMS_DIR = "www/hemma/rooms"
+ICONS_DIR = "www/hemma/icons"
 PUBLIC_BASE = "/local/hemma/rooms"
 
 EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")
@@ -48,6 +49,28 @@ def _scan(path: str) -> list[dict[str, Any]]:
         {"name": name, "day": urls.get("day"), "night": urls.get("night")}
         for name, urls in sorted(found.items())
     ]
+
+
+def _scan_icons(directory: str) -> list[str]:
+    if not os.path.isdir(directory):
+        return []
+    return sorted(
+        n[:-4] for n in os.listdir(directory)
+        if n.lower().endswith(".svg") and re.fullmatch(r"[a-z0-9_-]+", n[:-4])
+    )
+
+
+class HemmaIconsView(HomeAssistantView):
+    """The user's own icons in www/hemma/icons, served beside the shipped ones at /hemma_assets/icons."""
+
+    url = "/api/hemma/icons"
+    name = "api:hemma:icons"
+    requires_auth = True
+
+    async def get(self, request: web.Request) -> web.Response:
+        hass: HomeAssistant = request.app["hass"]
+        icons = await hass.async_add_executor_job(_scan_icons, hass.config.path(ICONS_DIR))
+        return self.json({"icons": icons})
 
 
 class HemmaImagesView(HomeAssistantView):
