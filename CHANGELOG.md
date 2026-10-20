@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Adding a night photo no longer hides a room's photos.** Studio used to ask for a name and point the room at it, so typing anything other than the day photo's name left the room on a set with no day image: both slots went empty and the field said "not on disk". The night photo now always joins the room's current day photo without asking, and a room still on a demo photo is asked for a day photo first. The name prompt suggests the room's name instead of the demo photo's, so accepting it can't replace the demo photo for every other room, and names ending in -demo or -night are refused. A set with only a night photo now shows in the list as "no day image". Reported by [@Eunanibus](https://github.com/Eunanibus) in [#89](https://github.com/willsanderson/Hemma/issues/89).
+- **Hemma Studio opens your Hemma dashboard in a new browser.** With nothing remembered, it picked the first dashboard in the list, such as Map, and said "This dashboard has no pages", and Save there would have written over it. Studio now reads each dashboard to find the one Hemma made, whatever it's called, and shows the welcome screen when there isn't one. Reported by [@Eunanibus](https://github.com/Eunanibus) in [#90](https://github.com/willsanderson/Hemma/issues/90).
+
 ## 2.3.4
 
 - **Hemma installs and updates its own theme.** The theme is still a normal Home Assistant theme in `/config/themes/hemma/`, but Hemma now writes it there on setup and replaces it on every update, so it can never fall behind the dashboard again. Don't edit that file: to make your own version, copy it and give the theme a new name. If your copy had changes, Hemma saves it once to `/config/hemma_backups/` and says so under Settings > Repairs. Repairs also tells you when the theme isn't loading, with the line to add to `configuration.yaml`.

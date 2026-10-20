@@ -47,7 +47,6 @@ def _scan(path: str) -> list[dict[str, Any]]:
     return [
         {"name": name, "day": urls.get("day"), "night": urls.get("night")}
         for name, urls in sorted(found.items())
-        if urls.get("day")
     ]
 
 
@@ -93,6 +92,8 @@ class HemmaImagesView(HomeAssistantView):
 
         if not name or not SAFE_NAME.match(name):
             return self.json_message("name must be lowercase letters, digits and hyphens", 400)
+        if name.endswith(NIGHT_SUFFIX):
+            return self.json_message(f"name must not end in {NIGHT_SUFFIX}", 400)
         if variant not in ("day", "night"):
             return self.json_message("variant must be day or night", 400)
         if not payload:

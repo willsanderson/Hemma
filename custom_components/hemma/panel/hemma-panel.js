@@ -317,6 +317,11 @@ function isMobileConfig(lovelace) {
     .some((c) => (c || {}).template === MOBILE_SHELL);
 }
 
+function isHemmaConfig(lovelace) {
+  return !!(lovelace && (lovelace[FINGERPRINT_KEY] || isMobileConfig(lovelace)
+    || (lovelace.views || []).some((v) => ((v.cards || [])[0] || {}).template === "hemma_room")));
+}
+
 const put = (obj, key, val) => { if (val !== undefined) obj[key] = val; return obj; };
 
 function extractMobileConfig(lovelace) {
@@ -9010,9 +9015,7 @@ class HemmaPanel extends HTMLElement {
       if (d.url_path === this._dashUrl) continue;
       let hemma = false;
       try {
-        const cfg = await this._hass.callWS({ type: "lovelace/config", url_path: d.url_path });
-        hemma = isMobileConfig(cfg)
-          || (cfg.views || []).some((v) => ((v.cards || [])[0] || {}).template === "hemma_room");
+        hemma = isHemmaConfig(await this._hass.callWS({ type: "lovelace/config", url_path: d.url_path }));
       } catch (e) {
         hemma = false;
       }
@@ -9025,6 +9028,23 @@ class HemmaPanel extends HTMLElement {
       if (!hemma) this._log(`hid "${d.url_path}", not a Hemma dashboard`);
       this._paintDashes();
     }
+  }
+
+  async _findHemmaDash(list) {
+    const known = this._verdicts();
+    const hit = list.find((d) => known.get(d.url_path) === true);
+    if (hit) return hit.url_path;
+    const mobile = (d) => /[-_]mobile$/i.test(d.url_path || "");
+    const order = list.filter((d) => !mobile(d)).concat(list.filter(mobile));
+    for (const d of order) {
+      let hemma = false;
+      try {
+        hemma = isHemmaConfig(await this._hass.callWS({ type: "lovelace/config", url_path: d.url_path }));
+      } catch (e) { /* unreadable is not Hemma's */ }
+      this._setVerdict(d.url_path, hemma);
+      if (hemma) return d.url_path;
+    }
+    return null;
   }
 
   _dashForDevice(url_path) {
@@ -9480,11 +9500,12 @@ class HemmaPanel extends HTMLElement {
       try { remembered = localStorage.getItem(LAST_DASH_KEY); } catch (e) { /* private mode */ }
       if (remembered && list.some((d) => d.url_path === remembered)) pick = remembered;
     }
+    if (!pick) pick = await this._findHemmaDash(list);
     if (!pick) {
-      const known = this._verdicts();
-      const looksHemma = list.find((d) => known.get(d.url_path) === true)
-        || list.find((d) => /hemma/i.test(d.url_path) || /hemma/i.test(d.title || ""));
-      pick = looksHemma ? looksHemma.url_path : list[0].url_path;
+      this._dashList = [];
+      this._setDash("");
+      this._firstRun();
+      return;
     }
     this._setDash(pick);
     this._remember(pick);
@@ -15159,7 +15180,9 @@ class HemmaPanel extends HTMLElement {
       const list = this._imgs || [];
       const names = list.map((i) => i.name);
       const labels = {};
-      list.forEach((i) => { labels[i.name] = i.name + (i.night ? "" : "   " + _sx("no night image")); });
+      list.forEach((i) => {
+        labels[i.name] = i.name + (!i.day ? "   " + _sx("no day image") : i.night ? "" : "   " + _sx("no night image"));
+      });
 
       const cur = room.variables.image || "";
       if (cur && !names.includes(cur)) {
@@ -15184,13 +15207,28 @@ class HemmaPanel extends HTMLElement {
     fs.appendChild(file);
 
     const send = async (blob, variantValue) => {
-      const name = await this._ask({
-        title: _sx("Image name"),
-        message: _sx("Lowercase letters, digits and hyphens. Uploading the same name replaces it."),
-        value: room.variables.image || slug(room.name),
-        confirmLabel: _sx("Upload"),
-      });
-      if (!name) return;
+      const cur = room.variables.image || "";
+      const imgs = await this._images().catch(() => this._imgs || []);
+      const own = !/-demo$/.test(cur) && imgs.some((i) => i.name === cur && i.day);
+      let name = cur;
+      if (variantValue === "night") {
+        if (!own) {
+          this._status(_sx("Add a day photo first. The night photo joins it."), "warn");
+          return;
+        }
+      } else {
+        name = await this._ask({
+          title: _sx("Image name"),
+          message: _sx("Lowercase letters, digits and hyphens. Uploading the same name replaces it."),
+          value: own ? cur : slug(room.name),
+          confirmLabel: _sx("Upload"),
+        });
+        if (!name) return;
+        if (/-(demo|night)$/.test(name)) {
+          this._status(_sx("Choose a name that does not end in -demo or -night."), "err");
+          return;
+        }
+      }
       const body = new FormData();
       body.append("name", name);
       body.append("variant", variantValue);
