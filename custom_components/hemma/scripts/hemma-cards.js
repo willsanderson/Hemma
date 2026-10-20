@@ -129,7 +129,7 @@
           id: b.id, entity: b.entity,
           name: b.name || (st.attributes && st.attributes.friendly_name) || b.entity,
           sub: left ? `${label} · ${left}` : label,
-          icon: (conf && conf.icon) || anyIcon || 'default',
+          icon: (conf && conf.icon) || anyIcon || 'status',
           color: colorOf(conf && conf.color),
         };
       }).filter(Boolean);
