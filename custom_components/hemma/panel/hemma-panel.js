@@ -8595,7 +8595,7 @@ class HemmaPanel extends HTMLElement {
 
         .shots {
           display:grid; grid-template-columns:1fr 1fr; gap:12px;
-          padding:10px 36px 16px 0;
+          padding:10px 0 16px;
         }
         .shots.busy { opacity:.5; pointer-events:none; }
         .shot {
@@ -8731,7 +8731,6 @@ class HemmaPanel extends HTMLElement {
         :host(.tight) .row:not(:has(> .sw)) > label { grid-column:1 / -1; }
         :host(.tight) .row > .drop { margin-left:10px; }
         :host(.tight) .row > .drop.blank { display:none; }
-        :host(.tight) .shots { padding-right:0; }
       </style>
       <div class="curtain" id="curtain"></div>
       <div class="bgwrap">
