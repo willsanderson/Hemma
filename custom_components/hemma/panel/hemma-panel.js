@@ -2770,11 +2770,8 @@ const STATUS_SHEET_CSS = `
   .ssh .ssh-ico:hover { background:var(--ssh-hover); color:var(--ink); }
   .ssh-ico .m { width:22px; height:22px; background:currentColor; -webkit-mask:var(--i) no-repeat center / contain; mask:var(--i) no-repeat center / contain; }
   .ssh .ssh-ico.on { background:var(--ssh-sel); color:var(--ink); }
-  .ssh-mdi { display:flex; flex-direction:column; padding:8px 0 0; }
-  .ssh-mdi .ssh-search { margin:0 8px 8px; }
-  .ssh-mdi .ssh-icons { padding-top:0; }
-  .ssh-mdi .ssh-icons[hidden] { display:none; }
-  .ssh-mdi .ssh-icons .ssh-foot { grid-column:1 / -1; margin:2px 2px 6px; }
+  .ssh-list.ssh-mdi[hidden] { display:none; }
+  .ssh-mdi .ssh-foot { grid-column:1 / -1; margin:6px 2px; }
   .ssh-ptitle { font-size:20px; font-weight:700; letter-spacing:-0.01em; padding:14px 2px 0; }
   .ssh-search { display:flex; align-items:center; gap:8px; height:34px; padding:0 10px; border-radius:10px; background:rgba(118,118,128,0.24); color:var(--ink-2); }
   .ssh-pane.picking { overflow:hidden; padding-bottom:0; gap:0; }
@@ -2783,6 +2780,10 @@ const STATUS_SHEET_CSS = `
     -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 14px); mask-image:linear-gradient(to bottom, transparent 0, #000 14px); }
   .ssh-search .s svg { width:15px; height:15px; display:block; }
   .ssh .ssh-search input { flex:1; min-width:0; height:auto; margin:0; padding:0; background:none; border:0; box-shadow:none; outline:none; font:inherit; color:var(--ink); }
+  .ssh-search .q { position:relative; flex:1; min-width:0; display:flex; }
+  .ssh .ssh-search input::placeholder { color:transparent; }
+  .ssh-search .ph { position:absolute; left:3px; top:50%; transform:translateY(-50%); pointer-events:none; white-space:nowrap; color:var(--ink-3); }
+  .ssh-search input:not(:placeholder-shown) + .ph { display:none; }
   .ssh-results { display:flex; flex-direction:column; gap:22px; }
   @media (max-width: 699px) {
     .ssh-wrap { place-items:end center; }
@@ -18957,6 +18958,21 @@ class HemmaPanel extends HTMLElement {
       n.innerHTML = d;
       return n;
     };
+    // Its own placeholder, a few pixels clear of the caret, as Apple's search fields draw it.
+    const searchField = (value) => {
+      const search = el("label", "ssh-search");
+      search.appendChild(svg(SEARCH, "s"));
+      const wrap = el("span", "q");
+      const q = el("input");
+      q.placeholder = _sx("Search");
+      q.value = value;
+      q.spellcheck = false;
+      q.setAttribute("autocomplete", "off");
+      wrap.appendChild(q);
+      wrap.appendChild(el("span", "ph", _sx("Search")));
+      search.appendChild(wrap);
+      return [search, q];
+    };
     const CHEV = '<svg viewBox="0 0 8 13"><path d="M1.5 1.5 6.5 6.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     const TICK = '<svg viewBox="0 0 16 16"><path d="M2.5 8.5 6.5 12.5 13.5 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     const BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>';
@@ -19182,19 +19198,11 @@ class HemmaPanel extends HTMLElement {
       };
       grid(_sx("Suggested"), sug);
       grid(_sx("All Icons"), all.filter((n) => sug.indexOf(n) < 0));
-      const mg = grid(_sx("Material Design Icons"), []);
-      mg.classList.replace("ssh-icons", "ssh-mdi");
-      const search = el("label", "ssh-search");
-      search.appendChild(svg(SEARCH, "s"));
-      const q = el("input");
-      q.placeholder = _sx("Search");
-      q.value = mdiQuery;
-      q.spellcheck = false;
-      q.setAttribute("autocomplete", "off");
-      search.appendChild(q);
-      mg.appendChild(search);
-      const hits = el("div", "ssh-icons");
-      mg.appendChild(hits);
+      const hits = grid(_sx("Material Design Icons"), []);
+      hits.classList.add("ssh-mdi");
+      hits.hidden = true;
+      const [search, q] = searchField(mdiQuery);
+      hits.before(search);
       let ask = 0;
       const find = () => {
         const needle = q.value.trim().toLowerCase().replace(/^mdi:/, "").replace(/\s+/g, "-");
@@ -19229,14 +19237,7 @@ class HemmaPanel extends HTMLElement {
     };
 
     const paintPick = (box, kind) => {
-      const search = el("label", "ssh-search");
-      search.appendChild(svg(SEARCH, "s"));
-      const q = el("input");
-      q.placeholder = _sx("Search");
-      q.value = query;
-      q.spellcheck = false;
-      q.setAttribute("autocomplete", "off");
-      search.appendChild(q);
+      const [search, q] = searchField(query);
       box.classList.add("picking");
       const top = el("div", "ssh-searchbar");
       top.appendChild(search);
