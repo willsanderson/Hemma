@@ -212,21 +212,30 @@
   };
 
   const ASK_CSS = `
-    .scrim { position:fixed; inset:0; z-index:2147483000; display:grid; place-items:center; background:rgba(0,0,0,0.32);
-      animation:f .18s ease both; font-family:var(--hemma-font, -apple-system, system-ui, sans-serif); -webkit-tap-highlight-color:transparent; }
-    .box { width:min(300px, calc(100vw - 48px)); box-sizing:border-box; padding:22px 18px 18px; border-radius:30px; text-align:center;
-      background:rgba(38,38,42,0.94); color:#fff; -webkit-backdrop-filter:blur(40px) saturate(1.5); backdrop-filter:blur(40px) saturate(1.5);
-      box-shadow:0 24px 60px rgba(0,0,0,0.45), inset 0 0 0 0.5px rgba(255,255,255,0.16); animation:p .24s cubic-bezier(0.2,0.8,0.2,1) both; }
-    .t { font-size:17px; font-weight:600; line-height:1.3; letter-spacing:-0.01em; margin:0 6px 18px; overflow-wrap:anywhere; }
+    .scrim { position:fixed; inset:0; z-index:2147483000; display:grid; place-items:center; padding:0 24px; background:rgba(0,0,0,0.22);
+      animation:f .30s ease both; font-family:var(--hemma-font, -apple-system, system-ui, sans-serif); -webkit-tap-highlight-color:transparent; }
+    .box { width:min(290px, 100%); box-sizing:border-box; padding:22px 16px 16px; border-radius:28px; text-align:center; color:#fff;
+      background:rgba(30,33,38,0.30); -webkit-backdrop-filter:blur(40px) saturate(170%); backdrop-filter:blur(40px) saturate(170%);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.26), inset 0 -1px 0 rgba(255,255,255,0.10),
+        inset 1px 0 0 rgba(0,0,0,0.18), inset -1px 0 0 rgba(0,0,0,0.18), 0 12px 34px rgba(0,0,0,0.22);
+      animation:bloom .48s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
+    .t { font-size:17px; font-weight:600; line-height:1.3; letter-spacing:-0.01em; margin:0 4px 16px; overflow-wrap:anywhere; }
     .r { display:flex; gap:10px; }
-    button { flex:1; height:44px; border:0; border-radius:999px; font:inherit; font-size:17px; cursor:pointer; color:#fff;
-      background:rgba(255,255,255,0.14); -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
-    button.ok { font-weight:600; background:var(--hemma-color-teal, #00C3D0); }
-    button:active { filter:brightness(0.9); }
-    .out { animation:f .16s ease reverse both; }
+    button { position:relative; flex:1; height:44px; border:0; border-radius:999px; font:inherit; font-size:16px; cursor:pointer; color:#fff;
+      background:rgba(255,255,255,0.12); box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.22);
+      -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+    button.ok { font-weight:600; background:rgba(0,195,208,0.82); }
+    button::after { content:""; position:absolute; inset:0; border-radius:inherit; background:#fff; opacity:0; transition:opacity .40s ease; pointer-events:none; }
+    @media (hover: hover) { button:hover::after { opacity:.07; transition:opacity .18s ease; } }
+    button:active::after { opacity:.12; transition:opacity .08s ease; }
+    button:focus-visible { outline:2px solid rgba(255,255,255,0.6); outline-offset:2px; }
+    .out { animation:fo .28s ease both; }
+    .out .box { animation:shrink .24s cubic-bezier(0.4, 0, 1, 1) both; }
     @keyframes f { from { opacity:0; } }
-    @keyframes p { from { opacity:0; transform:scale(1.08); } }
-    @media (prefers-reduced-motion: reduce) { .scrim, .box { animation:none; } }
+    @keyframes fo { to { opacity:0; } }
+    @keyframes bloom { from { opacity:0; transform:scale(0.88); } 40% { opacity:1; } }
+    @keyframes shrink { to { opacity:0; transform:scale(0.92); } }
+    @media (prefers-reduced-motion: reduce) { .box { animation:f .2s ease both; } .out .box { animation:fo .2s ease both; } }
   `;
   let asking = null;
   const ask = (title, verb) => new Promise((done) => {
@@ -240,7 +249,7 @@
     const finish = (yes) => {
       document.removeEventListener('keydown', key, true);
       scrim.classList.add('out');
-      setTimeout(() => host.remove(), 160);
+      setTimeout(() => host.remove(), 300);
       asking = null;
       done(yes);
     };
@@ -254,7 +263,6 @@
     document.addEventListener('keydown', key, true);
     asking = host;
     document.body.appendChild(host);
-    setTimeout(() => { const b = root.querySelector('.ok'); if (b) b.focus({ preventScroll: true }); }, 30);
   });
   const block = (ev) => { ev.stopImmediatePropagation(); ev.stopPropagation(); if (ev.cancelable) ev.preventDefault(); };
   window.hemmaTap = { ask, modeOf: tapOf };
