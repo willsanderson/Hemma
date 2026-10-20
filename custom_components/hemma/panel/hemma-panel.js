@@ -2791,9 +2791,10 @@ const STATUS_SHEET_CSS = `
     .ssh { width:100vw; height:calc(100dvh - env(safe-area-inset-top, 0px) - 10px); border-radius:34px 34px 0 0; font-size:17px; }
     .ssh-bar { padding:14px 16px 10px; }
     .ssh-bar .t { font-size:17px; }
-    .ssh .ssh-round { --back:44px; }
-    .ssh .ssh-round svg { width:22px; height:22px; }
-    .ssh .ssh-pill { height:44px; padding:0 20px; font-size:17px; }
+    .ssh .ssh-round { --back:40px; }
+    .ssh .ssh-round svg { width:28px; height:28px; }
+    .ssh .ssh-round svg path[d^="m15"] { transform:translateX(-1px); }
+    .ssh .ssh-pill { height:40px; padding:0 20px; font-size:17px; }
     .ssh-pane { padding:8px 16px 44px; gap:28px; font-size:17px; }
     .ssh-grp { gap:8px; }
     .ssh-gh { margin-left:18px; font-size:15px; font-weight:600; }
@@ -19010,7 +19011,7 @@ class HemmaPanel extends HTMLElement {
     };
     const CHEV = '<svg viewBox="0 0 8 13"><path d="M1.5 1.5 6.5 6.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     const TICK = '<svg viewBox="0 0 16 16"><path d="M2.5 8.5 6.5 12.5 13.5 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    const BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>';
+    const BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg>';
     const CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 7l10 10M17 7 7 17"/></svg>';
     const SEARCH = '<svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m11 11 3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
     const colorOf = (key) => {
