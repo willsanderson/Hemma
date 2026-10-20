@@ -2625,12 +2625,12 @@ const STATUS_SHEET_CSS = `
   .ssh-badge .t1 { font-size:13px; font-weight:600; }
   .ssh-badge .t2 { font-size:12px; font-weight:500; opacity:.8; }
   .ssh-grp { display:flex; flex-direction:column; gap:6px; }
-  .ssh-gh { margin-left:14px; font-size:12.5px; font-weight:560; color:var(--ink-2); }
+  .ssh-gh { margin-left:10px; font-size:12.5px; font-weight:560; color:var(--ink-2); }
   .ssh-list { background:var(--ssh-group); border-radius:12px; overflow:hidden; isolation:isolate; }
-  .ssh-foot { margin:0 14px; font-size:12px; line-height:1.4; color:var(--ink-3); }
+  .ssh-foot { margin:0 10px; font-size:12px; line-height:1.4; color:var(--ink-3); }
   .ssh .ssh-foot.hint { padding:0; font-size:12px; }
   .ssh-empty { margin:auto; max-width:30ch; text-align:center; color:var(--ink-2); font-size:14px; }
-  .ssh-row { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:42px; padding:0 14px; box-sizing:border-box;
+  .ssh-row { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:0 10px; box-sizing:border-box;
     background:none; border:0; font:inherit; color:inherit; text-align:left; }
   .ssh button.ssh-row { cursor:pointer; border-radius:0; margin:0; min-width:0; box-shadow:none; transform:none; filter:none; transition:background .12s ease; }
   .ssh button.ssh-row:hover:not(:disabled) { background:var(--ssh-hover); filter:none; }
@@ -2638,8 +2638,9 @@ const STATUS_SHEET_CSS = `
   .ssh-row.sel::before, .ssh-row.sel + .ssh-row::before,
   .ssh button.ssh-row:hover::before, .ssh button.ssh-row:hover + .ssh-row::before,
   .ssh button.ssh-row:active::before, .ssh button.ssh-row:active + .ssh-row::before { background:transparent !important; }
-  .ssh-row + .ssh-row::before { content:""; position:absolute; top:0; right:0; left:14px; height:0.5px; background:var(--hair); }
-  .ssh-row.ic + .ssh-row.ic::before { left:54px; }
+  .ssh-row + .ssh-row::before { content:""; position:absolute; top:0; right:10px; left:16px; height:0.5px; background:var(--hair); }
+  .ssh-row.ic { min-height:52px; }
+
   .ssh .ssh-row.sel, .ssh button.ssh-row.sel:hover { background:var(--ssh-sel); }
   .ssh-row.danger { justify-content:center; color:#FF4245; }
   .ssh-row .k { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; padding:10px 0; }
@@ -2651,15 +2652,15 @@ const STATUS_SHEET_CSS = `
   .ssh-row .tick svg { width:16px; height:16px; display:block; color:var(--accent); }
   .ssh .ssh-row input.ssh-in { flex:0 1 58%; min-width:0; height:auto; margin:0; background:none; border:0; box-shadow:none; border-radius:0; font:inherit; color:var(--ink-2); text-align:right; padding:10px 0; outline:none; }
   .ssh-in::placeholder { color:var(--ink-3); }
-  .ssh-tile { flex:none; width:28px; height:28px; border-radius:7px; display:grid; place-items:center; background:var(--c, #8e8e93); color:#fff; }
+  .ssh-tile { flex:none; width:30px; height:30px; border-radius:8px; display:grid; place-items:center; background:var(--c, #8e8e93); color:#fff; }
   .ssh-tile.off { background:rgba(120,120,128,0.36); }
-  .ssh-tile .m { width:17px; height:17px; background:#fff; -webkit-mask:var(--i) no-repeat center / contain; mask:var(--i) no-repeat center / contain; }
+  .ssh-tile .m { width:18px; height:18px; background:#fff; -webkit-mask:var(--i) no-repeat center / contain; mask:var(--i) no-repeat center / contain; }
   .ssh .ssh-row .sw { flex:0 0 42px; margin:0; }
   .ssh-tile ha-state-icon, .ssh-tile ha-icon { --mdc-icon-size:18px; color:#fff; }
-  .ssh-list.ssh-swatches { display:grid; grid-template-columns:repeat(7, 1fr); justify-items:center; gap:14px 8px; padding:16px 12px; overflow:visible; }
+  .ssh-list.ssh-swatches { display:grid; grid-template-columns:repeat(7, 1fr); justify-items:center; gap:14px 8px; padding:14px 10px; overflow:visible; }
   .ssh .ssh-dot { flex:none; width:28px; height:28px; min-width:0; min-height:0; padding:0; margin:0; border-radius:50%; border:0; background:var(--c); cursor:pointer; transform:none; filter:none; }
   .ssh .ssh-dot.on { box-shadow:0 0 0 2.5px var(--ssh-bg), 0 0 0 4.5px var(--ink); }
-  .ssh-icons { display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; padding:10px; }
+  .ssh-icons { display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; padding:8px; }
   .ssh .ssh-ico { aspect-ratio:1; width:100%; max-width:44px; justify-self:center; border-radius:10px; border:0; margin:0; padding:0; background:none; display:grid; place-items:center; cursor:pointer; color:var(--ink-2); transform:none; filter:none; }
   .ssh .ssh-ico:hover { background:var(--ssh-hover); color:var(--ink); }
   .ssh-ico .m { width:22px; height:22px; background:currentColor; -webkit-mask:var(--i) no-repeat center / contain; mask:var(--i) no-repeat center / contain; }
@@ -7293,7 +7294,7 @@ class HemmaPanel extends HTMLElement {
         /* The same turn hemma_badge_climate_group runs, at the same rate. */
         .pglyph.spin { animation:hemma-preview-fan 0.9s linear infinite; }
         /* Any icon can be a Status badge's, so it fits the box the way the dashboard's badge does rather than by height. */
-        .pglyph.fit {
+        .pglyph.fit, .mini-catpage.ov .mc-badges .pglyph.fit {
           box-sizing:border-box; padding:calc(var(--bgl) * 0.08);
           -webkit-mask-size:contain; mask-size:contain; -webkit-mask-origin:content-box; mask-origin:content-box;
         }
@@ -18888,7 +18889,9 @@ class HemmaPanel extends HTMLElement {
     };
     const autoText = (x) => {
       const st = H.states[b.entity];
-      try { return st ? H.formatEntityState(st, x) : x; } catch (_) { return x; }
+      let t = x;
+      try { if (st) t = H.formatEntityState(st, x); } catch (_) {}
+      return t === x ? String(x).replace(/_/g, " ").replace(/^./, (ch) => ch.toUpperCase()) : t;
     };
     const stateLabel = (x) => (b.states[x] && b.states[x].label) || autoText(x);
     const close = () => {
@@ -19029,7 +19032,10 @@ class HemmaPanel extends HTMLElement {
       row(top, { title: _sx("Show Badge"), toggle: c.show !== false, onToggle: () => { c.show = c.show === false; paint(); } });
       row(top, { title: _sx("Custom Text"), input: c.label || "", placeholder: autoText(x), onInput: (v) => {
         c.label = v;
-        sheet.querySelectorAll(".ssh-row.sel .kt, .ssh-badge .t2").forEach((n) => { n.textContent = v || autoText(x); });
+        sheet.querySelectorAll(".ssh-row.sel .kt, .ssh-badge .t2, .ssh-ptitle, .ssh-bar .t").forEach((n) => {
+          if (n.classList.contains("t") && two) return;
+          n.textContent = v || autoText(x);
+        });
       } });
       const tf = box.lastElementChild;
       if (tf) tf.appendChild(el("p", "ssh-foot hint", _sx("Leave empty to use the state's name.")));
@@ -19062,7 +19068,7 @@ class HemmaPanel extends HTMLElement {
           ig.appendChild(d);
         });
       };
-      grid(_sx("Icon"), sug);
+      grid(_sx("Suggested"), sug);
       grid(_sx("All Icons"), all.filter((n) => sug.indexOf(n) < 0));
     };
 
