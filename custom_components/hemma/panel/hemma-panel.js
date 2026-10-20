@@ -2710,7 +2710,7 @@ const STATUS_SHEET_CSS = `
   .ssh-bar .b svg { width:11px; height:18px; display:block; }
   .ssh-panes { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr); }
   .ssh.two .ssh-panes { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
-  .ssh-pane { min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:6px 20px 36px; display:flex; flex-direction:column; gap:22px; font-size:14px; }
+  .ssh-pane { min-height:0; overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; padding:6px 20px 36px; display:flex; flex-direction:column; gap:22px; font-size:14px; }
   .ssh-pane.side { border-left:0.5px solid var(--hair); }
   .ssh-pane.in { animation:ssh-in .32s var(--ease) both; }
   .ssh-pane.back { animation:ssh-back .32s var(--ease) both; }
@@ -2782,12 +2782,41 @@ const STATUS_SHEET_CSS = `
   .ssh .ssh-search input { flex:1; min-width:0; height:auto; margin:0; padding:0; background:none; border:0; box-shadow:none; outline:none; font:inherit; color:var(--ink); }
   .ssh-search .q { position:relative; flex:1; min-width:0; display:flex; }
   .ssh .ssh-search input::placeholder { color:transparent; }
-  .ssh-search .ph { position:absolute; left:3px; top:50%; transform:translateY(-50%); pointer-events:none; white-space:nowrap; color:var(--ink-3); }
+  .ssh .ssh-search input { caret-color:var(--accent); }
+  .ssh-search .ph { position:absolute; left:5px; top:50%; transform:translateY(-50%); pointer-events:none; white-space:nowrap; color:var(--ink-3); }
   .ssh-search input:not(:placeholder-shown) + .ph { display:none; }
   .ssh-results { display:flex; flex-direction:column; gap:22px; }
   @media (max-width: 699px) {
     .ssh-wrap { place-items:end center; }
-    .ssh { width:100vw; height:calc(100dvh - env(safe-area-inset-top, 0px) - 10px); border-radius:14px 14px 0 0; }
+    .ssh { width:100vw; height:calc(100dvh - env(safe-area-inset-top, 0px) - 10px); border-radius:34px 34px 0 0; font-size:17px; }
+    .ssh-bar { padding:14px 16px 10px; }
+    .ssh-bar .t { font-size:17px; }
+    .ssh .ssh-round { --back:44px; }
+    .ssh .ssh-round svg { width:22px; height:22px; }
+    .ssh .ssh-pill { height:44px; padding:0 20px; font-size:17px; }
+    .ssh-pane { padding:8px 16px 44px; gap:28px; font-size:17px; }
+    .ssh-grp { gap:8px; }
+    .ssh-gh { margin-left:18px; font-size:15px; font-weight:600; }
+    .ssh-list { border-radius:26px; }
+    .ssh-foot, .ssh .ssh-foot.hint { margin:0 18px; font-size:13px; }
+    .ssh-row { min-height:52px; padding:0 18px; gap:14px; }
+    .ssh-row.ic { min-height:56px; }
+    .ssh-row + .ssh-row::before { left:18px; right:18px; }
+    .ssh-row + .ssh-row.ic::before, .ssh-row + .ssh-row:has(> .ssh-roomg)::before { left:62px; }
+    .ssh-row small { font-size:13px; }
+    .ssh-row .chev svg { width:9px; height:15px; }
+    .ssh-row .tick svg { width:20px; height:20px; }
+    .ssh-roomg { flex-basis:30px; width:30px; height:26px; }
+    .ssh .ssh-row .sw { flex:0 0 62px; }
+    .ssh-list.ssh-swatches { gap:16px 8px; padding:18px 14px; }
+    .ssh .ssh-dot { width:34px; height:34px; }
+    .ssh .ssh-dot.on { box-shadow:0 0 0 3px var(--ssh-bg), 0 0 0 5.5px var(--ink); }
+    .ssh-icons { gap:8px; padding:12px; }
+    .ssh .ssh-ico { max-width:52px; border-radius:14px; }
+    .ssh-ico .m { width:27px; height:27px; }
+    .ssh-search { height:44px; padding:0 14px; gap:10px; border-radius:22px; }
+    .ssh-search .s svg { width:18px; height:18px; }
+    .ssh-mdi .ssh-foot { margin:8px 4px; }
   }
 `;
 const swatchOf = (v) => {
@@ -6107,11 +6136,16 @@ class HemmaPanel extends HTMLElement {
             rgba(255,255,255,0.75) 360deg);
         }
         :host(.phone) .detailbar .back svg {
-          width:16px; height:27px; flex-basis:16px; stroke-width:3; transform:translateX(-1px);
+          width:28px; height:28px; flex-basis:28px; transform:translateX(-1px);
         }
         :host(.phone) .detailbar .mini.icon,
-        :host(.phone) .detailbar .plus { width:36px; height:36px; flex:0 0 36px; }
-        :host(.phone) .detailbar .mini.icon svg { width:18px; height:18px; }
+        :host(.phone) .detailbar .plus { width:40px; height:40px; flex:0 0 40px; }
+        :host(.phone) .detailbar .mini.icon svg,
+        :host(.phone) .detailbar .plus svg { width:21px; height:21px; }
+        :host(.phone) .row.extrarow { min-height:52px; padding-top:4px; padding-bottom:4px; }
+        :host(.phone) .row.extrarow > label { font-size:17px; color:var(--ink); }
+        :host(.phone) .row.extrarow > .extrasub { font-size:15px; }
+        :host(.phone) .row.extrarow > .rowmenu { width:32px; height:32px; }
         :host(.phone) .plus { width:32px; height:32px; flex-basis:32px; }
         :host(.phone) .plus svg { width:17px; height:17px; }
         :host(.phone) .row .drop { width:28px; height:28px; }
@@ -8728,6 +8762,7 @@ class HemmaPanel extends HTMLElement {
         .line.ok { color:#30d158; } .line.err { color:#ff453a; } .line.warn { color:#ffd60a; }
 
         :host(.tight) .row { grid-template-columns:1fr auto; gap:7px 0; align-items:center; }
+        :host(.tight) .row.extrarow { gap:12px; }
         :host(.tight) .tbody .row { grid-template-columns:1fr auto; }
         :host(.tight) .row:not(:has(> .sw)) > label { grid-column:1 / -1; }
         :host(.tight) .row > .drop { margin-left:10px; }
@@ -9813,7 +9848,7 @@ class HemmaPanel extends HTMLElement {
   _blockDrag(layer) {
     layer.addEventListener("touchmove", (ev) => {
       const t = ev.target;
-      const sc = t && t.closest ? t.closest(".flowscroll") : null;
+      const sc = t && t.closest ? t.closest(".flowscroll, .ssh-results, .ssh-pane") : null;
       if (!sc || sc.scrollHeight <= sc.clientHeight + 1) ev.preventDefault();
     }, { passive: false });
   }
