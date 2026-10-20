@@ -14047,6 +14047,7 @@ class HemmaPanel extends HTMLElement {
     const out = SECTIONS
       .filter((sec) => sec.group === "rooms" || sec.group === "badges")
       .map((sec) => sec.label);
+    out.push("Status");
     (room.tiles || []).forEach((t) => out.push(room.path + "|tile|" + this._tileKey(t)));
     return out;
   }
@@ -18407,7 +18408,7 @@ class HemmaPanel extends HTMLElement {
     this._homeStoreSub();
     const key = this._statusRoomKey(room);
     const fs = document.createElement("section");
-    fs.className = "card";
+    fs.className = "card shut";
     fs.dataset.k = "Status";
     fs.dataset.bid = "status";
     const head = document.createElement("div");
@@ -18420,10 +18421,17 @@ class HemmaPanel extends HTMLElement {
     const h2 = document.createElement("h2");
     h2.textContent = _sx("Status");
     head.appendChild(h2);
+    head.appendChild(this._foldButton("Status", head, fs, _sx("Status")));
     const count = document.createElement("span");
     count.className = "count";
     head.appendChild(count);
-    head.appendChild(this._foldButton("Status", head, fs, _sx("Status")));
+    const add = document.createElement("button");
+    add.className = "plus";
+    add.title = _sx("Add Status Badge");
+    add.setAttribute("aria-label", _sx("Add Status Badge"));
+    add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+    add.onclick = () => this._statusSheet(null, key);
+    head.appendChild(add);
     fs.appendChild(head);
     const body = document.createElement("div");
     fs.appendChild(body);
@@ -18435,27 +18443,57 @@ class HemmaPanel extends HTMLElement {
       }
       painted = true;
       body.replaceChildren();
-      if (this._homeData === null) {
-        const p = document.createElement("p");
-        p.className = "blurb";
-        p.textContent = _sx("Restart Home Assistant to finish updating Hemma, then Status badges can be added here.");
-        body.appendChild(p);
+      const offline = this._homeData === null;
+      add.disabled = offline;
+      const mine = offline ? [] : ((this._homeData && this._homeData.status_badges) || []).filter((b) => (b.rooms || ["home"]).indexOf(key) >= 0);
+      count.textContent = mine.length ? _sx("{n} set", { n: mine.length }) : "";
+      if (!mine.length) {
+        const n = document.createElement("div");
+        n.className = "empty-note";
+        n.textContent = offline ? _sx("Restart Home Assistant to finish updating Hemma, then Status badges can be added here.")
+          : _sx("Nothing set. Use + to add.");
+        body.appendChild(n);
         return;
       }
-      const mine = ((this._homeData && this._homeData.status_badges) || []).filter((b) => (b.rooms || ["home"]).indexOf(key) >= 0);
-      count.textContent = mine.length ? _sx("{n} set", { n: mine.length }) : "";
-      const list = this._flowGroup(body);
       mine.forEach((b) => {
         const st = this._hass && this._hass.states[b.entity];
-        this._flowRow(list, {
-          mask: iconUrl(this._statusIconOf(b, st)), tint: "var(--hemma-color-blue, #0088FF)",
-          title: b.name || (st && st.attributes.friendly_name) || b.entity,
-          sub: st ? this._hass.formatEntityState(st) : b.entity, chevron: true,
-          onTap: () => this._statusSheet(b, key),
+        const conf = st && (b.states || {})[st.state];
+        const accent = conf && HEMMA_ACCENTS.find((x) => x.label.toLowerCase() === conf.color);
+        const row = document.createElement("div");
+        row.className = "row extrarow";
+        const gi = document.createElement("span");
+        gi.className = "sicon";
+        gi.style.setProperty("--i", "url('" + iconUrl(this._statusIconOf(b, st)) + "')");
+        gi.style.setProperty("--sc", accent ? accent.id : "var(--hemma-color-blue, #0088FF)");
+        row.appendChild(gi);
+        const lab = document.createElement("label");
+        lab.textContent = b.name || (st && st.attributes.friendly_name) || b.entity;
+        row.appendChild(lab);
+        const sub = document.createElement("span");
+        sub.className = "extrasub";
+        sub.textContent = !st ? _sx("Unavailable") : (conf && conf.show === false ? _sx("Hidden now")
+          : (conf && conf.label) || this._hass.formatEntityState(st));
+        row.appendChild(sub);
+        const dots = document.createElement("button");
+        dots.className = "mini icon rowmenu";
+        dots.title = _sx("More");
+        dots.setAttribute("aria-label", _sx("More"));
+        dots.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>';
+        dots.onpointerdown = (ev) => ev.stopPropagation();
+        dots.onclick = () => this._menuAt(dots, [
+          { id: "edit", label: _sx("Edit\u2026") },
+          { id: "remove", label: _sx("Delete"), destructive: true },
+        ], async (id) => {
+          if (id === "edit") return this._statusSheet(b, key);
+          if (id !== "remove") return;
+          try {
+            await this._hass.callWS({ type: "hemma/home/remove_status_badge", badge_id: b.id });
+            this._status(_sx("Status badge removed"), "ok");
+          } catch (e) { this._status(this._plainError(e, _sx("Hemma couldn't remove the badge.")), "err"); }
         });
+        row.appendChild(dots);
+        body.appendChild(row);
       });
-      this._flowRow(list, { icon: "plus", tint: FLOW_TINT.teal, title: _sx("Add Status Badge"),
-        onTap: () => this._statusSheet(null, key) });
     };
     this._homeListeners = (this._homeListeners || []).concat([paint]);
     paint();
