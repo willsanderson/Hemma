@@ -2549,13 +2549,13 @@ const HEMMA_ACCENTS = [
 const STATUS_SHEET_CSS = `
   .ssh-wrap { position:fixed; inset:0; z-index:500; display:grid; place-items:center; }
   .ssh-scrim { position:absolute; inset:0; background:rgba(0,0,0,0.36); animation:ssh-fade .22s ease both; }
-  .ssh { --ssh-bg:rgba(30,31,35,0.94); --ssh-group:rgba(255,255,255,0.07); --ssh-sel:color-mix(in srgb, var(--accent) 20%, transparent);
+  .ssh { --ssh-bg:rgba(30,31,35,0.94); --ssh-group:rgba(255,255,255,0.07); --ssh-sel:rgba(255,255,255,0.10); --ssh-hover:rgba(255,255,255,0.05);
     position:relative; display:flex; flex-direction:column; width:min(440px, calc(100vw - 32px)); height:min(720px, calc(100dvh - 48px));
     background:var(--ssh-bg); color:var(--ink); border-radius:26px; overflow:hidden;
     box-shadow:0 30px 80px rgba(0,0,0,0.5), inset 0 0 0 0.5px var(--hair);
     -webkit-backdrop-filter:blur(40px) saturate(1.4); backdrop-filter:blur(40px) saturate(1.4);
     animation:ssh-rise .34s var(--ease) both; font-size:15px; }
-  :host(.phone.is-light) .ssh { --ssh-bg:#f2f2f7; --ssh-group:#ffffff; }
+  :host(.phone.is-light) .ssh { --ssh-bg:#f2f2f7; --ssh-group:#ffffff; --ssh-sel:rgba(0,0,0,0.07); --ssh-hover:rgba(0,0,0,0.035); }
   .ssh.two { width:min(860px, calc(100vw - 48px)); }
   .ssh-wrap.out .ssh { animation:ssh-sink .2s ease both; }
   .ssh-wrap.out .ssh-scrim { animation:ssh-fade .2s ease reverse both; }
@@ -2572,7 +2572,7 @@ const STATUS_SHEET_CSS = `
   .ssh-bar .b svg { width:11px; height:18px; display:block; }
   .ssh-panes { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr); }
   .ssh.two .ssh-panes { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
-  .ssh-pane { min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:4px 16px 24px; display:flex; flex-direction:column; gap:22px; }
+  .ssh-pane { min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:6px 20px 36px; display:flex; flex-direction:column; gap:24px; }
   .ssh-pane.side { border-left:0.5px solid var(--hair); }
   .ssh-pane.in { animation:ssh-in .32s var(--ease) both; }
   .ssh-pane.back { animation:ssh-back .32s var(--ease) both; }
@@ -2595,11 +2595,11 @@ const STATUS_SHEET_CSS = `
   .ssh-empty { margin:auto; max-width:30ch; text-align:center; color:var(--ink-2); font-size:14px; }
   .ssh-row { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:0 14px; box-sizing:border-box;
     background:none; border:0; font:inherit; color:inherit; text-align:left; }
-  button.ssh-row { cursor:pointer; }
-  button.ssh-row:hover { background:color-mix(in srgb, var(--ink) 5%, transparent); }
+  .ssh button.ssh-row { cursor:pointer; border-radius:0; margin:0; min-width:0; box-shadow:none; }
+  .ssh button.ssh-row:hover { background:var(--ssh-hover); }
   .ssh-row + .ssh-row::before { content:""; position:absolute; top:0; right:0; left:14px; height:0.5px; background:var(--hair); }
   .ssh-row.ic + .ssh-row.ic::before { left:55px; }
-  .ssh-row.sel { background:var(--ssh-sel); }
+  .ssh .ssh-row.sel, .ssh button.ssh-row.sel:hover { background:var(--ssh-sel); }
   .ssh-row.danger { justify-content:center; color:#FF4245; }
   .ssh-row .k { flex:1; min-width:0; display:flex; flex-direction:column; padding:9px 0; }
   .ssh-row .kt { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -18745,6 +18745,10 @@ class HemmaPanel extends HTMLElement {
       "stove", "fridge", "hot_water", "humidifier", "purifier", "heating", "cooling", "tv", "speaker", "music", "gas"]
       .filter((n) => ICON_DATA[n]);
     const nameOf = (id) => (H.states[id] && H.states[id].attributes.friendly_name) || id;
+    const deviceName = (id) => {
+      const e = id && H.entities[id], d = e && H.devices && H.devices[e.device_id];
+      return (d && (d.name_by_user || d.name)) || (id ? nameOf(id) : "");
+    };
     const areaName = (id) => hemmaAreaOf(H, id) || "";
 
     const statesOf = () => {
@@ -18853,18 +18857,24 @@ class HemmaPanel extends HTMLElement {
       const top = group(box);
       row(top, { title: _sx("Entity"), value: b.entity ? nameOf(b.entity) : _sx("Choose"), placeholderValue: !b.entity, chevron: true,
         sel: two && sidePage === "entity", onTap: () => go("entity") });
-      row(top, { title: _sx("Label"), input: b.name, placeholder: b.entity ? nameOf(b.entity) : _sx("Washer"),
+      row(top, { title: _sx("Name"), input: b.name, placeholder: b.entity ? deviceName(b.entity) : _sx("Name"),
         onInput: (v) => { b.name = v; const t = sheet.querySelectorAll(".ssh-badge .t1"); t.forEach((n) => { n.textContent = v || (b.entity ? nameOf(b.entity) : _sx("Status")); }); } });
-      row(top, { title: _sx("Time Left"), value: b.time_entity ? nameOf(b.time_entity) : _sx("None"), placeholderValue: !b.time_entity, chevron: true,
-        sel: two && sidePage === "time", onTap: () => go("time") });
+      const timer = b.entity ? timeFor() : null;
+      if (timer) {
+        const tl = group(box, "", _sx("Adds how long is left to the badge while it's running, like Running · 32 min left."));
+        row(tl, { title: _sx("Show Time Left"), sub: nameOf(timer), toggle: !!b.time_entity,
+          onToggle: () => { b.time_entity = b.time_entity ? null : timer; paint(); } });
+      }
       if (b.entity) {
-        const list = group(box, _sx("States"), _sx("Hidden states remove the badge, so it only appears when there's something to know."));
-        statesOf().forEach((x) => {
+        const all = statesOf();
+        const stateRow = (list, x) => {
           const c = b.states[x];
           row(list, { tile: true, mask: iconUrl(c.icon || "power_on"), tileColor: colorOf(c.color), tileOff: c.show === false,
-            title: stateLabel(x), sub: x + (c.show === false ? " · " + _sx("hidden") : ""), chevron: true,
-            sel: two && sidePage === "state:" + x, onTap: () => go("state:" + x) });
-        });
+            title: stateLabel(x), sub: x, chevron: true, sel: two && sidePage === "state:" + x, onTap: () => go("state:" + x) });
+        };
+        const shown = all.filter((x) => b.states[x].show !== false), hidden = all.filter((x) => b.states[x].show === false);
+        if (shown.length) { const l = group(box, _sx("Shown"), hidden.length ? "" : _sx("The badge appears in these states.")); shown.forEach((x) => stateRow(l, x)); }
+        if (hidden.length) { const l = group(box, _sx("Hidden"), _sx("In these states the badge isn't shown, so it only appears when there's something to know.")); hidden.forEach((x) => stateRow(l, x)); }
       }
       const where = group(box, _sx("Shows On"));
       ((this._state && this._state.compact.rooms) || []).forEach((r) => {
@@ -18894,7 +18904,7 @@ class HemmaPanel extends HTMLElement {
       else preview(box, x);
       const top = group(box);
       row(top, { title: _sx("Show Badge"), toggle: c.show !== false, onToggle: () => { c.show = c.show === false; paint(); } });
-      row(top, { title: _sx("Label"), input: c.label || "", placeholder: x, onInput: (v) => {
+      row(top, { title: _sx("Text"), input: c.label || "", placeholder: x, onInput: (v) => {
         c.label = v;
         sheet.querySelectorAll(".ssh-row.sel .kt").forEach((n) => { n.textContent = v || x; });
       } });
@@ -18941,9 +18951,18 @@ class HemmaPanel extends HTMLElement {
         query = "";
         if (kind === "entity") {
           const fresh = id !== b.entity;
+          const wasAuto = !b.name || b.name === deviceName(b.entity);
           b.entity = id;
-          if (fresh) { b.states = {}; if (!b.time_entity) b.time_entity = timeFor(); }
-          const first = statesOf()[0];
+          if (fresh) {
+            b.states = {};
+            b.time_entity = timeFor();
+            if (wasAuto) b.name = deviceName(id);
+            const area = hemmaAreaOf(H, id);
+            const rk = area ? roomKeyOf(area) : null;
+            const known = ((this._state && this._state.compact.rooms) || []).some((r) => this._statusRoomKey(r) === rk);
+            if (!badge && rk && known && b.rooms.indexOf(rk) < 0) b.rooms = b.rooms.concat([rk]);
+          }
+          const sts = statesOf(), first = sts.find((x) => b.states[x].show !== false) || sts[0];
           if (two) { sidePage = first ? "state:" + first : null; paint("side"); } else go("main");
         } else {
           b.time_entity = id || null;
@@ -19005,7 +19024,7 @@ class HemmaPanel extends HTMLElement {
       else { left.textContent = _sx("Cancel"); left.onclick = close; }
       bar.appendChild(left);
       const t = !sub ? (badge ? _sx("Status Badge") : _sx("Add Status Badge"))
-        : page === "entity" ? _sx("Entity") : page === "time" ? _sx("Time Left") : stateLabel(page.slice(6));
+        : page === "entity" ? _sx("Entity") : stateLabel(page.slice(6));
       bar.appendChild(el("span", "t", t));
       const save = el("button", "r", _sx("Save"));
       save.type = "button";
@@ -19031,7 +19050,7 @@ class HemmaPanel extends HTMLElement {
     const paint = (how) => {
       paintBar();
       const keep = main.scrollTop;
-      if (two && !sidePage && b.entity) { const f = statesOf()[0]; if (f) sidePage = "state:" + f; }
+      if (two && !sidePage && b.entity) { const all = statesOf(), f = all.find((x) => b.states[x].show !== false) || all[0]; if (f) sidePage = "state:" + f; }
       if (two) {
         main.replaceChildren();
         paintMain(main);
@@ -19056,7 +19075,7 @@ class HemmaPanel extends HTMLElement {
       } else main.scrollTop = keep;
     };
 
-    if (!badge) { if (two) sidePage = "entity"; }
+    if (!badge) { if (two) sidePage = "entity"; else page = "entity"; }
     paint();
     scrim.onclick = close;
     document.addEventListener("keydown", onKey, true);
