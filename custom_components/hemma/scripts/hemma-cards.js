@@ -218,9 +218,10 @@
     .box { position:relative; width:min(290px, 100%); border-radius:28px; text-align:center; color:#fff; }
     .glass { position:absolute; inset:0; border-radius:inherit; pointer-events:none;
       background-color:rgba(30,33,38,0.30); -webkit-backdrop-filter:blur(40px) saturate(170%); backdrop-filter:blur(40px) saturate(170%);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,0.26), inset 0 -1px 0 rgba(255,255,255,0.10),
-        inset 1px 0 0 rgba(0,0,0,0.18), inset -1px 0 0 rgba(0,0,0,0.18), 0 12px 34px rgba(0,0,0,0.22);
+      box-shadow:0 12px 34px rgba(0,0,0,0.22);
       animation:glassIn .48s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
+    .ghost { position:absolute; left:0; top:0; pointer-events:none; }
+    .ghost > * { position:absolute; box-sizing:border-box; }
     .content { position:relative; box-sizing:border-box; padding:22px 16px 16px; animation:contentIn .48s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
     .t { font-size:17px; font-weight:600; line-height:1.3; letter-spacing:-0.01em; margin:0 4px 16px; overflow-wrap:anywhere; }
     .r { display:flex; gap:10px; }
@@ -240,13 +241,11 @@
     @keyframes glassIn {
       from { transform:scale(0.88); background-color:rgba(30,33,38,0);
         -webkit-backdrop-filter:blur(0px) saturate(100%); backdrop-filter:blur(0px) saturate(100%);
-        box-shadow:inset 0 1px 0 rgba(255,255,255,0), inset 0 -1px 0 rgba(255,255,255,0),
-          inset 1px 0 0 rgba(0,0,0,0), inset -1px 0 0 rgba(0,0,0,0), 0 12px 34px rgba(0,0,0,0); } }
+        box-shadow:0 12px 34px rgba(0,0,0,0); } }
     @keyframes glassOut {
       to { transform:scale(0.92); background-color:rgba(30,33,38,0);
         -webkit-backdrop-filter:blur(0px) saturate(100%); backdrop-filter:blur(0px) saturate(100%);
-        box-shadow:inset 0 1px 0 rgba(255,255,255,0), inset 0 -1px 0 rgba(255,255,255,0),
-          inset 1px 0 0 rgba(0,0,0,0), inset -1px 0 0 rgba(0,0,0,0), 0 12px 34px rgba(0,0,0,0); } }
+        box-shadow:0 12px 34px rgba(0,0,0,0); } }
     @keyframes contentIn { from { opacity:0; transform:scale(0.88); } 40% { opacity:1; } }
     @keyframes contentOut { to { opacity:0; transform:scale(0.92); } }
     @media (prefers-reduced-motion: reduce) {
@@ -255,7 +254,65 @@
     }
   `;
   let asking = null;
-  const ask = (title, verb) => new Promise((done) => {
+  // A damped spring sampled into linear(), so the morph settles the way Apple's panels do.
+  const spring = (response, damping) => {
+    const w0 = 2 * Math.PI / response, wd = w0 * Math.sqrt(1 - damping * damping);
+    const x = (t) => 1 - Math.exp(-damping * w0 * t) * (Math.cos(wd * t) + (damping * w0 / wd) * Math.sin(wd * t));
+    const dur = Math.log(1000) / (damping * w0);
+    const pts = [];
+    for (let i = 0; i <= 60; i++) pts.push(i === 60 ? 1 : +x(dur * i / 60).toFixed(4));
+    return { ease: 'linear(' + pts.join(', ') + ')', dur: Math.round(dur * 1000) };
+  };
+  const SPRING = window.CSS && CSS.supports && CSS.supports('animation-timing-function', 'linear(0, 1)');
+  const GROW = SPRING ? spring(0.42, 0.82) : { ease: 'cubic-bezier(0.3, 1.25, 0.5, 1)', dur: 440 };
+  const SHRINK = SPRING ? spring(0.32, 0.96) : { ease: 'cubic-bezier(0.3, 0.9, 0.4, 1)', dur: 300 };
+  const alphaOf = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ''); if (!m) return 0; const p = m[1].split(','); return p.length > 3 ? Number(p[3]) : 1; };
+  const tileLook = (card) => {
+    const sr = card.shadowRoot;
+    const hc = sr && sr.querySelector('ha-card');
+    if (!hc) return null;
+    const r = hc.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const cs = getComputedStyle(hc);
+    const over = getComputedStyle(hc, '::after');
+    const lit = alphaOf(over.backgroundColor) * Number(over.opacity || 0) > 0.5;
+    const ghost = document.createElement('div');
+    ghost.className = 'ghost';
+    const place = (el, src) => {
+      const b = src.getBoundingClientRect();
+      Object.assign(el.style, { left: (b.left - r.left) + 'px', top: (b.top - r.top) + 'px', width: b.width + 'px', height: b.height + 'px' });
+      return el;
+    };
+    const cell = sr.querySelector('#img-cell');
+    if (cell) {
+      const c = place(document.createElement('div'), cell);
+      c.style.background = getComputedStyle(cell).backgroundColor;
+      c.style.borderRadius = '50%';
+      ghost.appendChild(c);
+      const icon = sr.querySelector('#icon');
+      if (icon && icon.src) { const i = place(document.createElement('img'), icon); i.src = icon.src; ghost.appendChild(i); }
+    }
+    ['#name', '#state'].forEach((sel) => {
+      const n = sr.querySelector(sel);
+      if (!n || !n.textContent.trim()) return;
+      const t = place(document.createElement('div'), n);
+      const ncs = getComputedStyle(n);
+      Object.assign(t.style, { width: 'auto', height: 'auto', color: ncs.color, fontFamily: ncs.fontFamily, fontSize: ncs.fontSize,
+        fontWeight: ncs.fontWeight, letterSpacing: ncs.letterSpacing, lineHeight: ncs.lineHeight, whiteSpace: 'nowrap',
+        paddingTop: ncs.paddingTop, paddingLeft: ncs.paddingLeft });
+      t.textContent = n.textContent.trim();
+      ghost.appendChild(t);
+    });
+    const blur = Number((/blur\(([\d.]+)px\)/.exec(cs.backdropFilter || cs.webkitBackdropFilter || '') || [])[1] || 0);
+    return { rect: r, radius: parseFloat(cs.borderTopLeftRadius) || 26, fill: lit ? over.backgroundColor : cs.backgroundColor, blur, ghost };
+  };
+  const frame = (x, y, w, h, radius, fill, blur, lit) => ({
+    left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', borderRadius: radius + 'px', backgroundColor: fill,
+    backdropFilter: `blur(${blur}px) saturate(${blur ? 170 : 100}%)`, webkitBackdropFilter: `blur(${blur}px) saturate(${blur ? 170 : 100}%)`,
+    boxShadow: `0 12px 34px rgba(0,0,0,${0.22 * lit})`,
+  });
+
+  const ask = (title, verb, card) => new Promise((done) => {
     if (asking) return done(false);
     const host = document.createElement('div');
     const root = host.attachShadow({ mode: 'open' });
@@ -263,11 +320,54 @@
       + `<div class="glass"></div><div class="content"><div class="t">${esc(title)}</div><div class="r"><button class="no" type="button">${esc(T('tap.cancel', 'Cancel'))}</button>`
       + `<button class="ok" type="button">${esc(verb)}</button></div></div></div></div>`;
     const scrim = root.querySelector('.scrim');
+    const box = root.querySelector('.box');
+    const glass = root.querySelector('.glass');
+    const content = root.querySelector('.content');
+    asking = host;
+    document.body.appendChild(host);
+
+    const wide = window.matchMedia('(min-width: 768px)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let tile = wide && card ? tileLook(card) : null;
+    let W = 0, H = 0, fx = 0, fy = 0;
+    if (tile) {
+      const b = box.getBoundingClientRect();
+      W = b.width; H = b.height;
+      const m = 16, vw = window.innerWidth, vh = window.innerHeight, t = tile.rect;
+      fx = Math.max(m, Math.min(vw - m - W, t.left + t.width / 2 - W / 2));
+      fy = Math.max(m, Math.min(vh - m - H, t.top + t.height / 2 - H / 2));
+      Object.assign(box.style, { position: 'fixed', left: fx + 'px', top: fy + 'px', width: W + 'px', margin: '0' });
+      Object.assign(glass.style, { animation: 'none', inset: 'auto', left: '0', top: '0', width: W + 'px', height: H + 'px', overflow: 'hidden' });
+      content.style.animation = 'none';
+      glass.appendChild(tile.ghost);
+      card.style.visibility = 'hidden';
+      const from = frame(t.left - fx, t.top - fy, t.width, t.height, tile.radius, tile.fill, tile.blur, 0);
+      glass.animate([from, frame(0, 0, W, H, 28, 'rgba(30,33,38,0.30)', 40, 1)], { duration: GROW.dur, easing: GROW.ease, fill: 'backwards' });
+      Object.assign(tile.ghost.style, { width: t.width + 'px', height: t.height + 'px' });
+      tile.ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: GROW.dur * 0.3, easing: 'ease-out', fill: 'forwards' });
+      content.animate([{ opacity: 0, transform: 'scale(0.94)' }, { opacity: 0, offset: 0.32 }, { opacity: 1, transform: 'scale(1)' }],
+        { duration: GROW.dur * 0.8, easing: GROW.ease, fill: 'backwards' });
+    }
+
     const finish = (yes) => {
+      if (asking !== host) return;
       document.removeEventListener('keydown', key, true);
-      scrim.classList.add('out');
-      setTimeout(() => host.remove(), 300);
       asking = null;
+      scrim.classList.add('out');
+      if (tile && card.isConnected) {
+        const back = tileLook(card) || tile;
+        card.style.visibility = 'hidden';
+        const t = back.rect;
+        glass.getAnimations().forEach((a) => a.cancel());
+        glass.animate([frame(0, 0, W, H, 28, 'rgba(30,33,38,0.30)', 40, 1), frame(t.left - fx, t.top - fy, t.width, t.height, back.radius, back.fill, back.blur, 0)],
+          { duration: SHRINK.dur, easing: SHRINK.ease, fill: 'forwards' });
+        content.animate([{ opacity: 1 }, { opacity: 0, offset: 0.35 }, { opacity: 0 }], { duration: SHRINK.dur, fill: 'forwards' });
+        tile.ghost.getAnimations().forEach((a) => a.cancel());
+        tile.ghost.animate([{ opacity: 0 }, { opacity: 0, offset: 0.45 }, { opacity: 1 }], { duration: SHRINK.dur, fill: 'forwards' });
+        setTimeout(() => { card.style.visibility = ''; host.remove(); }, Math.max(SHRINK.dur, 300));
+      } else {
+        if (card) card.style.visibility = '';
+        setTimeout(() => host.remove(), 300);
+      }
       done(yes);
     };
     const key = (ev) => {
@@ -278,8 +378,6 @@
     root.querySelector('.no').onclick = () => finish(false);
     root.querySelector('.ok').onclick = () => finish(true);
     document.addEventListener('keydown', key, true);
-    asking = host;
-    document.body.appendChild(host);
   });
   const block = (ev) => { ev.stopImmediatePropagation(); ev.stopPropagation(); if (ev.cancelable) ev.preventDefault(); };
   window.hemmaTap = { ask, modeOf: tapOf };
@@ -298,7 +396,7 @@
     const src = ev.composedPath()[0];
     const data = conf.service_data || conf.data;
     ask(T('tap.ask', '{verb} {name}?', { verb: verbFor(conf.service || conf.perform_action, card._stateObj, data), name: nameOf(card) }),
-      verbFor(conf.service || conf.perform_action, card._stateObj, data)).then((yes) => {
+      verbFor(conf.service || conf.perform_action, card._stateObj, data), card).then((yes) => {
       if (!yes || !src.isConnected) return;
       passed.add(ev.detail);
       src.dispatchEvent(new CustomEvent('hass-action', { detail: ev.detail, bubbles: true, composed: true }));
@@ -323,7 +421,7 @@
     let data = null;
     try { data = call[3] ? JSON.parse(call[3].replace(/'/g, '"').replace(/(\w+):/g, '"$1":')) : null; } catch (e) { data = null; }
     const verb = verbFor(call[1] + '.' + call[2], card._stateObj, data);
-    ask(T('tap.ask', '{verb} {name}?', { verb, name: nameOf(card) }), verb).then((yes) => {
+    ask(T('tap.ask', '{verb} {name}?', { verb, name: nameOf(card) }), verb, card).then((yes) => {
       if (!yes || !el.isConnected) return;
       pass = el;
       try { el.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, cancelable: true })); } finally { pass = null; }
