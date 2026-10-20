@@ -7547,6 +7547,7 @@ window.hemmaMenuGlass = {
       return localStorage.getItem('hemma_morph') === '1';
     } catch (e) { return false; }
   }
+  morphOn();
 
   function flagOn() {
     if (typeof window.HEMMA_POPUP === 'boolean') return window.HEMMA_POPUP;
