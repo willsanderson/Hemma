@@ -218,7 +218,6 @@
     .box { position:relative; width:min(290px, 100%); border-radius:28px; text-align:center; color:#fff; }
     .glass { position:absolute; inset:0; border-radius:inherit; pointer-events:none;
       background-color:rgba(30,33,38,0.30); -webkit-backdrop-filter:blur(40px) saturate(170%); backdrop-filter:blur(40px) saturate(170%);
-      box-shadow:0 12px 34px rgba(0,0,0,0.22);
       animation:glassIn .48s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
     .content { position:relative; box-sizing:border-box; padding:22px 16px 16px; animation:contentIn .48s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
     .t { font-size:17px; font-weight:600; line-height:1.3; letter-spacing:-0.01em; margin:0 4px 16px; overflow-wrap:anywhere; }
@@ -239,11 +238,11 @@
     @keyframes glassIn {
       from { transform:scale(0.88); background-color:rgba(30,33,38,0);
         -webkit-backdrop-filter:blur(0px) saturate(100%); backdrop-filter:blur(0px) saturate(100%);
-        box-shadow:0 12px 34px rgba(0,0,0,0); } }
+        } }
     @keyframes glassOut {
       to { transform:scale(0.92); background-color:rgba(30,33,38,0);
         -webkit-backdrop-filter:blur(0px) saturate(100%); backdrop-filter:blur(0px) saturate(100%);
-        box-shadow:0 12px 34px rgba(0,0,0,0); } }
+        } }
     @keyframes contentIn { from { opacity:0; transform:scale(0.88); } 40% { opacity:1; } }
     @keyframes contentOut { to { opacity:0; transform:scale(0.92); } }
     @media (prefers-reduced-motion: reduce) {
@@ -262,8 +261,8 @@
     return { ease: 'linear(' + pts.join(', ') + ')', dur: Math.round(dur * 1000) };
   };
   const SPRING = window.CSS && CSS.supports && CSS.supports('animation-timing-function', 'linear(0, 1)');
-  const GROW = SPRING ? spring(0.42, 0.82) : { ease: 'cubic-bezier(0.3, 1.25, 0.5, 1)', dur: 440 };
-  const SHRINK = SPRING ? spring(0.32, 0.96) : { ease: 'cubic-bezier(0.3, 0.9, 0.4, 1)', dur: 300 };
+  const GROW = SPRING ? spring(0.34, 0.86) : { ease: 'cubic-bezier(0.3, 1.2, 0.5, 1)', dur: 380 };
+  const SHRINK = SPRING ? spring(0.3, 0.92) : { ease: 'cubic-bezier(0.3, 0.95, 0.4, 1)', dur: 300 };
   const alphaOf = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ''); if (!m) return 0; const p = m[1].split(','); return p.length > 3 ? Number(p[3]) : 1; };
   const tileLook = (card) => {
     const sr = card.shadowRoot;
@@ -280,10 +279,70 @@
   const frame = (x, y, w, h, radius, fill, blur, lit) => ({
     left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', borderRadius: radius + 'px', backgroundColor: fill,
     backdropFilter: `blur(${blur}px) saturate(${blur ? 170 : 100}%)`, webkitBackdropFilter: `blur(${blur}px) saturate(${blur ? 170 : 100}%)`,
-    boxShadow: `0 12px 34px rgba(0,0,0,${0.22 * lit})`,
+    boxShadow: 'none',
   });
 
-  window.hemmaMorph = { look: tileLook, grow: GROW, shrink: SHRINK };
+  // Apple's collapse: the tile's icon appears partway and rides the shrinking shape home, then its name and state fade in.
+  const COPY_PROPS = ['background-color', 'background-image', 'background-size', 'background-position', 'background-repeat',
+    'border-radius', 'opacity', 'filter', 'color', 'font-family', 'font-size', 'font-weight', 'letter-spacing', 'line-height',
+    '-webkit-mask-image', 'mask-image', '-webkit-mask-size', 'mask-size', '-webkit-mask-position', 'mask-position',
+    '-webkit-mask-repeat', 'mask-repeat', 'transform', 'white-space'];
+  const copyStyle = (from, to, pseudo) => {
+    const cs = getComputedStyle(from, pseudo);
+    COPY_PROPS.forEach((k) => to.style.setProperty(k, cs.getPropertyValue(k)));
+    return cs;
+  };
+  const cloneShown = (el) => {
+    const r = el.getBoundingClientRect();
+    const box = document.createElement('div');
+    copyStyle(el, box);
+    Object.assign(box.style, { position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px',
+      margin: '0', boxSizing: 'border-box', pointerEvents: 'none', transform: 'none', opacity: '1' });
+    ['::before', '::after'].forEach((ps) => {
+      const pc = getComputedStyle(el, ps);
+      if (!pc.content || pc.content === 'none') return;
+      const d = document.createElement('div');
+      copyStyle(el, d, ps);
+      Object.assign(d.style, { position: 'absolute', left: pc.left === 'auto' ? '0' : pc.left, top: pc.top === 'auto' ? '0' : pc.top,
+        width: pc.width === 'auto' ? '100%' : pc.width, height: pc.height === 'auto' ? '100%' : pc.height });
+      box.appendChild(d);
+    });
+    [...el.children].forEach((k) => {
+      const kr = k.getBoundingClientRect();
+      if (!kr.width) return;
+      const d = k.tagName === 'IMG' ? document.createElement('img') : document.createElement('div');
+      if (k.tagName === 'IMG') d.src = k.src;
+      copyStyle(k, d);
+      Object.assign(d.style, { position: 'absolute', left: (kr.left - r.left) + 'px', top: (kr.top - r.top) + 'px', width: kr.width + 'px', height: kr.height + 'px', margin: '0' });
+      box.appendChild(d);
+    });
+    if (!el.children.length && el.textContent.trim()) { box.textContent = el.textContent.trim(); box.style.width = 'auto'; }
+    return { el: box, rect: r };
+  };
+  const settle = (card, holder, from, dur, ease) => {
+    const sr = card.shadowRoot;
+    const hc = sr && sr.querySelector('ha-card');
+    if (!hc) return;
+    const t = hc.getBoundingClientRect();
+    const parts = [];
+    const cell = sr.querySelector('#img-cell');
+    if (cell && cell.getBoundingClientRect().width) parts.push({ ...cloneShown(cell), icon: true });
+    ['#name', '#state', '#label'].forEach((sel) => {
+      const n = sr.querySelector(sel);
+      if (n && n.textContent.trim() && n.getBoundingClientRect().width) parts.push(cloneShown(n));
+    });
+    const fy = from.top + from.height / 2, ty = t.top + t.height / 2;
+    parts.forEach((p) => {
+      holder.appendChild(p.el);
+      const dx = from.left - t.left, dy = fy - ty;
+      p.el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }], { duration: dur, easing: ease, fill: 'both' });
+      p.el.animate([{ opacity: 0 }, { opacity: 1 }], p.icon
+        ? { duration: dur * 0.25, delay: dur * 0.28, easing: 'ease-out', fill: 'both' }
+        : { duration: dur * 0.35, delay: dur * 0.6, easing: 'ease-out', fill: 'both' });
+    });
+    return () => parts.forEach((p) => p.el.remove());
+  };
+  window.hemmaMorph = { look: tileLook, grow: GROW, shrink: SHRINK, settle };
 
   const ask = (title, verb, card) => new Promise((done) => {
     if (asking) return done(false);
@@ -330,8 +389,13 @@
         glass.getAnimations().forEach((a) => a.cancel());
         glass.animate([frame(0, 0, W, H, 28, 'rgba(30,33,38,0.30)', 40, 1), frame(t.left - fx, t.top - fy, t.width, t.height, back.radius, back.fill, back.blur, 0)],
           { duration: SHRINK.dur, easing: SHRINK.ease, fill: 'forwards' });
-        content.animate([{ opacity: 1 }, { opacity: 0, offset: 0.35 }, { opacity: 0 }], { duration: SHRINK.dur, fill: 'forwards' });
-        setTimeout(() => { card.style.visibility = ''; host.remove(); }, Math.max(SHRINK.dur, 300));
+        content.getAnimations().forEach((a) => a.cancel());
+        content.animate([{ opacity: 1 }, { opacity: 0 }], { duration: SHRINK.dur * 0.3, easing: 'ease-in', fill: 'forwards' });
+        const holder = document.createElement('div');
+        holder.style.cssText = 'position:fixed;inset:0;pointer-events:none;';
+        scrim.appendChild(holder);
+        settle(card, holder, { left: fx, top: fy, width: W, height: H }, SHRINK.dur, SHRINK.ease);
+        setTimeout(() => { card.style.visibility = ''; host.remove(); }, SHRINK.dur);
       } else {
         if (card) card.style.visibility = '';
         setTimeout(() => host.remove(), 300);

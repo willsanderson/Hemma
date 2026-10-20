@@ -8474,7 +8474,7 @@ window.hemmaMenuGlass = {
       s.style.animation = 'none';
       var rim = root.querySelector('.rim');
       [g, rim, this.content].forEach(function (e) { if (e) e.style.animation = 'none'; });
-      Object.assign(g.style, { inset: 'auto', left: '0px', top: '0px', width: S.width + 'px', height: S.height + 'px', overflow: 'hidden' });
+      Object.assign(g.style, { inset: 'auto', left: '0px', top: '0px', width: S.width + 'px', height: S.height + 'px', overflow: 'hidden', boxShadow: 'none' });
       card.style.visibility = 'hidden';
       var G = M.grow;
       var mo = this._morph;
@@ -8497,11 +8497,11 @@ window.hemmaMenuGlass = {
     _morphFrame(t, box, look, k) {
       var e = this._morph.end;
       if (k) return { left: '0px', top: '0px', width: box.w + 'px', height: box.h + 'px', borderRadius: e.radius + 'px',
-        backgroundColor: e.bg, backdropFilter: e.filter, webkitBackdropFilter: e.filter, boxShadow: e.shadow };
+        backgroundColor: e.bg, backdropFilter: e.filter, webkitBackdropFilter: e.filter, boxShadow: 'none' };
       var f = 'blur(' + look.blur + 'px) saturate(100%)';
       return { left: (t.left - box.x) + 'px', top: (t.top - box.y) + 'px', width: t.width + 'px', height: t.height + 'px',
         borderRadius: look.radius + 'px', backgroundColor: look.fill, backdropFilter: f, webkitBackdropFilter: f,
-        boxShadow: e.shadow.replace(/rgba\(([^)]*),\s*[\d.]+\)/g, 'rgba($1, 0)') };
+        boxShadow: 'none' };
     }
 
     _morphClip(el, t, radius) {
@@ -8537,8 +8537,13 @@ window.hemmaMenuGlass = {
         if (!e || e.hidden) return;
         e.animate([{ clipPath: self._morphClip(e, full, radius) }, { clipPath: self._morphClip(e, back.rect, back.radius) }],
           { duration: S.dur, easing: S.ease, fill: 'forwards' });
-        e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: S.dur * 0.35, easing: 'ease-in', fill: 'forwards' });
+        e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: S.dur * 0.3, easing: 'ease-in', fill: 'forwards' });
       });
+      var holder = document.createElement('div');
+      holder.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:1;';
+      root.appendChild(holder);
+      mo.holder = holder;
+      M.settle(card, holder, R, S.dur, S.ease);
       return S.dur;
     }
 
@@ -8547,13 +8552,14 @@ window.hemmaMenuGlass = {
       if (!mo) return;
       this._morph = null;
       mo.card.style.visibility = '';
+      if (mo.holder) mo.holder.remove();
       var root = this.shadowRoot;
       var g = root.querySelector('.glass');
       var rim = root.querySelector('.rim');
       [g, this._header, this.content, root.querySelector('.grab')].forEach(function (e) {
         if (e) e.getAnimations().forEach(function (a) { a.cancel(); });
       });
-      ['inset', 'left', 'top', 'width', 'height', 'overflow', 'animation'].forEach(function (k) { g.style.removeProperty(k); });
+      ['inset', 'left', 'top', 'width', 'height', 'overflow', 'animation', 'box-shadow'].forEach(function (k) { g.style.removeProperty(k); });
       ['left', 'top', 'overflow', 'animation', 'visibility'].forEach((k) => this.surface.style.removeProperty(k));
       if (rim) rim.style.removeProperty('animation');
       this.content.style.removeProperty('animation');
