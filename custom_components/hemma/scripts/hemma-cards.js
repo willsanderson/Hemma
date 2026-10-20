@@ -34,13 +34,13 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
   // One subscription per connection, shared by every card on the page.
-  const store = window._hemmaHomeStore = window._hemmaHomeStore || { data: { status_badges: [] }, subs: new Set(), conn: null };
+  const store = window._hemmaHomeStore = window._hemmaHomeStore || { data: { status_badges: [], entities: {} }, subs: new Set(), conn: null };
   store.ensure = function (hass) {
     const conn = hass && hass.connection;
     if (!conn || store.conn === conn) return;
     store.conn = conn;
     conn.subscribeMessage((data) => {
-      store.data = data || { status_badges: [] };
+      store.data = data || { status_badges: [], entities: {} };
       store.subs.forEach((fn) => fn());
     }, { type: 'hemma/home/subscribe' }).catch(() => {});
   };
@@ -175,4 +175,135 @@
     }
   }
   if (!customElements.get('hemma-status-badges')) customElements.define('hemma-status-badges', HemmaStatusBadges);
+
+  // Tile Tap: Ask First confirms anything that changes a device; View Only lets nothing through.
+  const boot = () => {
+    const ha = document.querySelector('home-assistant');
+    if (ha && ha.hass && ha.hass.connection) store.ensure(ha.hass);
+    else setTimeout(boot, 500);
+  };
+  boot();
+  const tapOf = (eid) => (eid && ((store.data.entities || {})[eid] || {}).tap) || 'normal';
+  const tileOf = (path) => path.find((n) => n && n.tagName === 'BUTTON-CARD' && n._stateObj);
+  const nameOf = (card) => {
+    const shown = card.shadowRoot && card.shadowRoot.querySelector('#name');
+    const t = shown && shown.textContent.trim();
+    return t || (card._stateObj.attributes || {}).friendly_name || card._stateObj.entity_id;
+  };
+  const isOn = (st) => /^(on|open|opening|playing|unlocked|heat|cool|heat_cool|auto|dry|fan_only|cleaning)$/.test(String(st && st.state));
+  const verbFor = (svc, st, data) => {
+    const [d, v] = String(svc || '').split('.');
+    const flip = () => (isOn(st) ? T('tap.turn_off', 'Turn Off') : T('tap.turn_on', 'Turn On'));
+    if (!v || v === 'toggle' || /smart_toggle/.test(JSON.stringify(data || {})) || /toggle/.test(v)) return flip();
+    if (v === 'turn_on') return T('tap.turn_on', 'Turn On');
+    if (v === 'turn_off') return T('tap.turn_off', 'Turn Off');
+    if (v === 'unlock') return T('tap.unlock', 'Unlock');
+    if (v === 'lock') return T('tap.lock', 'Lock');
+    if (v === 'open_cover' || v === 'open') return T('tap.open', 'Open');
+    if (v === 'close_cover' || v === 'close') return T('tap.close', 'Close');
+    if (v === 'media_play_pause') return String(st && st.state) === 'playing' ? T('tap.pause', 'Pause') : T('tap.play', 'Play');
+    if (v === 'media_play' || v === 'start') return v === 'start' ? T('tap.start', 'Start') : T('tap.play', 'Play');
+    if (v === 'media_pause' || v === 'pause') return T('tap.pause', 'Pause');
+    if (v === 'increment') return T('tap.raise', 'Raise');
+    if (v === 'decrement') return T('tap.lower', 'Lower');
+    if (v === 'set_hvac_mode') return data && data.hvac_mode === 'off' ? T('tap.turn_off', 'Turn Off') : T('tap.turn_on', 'Turn On');
+    if (v === 'return_to_base') return T('tap.send_home', 'Send Home');
+    return T('tap.continue', 'Continue');
+  };
+
+  const ASK_CSS = `
+    .scrim { position:fixed; inset:0; z-index:2147483000; display:grid; place-items:center; background:rgba(0,0,0,0.32);
+      animation:f .18s ease both; font-family:var(--hemma-font, -apple-system, system-ui, sans-serif); -webkit-tap-highlight-color:transparent; }
+    .box { width:min(300px, calc(100vw - 48px)); box-sizing:border-box; padding:22px 18px 18px; border-radius:30px; text-align:center;
+      background:rgba(38,38,42,0.94); color:#fff; -webkit-backdrop-filter:blur(40px) saturate(1.5); backdrop-filter:blur(40px) saturate(1.5);
+      box-shadow:0 24px 60px rgba(0,0,0,0.45), inset 0 0 0 0.5px rgba(255,255,255,0.16); animation:p .24s cubic-bezier(0.2,0.8,0.2,1) both; }
+    .t { font-size:17px; font-weight:600; line-height:1.3; letter-spacing:-0.01em; margin:0 6px 18px; overflow-wrap:anywhere; }
+    .r { display:flex; gap:10px; }
+    button { flex:1; height:44px; border:0; border-radius:999px; font:inherit; font-size:17px; cursor:pointer; color:#fff;
+      background:rgba(255,255,255,0.14); -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+    button.ok { font-weight:600; background:var(--hemma-color-teal, #00C3D0); }
+    button:active { filter:brightness(0.9); }
+    .out { animation:f .16s ease reverse both; }
+    @keyframes f { from { opacity:0; } }
+    @keyframes p { from { opacity:0; transform:scale(1.08); } }
+    @media (prefers-reduced-motion: reduce) { .scrim, .box { animation:none; } }
+  `;
+  let asking = null;
+  const ask = (title, verb) => new Promise((done) => {
+    if (asking) return done(false);
+    const host = document.createElement('div');
+    const root = host.attachShadow({ mode: 'open' });
+    root.innerHTML = `<style>${ASK_CSS}</style><div class="scrim"><div class="box" role="alertdialog" aria-modal="true" aria-label="${esc(title)}">`
+      + `<div class="t">${esc(title)}</div><div class="r"><button class="no" type="button">${esc(T('tap.cancel', 'Cancel'))}</button>`
+      + `<button class="ok" type="button">${esc(verb)}</button></div></div></div>`;
+    const scrim = root.querySelector('.scrim');
+    const finish = (yes) => {
+      document.removeEventListener('keydown', key, true);
+      scrim.classList.add('out');
+      setTimeout(() => host.remove(), 160);
+      asking = null;
+      done(yes);
+    };
+    const key = (ev) => {
+      if (ev.key === 'Escape') { ev.preventDefault(); finish(false); }
+      if (ev.key === 'Enter') { ev.preventDefault(); finish(true); }
+    };
+    scrim.addEventListener('click', (ev) => { if (ev.target === scrim) finish(false); });
+    root.querySelector('.no').onclick = () => finish(false);
+    root.querySelector('.ok').onclick = () => finish(true);
+    document.addEventListener('keydown', key, true);
+    asking = host;
+    document.body.appendChild(host);
+    setTimeout(() => { const b = root.querySelector('.ok'); if (b) b.focus({ preventScroll: true }); }, 30);
+  });
+  const block = (ev) => { ev.stopImmediatePropagation(); ev.stopPropagation(); if (ev.cancelable) ev.preventDefault(); };
+  window.hemmaTap = { ask, modeOf: tapOf };
+
+  const passed = new WeakSet();
+  window.addEventListener('hass-action', (ev) => {
+    if (passed.has(ev.detail)) return;
+    const card = tileOf(ev.composedPath());
+    if (!card) return;
+    const mode = tapOf(card._stateObj.entity_id);
+    if (mode === 'normal') return;
+    if (mode === 'view') return block(ev);
+    const conf = (ev.detail.config || {})[ev.detail.action + '_action'] || {};
+    if (['toggle', 'call-service', 'perform-action'].indexOf(conf.action) < 0) return;
+    block(ev);
+    const src = ev.composedPath()[0];
+    const data = conf.service_data || conf.data;
+    ask(T('tap.ask', '{verb} {name}?', { verb: verbFor(conf.service || conf.perform_action, card._stateObj, data), name: nameOf(card) }),
+      verbFor(conf.service || conf.perform_action, card._stateObj, data)).then((yes) => {
+      if (!yes || !src.isConnected) return;
+      passed.add(ev.detail);
+      src.dispatchEvent(new CustomEvent('hass-action', { detail: ev.detail, bubbles: true, composed: true }));
+    });
+  }, true);
+
+  // Controls drawn inside a tile run their own handlers, so they are gated as they are pressed.
+  let pass = null;
+  const inline = (ev) => {
+    const path = ev.composedPath();
+    const el = path.find((n) => n && n.getAttribute && (n.getAttribute('onclick') || n.getAttribute('ontouchend')));
+    if (!el || el === pass) return;
+    const card = tileOf(path);
+    if (!card) return;
+    const mode = tapOf(card._stateObj.entity_id);
+    if (mode === 'normal') return;
+    if (mode === 'view') return block(ev);
+    const code = (el.getAttribute('onclick') || '') + (el.getAttribute('ontouchend') || '');
+    const call = /callService\('([\w]+)','([\w]+)',(\{[^}]*\})?/.exec(code);
+    if (!call) return;
+    block(ev);
+    let data = null;
+    try { data = call[3] ? JSON.parse(call[3].replace(/'/g, '"').replace(/(\w+):/g, '"$1":')) : null; } catch (e) { data = null; }
+    const verb = verbFor(call[1] + '.' + call[2], card._stateObj, data);
+    ask(T('tap.ask', '{verb} {name}?', { verb, name: nameOf(card) }), verb).then((yes) => {
+      if (!yes || !el.isConnected) return;
+      pass = el;
+      try { el.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, cancelable: true })); } finally { pass = null; }
+    });
+  };
+  window.addEventListener('touchend', inline, true);
+  window.addEventListener('click', inline, true);
 })();

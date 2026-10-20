@@ -1,4 +1,4 @@
-"""Hemma's home-wide settings, shared by every dashboard and device: Status badges for now."""
+"""Hemma's home-wide settings, shared by every dashboard and device: Status badges and per-entity options."""
 
 from __future__ import annotations
 
@@ -39,10 +39,14 @@ BADGE_SCHEMA = vol.Schema(
 )
 
 
+ENTITY_ID = r"^[a-z0-9_]+\.[a-z0-9_]+$"
+ENTITY_OPTIONS_SCHEMA = vol.Schema({vol.Optional("tap"): vol.In(["normal", "confirm", "view"])})
+
+
 class HomeStore:
     def __init__(self, hass: HomeAssistant) -> None:
         self._store: Store[dict[str, Any]] = Store(hass, 1, STORE_KEY)
-        self.data: dict[str, Any] = {"status_badges": []}
+        self.data: dict[str, Any] = {"status_badges": [], "entities": {}}
         self._subs: set = set()
 
     async def async_load(self) -> None:
@@ -53,7 +57,15 @@ class HomeStore:
                 badges.append(BADGE_SCHEMA(b))
             except vol.Invalid:
                 continue
-        self.data = {"status_badges": badges}
+        entities = {}
+        for eid, opts in (data.get("entities") or {}).items():
+            try:
+                clean = ENTITY_OPTIONS_SCHEMA(opts)
+            except vol.Invalid:
+                continue
+            if clean and re.match(ENTITY_ID, eid):
+                entities[eid] = clean
+        self.data = {"status_badges": badges, "entities": entities}
 
     def snapshot(self) -> dict[str, Any]:
         return copy.deepcopy(self.data)
@@ -72,6 +84,17 @@ class HomeStore:
 
     def remove_badge(self, badge_id: str) -> None:
         self.data["status_badges"] = [b for b in self.data["status_badges"] if b["id"] != badge_id]
+        self._changed()
+
+    def set_entity(self, entity_id: str, options: dict[str, Any]) -> None:
+        entities = dict(self.data.get("entities") or {})
+        merged = {**entities.get(entity_id, {}), **options}
+        merged = {k: v for k, v in merged.items() if not (k == "tap" and v == "normal")}
+        if merged:
+            entities[entity_id] = merged
+        else:
+            entities.pop(entity_id, None)
+        self.data["entities"] = entities
         self._changed()
 
     @callback
@@ -120,11 +143,25 @@ def ws_remove_badge(hass: HomeAssistant, connection, msg: dict) -> None:
     connection.send_result(msg["id"])
 
 
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "hemma/home/set_entity",
+        vol.Required("entity_id"): vol.All(str, vol.Match(ENTITY_ID)),
+        vol.Required("options"): ENTITY_OPTIONS_SCHEMA,
+    }
+)
+@callback
+def ws_set_entity(hass: HomeAssistant, connection, msg: dict) -> None:
+    hass.data[DATA_KEY].set_entity(msg["entity_id"], msg["options"])
+    connection.send_result(msg["id"])
+
+
 async def async_setup_home(hass: HomeAssistant) -> None:
     if DATA_KEY in hass.data:
         return
     store = HomeStore(hass)
     await store.async_load()
     hass.data[DATA_KEY] = store
-    for cmd in (ws_subscribe, ws_set_badge, ws_remove_badge):
+    for cmd in (ws_subscribe, ws_set_badge, ws_remove_badge, ws_set_entity):
         websocket_api.async_register_command(hass, cmd)
