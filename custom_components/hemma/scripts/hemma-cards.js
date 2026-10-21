@@ -535,7 +535,7 @@
     .ic i { width: 18px; height: 18px; display: block; background: #fff; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
     .n { flex: 1; min-width: 0; display: grid; }
     .n b { font-size: 16px; font-weight: 550; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .n small { font-size: 13px; line-height: 1.15; color: rgba(255,255,255,0.6); }
+    .n small { font-size: 13px; line-height: 1.15; margin-top: -1px; color: rgba(255,255,255,0.6); }
     .v { color: rgba(255,255,255,0.65); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .chev { width: 7px; height: 12px; flex: none; color: rgba(255,255,255,0.35); }
     .back { flex: none; align-self: flex-start; border: 0; color: #fff; cursor: pointer; width: 44px; height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; position: relative;
@@ -999,9 +999,24 @@
         const i = this._list[Number(b.dataset.k)];
         const meta = [sub(i), clean(i.genres), i.runtime ? i.runtime + ' min' : '', clean(i.rating), ago(i.airdate)].filter(Boolean).join(' · ');
         root.querySelector('.det').innerHTML = `<span class="fan" style="background-image:url('${esc(url(i.fanart || i.art || i.poster))}')"></span><b>${esc(clean(i.title))}</b><span class="meta">${esc(meta)}</span>${i.summary ? `<p>${esc(clean(i.summary))}</p>` : ''}`;
+        // The details page sets the panel's height while it is open, up to what the screen allows.
+        const two = root.querySelector('.two'), from = wrap.offsetHeight;
+        two.style.position = 'relative';
+        const need = Math.max(from, two.scrollHeight);
+        two.style.position = '';
+        wrap.style.height = from + 'px';
+        void wrap.offsetHeight;
+        wrap.style.transition = 'height .38s cubic-bezier(0.2, 0.9, 0.25, 1)';
+        wrap.style.height = `min(${need}px, calc(100svh - 64px))`;
         wrap.classList.add('deep');
+        requestAnimationFrame(() => { wrap.style.height = `min(${Math.max(from, two.scrollHeight)}px, calc(100svh - 64px))`; });
       }; });
-      root.querySelector('.back').onclick = () => wrap.classList.remove('deep');
+      root.querySelector('.back').onclick = () => {
+        const one = root.querySelector('.one');
+        wrap.style.height = Math.min(one.scrollHeight, window.innerHeight - 64) + 'px';
+        wrap.classList.remove('deep');
+        setTimeout(() => { wrap.style.height = ''; wrap.style.transition = ''; }, 400);
+      };
     }
   }
   if (!customElements.get('hemma-recent-panel')) customElements.define('hemma-recent-panel', HemmaRecentPanel);

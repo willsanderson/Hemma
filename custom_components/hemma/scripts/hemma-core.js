@@ -7766,6 +7766,8 @@ window.hemmaMenuGlass = {
       display: flex;
       flex-direction: row;
       align-items: center;
+      /* The close control set this height; without it the title would sit against the top edge. */
+      min-height: 44px;
       /* The close glyph's ink sits on the same left margin as the body content
          (8px container + 26px card gutter = 34px), so the popup has one left
          edge instead of three. Measured, not derived: the glyph's ink starts
@@ -8474,6 +8476,22 @@ window.hemmaMenuGlass = {
       var y = Math.max(B.top + m, Math.min(B.bottom - m - S.height, t.top + t.height / 2 - S.height / 2));
       s.style.left = (x - S.left) + 'px';
       s.style.top = (y - S.top) + 'px';
+      // A panel that grows after it opens (a second page) moves up to stay on screen.
+      if (window.ResizeObserver && !this._keepIn) {
+        this._keepIn = new ResizeObserver(() => {
+          if (!this._morph || this.hasAttribute('closing')) return;
+          var r = s.getBoundingClientRect(), b = M.bounds ? M.bounds() : { top: 0, bottom: window.innerHeight };
+          var over = r.bottom - (b.bottom - 16);
+          var room = r.top - (b.top + 16);
+          var shift = over > 0 ? -Math.min(over, room) : 0;
+          if (shift) {
+            s.style.transition = 'top .38s cubic-bezier(0.2, 0.9, 0.25, 1)';
+            s.style.top = (parseFloat(s.style.top) || 0) + shift + 'px';
+            this._morph.box.y += shift;
+          }
+        });
+      }
+      if (this._keepIn) this._keepIn.observe(s);
       var gcs = getComputedStyle(g);
       var end = { bg: gcs.backgroundColor, filter: gcs.backdropFilter || gcs.webkitBackdropFilter || 'none',
         shadow: gcs.boxShadow, radius: parseFloat(getComputedStyle(s).borderTopLeftRadius) || 38 };
@@ -8566,6 +8584,7 @@ window.hemmaMenuGlass = {
       var mo = this._morph;
       if (!mo) return;
       this._morph = null;
+      if (this._keepIn) this._keepIn.disconnect();
       mo.card.style.visibility = '';
       if (mo.holder) mo.holder.remove();
       var root = this.shadowRoot;
@@ -8575,7 +8594,7 @@ window.hemmaMenuGlass = {
         if (e) e.getAnimations().forEach(function (a) { a.cancel(); });
       });
       ['inset', 'left', 'top', 'width', 'height', 'overflow', 'animation', 'box-shadow'].forEach(function (k) { g.style.removeProperty(k); });
-      ['left', 'top', 'overflow', 'animation', 'visibility'].forEach((k) => this.surface.style.removeProperty(k));
+      ['left', 'top', 'overflow', 'animation', 'visibility', 'transition'].forEach((k) => this.surface.style.removeProperty(k));
       if (rim) rim.style.removeProperty('animation');
       this.content.style.removeProperty('animation');
     }
@@ -9351,7 +9370,7 @@ window.hemmaMenuGlass = {
               + ' data-hemma-suffix="' + esc(r.subLive.suffix || '%') + '"';
           }
           out += '<div class="hui-sub' + (si ? ' hui-sub2' : '') + '"' + sLive
-            + ' style="font-size:var(--hemma-popup-sub-size, 13px);line-height:1.15;'
+            + ' style="font-size:var(--hemma-popup-sub-size, 13px);line-height:1.15;margin-top:var(--hemma-popup-sub-gap, -3px);'
             + 'color:var(--hemma-popup-sub-color, ' + T.ink3 + ');overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
             + esc(line) + '</div>';
         });
