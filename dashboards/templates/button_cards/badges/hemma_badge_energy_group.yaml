@@ -1,5 +1,5 @@
 hemma_badge_energy_group:
-  template: [hemma_badge_base, hemma_popup_energy]
+  template: [hemma_badge_base, hemma_popup_energy_panel]
 
   show_state: false
   show_label: false

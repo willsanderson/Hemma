@@ -454,6 +454,183 @@
   }
   if (!customElements.get('hemma-light-panel')) customElements.define('hemma-light-panel', HemmaLightPanel);
 
+  // Panels made of widgets (Energy first): a headline, one chart, two small widgets and a second page, after Apple Home.
+  const WIDGET_CSS = `
+    :host { display: block; color: #fff; font-family: var(--hemma-font, -apple-system, system-ui, sans-serif); --accent: var(--hemma-color-orange, #FF9230); }
+    .wrap { position: relative; max-height: calc(100svh - 64px); margin: -8px -8px -20px; width: calc(100% + 16px); overflow: hidden; display: flex; }
+    .one { position: relative; flex: 1; max-height: calc(100svh - 64px); }
+    .two { position: absolute; inset: 0; }
+    .plot { min-height: 96px; }
+    .page { transition: transform .38s cubic-bezier(0.2, 0.9, 0.25, 1), opacity .26s ease; box-sizing: border-box;
+      padding: 24px 18px 18px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+    .page::-webkit-scrollbar { display: none; }
+    .two { transform: translateX(100%); opacity: 0; }
+    .deep .one { transform: translateX(-30%); opacity: 0; pointer-events: none; }
+    .deep .two { transform: none; opacity: 1; }
+    .h { text-align: center; display: grid; gap: 3px; flex: none; }
+    .h b { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
+    .h span { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.72); }
+    .big { flex: none; text-align: center; font-size: 46px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; margin-top: 6px; }
+    .big small { font-size: 19px; font-weight: 600; color: rgba(255,255,255,0.7); margin-left: 4px; letter-spacing: 0; }
+    .cap { flex: none; text-align: center; font-size: 13.5px; color: rgba(255,255,255,0.7); margin-top: -4px; }
+    .seg { flex: none; align-self: center; display: flex; gap: 3px; padding: 3px; background: rgba(255,255,255,0.10); border-radius: 999px; margin-top: 4px; }
+    .seg button { border: 0; background: none; color: rgba(255,255,255,0.72); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 13px; border-radius: 999px; cursor: pointer; }
+    .seg button[aria-pressed="true"] { background: rgba(255,255,255,0.22); color: #fff; }
+    .w { flex: none; background: rgba(255,255,255,0.09); border-radius: 22px; padding: 13px 15px; display: grid; gap: 6px; }
+    .wt { font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,0.62); display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
+    .wv { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .wv small { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.62); margin-left: 3px; }
+    .g2 { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    svg.chart { display: block; width: 100%; height: 96px; }
+    .empty { height: 96px; display: grid; place-items: center; font-size: 13px; color: rgba(255,255,255,0.5); }
+    .list { flex: none; background: rgba(255,255,255,0.09); border-radius: 22px; overflow: hidden; }
+    .li { display: flex; align-items: center; gap: 12px; padding: 6px 14px; min-height: 44px; position: relative; font-size: 15px; width: 100%; box-sizing: border-box;
+      border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+    button.li { cursor: pointer; }
+    .li + .li::before { content: ""; position: absolute; top: 0; left: 56px; right: 14px; height: 0.5px; background: rgba(255,255,255,0.12); }
+    .li.plain + .li.plain::before { left: 14px; }
+    .ic { width: 30px; height: 30px; border-radius: 8px; flex: none; display: grid; place-items: center; background: var(--c, var(--accent)); }
+    .ic i { width: 18px; height: 18px; display: block; background: #fff; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+    .n { flex: 1; min-width: 0; display: grid; }
+    .n b { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .n small { font-size: 13px; color: rgba(255,255,255,0.6); }
+    .v { color: rgba(255,255,255,0.65); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .chev { width: 7px; height: 12px; flex: none; color: rgba(255,255,255,0.35); }
+    .back { flex: none; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 18px 0 14px; border-radius: 999px;
+      border: 0; background: rgba(255,255,255,0.10); color: #fff; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .back svg { width: 10px; height: 17px; }
+    @media (hover: hover) { button.li:hover, .back:hover, .seg button:not([aria-pressed="true"]):hover { background: rgba(255,255,255,0.06); } }
+    button:focus-visible { outline: 2px solid rgba(255,255,255,0.7); outline-offset: -2px; }
+  `;
+  const CHEV_SVG = '<svg class="chev" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg>';
+  const BACK_SVG = '<svg viewBox="0 0 10 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 1.5 1.5 8.5l7 7"/></svg>';
+  const DEVICE_HUES = ['var(--hemma-color-orange, #FF9230)', 'var(--hemma-color-blue, #0088FF)', 'var(--hemma-color-teal, #00C3D0)',
+    'var(--hemma-color-purple, #9333ea)', 'var(--hemma-color-yellow, #FFCC00)', 'var(--hemma-color-green, #30D158)', 'var(--hemma-color-pink, #ff4d70)'];
+  const num = (st) => { const n = st ? parseFloat(st.state) : NaN; return Number.isFinite(n) ? n : null; };
+  const watts = (st) => {
+    const n = num(st);
+    if (n == null) return null;
+    const u = String((st.attributes || {}).unit_of_measurement || 'W');
+    return u === 'kW' ? n * 1000 : n;
+  };
+  const powerParts = (w) => (w == null ? ['—', ''] : w >= 1000 ? [(w / 1000).toFixed(w >= 10000 ? 1 : 2), 'kW'] : [String(Math.round(w)), 'W']);
+  const chartSvg = (pts, color) => {
+    if (!pts || pts.length < 2) return null;
+    const W = 300, H = 96, pad = 4;
+    const max = Math.max(...pts) || 1, min = Math.min(0, ...pts);
+    const x = (i) => (i / (pts.length - 1)) * W;
+    const y = (v) => H - pad - ((v - min) / (max - min || 1)) * (H - pad * 2);
+    const line = pts.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+    const id = 'g' + Math.random().toString(36).slice(2, 8);
+    return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1">`
+      + `<stop offset="0" style="stop-color:${color};stop-opacity:.5"/><stop offset="1" style="stop-color:${color};stop-opacity:0"/></linearGradient></defs>`
+      + `<path d="${line} L${W} ${H} L0 ${H} Z" fill="url(#${id})"/><path d="${line}" fill="none" style="stroke:${color}" stroke-width="2.4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`
+      + `<circle cx="${x(pts.length - 1).toFixed(1)}" cy="${y(pts[pts.length - 1]).toFixed(1)}" r="4" style="fill:${color}"/></svg>`;
+  };
+  class HemmaEnergyPanel extends HTMLElement {
+    constructor() { super(); this.attachShadow({ mode: 'open' }); this._range = 'day'; this._series = {}; }
+    setConfig(c) { this._config = c || {}; this._built = false; }
+    getCardSize() { return 8; }
+    set hass(h) { this._hass = h; if (!this._built) this._build(); else this._paint(); }
+    _tier(w) {
+      const c = this._config;
+      if (w == null) return '';
+      if (w >= (c.extreme_threshold || 3000)) return T('energy.extreme', 'Extreme');
+      if (w >= (c.heavy_threshold || 1000)) return T('energy.heavy', 'Heavy');
+      if (w >= (c.normal_threshold || 200)) return T('energy.normal', 'Normal');
+      return T('energy.idle', 'Idle');
+    }
+    _build() {
+      if (!this._config || !this._hass) return;
+      this._built = true;
+      const root = this.shadowRoot;
+      root.innerHTML = `<style>${WIDGET_CSS}</style><div class="wrap"><div class="page one">`
+        + `<div class="h"><b>${esc(this._config.name || T('filter.energy', 'Energy'))}</b><span class="tier"></span></div>`
+        + `<div class="big"></div><div class="cap">${esc(T('energy.current_draw', 'Current draw'))}</div>`
+        + `<div class="seg" role="group">${[['day', T('energy.today', 'Today')], ['week', T('energy.week', 'Week')], ['month', T('energy.month', 'Month')]]
+          .map(([k, l]) => `<button type="button" data-r="${k}" aria-pressed="${k === this._range}">${esc(l)}</button>`).join('')}</div>`
+        + `<div class="w"><div class="plot"></div><div class="wt axis"></div></div>`
+        + `<div class="g2"><div class="w a"></div><div class="w b"></div></div>`
+        + `<div class="list"><button type="button" class="li plain top"><span class="n"><b>${esc(T('energy.top_devices', 'Top devices'))}</b></span><span class="v cnt"></span>${CHEV_SVG}</button></div>`
+        + `</div><div class="page two"><button type="button" class="back">${BACK_SVG}${esc(this._config.name || T('filter.energy', 'Energy'))}</button>`
+        + `<div class="h"><b>${esc(T('energy.top_devices', 'Top devices'))}</b><span>${esc(T('energy.now', 'Now'))}</span></div><div class="list devs"></div></div></div>`;
+      root.querySelectorAll('.seg button').forEach((b) => { b.onclick = () => { this._range = b.dataset.r; root.querySelectorAll('.seg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); this._load(); }; });
+      const wrap = root.querySelector('.wrap');
+      root.querySelector('.top').onclick = () => { this._devices(); wrap.classList.add('deep'); };
+      root.querySelector('.back').onclick = () => wrap.classList.remove('deep');
+      if (!(this._config.power_entities || []).length) root.querySelector('.list').style.display = 'none';
+      this._paint();
+      this._load();
+    }
+    async _load() {
+      const id = this._config.entity_power;
+      const plot = this.shadowRoot.querySelector('.plot'), axis = this.shadowRoot.querySelector('.axis');
+      if (!id || !this._hass.callWS) { plot.innerHTML = `<div class="empty">—</div>`; return; }
+      const r = this._range;
+      const now = new Date();
+      const start = r === 'day' ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        : new Date(now.getTime() - (r === 'week' ? 7 : 30) * 864e5);
+      const key = r + start.toDateString();
+      if (!this._series[key]) {
+        this._series[key] = this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: start.toISOString(),
+          statistic_ids: [id], period: r === 'month' ? 'day' : 'hour', types: ['mean'] })
+          .then((res) => ((res && res[id]) || []).map((p) => p.mean).filter((v) => v != null)).catch(() => []);
+      }
+      const pts = await this._series[key];
+      if (this._range !== r) return;
+      const svg = chartSvg(pts, 'var(--accent)');
+      plot.innerHTML = svg || `<div class="empty">${esc(T('energy.no_history', 'No history yet'))}</div>`;
+      const fmt = (d, o) => d.toLocaleString(this._hass.locale && this._hass.locale.language || undefined, o);
+      axis.innerHTML = r === 'day'
+        ? `<span>${fmt(start, { hour: 'numeric' })}</span><span>${esc(T('energy.now', 'Now'))}</span>`
+        : `<span>${fmt(start, { month: 'short', day: 'numeric' })}</span><span>${esc(T('energy.now', 'Now'))}</span>`;
+    }
+    _paint() {
+      const c = this._config, S = this._hass.states, root = this.shadowRoot;
+      const big = root.querySelector('.big');
+      if (!big) return;
+      const w = watts(S[c.entity_power]);
+      const [v, u] = powerParts(w);
+      big.innerHTML = `${esc(v)}<small>${esc(u)}</small>`;
+      root.querySelector('.tier').textContent = this._tier(w);
+      const unit = (st, d) => (st && st.attributes.unit_of_measurement) || d;
+      const val = (st, digits) => { const n = num(st); return n == null ? '—' : n.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits }); };
+      // A currency reads $34.55 with the cents quieter, as Apple's widgets set money.
+      const money = (st) => {
+        const n = num(st), u = unit(st, '');
+        if (n == null) return '—';
+        const sym = /^[$€£¥₩₹]$/.test(u) ? u : null;
+        const [w, f] = n.toFixed(2).split('.');
+        const whole = Number(w).toLocaleString();
+        return sym ? `${esc(sym)}${esc(whole)}<small style="margin-left:0">.${f}</small>` : `${esc(whole)}.${f}<small>${esc(u)}</small>`;
+      };
+      const a = root.querySelector('.w.a'), b = root.querySelector('.w.b');
+      const today = S[c.entity_usage_today], costToday = S[c.entity_cost_today];
+      a.innerHTML = `<div class="wt">${esc(T('energy.today', 'Today'))}</div><div class="wv">${today ? esc(val(today, 1)) + `<small>${esc(unit(today, 'kWh'))}</small>` : costToday ? money(costToday) : '—'}</div>`;
+      const costMonth = S[c.entity_cost_month], month = S[c.entity_usage_month];
+      b.innerHTML = `<div class="wt">${esc(T('energy.this_month', 'This month'))}</div><div class="wv">${costMonth ? money(costMonth) : month ? esc(val(month, 0)) + `<small>${esc(unit(month, 'kWh'))}</small>` : '—'}</div>`;
+      const cnt = root.querySelector('.cnt');
+      if (cnt) cnt.textContent = String((c.power_entities || []).filter((id) => S[id]).length);
+      if (root.querySelector('.wrap.deep')) this._devices();
+    }
+    _devices() {
+      const c = this._config, S = this._hass.states;
+      const total = watts(S[c.entity_power]);
+      const rows = (c.power_entities || []).filter((id) => S[id]).map((id) => ({ id, w: watts(S[id]) || 0 })).filter((r) => r.w > 0).sort((x, y) => y.w - x.w);
+      const nameOf = (id) => { const nm = (this._hass.entities && this._hass.entities[id] && this._hass.entities[id].name) || S[id].attributes.friendly_name || id; return String(nm).replace(/\s*power$/i, '').trim() || nm; };
+      const icons = c.power_icons || {};
+      this.shadowRoot.querySelector('.devs').innerHTML = rows.map((r, i) => {
+        const [v, u] = powerParts(r.w);
+        const share = total ? Math.round((r.w / total) * 100) : null;
+        return `<button type="button" class="li" data-id="${esc(r.id)}" style="--c:${DEVICE_HUES[i % DEVICE_HUES.length]}"><span class="ic"><i style="--i:url('${esc(iconUrl(icons[r.id] || 'plug'))}')"></i></span>`
+          + `<span class="n"><b>${esc(nameOf(r.id))}</b>${share != null && r.w > 0 ? `<small>${esc(T('energy.pct_of_draw', '{n}% of current draw', { n: share }))}</small>` : ''}</span>`
+          + `<span class="v">${esc(v)} ${esc(u)}</span></button>`;
+      }).join('');
+      this.shadowRoot.querySelectorAll('.devs .li').forEach((b) => { b.onclick = () => this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: b.dataset.id }, bubbles: true, composed: true })); });
+    }
+  }
+  if (!customElements.get('hemma-energy-panel')) customElements.define('hemma-energy-panel', HemmaEnergyPanel);
+
   // Tile Tap: Ask First confirms anything that changes a device; View Only lets nothing through.
   const boot = () => {
     const ha = document.querySelector('home-assistant');

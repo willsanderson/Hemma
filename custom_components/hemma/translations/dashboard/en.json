@@ -1107,5 +1107,8 @@
   "lights.whites": "Whites",
   "lights.n_lights": "{n} Lights",
   "lights.settings": "Settings",
-  "lights.done": "Done"
+  "lights.done": "Done",
+  "energy.week": "Week",
+  "energy.top_devices": "Top devices",
+  "energy.no_history": "No history yet"
 }

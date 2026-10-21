@@ -1106,5 +1106,8 @@
 	"lights.whites": "Vita toner",
 	"lights.n_lights": "{n} lampor",
 	"lights.settings": "Inställningar",
-	"lights.done": "Klar"
+	"lights.done": "Klar",
+	"energy.week": "Vecka",
+	"energy.top_devices": "Största förbrukare",
+	"energy.no_history": "Ingen historik än"
 }

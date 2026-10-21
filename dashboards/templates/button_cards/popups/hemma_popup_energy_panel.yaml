@@ -1,0 +1,63 @@
+hemma_popup_energy_panel:
+  template:
+  - hemma_popup_base
+  variables:
+    room_name: null
+    entity_power: null
+    entity_usage_today: null
+    entity_usage_month: null
+    entity_cost_today: null
+    entity_cost_month: null
+    power_entities: []
+    power_icons: {}
+    normal_threshold: 200
+    heavy_threshold: 1000
+    extreme_threshold: 3000
+  tap_action:
+    haptic: light
+    action: |
+      [[[
+        return window.hemmaPopupAction ? window.hemmaPopupAction() : 'more-info';
+      ]]]
+    entity: '[[[ return variables.entity_power || entity?.entity_id; ]]]'
+    hemma_popup:
+      title: ''
+      dismissable: true
+      style: '--popup-min-width: 340px; --popup-max-width: 340px; --popup-min-width-narrow: 340px; --hemma-popup-radius: 34px;'
+      content:
+        type: custom:hemma-energy-panel
+        name: '[[[ return variables.room_name || ""; ]]]'
+        entity_power: '[[[ return variables.entity_power || entity?.entity_id; ]]]'
+        entity_usage_today: '[[[ return variables.entity_usage_today; ]]]'
+        entity_usage_month: '[[[ return variables.entity_usage_month; ]]]'
+        entity_cost_today: '[[[ return variables.entity_cost_today; ]]]'
+        entity_cost_month: '[[[ return variables.entity_cost_month; ]]]'
+        power_entities: '[[[ return Array.isArray(variables.power_entities) ? variables.power_entities : []; ]]]'
+        power_icons: '[[[ return variables.power_icons || {}; ]]]'
+        normal_threshold: '[[[ return variables.normal_threshold; ]]]'
+        heavy_threshold: '[[[ return variables.heavy_threshold; ]]]'
+        extreme_threshold: '[[[ return variables.extreme_threshold; ]]]'
+  hold_action:
+    haptic: light
+    action: |
+      [[[
+        return window.hemmaPopupAction ? window.hemmaPopupAction() : 'more-info';
+      ]]]
+    entity: '[[[ return variables.entity_power || entity?.entity_id; ]]]'
+    hemma_popup:
+      title: ''
+      dismissable: true
+      style: '--popup-min-width: 340px; --popup-max-width: 340px; --popup-min-width-narrow: 340px; --hemma-popup-radius: 34px;'
+      content:
+        type: custom:hemma-energy-panel
+        name: '[[[ return variables.room_name || ""; ]]]'
+        entity_power: '[[[ return variables.entity_power || entity?.entity_id; ]]]'
+        entity_usage_today: '[[[ return variables.entity_usage_today; ]]]'
+        entity_usage_month: '[[[ return variables.entity_usage_month; ]]]'
+        entity_cost_today: '[[[ return variables.entity_cost_today; ]]]'
+        entity_cost_month: '[[[ return variables.entity_cost_month; ]]]'
+        power_entities: '[[[ return Array.isArray(variables.power_entities) ? variables.power_entities : []; ]]]'
+        power_icons: '[[[ return variables.power_icons || {}; ]]]'
+        normal_threshold: '[[[ return variables.normal_threshold; ]]]'
+        heavy_threshold: '[[[ return variables.heavy_threshold; ]]]'
+        extreme_threshold: '[[[ return variables.extreme_threshold; ]]]'

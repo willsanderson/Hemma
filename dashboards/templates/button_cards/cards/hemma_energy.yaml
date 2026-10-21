@@ -1,7 +1,7 @@
 hemma_energy:
   template:
     - hemma_entity
-    - hemma_popup_energy
+    - hemma_popup_energy_panel
 
   show_name: true
   show_state: true
