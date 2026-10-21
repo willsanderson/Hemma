@@ -338,7 +338,7 @@
         + `<button type="button" class="cap" role="slider" aria-label="${esc(T('lights.brightness', 'Brightness'))}" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span><span class="bulb"><i style="--i:url('${esc(iconUrl('light'))}')"></i></span></button>`
         + (favs.length ? `<div class="sw">${favs.map((f, i) => `<button type="button" data-i="${i}" style="--s:${favCss(f)}" aria-label="${esc(T('lights.favorite', 'Favorite {n}', { n: i + 1 }))}"></button>`).join('')}<button type="button" class="wheel${md.color ? '' : ' whites'}" aria-label="${esc(md.color ? T('lights.color', 'Color') : T('lights.whites', 'Whites'))}"></button></div>` : '<div></div>')
         + `<div class="foot">${group ? `<button type="button" class="act lights"><span class="o"><i style="--i:url('${esc(iconUrl('light'))}')"></i></span><small>${esc(T('lights.n_lights', '{n} Lights', { n: ids.length }))}</small></button>` : ''}`
-        + `<button type="button" class="act gear"><span class="o"><i style="--i:url('${esc(iconUrl('settings'))}')"></i></span><small>${esc(T('lights.settings', 'Settings'))}</small></button></div>`
+        + `<button type="button" class="act info"><span class="o"><i style="--i:url('${esc(iconUrl('settings'))}')"></i></span><small>${esc(T('lights.settings', 'Settings'))}</small></button></div>`
         + `</div>${group ? `<div class="page list"><button type="button" class="back" aria-label="${esc(T('ui.back', 'Back'))}"><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.4 1.6 1.8 10l8.6 8.4"/></svg></button><div class="lst"></div></div>` : ''}</div>`;
       this._favs = favs;
       const cap = root.querySelector('.cap');
@@ -374,7 +374,7 @@
       root.querySelectorAll('.sw button[data-i]').forEach((b) => { b.onclick = () => { const f = favs[Number(b.dataset.i)]; this._localColor = favCss(f); this._paint(); this._setColor(f); }; });
       const wheel = root.querySelector('.sw .wheel');
       if (wheel) wheel.onclick = () => this._picker(md.color);
-      root.querySelector('.gear').onclick = () => this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: c.entity }, bubbles: true, composed: true }));
+      root.querySelector('.info').onclick = () => this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: c.entity }, bubbles: true, composed: true }));
       if (group) {
         const wrap = root.querySelector('.wrap');
         root.querySelector('.lights').onclick = () => { this._rows(); wrap.classList.add('deep'); };
