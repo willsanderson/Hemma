@@ -1,0 +1,55 @@
+hemma_popup_network_panel:
+  template:
+  - hemma_popup_base
+  variables:
+    room_name: null
+    entity_download: null
+    entity_upload: null
+    entity_ping: null
+    entity_status: null
+    entity_stat_1: null
+    entity_stat_2: null
+    entity_stat_3: null
+    entity_stat_4: null
+    action_1_entity: null
+    action_1_label: null
+    action_1_status: null
+    action_1_confirm_helper: null
+    action_1_done_helper: null
+    action_2_entity: null
+    action_2_label: null
+    action_2_status: null
+    action_2_confirm_helper: null
+    action_2_done_helper: null
+    idle_threshold: 1
+    light_threshold: 10
+    heavy_threshold: 50
+  tap_action:
+    hemma_popup:
+      title: ''
+      dismissable: true
+      style: '--popup-min-width: 340px; --popup-max-width: 340px; --popup-min-width-narrow: 340px; --hemma-popup-radius: 34px;'
+      content:
+        type: custom:hemma-network-panel
+        name: '[[[ return variables.room_name || ""; ]]]'
+        entity_download: '[[[ return variables.entity_download || entity?.entity_id; ]]]'
+        entity_upload: '[[[ return variables.entity_upload || variables.upload_sensor || null; ]]]'
+        entity_ping: '[[[ return variables.entity_ping || null; ]]]'
+        entity_status: '[[[ return variables.entity_status || null; ]]]'
+        entity_stat_1: '[[[ return variables.entity_stat_1 || null; ]]]'
+        entity_stat_2: '[[[ return variables.entity_stat_2 || null; ]]]'
+        entity_stat_3: '[[[ return variables.entity_stat_3 || null; ]]]'
+        entity_stat_4: '[[[ return variables.entity_stat_4 || null; ]]]'
+        action_1_entity: '[[[ return variables.action_1_entity || null; ]]]'
+        action_1_label: '[[[ return variables.action_1_label || null; ]]]'
+        action_1_status: '[[[ return variables.action_1_status || null; ]]]'
+        action_1_confirm_helper: '[[[ return variables.action_1_confirm_helper || null; ]]]'
+        action_1_done_helper: '[[[ return variables.action_1_done_helper || null; ]]]'
+        action_2_entity: '[[[ return variables.action_2_entity || null; ]]]'
+        action_2_label: '[[[ return variables.action_2_label || null; ]]]'
+        action_2_status: '[[[ return variables.action_2_status || null; ]]]'
+        action_2_confirm_helper: '[[[ return variables.action_2_confirm_helper || null; ]]]'
+        action_2_done_helper: '[[[ return variables.action_2_done_helper || null; ]]]'
+        idle_threshold: '[[[ return variables.idle_threshold; ]]]'
+        light_threshold: '[[[ return variables.light_threshold; ]]]'
+        heavy_threshold: '[[[ return variables.heavy_threshold; ]]]'

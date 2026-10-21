@@ -1,0 +1,14 @@
+hemma_popup_recent_panel:
+  tap_action:
+    haptic: light
+    action: |
+      [[[
+        return window.hemmaPopupAction ? window.hemmaPopupAction() : 'more-info';
+      ]]]
+    entity: '[[[ return entity?.entity_id; ]]]'
+    hemma_popup:
+      title: ''
+      dismissable: true
+      style: '--popup-min-width: 340px; --popup-max-width: 340px; --popup-min-width-narrow: 340px; --hemma-popup-radius: 34px;'
+      content:
+        type: custom:hemma-recent-panel

@@ -2,7 +2,7 @@
 hemma_network:
   template:
     - hemma_entity
-    - hemma_popup_network
+    - hemma_popup_network_panel
 
   variables:
     upload_sensor: null

@@ -254,17 +254,16 @@
     .pill::after, .gear::after, .back::after, .sw button:not(.wheel)::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #fff; opacity: 0; transition: opacity .40s ease; pointer-events: none; }
     @media (hover: hover) { .pill:hover::after, .gear:hover::after, .back:hover::after { opacity: .07; transition: opacity .18s ease; } }
     .lst { flex: none; background: rgba(255,255,255,0.10); border-radius: 22px; overflow: hidden; }
-    .lr { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 12px; align-items: center; padding: 10px 14px; position: relative; }
+    .lr { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center; padding: 10px 14px; position: relative; }
     .lr .tg { width: 34px; height: 34px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: grid; place-items: center; background: rgba(0,0,0,0.28); color: rgba(255,255,255,0.55); -webkit-tap-highlight-color: transparent; transition: background-color .2s ease; }
-    .lr.on .tg { background: var(--lc); color: #fff; }
+    .lr.on .tg { background: var(--hemma-color-yellow, #FFCC00); color: #fff; }
     .lr .tg i { width: 18px; height: 18px; display: block; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
     .lr .nm { border: 0; background: none; color: inherit; font: inherit; padding: 0; text-align: left; cursor: pointer; min-width: 0; display: grid; }
     .lr .nm small { font-size: 13px; line-height: 1.15; color: rgba(255,255,255,0.6); font-variant-numeric: tabular-nums; }
-    .lr .chev { width: 7px; height: 12px; color: rgba(255,255,255,0.35); }
     .lr .mini { grid-column: 1 / -1; }
-    .lr + .lr::before { content: ""; position: absolute; top: 0; left: 60px; right: 14px; height: 0.5px; background: rgba(255,255,255,0.12); }
+    .lr + .lr::before { content: ""; position: absolute; top: 0; left: 14px; right: 14px; height: 0.5px; background: rgba(255,255,255,0.12); }
     .lr b { font-size: 16px; font-weight: 550; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .mini { grid-column: 1 / -1; position: relative; height: 30px; border-radius: 999px; background: rgba(0,0,0,0.28); overflow: hidden; cursor: default; touch-action: none; border: 0; padding: 0; }
+    .mini { grid-column: 1 / -1; position: relative; height: 30px; border-radius: 10px; background: rgba(0,0,0,0.28); overflow: hidden; cursor: default; touch-action: none; border: 0; padding: 0; }
     .mini .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--lc); }
     .picker { position: absolute; inset: 0; padding: 26px 22px 20px; box-sizing: border-box; display: grid; grid-template-rows: auto 1fr auto; gap: 16px; justify-items: center; }
     .wheelbig { width: 220px; height: 220px; border-radius: 50%; align-self: center; cursor: default; touch-action: none; border: 0; padding: 0;
@@ -415,7 +414,7 @@
           const r = document.createElement('div');
           r.className = 'lr';
           r.innerHTML = `<button type="button" class="tg"><i style="--i:url('${esc(iconUrl('light'))}')"></i></button>`
-            + `<button type="button" class="nm"><b></b><small></small></button>${CHEV_SVG}`
+            + `<button type="button" class="nm"><b></b><small></small></button>`
             + `<button type="button" class="mini" role="slider" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span></button>`;
           const mini = r.querySelector('.mini');
           r.querySelector('.tg').onclick = () => {
@@ -838,6 +837,166 @@
     }
   }
   if (!customElements.get('hemma-climate-panel')) customElements.define('hemma-climate-panel', HemmaClimatePanel);
+
+  const mbps = (st) => {
+    const n = num(st);
+    if (n == null) return null;
+    const u = String((st.attributes || {}).unit_of_measurement || 'Mbit/s');
+    return /^kbit|^kb/i.test(u) ? n / 1000 : /^gbit|^gb/i.test(u) ? n * 1000 : /B\/s$/.test(u) && !/bit/i.test(u) ? n * 8 : n;
+  };
+  const mbpsText = (v) => (v == null ? '—' : v >= 100 ? String(Math.round(v)) : v >= 10 ? v.toFixed(1) : v.toFixed(2));
+  class HemmaNetworkPanel extends HTMLElement {
+    constructor() { super(); this.attachShadow({ mode: 'open' }); this._series = null; }
+    setConfig(c) { this._config = c || {}; this._built = false; }
+    getCardSize() { return 8; }
+    set hass(h) { this._hass = h; if (!this._built) this._build(); else this._paint(); }
+    _tier(v) {
+      const c = this._config;
+      if (v == null) return T('network.connected', 'Connected');
+      if (v < (c.idle_threshold || 1)) return T('network.connection_idle', 'Connection idle');
+      if (v < (c.light_threshold || 10)) return T('network.light', 'Light');
+      if (v < (c.heavy_threshold || 50)) return T('network.active', 'Active');
+      return T('network.heavy', 'Heavy');
+    }
+    _actions() {
+      const c = this._config, S = this._hass.states;
+      return [1, 2].map((i) => ({ id: c['action_' + i + '_entity'], label: c['action_' + i + '_label'], status: c['action_' + i + '_status'],
+        confirm: c['action_' + i + '_confirm_helper'] || ('input_boolean.hemma_restart_confirm_' + i), done: c['action_' + i + '_done_helper'] || ('input_boolean.hemma_restart_done_' + i) }))
+        .filter((a) => a.id && S[a.id]);
+    }
+    _build() {
+      if (!this._config || !this._hass) return;
+      this._built = true;
+      const root = this.shadowRoot, c = this._config;
+      const name = c.name || T('network.title', 'Network');
+      root.innerHTML = `<style>${WIDGET_CSS} :host { --accent: var(--hemma-color-blue, #0088FF); }
+        .acts { flex: none; display: flex; gap: 10px; }
+        .acts button { flex: 1; height: 46px; border: 0; border-radius: 999px; color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.12); transition: background-color .3s ease; }
+        .acts button.arm { background: var(--hemma-color-red, #FF4245); }
+        .acts button.done { background: var(--hemma-color-green, #30D158); }
+        @media (hover: hover) { .acts button:not(.arm):not(.done):hover { background: rgba(255,255,255,0.18); } }</style>`
+        + `<div class="wrap"><div class="page one"><div class="h"><b>${esc(name)}</b><span class="tier"></span></div>`
+        + `<div class="g2"><button type="button" class="w dl"></button><button type="button" class="w ul"></button></div>`
+        + `<div class="w"><div class="plot"></div><div class="wt axis"></div></div>`
+        + `<div class="list stats"></div><div class="acts"></div></div></div>`;
+      const info = (id) => id && this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: id }, bubbles: true, composed: true }));
+      root.querySelector('.w.dl').onclick = () => info(c.entity_download);
+      root.querySelector('.w.ul').onclick = () => info(c.entity_upload);
+      this._paint();
+      this._load();
+    }
+    async _load() {
+      const c = this._config, id = c.entity_download, plot = this.shadowRoot.querySelector('.plot');
+      if (!id || !this._hass.callWS) return;
+      const start = new Date(Date.now() - 36e5);
+      if (!this._series) {
+        this._series = this._hass.callWS({ type: 'history/history_during_period', start_time: start.toISOString(), entity_ids: [id], minimal_response: true, no_attributes: true })
+          .then((res) => ((res && res[id]) || []).map((p) => ({ t: Math.round(Number(p.lu || p.lc) * 1000), v: parseFloat(p.s) })).filter((p) => Number.isFinite(p.v))).catch(() => []);
+      }
+      const series = await this._series;
+      const svg = chartSvg(series.map((p) => p.v), 'var(--accent)');
+      plot.innerHTML = svg || `<div class="empty">${esc(T('energy.no_history', 'No history yet'))}</div>`;
+      const lang = (this._hass.locale && this._hass.locale.language) || undefined;
+      if (svg) scrub(plot, series, (v) => mbpsText(v) + ' Mbit/s', (t) => new Date(t).toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' }));
+      this.shadowRoot.querySelector('.axis').innerHTML = `<span>${esc(T('network.hour_ago', '1 hour ago'))}</span><span>${esc(T('energy.now', 'Now'))}</span>`;
+    }
+    _paint() {
+      const c = this._config, S = this._hass.states, root = this.shadowRoot;
+      const dlBox = root.querySelector('.w.dl');
+      if (!dlBox) return;
+      const dl = mbps(S[c.entity_download]), ul = mbps(S[c.entity_upload]);
+      const status = S[c.entity_status];
+      root.querySelector('.tier').textContent = status && !/^(on|connected|online|up)$/i.test(status.state) ? (this._hass.formatEntityState ? this._hass.formatEntityState(status) : status.state) : this._tier(dl);
+      const box = (label, v) => `<div class="wt">${esc(label)}</div><div class="wv">${esc(mbpsText(v))}<small>Mbit/s</small></div>`;
+      dlBox.innerHTML = box(T('network.download', 'Download'), dl);
+      root.querySelector('.w.ul').innerHTML = box(T('network.upload', 'Upload'), ul);
+      // The old popup's own labels: stat 1/2 are wired, 3/4 Wi-Fi.
+      const stats = [[c.entity_ping, T('network.ping', 'Ping'), 'network'], [c.entity_stat_1, T('network.wired_download', 'Wired download'), 'arrow-down'],
+        [c.entity_stat_2, T('network.wired_upload', 'Wired upload'), 'arrow-up'], [c.entity_stat_3, T('network.wifi_download', 'Wi-Fi download'), 'wifi'],
+        [c.entity_stat_4, T('network.wifi_upload', 'Wi-Fi upload'), 'wifi']].filter(([id]) => id && S[id] && id !== c.entity_upload && id !== c.entity_download);
+      const list = root.querySelector('.stats');
+      list.style.display = stats.length ? '' : 'none';
+      list.innerHTML = stats.map(([id, label, icon], i) => {
+        const st = S[id], v = this._hass.formatEntityState ? this._hass.formatEntityState(st) : st.state;
+        return `<button type="button" class="li" data-id="${esc(id)}" style="--c:${['var(--hemma-color-green, #30D158)', 'var(--hemma-color-blue, #0088FF)', 'var(--hemma-color-teal, #00C3D0)', 'var(--hemma-color-ice, #3cd3fe)', 'var(--hemma-color-purple, #9333ea)'][i % 5]}"><span class="ic"><i style="--i:url('${esc(iconUrl(icon))}')"></i></span><span class="n"><b>${esc(label)}</b></span><span class="v">${esc(v)}</span>${CHEV_SVG}</button>`;
+      }).join('');
+      list.querySelectorAll('.li').forEach((b) => { b.onclick = () => this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: b.dataset.id }, bubbles: true, composed: true })); });
+      const acts = root.querySelector('.acts');
+      const A = this._actions();
+      acts.style.display = A.length ? '' : 'none';
+      acts.innerHTML = A.map((a, i) => {
+        const armed = S[a.confirm] && S[a.confirm].state === 'on', done = S[a.done] && S[a.done].state === 'on';
+        const label = done ? T('network.restarting', 'Restarting…') : armed ? T('network.confirm', 'Confirm') : (a.label || (S[a.id].attributes.friendly_name || a.id));
+        return `<button type="button" data-i="${i}" class="${done ? 'done' : armed ? 'arm' : ''}">${esc(label)}</button>`;
+      }).join('');
+      acts.querySelectorAll('button').forEach((b) => {
+        const a = A[Number(b.dataset.i)];
+        b.onclick = () => {
+          const hasHelpers = S[a.confirm] && S[a.done];
+          const call = hasHelpers ? this._hass.callService('script', 'turn_on', { entity_id: 'script.hemma_restart_toggle', variables: { button_entity: a.id, helper_entity: a.confirm, done_entity: a.done } })
+            : this._hass.callService('button', 'press', { entity_id: a.id });
+          Promise.resolve(call).catch(() => {});
+        };
+      });
+    }
+  }
+  if (!customElements.get('hemma-network-panel')) customElements.define('hemma-network-panel', HemmaNetworkPanel);
+
+  class HemmaRecentPanel extends HTMLElement {
+    constructor() { super(); this.attachShadow({ mode: 'open' }); }
+    setConfig(c) { this._config = c || {}; this._built = false; }
+    getCardSize() { return 8; }
+    set hass(h) { const first = !this._hass; this._hass = h; if (first || !this._built) this._build(); }
+    _items() {
+      const S = this._hass.states, c = this._config;
+      const rows = (id, tv) => { const d = S[id] && S[id].attributes && S[id].attributes.data; return Array.isArray(d) ? d.slice(1).filter((i) => i && i.title).map((i) => ({ ...i, tv })) : []; };
+      const days = c.days || 3, cut = Date.now() - days * 864e5;
+      const all = rows(c.movies_entity || 'sensor.recently_added_movies', false).concat(rows(c.tv_entity || 'sensor.recently_added_tv', true))
+        .filter((i) => i.airdate && new Date(i.airdate).getTime() >= cut).sort((a, b) => new Date(b.airdate) - new Date(a.airdate));
+      return { movies: all.filter((i) => !i.tv), shows: all.filter((i) => i.tv) };
+    }
+    _build() {
+      if (!this._config || !this._hass) return;
+      this._built = true;
+      const root = this.shadowRoot, { movies, shows } = this._items();
+      const url = (raw) => (!raw ? '' : String(raw).startsWith('/') ? location.origin + raw : String(raw));
+      const clean = (t) => String(t || '').replace(/\s+/g, ' ').trim();
+      const sub = (i) => i.tv ? [clean(i.number), clean(i.episode)].filter(Boolean).join(' · ') : ((String(i.aired || '').match(/^(\d{4})/) || [])[1] || '');
+      const ago = (iso) => { const h = (Date.now() - new Date(iso).getTime()) / 36e5; return h < 1 ? T('time.just_now', 'just now') : h < 24 ? T('time.short.hours', '{n}h ago', { n: Math.floor(h) }) : T('time.short.days', '{n}d ago', { n: Math.floor(h / 24) }); };
+      this._list = movies.concat(shows);
+      const shelf = (label, list) => !list.length ? '' : `<div class="sh"><div class="wt" style="padding:0 4px"><span>${esc(label)}</span><span>${list.length}</span></div><div class="row">`
+        + list.map((i) => `<button type="button" class="po" data-k="${this._list.indexOf(i)}"><span class="art" style="background-image:url('${esc(url(i.poster || i.fanart))}')"></span><b>${esc(clean(i.title))}</b><small>${esc(sub(i) || ago(i.airdate))}</small></button>`).join('')
+        + `</div></div>`;
+      const n = this._list.length;
+      root.innerHTML = `<style>${WIDGET_CSS} :host { --accent: var(--hemma-color-gold, #e5a00d); }
+        .sh { flex: none; display: grid; gap: 8px; }
+        .row { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 2px 2px 4px; margin: 0 -2px; }
+        .row::-webkit-scrollbar { display: none; }
+        .po { flex: none; width: 92px; scroll-snap-align: start; display: grid; gap: 5px; border: 0; background: none; color: #fff; font: inherit; padding: 0; text-align: left; cursor: pointer; }
+        .art { display: block; aspect-ratio: 2 / 3; width: 100%; border-radius: 12px; background: rgba(255,255,255,0.08) center / cover no-repeat; }
+        .po b { font-size: 12.5px; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .po small { font-size: 11.5px; color: rgba(255,255,255,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -3px; }
+        @media (hover: hover) { .po:hover .art { filter: brightness(1.08); } }
+        .det { display: grid; gap: 10px; }
+        .det .fan { aspect-ratio: 16 / 9; max-width: 100%; border-radius: 18px; background: rgba(255,255,255,0.08) center / cover no-repeat; }
+        .det b { font-size: 20px; font-weight: 700; }
+        .det .meta { font-size: 13.5px; color: rgba(255,255,255,0.7); }
+        .det p { margin: 0; font-size: 14.5px; line-height: 1.45; color: rgba(255,255,255,0.85); }
+        .none { flex: none; text-align: center; color: rgba(255,255,255,0.6); font-size: 14px; padding: 18px 0 8px; }</style>`
+        + `<div class="wrap"><div class="page one"><div class="h"><b>${esc(T('plex.recently_added', 'Recently Added'))}</b><span>${esc(n ? T('plex.n_new', '{n} new', { n }) : T('plex.up_to_date', 'Up to date'))}</span></div>`
+        + (n ? shelf(T('plex.movies', 'Movies'), movies) + shelf(T('plex.tv_shows', 'TV Shows'), shows) : `<div class="none">${esc(T('plex.nothing_added', 'Nothing recently added'))}</div>`)
+        + `</div><div class="page two"><button type="button" class="back">${BACK_SVG}${esc(T('plex.recently_added', 'Recently Added'))}</button><div class="det"></div></div></div>`;
+      const wrap = root.querySelector('.wrap');
+      root.querySelectorAll('.po').forEach((b) => { b.onclick = () => {
+        const i = this._list[Number(b.dataset.k)];
+        const meta = [sub(i), clean(i.genres), i.runtime ? i.runtime + ' min' : '', clean(i.rating), ago(i.airdate)].filter(Boolean).join(' · ');
+        root.querySelector('.det').innerHTML = `<span class="fan" style="background-image:url('${esc(url(i.fanart || i.art || i.poster))}')"></span><b>${esc(clean(i.title))}</b><span class="meta">${esc(meta)}</span>${i.summary ? `<p>${esc(clean(i.summary))}</p>` : ''}`;
+        wrap.classList.add('deep');
+      }; });
+      root.querySelector('.back').onclick = () => wrap.classList.remove('deep');
+    }
+  }
+  if (!customElements.get('hemma-recent-panel')) customElements.define('hemma-recent-panel', HemmaRecentPanel);
 
   // Tile Tap: Ask First confirms anything that changes a device; View Only lets nothing through.
   const boot = () => {

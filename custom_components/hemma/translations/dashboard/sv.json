@@ -1111,5 +1111,8 @@
 	"energy.top_devices": "Största förbrukare",
 	"energy.no_history": "Ingen historik än",
 	"climate.history_24h": "Historik 24 timmar",
-	"lights.on": "På"
+	"lights.on": "På",
+	"network.hour_ago": "1 timme sedan",
+	"network.restarting": "Startar om…",
+	"plex.n_new": "{n} nya"
 }

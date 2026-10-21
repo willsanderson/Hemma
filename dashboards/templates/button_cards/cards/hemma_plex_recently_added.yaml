@@ -1,7 +1,7 @@
 hemma_plex_recently_added:
   template:
     - hemma_entity
-    - hemma_popup_recently_added
+    - hemma_popup_recent_panel
 
   variables:
     icon: plex
