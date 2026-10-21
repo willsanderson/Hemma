@@ -924,22 +924,45 @@
         return `<button type="button" class="li" data-id="${esc(id)}" style="--c:${['var(--hemma-color-green, #30D158)', 'var(--hemma-color-blue, #0088FF)', 'var(--hemma-color-teal, #00C3D0)', 'var(--hemma-color-ice, #3cd3fe)', 'var(--hemma-color-purple, #9333ea)'][i % 5]}"><span class="ic"><i style="--i:url('${esc(iconUrl(icon))}')"></i></span><span class="n"><b>${esc(label)}</b></span><span class="v">${esc(v)}</span>${CHEV_SVG}</button>`;
       }).join('');
       list.querySelectorAll('.li').forEach((b) => { b.onclick = () => this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: b.dataset.id }, bubbles: true, composed: true })); });
+      this._paintActs();
+    }
+    // A restart asks once: Cancel or the red action, and a confirm nobody answers cancels itself.
+    _off(id) { if (id && this._hass.states[id] && this._hass.states[id].state === 'on') Promise.resolve(this._hass.callService('input_boolean', 'turn_off', { entity_id: id })).catch(() => {}); }
+    _clearActs() { this._actions().forEach((a) => { this._off(a.confirm); this._off(a.done); }); }
+    connectedCallback() { if (this._hass && this._built && !this._cleared) { this._cleared = true; this._clearActs(); } }
+    disconnectedCallback() { if (this._hass) this._actions().forEach((a) => this._off(a.confirm)); clearTimeout(this._armT); clearTimeout(this._doneT); this._cleared = false; this._actKey = null; }
+    _paintActs() {
+      const S = this._hass.states, root = this.shadowRoot;
       const acts = root.querySelector('.acts');
+      if (!acts) return;
+      if (!this._cleared) { this._cleared = true; this._clearActs(); }
       const A = this._actions();
       acts.style.display = A.length ? '' : 'none';
-      acts.innerHTML = A.map((a, i) => {
-        const armed = S[a.confirm] && S[a.confirm].state === 'on', done = S[a.done] && S[a.done].state === 'on';
-        const label = done ? T('network.restarting', 'Restarting…') : armed ? T('network.confirm', 'Confirm') : (a.label || (S[a.id].attributes.friendly_name || a.id));
-        return `<button type="button" data-i="${i}" class="${done ? 'done' : armed ? 'arm' : ''}">${esc(label)}</button>`;
-      }).join('');
-      acts.querySelectorAll('button').forEach((b) => {
-        const a = A[Number(b.dataset.i)];
-        b.onclick = () => {
-          const hasHelpers = S[a.confirm] && S[a.done];
-          const call = hasHelpers ? this._hass.callService('script', 'turn_on', { entity_id: 'script.hemma_restart_toggle', variables: { button_entity: a.id, helper_entity: a.confirm, done_entity: a.done } })
-            : this._hass.callService('button', 'press', { entity_id: a.id });
-          Promise.resolve(call).catch(() => {});
-        };
+      const armed = A.find((a) => S[a.confirm] && S[a.confirm].state === 'on');
+      const done = A.find((a) => S[a.done] && S[a.done].state === 'on');
+      const nameOf = (a) => a.label || (S[a.id].attributes.friendly_name || a.id);
+      const key = (armed ? 'a' + armed.id : '') + (done ? 'd' + done.id : '') + A.map(nameOf).join('|');
+      if (key === this._actKey) return;
+      this._actKey = key;
+      clearTimeout(this._armT); clearTimeout(this._doneT);
+      const run = (a) => {
+        const hasHelpers = S[a.confirm] && S[a.done];
+        const call = hasHelpers ? this._hass.callService('script', 'turn_on', { entity_id: 'script.hemma_restart_toggle', variables: { button_entity: a.id, helper_entity: a.confirm, done_entity: a.done } })
+          : this._hass.callService('button', 'press', { entity_id: a.id });
+        Promise.resolve(call).catch(() => {});
+      };
+      if (armed) {
+        acts.innerHTML = `<button type="button" class="cancel">${esc(T('tap.cancel', 'Cancel'))}</button><button type="button" class="arm">${esc(nameOf(armed))}</button>`;
+        acts.querySelector('.cancel').onclick = () => this._off(armed.confirm);
+        acts.querySelector('.arm').onclick = () => run(armed);
+        this._armT = setTimeout(() => this._off(armed.confirm), 10000);
+        return;
+      }
+      if (done) this._doneT = setTimeout(() => this._off(done.done), 15000);
+      acts.innerHTML = A.map((a, i) => `<button type="button" data-i="${i}" class="${a === done ? 'done' : ''}">${esc(a === done ? T('network.restarting', 'Restarting…') : nameOf(a))}</button>`).join('');
+      acts.querySelectorAll('button').forEach((bt) => {
+        const a = A[Number(bt.dataset.i)];
+        bt.onclick = () => (a === done ? this._off(a.done) : run(a));
       });
     }
   }
