@@ -17,7 +17,8 @@ hemma_popup_cover:
     hemma_popup:
       title: "[[[ const T = window._hemmaT || ((k, en, v) => { let s = String(en); if (v) for (const p in v) s = s.split(String.fromCharCode(123) + p + String.fromCharCode(125)).join(String(v[p])); return s; }); const n = String(this._config?.name || '').trim(); const many = Array.isArray(variables.covers) && variables.covers.length > 1; return many || !n || n.startsWith('[' + '[[') ? T('covers.title', 'Covers') : n; ]]]"
       dismissable: true
-      style: '--popup-min-width: 340px; --popup-max-width: 340px; --popup-min-width-narrow: 340px; --hemma-popup-row-min: 44px; --hemma-popup-row-pad-y: 6px; --hemma-popup-row-pad-x: 14px; --hemma-popup-row-label-size: 16px; --hemma-popup-row-label-weight: 600; --hemma-popup-row-value-size: 15px; --hemma-popup-sub-size: 13px; --hemma-popup-icon-tile: 30px;'
+      close: false
+      style: '--popup-min-width: 340px; --popup-max-width: 340px; --popup-min-width-narrow: 340px; --hemma-popup-row-min: 44px; --hemma-popup-row-pad-y: 6px; --hemma-popup-row-pad-x: 14px; --hemma-popup-row-label-size: 16px; --hemma-popup-row-label-weight: 550; --hemma-popup-row-value-size: 15px; --hemma-popup-sub-size: 13px; --hemma-popup-icon-tile: 30px;'
       popup_styles:
       - style: all
         styles: |
@@ -668,7 +669,7 @@ hemma_popup_cover:
               /* Shorter than the shared control height by the presets row this
                  popup has and the lock does not, so both sheets land their
                  tiles on the same line. */
-              height: 297,
+              height: 314,
               value: avg == null ? (allClosed ? 0 : 100) : avg,
               invert: true,
               live: { entities: coverIds, attr: 'current_position' },
@@ -677,17 +678,6 @@ hemma_popup_cover:
                      target: { entity_id: coverIds }, field: 'position' },
             }));
 
-            const setTo = (pos) => ({
-              domain: 'cover', service: 'set_cover_position',
-              target: { entity_id: coverIds }, data: { position: pos },
-            });
-            add('presets', UI.segments([
-              { label: T('covers.close', 'Close'), svc: setTo(0),   active: avg === 0 },
-              { label: '25%',   svc: setTo(25),  active: avg === 25 },
-              { label: '50%',   svc: setTo(50),  active: avg === 50 },
-              { label: '75%',   svc: setTo(75),  active: avg === 75 },
-              { label: T('covers.open', 'Open'),  svc: setTo(100), active: avg === 100 },
-            ]));
 
             /* Sectioned by device class. A header earns its place by telling
                two things apart, so one type gets one section named for what it
@@ -781,7 +771,7 @@ hemma_popup_cover:
               styles: {
                 card: [
                   { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
-                  { padding: '6px 26px 22px 26px' },
+                  { padding: '6px 26px 14px 26px' },
                 ],
                 grid: [
                   { 'grid-template-areas': areas.join(' ') },

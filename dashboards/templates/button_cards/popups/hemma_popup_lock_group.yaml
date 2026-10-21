@@ -22,6 +22,7 @@ hemma_popup_lock:
           return (variables.room_name || (n.startsWith('[' + '[[') ? '' : n)).trim() || T('locks.popup.title', 'Locks');
         ]]]
       dismissable: true
+      close: false
       popup_styles:
       - style: all
         styles: |
@@ -99,7 +100,7 @@ hemma_popup_lock:
           --hemma-popup-row-pad-y: 6px;
           --hemma-popup-row-pad-x: 14px;
           --hemma-popup-row-label-size: 16px;
-          --hemma-popup-row-label-weight: 600;
+          --hemma-popup-row-label-weight: 550;
           --hemma-popup-row-value-size: 15px;
           --hemma-popup-sub-size: 13px;
           --hemma-popup-icon-tile: 30px;
@@ -115,12 +116,7 @@ hemma_popup_lock:
           const _declared = (Array.isArray(variables.locks) ? variables.locks : [])
                               .map(id => (typeof id === 'string' ? id.trim() : id))
                               .filter(_validId);
-          /* A lock reached through two integrations is one lock: same device name, same area. */
-          const _twin = (id) => { const e = hass?.entities?.[id]; const d = e && hass?.devices?.[e.device_id];
-            return ((d && (d.name_by_user || d.name)) || states[id]?.attributes?.friendly_name || id).toLowerCase() + '|' + (e?.area_id || d?.area_id || ''); };
-          const _seen = new Set();
-          const _once = _declared.filter((id) => { const k = _twin(id); if (_seen.has(k)) return false; _seen.add(k); return true; });
-          const lockIds  = _once.length ? _once : (groupId && _validId(groupId) ? [groupId] : []);
+          const lockIds  = [...new Set(_declared)].length ? [...new Set(_declared)] : (groupId && _validId(groupId) ? [groupId] : []);
 
           const _gid     = JSON.stringify(groupId);
           const _lockIds = JSON.stringify(lockIds);
@@ -792,7 +788,7 @@ hemma_popup_lock:
               styles: {
                 card: [
                   { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
-                  { padding: '6px 26px 22px 26px' },
+                  { padding: '6px 26px 14px 26px' },
                 ],
                 grid: [
                   { 'grid-template-areas': areas.join(' ') },

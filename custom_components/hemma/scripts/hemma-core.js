@@ -9331,7 +9331,7 @@ window.hemmaMenuGlass = {
         + lead
         + '<div style="flex:1;min-width:0;pointer-events:none;">'
         + '<div style="font-size:var(--hemma-popup-row-label-size, 17px);'
-        + 'font-weight:var(--hemma-popup-row-label-weight, 400);'
+        + 'font-weight:var(--hemma-popup-row-label-weight, 400);line-height:1.15;'
         + 'letter-spacing:-0.022em;color:'
         + (tone(r.labelTone) || T.ink) + ';overflow:hidden;'
         + 'text-overflow:ellipsis;white-space:nowrap;">'
@@ -9351,7 +9351,7 @@ window.hemmaMenuGlass = {
               + ' data-hemma-suffix="' + esc(r.subLive.suffix || '%') + '"';
           }
           out += '<div class="hui-sub' + (si ? ' hui-sub2' : '') + '"' + sLive
-            + ' style="font-size:var(--hemma-popup-sub-size, 13px);'
+            + ' style="font-size:var(--hemma-popup-sub-size, 13px);line-height:1.15;'
             + 'color:var(--hemma-popup-sub-color, ' + T.ink3 + ');overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
             + esc(line) + '</div>';
         });

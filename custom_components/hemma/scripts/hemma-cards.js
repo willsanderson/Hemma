@@ -249,7 +249,7 @@
     .lst { flex: none; background: rgba(255,255,255,0.10); border-radius: 22px; overflow: hidden; }
     .lr { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; padding: 12px 16px; position: relative; }
     .lr + .lr::before { content: ""; position: absolute; top: 0; left: 16px; right: 16px; height: 0.5px; background: rgba(255,255,255,0.12); }
-    .lr b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lr b { font-size: 16px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .lr span { font-size: 13.5px; color: rgba(255,255,255,0.65); font-variant-numeric: tabular-nums; }
     .mini { grid-column: 1 / -1; position: relative; height: 30px; border-radius: 999px; background: rgba(0,0,0,0.28); overflow: hidden; cursor: default; touch-action: none; border: 0; padding: 0; }
     .mini .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--lc); }
@@ -259,7 +259,7 @@
     .kbar { width: 100%; height: 56px; border-radius: 999px; align-self: center; cursor: default; touch-action: none; border: 0; padding: 0;
       background: linear-gradient(90deg, ${kelvinRgb(2000)}, ${kelvinRgb(3500)}, #fff, ${kelvinRgb(6500)}); }
     button:focus-visible { outline: 2px solid rgba(255,255,255,0.7); outline-offset: 2px; }
-    @media (max-width: 768px) { .main { gap: 26px; padding-top: 36px; } .cap { max-height: 440px; width: 132px; border-radius: 40px; } .h b { font-size: 26px; } .h span { font-size: 17px; } }
+    @media (max-width: 768px) { .main { gap: 26px; padding-top: 36px; } .cap { max-height: 340px; width: 124px; border-radius: 38px; } .h b { font-size: 26px; } .h span { font-size: 17px; } }
   `;
   class HemmaLightPanel extends HTMLElement {
     constructor() { super(); this.attachShadow({ mode: 'open' }); this._pending = {}; }
@@ -460,7 +460,7 @@
     :host { display: block; color: #fff; font-family: var(--hemma-font, -apple-system, system-ui, sans-serif); --accent: var(--hemma-color-orange, #FF9230); }
     .wrap { position: relative; max-height: calc(100svh - 64px); min-height: var(--hemma-panel-h, 0px); margin: -8px -8px -20px; width: calc(100% + 16px); overflow: hidden; display: flex; }
     .one { position: relative; flex: 1; max-height: calc(100svh - 64px); }
-    @media (max-width: 768px) { .one { justify-content: center; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); } }
+    @media (max-width: 768px) { .one { padding-top: 32px; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); } }
     .two { position: absolute; inset: 0; }
     .plot { min-height: 96px; }
     .page { transition: transform .38s cubic-bezier(0.2, 0.9, 0.25, 1), opacity .26s ease; box-sizing: border-box;
@@ -478,24 +478,33 @@
     .seg { flex: none; align-self: center; display: flex; gap: 3px; padding: 3px; background: rgba(255,255,255,0.10); border-radius: 999px; margin-top: 4px; }
     .seg button { border: 0; background: none; color: rgba(255,255,255,0.72); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 13px; border-radius: 999px; cursor: pointer; }
     .seg button[aria-pressed="true"] { background: rgba(255,255,255,0.22); color: #fff; }
-    .w { flex: none; background: rgba(255,255,255,0.09); border-radius: 22px; padding: 13px 15px; display: grid; gap: 6px; }
+    .w { flex: none; background: rgba(255,255,255,0.09); border-radius: 20px; padding: 13px 15px; display: grid; gap: 6px; }
+    button.w { border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+    @media (hover: hover) { button.w:hover { background: rgba(255,255,255,0.13); } }
+    .plot { position: relative; touch-action: pan-y; }
+    .scrub { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .15s ease; }
+    .plot.on .scrub { opacity: 1; }
+    .scrub .ln { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,0.5); }
+    .scrub .dt { position: absolute; width: 9px; height: 9px; border-radius: 50%; margin: -4.5px 0 0 -4.5px; background: #fff; box-shadow: 0 0 0 2px var(--accent); }
+    .scrub .tip { position: absolute; top: -6px; transform: translate(-50%, -100%); white-space: nowrap; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,0.55); font-variant-numeric: tabular-nums; }
+    .scrub .tip small { font-weight: 500; color: rgba(255,255,255,0.7); margin-left: 4px; }
     .wt { font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,0.62); display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
     .wv { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .wv small { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.62); margin-left: 3px; }
     .g2 { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     svg.chart { display: block; width: 100%; height: 96px; }
     .empty { height: 96px; display: grid; place-items: center; font-size: 13px; color: rgba(255,255,255,0.5); }
-    .list { flex: none; background: rgba(255,255,255,0.09); border-radius: 22px; overflow: hidden; }
-    .li { display: flex; align-items: center; gap: 12px; padding: 6px 14px; min-height: 44px; position: relative; font-size: 15px; width: 100%; box-sizing: border-box;
+    .list { flex: none; background: rgba(255,255,255,0.09); border-radius: 16px; overflow: hidden; }
+    .li { display: flex; align-items: center; gap: 12px; padding: 10px 16px; min-height: 56px; position: relative; font-size: 15px; width: 100%; box-sizing: border-box;
       border: 0; background: none; color: inherit; font: inherit; text-align: left; }
     button.li { cursor: pointer; }
-    .li + .li::before { content: ""; position: absolute; top: 0; left: 56px; right: 14px; height: 0.5px; background: rgba(255,255,255,0.12); }
-    .li.plain + .li.plain::before { left: 14px; }
+    .li + .li::before { content: ""; position: absolute; top: 0; left: 58px; right: 16px; height: 0.5px; background: rgba(255,255,255,0.12); }
+    .li.plain + .li.plain::before { left: 16px; }
     .ic { width: 30px; height: 30px; border-radius: 8px; flex: none; display: grid; place-items: center; background: var(--c, var(--accent)); }
     .ic i { width: 18px; height: 18px; display: block; background: #fff; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
     .n { flex: 1; min-width: 0; display: grid; }
-    .n b { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .n small { font-size: 13px; color: rgba(255,255,255,0.6); }
+    .n b { font-size: 16px; font-weight: 550; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .n small { font-size: 13px; line-height: 1.15; color: rgba(255,255,255,0.6); }
     .v { color: rgba(255,255,255,0.65); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .chev { width: 7px; height: 12px; flex: none; color: rgba(255,255,255,0.35); }
     .back { flex: none; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 18px 0 14px; border-radius: 999px;
@@ -516,6 +525,31 @@
     return u === 'kW' ? n * 1000 : n;
   };
   const powerParts = (w) => (w == null ? ['—', ''] : w >= 1000 ? [(w / 1000).toFixed(w >= 10000 ? 1 : 2), 'kW'] : [String(Math.round(w)), 'W']);
+  // A chart answers the pointer: a line, a dot and the reading at that time, as the old popups' charts did.
+  const scrub = (plot, series, fmtV, fmtT) => {
+    if (!series || series.length < 2) return;
+    const vals = series.map((p) => p.v), max = Math.max(...vals) || 1, min = Math.min(0, ...vals), pad = 4, H = 96;
+    const layer = document.createElement('div');
+    layer.className = 'scrub';
+    layer.innerHTML = '<div class="ln"></div><div class="dt"></div><div class="tip"></div>';
+    plot.appendChild(layer);
+    const ln = layer.querySelector('.ln'), dt = layer.querySelector('.dt'), tip = layer.querySelector('.tip');
+    const move = (ev) => {
+      const r = plot.getBoundingClientRect();
+      const f = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width));
+      const i = Math.round(f * (series.length - 1)), p = series[i];
+      const x = (i / (series.length - 1)) * r.width;
+      const y = (H - pad - ((p.v - min) / (max - min || 1)) * (H - pad * 2)) / H * r.height;
+      ln.style.left = x + 'px'; dt.style.left = x + 'px'; dt.style.top = y + 'px';
+      tip.style.left = Math.max(44, Math.min(r.width - 44, x)) + 'px';
+      tip.innerHTML = `${esc(fmtV(p.v))}<small>${esc(fmtT(p.t))}</small>`;
+      plot.classList.add('on');
+    };
+    plot.addEventListener('pointermove', move);
+    plot.addEventListener('pointerdown', move);
+    plot.addEventListener('pointerleave', () => plot.classList.remove('on'));
+    plot.addEventListener('pointerup', (ev) => { if (ev.pointerType !== 'mouse') setTimeout(() => plot.classList.remove('on'), 1200); });
+  };
   const chartSvg = (pts, color) => {
     if (!pts || pts.length < 2) return null;
     const W = 300, H = 96, pad = 4;
@@ -552,7 +586,7 @@
         + `<div class="seg" role="group">${[['day', T('energy.today', 'Today')], ['week', T('energy.week', 'Week')], ['month', T('energy.month', 'Month')]]
           .map(([k, l]) => `<button type="button" data-r="${k}" aria-pressed="${k === this._range}">${esc(l)}</button>`).join('')}</div>`
         + `<div class="w"><div class="plot"></div><div class="wt axis"></div></div>`
-        + `<div class="g2"><div class="w a"></div><div class="w b"></div></div>`
+        + `<div class="g2"><button type="button" class="w a"></button><button type="button" class="w b"></button></div>`
         + `<div class="list"><button type="button" class="li plain top"><span class="n"><b>${esc(T('energy.top_devices', 'Top devices'))}</b></span><span class="v cnt"></span>${CHEV_SVG}</button></div>`
         + `</div><div class="page two"><button type="button" class="back">${BACK_SVG}${esc(this._config.name || T('filter.energy', 'Energy'))}</button>`
         + `<div class="h"><b>${esc(T('energy.top_devices', 'Top devices'))}</b><span>${esc(T('energy.now', 'Now'))}</span></div><div class="list devs"></div></div></div>`;
@@ -560,6 +594,12 @@
       const wrap = root.querySelector('.wrap');
       root.querySelector('.top').onclick = () => { this._devices(); wrap.classList.add('deep'); };
       root.querySelector('.back').onclick = () => wrap.classList.remove('deep');
+      const info = (id) => id && this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: id }, bubbles: true, composed: true }));
+      const cc = this._config;
+      root.querySelector('.w.a').onclick = () => info(cc.entity_usage_today || cc.entity_cost_today);
+      root.querySelector('.w.b').onclick = () => info(cc.entity_cost_month || cc.entity_usage_month);
+      root.querySelector('.big').onclick = () => info(cc.entity_power);
+      root.querySelector('.big').style.cursor = 'pointer';
       if (!(this._config.power_entities || []).length) root.querySelector('.list').style.display = 'none';
       this._paint();
       this._load();
@@ -576,13 +616,14 @@
       if (!this._series[key]) {
         this._series[key] = this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: start.toISOString(),
           statistic_ids: [id], period: r === 'month' ? 'day' : 'hour', types: ['mean'] })
-          .then((res) => ((res && res[id]) || []).map((p) => p.mean).filter((v) => v != null)).catch(() => []);
+          .then((res) => ((res && res[id]) || []).filter((p) => p.mean != null).map((p) => ({ t: p.start, v: p.mean }))).catch(() => []);
       }
-      const pts = await this._series[key];
+      const series = await this._series[key];
       if (this._range !== r) return;
-      const svg = chartSvg(pts, 'var(--accent)');
+      const svg = chartSvg(series.map((p) => p.v), 'var(--accent)');
       plot.innerHTML = svg || `<div class="empty">${esc(T('energy.no_history', 'No history yet'))}</div>`;
       const fmt = (d, o) => d.toLocaleString(this._hass.locale && this._hass.locale.language || undefined, o);
+      if (svg) scrub(plot, series, (v) => powerParts(v).join(' '), (t) => fmt(new Date(t), r === 'month' ? { month: 'short', day: 'numeric' } : r === 'week' ? { weekday: 'short', hour: 'numeric' } : { hour: 'numeric', minute: '2-digit' }));
       axis.innerHTML = r === 'day'
         ? `<span>${fmt(start, { hour: 'numeric' })}</span><span>${esc(T('energy.now', 'Now'))}</span>`
         : `<span>${fmt(start, { month: 'short', day: 'numeric' })}</span><span>${esc(T('energy.now', 'Now'))}</span>`;
@@ -681,12 +722,20 @@
       this._built = true;
       const root = this.shadowRoot, c = this._config;
       const name = c.name || T('filter.climate', 'Climate');
-      root.innerHTML = `<style>${WIDGET_CSS} :host { --accent: var(--hemma-color-teal, #00C3D0); } .wv.t { color: var(--tone, #fff); }</style>`
+      root.innerHTML = `<style>${WIDGET_CSS} :host { --accent: var(--hemma-color-teal, #00C3D0); } .wv.t { color: var(--tone, #fff); }
+        .charts { display: flex; flex-direction: column; gap: 10px; flex: none; }
+        .hc { gap: 10px; padding-top: 10px; }
+        .hh { display: flex; align-items: center; gap: 10px; border: 0; background: none; color: inherit; font: inherit; padding: 0; cursor: pointer; text-align: left; }
+        .hh b { flex: 1; font-size: 15px; font-weight: 600; }
+        .hi { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; background: var(--c); flex: none; }
+        .hi i { width: 16px; height: 16px; display: block; background: #fff; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+        .hv { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .hv small { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.6); margin-left: 3px; }</style>`
         + `<div class="wrap"><div class="page one"><div class="h"><b>${esc(name)}</b><span>${esc(T('filter.climate', 'Climate'))}</span></div>`
         + `<div class="big"></div><div class="cap sum"></div><div class="g2 tiles"></div>`
         + `<div class="list"><button type="button" class="li plain hist"><span class="n"><b>${esc(T('climate.history_24h', '24-hour history'))}</b></span>${CHEV_SVG}</button></div>`
         + `</div><div class="page two"><button type="button" class="back">${BACK_SVG}${esc(name)}</button>`
-        + `<div class="h"><b>${esc(T('climate.history_24h', '24-hour history'))}</b></div><div class="charts" style="display:grid;gap:10px"></div></div></div>`;
+        + `<div class="h"><b>${esc(T('climate.history_24h', '24-hour history'))}</b></div><div class="charts"></div></div></div>`;
       const wrap = root.querySelector('.wrap');
       root.querySelector('.hist').onclick = () => { this._history(); wrap.classList.add('deep'); };
       root.querySelector('.back').onclick = () => wrap.classList.remove('deep');
@@ -711,7 +760,7 @@
         kinds.add(k.label);
         tiles.push({ id, label: k.label, value: n >= 100 ? String(Math.round(n)) : String(Math.round(n * 10) / 10), unit: st.attributes.unit_of_measurement || '', tone: toneOf(n, k) });
       });
-      root.querySelector('.tiles').innerHTML = tiles.slice(0, 4).map((x) => `<button type="button" class="w" data-id="${esc(x.id)}" style="border:0;color:inherit;font:inherit;text-align:left;cursor:pointer">`
+      root.querySelector('.tiles').innerHTML = tiles.slice(0, 4).map((x) => `<button type="button" class="w" data-id="${esc(x.id)}">`
         + `<div class="wt">${esc(x.label)}</div><div class="wv t" style="--tone:${x.tone || '#fff'}">${esc(x.value)}<small>${esc(x.unit)}</small></div></button>`).join('');
       root.querySelectorAll('.tiles .w').forEach((b) => { b.onclick = () => this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: b.dataset.id }, bubbles: true, composed: true })); });
       root.querySelector('.list').style.display = this._ids().length ? '' : 'none';
@@ -721,22 +770,41 @@
       const once = this._sensors().filter((id) => { const k = sensorKind(S[id], id).label; if (kinds.has(k)) return false; kinds.add(k); return true; });
       return [c.entity_temp, c.entity_humidity, ...once].filter((id, i, a) => id && S[id] && num(S[id]) != null && a.indexOf(id) === i);
     }
+    _look(id) {
+      const c = this._config, S = this._hass.states;
+      if (id === c.entity_temp) return { label: T('temp.title', 'Temperature'), icon: 'temp-medium', color: 'var(--hemma-color-orange, #FF9230)' };
+      if (id === c.entity_humidity) return { label: T('humidity.title', 'Humidity'), icon: 'humidity', color: 'var(--hemma-color-ice, #3cd3fe)' };
+      const k = sensorKind(S[id], id);
+      const by = { 'CO₂': ['co2-fill', 'var(--hemma-color-green, #30D158)'], 'PM2.5': ['allergens-fill', 'var(--hemma-color-purple, #af52de)'],
+        'PM10': ['allergens', 'var(--hemma-color-pink, #ff4d70)'], 'VOC': ['aqi-medium', 'var(--hemma-color-yellow, #FFCC00)'], 'NO₂': ['aqi-high', 'var(--hemma-color-amber, #ffb254)'] };
+      const [icon, color] = by[k.label] || ['aqi-low', 'var(--hemma-color-teal, #00C3D0)'];
+      return { label: k.label, icon, color };
+    }
     async _history() {
       const box = this.shadowRoot.querySelector('.charts');
-      const ids = this._ids(), S = this._hass.states, c = this._config;
+      const ids = this._ids(), S = this._hass.states;
       box.innerHTML = ids.map((id) => {
-        const label = id === c.entity_temp ? T('temp.title', 'Temperature') : id === c.entity_humidity ? T('humidity.title', 'Humidity') : sensorKind(S[id], id).label;
-        return `<div class="w" data-id="${esc(id)}"><div class="wt"><span>${esc(label)}</span><span>${esc(S[id].state)} ${esc(S[id].attributes.unit_of_measurement || '')}</span></div><div class="plot"></div></div>`;
+        const l = this._look(id), st = S[id], u = st.attributes.unit_of_measurement || '', n = num(st);
+        const v = n == null ? st.state : (Math.abs(n) >= 100 ? Math.round(n) : Math.round(n * 10) / 10);
+        return `<div class="w hc" data-id="${esc(id)}" style="--accent:${l.color}">`
+          + `<button type="button" class="hh"><span class="hi" style="--c:${l.color}"><i style="--i:url('${esc(iconUrl(l.icon))}')"></i></span><b>${esc(l.label)}</b>`
+          + `<span class="hv">${esc(String(v))}<small>${esc(u)}</small></span>${CHEV_SVG}</button><div class="plot"></div></div>`;
       }).join('');
+      box.querySelectorAll('.hh').forEach((b) => { b.onclick = () => this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: b.parentElement.dataset.id }, bubbles: true, composed: true })); });
       if (!this._hass.callWS) return;
       const start = new Date(Date.now() - 864e5).toISOString();
       if (!this._series[start.slice(0, 13)]) {
         this._series[start.slice(0, 13)] = this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: start, statistic_ids: ids, period: 'hour', types: ['mean'] }).catch(() => ({}));
       }
       const res = await this._series[start.slice(0, 13)];
-      box.querySelectorAll('.w').forEach((w) => {
-        const pts = ((res && res[w.dataset.id]) || []).map((p) => p.mean).filter((v) => v != null);
-        w.querySelector('.plot').innerHTML = chartSvg(pts, 'var(--accent)') || `<div class="empty">${esc(T('energy.no_history', 'No history yet'))}</div>`;
+      const lang = (this._hass.locale && this._hass.locale.language) || undefined;
+      box.querySelectorAll('.hc').forEach((w) => {
+        const id = w.dataset.id, u = S[id].attributes.unit_of_measurement || '';
+        const series = ((res && res[id]) || []).filter((p) => p.mean != null).map((p) => ({ t: p.start, v: p.mean }));
+        const plot = w.querySelector('.plot');
+        const svg = chartSvg(series.map((p) => p.v), w.style.getPropertyValue('--accent'));
+        plot.innerHTML = svg || `<div class="empty">${esc(T('energy.no_history', 'No history yet'))}</div>`;
+        if (svg) scrub(plot, series, (v) => (Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + (u ? ' ' + u : ''), (t) => new Date(t).toLocaleString(lang, { hour: 'numeric', minute: '2-digit' }));
       });
     }
   }
