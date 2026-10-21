@@ -228,7 +228,7 @@
     .h b { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
     .h span { font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.72); font-variant-numeric: tabular-nums; }
     .cap { position: relative; width: 116px; height: 100%; min-height: 180px; max-height: 300px; align-self: center; border-radius: 36px; overflow: hidden;
-      background: rgba(0,0,0,0.30); cursor: ns-resize; touch-action: none; border: 0; padding: 0; color: #fff; -webkit-tap-highlight-color: transparent; }
+      background: rgba(0,0,0,0.30); cursor: default; touch-action: none; border: 0; padding: 0; color: #fff; -webkit-tap-highlight-color: transparent; }
     .cap .fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--lc); transition: height .12s ease, background-color .3s ease; }
     .cap.dragging .fill { transition: background-color .3s ease; }
     .cap .bulb { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); }
@@ -253,12 +253,12 @@
     .lr + .lr::before { content: ""; position: absolute; top: 0; left: 16px; right: 16px; height: 0.5px; background: rgba(255,255,255,0.12); }
     .lr b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .lr span { font-size: 13.5px; color: rgba(255,255,255,0.65); font-variant-numeric: tabular-nums; }
-    .mini { grid-column: 1 / -1; position: relative; height: 30px; border-radius: 999px; background: rgba(0,0,0,0.28); overflow: hidden; cursor: ew-resize; touch-action: none; border: 0; padding: 0; }
+    .mini { grid-column: 1 / -1; position: relative; height: 30px; border-radius: 999px; background: rgba(0,0,0,0.28); overflow: hidden; cursor: default; touch-action: none; border: 0; padding: 0; }
     .mini .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--lc); }
     .picker { position: absolute; inset: 0; padding: 26px 22px 20px; box-sizing: border-box; display: grid; grid-template-rows: auto 1fr auto; gap: 16px; justify-items: center; }
-    .wheelbig { width: 220px; height: 220px; border-radius: 50%; align-self: center; cursor: crosshair; touch-action: none; border: 0; padding: 0;
+    .wheelbig { width: 220px; height: 220px; border-radius: 50%; align-self: center; cursor: default; touch-action: none; border: 0; padding: 0;
       background: radial-gradient(circle, #fff 0%, rgba(255,255,255,0) 68%), conic-gradient(from 90deg, #ff3b30, #ffcc00, #34c759, #00c3d0, #0088ff, #af52de, #ff3b30); }
-    .kbar { width: 100%; height: 56px; border-radius: 999px; align-self: center; cursor: ew-resize; touch-action: none; border: 0; padding: 0;
+    .kbar { width: 100%; height: 56px; border-radius: 999px; align-self: center; cursor: default; touch-action: none; border: 0; padding: 0;
       background: linear-gradient(90deg, ${kelvinRgb(2000)}, ${kelvinRgb(3500)}, #fff, ${kelvinRgb(6500)}); }
     button:focus-visible { outline: 2px solid rgba(255,255,255,0.7); outline-offset: 2px; }
   `;

@@ -95,6 +95,14 @@ hemma_popup_lock:
           --popup-min-width: 340px;
           --popup-max-width: 340px;
           --popup-min-width-narrow: 340px;
+          --hemma-popup-row-min: 56px;
+          --hemma-popup-row-pad-x: 14px;
+          --hemma-popup-row-label-size: 16px;
+          --hemma-popup-row-label-weight: 600;
+          --hemma-popup-row-value-size: 15px;
+          --hemma-popup-sub-size: 13px;
+          --hemma-popup-icon-tile: 30px;
+          --hemma-popup-row-radius: 22px;
       content: |
         [[[
           const T = window._hemmaT || ((k, en, v) => { let s = String(en); if (v) for (const p in v) s = s.split(String.fromCharCode(123) + p + String.fromCharCode(125)).join(String(v[p])); return s; });
@@ -106,7 +114,12 @@ hemma_popup_lock:
           const _declared = (Array.isArray(variables.locks) ? variables.locks : [])
                               .map(id => (typeof id === 'string' ? id.trim() : id))
                               .filter(_validId);
-          const lockIds  = _declared.length ? _declared : (groupId && _validId(groupId) ? [groupId] : []);
+          /* A lock reached through two integrations is one lock: same device name, same area. */
+          const _twin = (id) => { const e = hass?.entities?.[id]; const d = e && hass?.devices?.[e.device_id];
+            return ((d && (d.name_by_user || d.name)) || states[id]?.attributes?.friendly_name || id).toLowerCase() + '|' + (e?.area_id || d?.area_id || ''); };
+          const _seen = new Set();
+          const _once = _declared.filter((id) => { const k = _twin(id); if (_seen.has(k)) return false; _seen.add(k); return true; });
+          const lockIds  = _once.length ? _once : (groupId && _validId(groupId) ? [groupId] : []);
 
           const _gid     = JSON.stringify(groupId);
           const _lockIds = JSON.stringify(lockIds);
@@ -725,7 +738,7 @@ hemma_popup_lock:
                 if (!isNaN(b)) bits.push(T('locks.popup.pct_battery', '{n}% battery', { n: Math.round(b) }));
                 return {
                   entity: id,
-                  icon: locked ? 'lock' : 'lock-open',
+                  icon: locked ? 'lock-fill' : 'lock-open-fill',
                   iconTone: 'accent',
                   label: states[id]?.attributes?.friendly_name || id,
                   sub: bits.length ? bits : null,

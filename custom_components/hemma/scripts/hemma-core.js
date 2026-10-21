@@ -10078,7 +10078,7 @@ window.hemmaMenuGlass = {
       + '.hui-sl{position:relative;width:' + w + 'px;height:' + h + 'px;'
       +   'border-radius:var(--hemma-popup-control-radius, 37px);overflow:hidden;'
       +   'background:var(--hemma-popup-slider-track, rgba(0,0,0,0.34));'
-      +   'cursor:ns-resize;touch-action:none;user-select:none;-webkit-user-select:none;}'
+      +   'cursor:default;touch-action:none;user-select:none;-webkit-user-select:none;}'
       + '.hui-sl-fill{position:absolute;left:0;right:0;'
       +   (inv ? 'top:0;' : 'bottom:0;')
       +   'background:var(--hemma-popup-slider-fill, var(--hemma-color-teal, #00C3D0));'
