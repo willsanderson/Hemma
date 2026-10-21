@@ -304,7 +304,10 @@
       const d = document.createElement('div');
       copyStyle(el, d, ps);
       Object.assign(d.style, { position: 'absolute', left: pc.left === 'auto' ? '0' : pc.left, top: pc.top === 'auto' ? '0' : pc.top,
-        width: pc.width === 'auto' ? '100%' : pc.width, height: pc.height === 'auto' ? '100%' : pc.height });
+        width: pc.width === 'auto' ? '100%' : pc.width, height: pc.height === 'auto' ? '100%' : pc.height,
+        marginTop: pc.marginTop, marginLeft: pc.marginLeft, boxSizing: pc.boxSizing,
+        paddingTop: pc.paddingTop, paddingLeft: pc.paddingLeft, paddingRight: pc.paddingRight, paddingBottom: pc.paddingBottom,
+        translate: pc.translate, scale: pc.scale });
       box.appendChild(d);
     });
     [...el.children].forEach((k) => {
@@ -316,7 +319,31 @@
       Object.assign(d.style, { position: 'absolute', left: (kr.left - r.left) + 'px', top: (kr.top - r.top) + 'px', width: kr.width + 'px', height: kr.height + 'px', margin: '0' });
       box.appendChild(d);
     });
-    if (!el.children.length && el.textContent.trim()) { box.textContent = el.textContent.trim(); box.style.width = 'auto'; }
+    return { el: box, rect: r };
+  };
+  // Text is placed where its glyphs actually render, measured per text node, so padding, flex and alignment cannot shift it.
+  const cloneText = (el) => {
+    const r = el.getBoundingClientRect();
+    const box = document.createElement('div');
+    Object.assign(box.style, { position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px',
+      overflow: 'hidden', pointerEvents: 'none', margin: '0' });
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.textContent.trim()) continue;
+      const range = document.createRange();
+      range.selectNodeContents(n);
+      const g = range.getBoundingClientRect();
+      if (!g.width) continue;
+      const cs = getComputedStyle(n.parentElement);
+      const t = document.createElement('div');
+      t.textContent = n.textContent;
+      Object.assign(t.style, { position: 'absolute', left: (g.left - r.left) + 'px', top: (g.top - r.top) + 'px', height: g.height + 'px',
+        lineHeight: g.height + 'px', whiteSpace: 'pre', color: cs.color, opacity: cs.opacity, fontFamily: cs.fontFamily, fontSize: cs.fontSize,
+        fontWeight: cs.fontWeight, fontStyle: cs.fontStyle, letterSpacing: cs.letterSpacing, wordSpacing: cs.wordSpacing,
+        fontFeatureSettings: cs.fontFeatureSettings, fontVariantNumeric: cs.fontVariantNumeric, textTransform: cs.textTransform,
+        webkitFontSmoothing: cs.webkitFontSmoothing, textShadow: cs.textShadow });
+      box.appendChild(t);
+    }
     return { el: box, rect: r };
   };
   const settle = (card, holder, from, dur, ease) => {
@@ -329,7 +356,7 @@
     if (cell && cell.getBoundingClientRect().width) parts.push({ ...cloneShown(cell), icon: true });
     ['#name', '#state', '#label'].forEach((sel) => {
       const n = sr.querySelector(sel);
-      if (n && n.textContent.trim() && n.getBoundingClientRect().width) parts.push(cloneShown(n));
+      if (n && n.textContent.trim() && n.getBoundingClientRect().width) parts.push(cloneText(n));
     });
     const fy = from.top + from.height / 2, ty = t.top + t.height / 2;
     parts.forEach((p) => {
