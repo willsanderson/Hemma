@@ -7589,6 +7589,8 @@ window.hemmaMenuGlass = {
                   var(--hemma-popup-scrim-ease, cubic-bezier(0.25, 0.6, 0.3, 1));
     }
     :host([shown]) .scrim { opacity: 1; }
+    /* Grown from a tile, the panel sits on the dashboard as Apple Home's do: no dimming, no blur. */
+    :host([morph]) .scrim { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
     /* Out faster than in, and inside the 400ms teardown or it gets cut off. */
     :host([closing]) .scrim {
       transition-duration: var(--hemma-popup-scrim-exit, 200ms);
@@ -8252,6 +8254,7 @@ window.hemmaMenuGlass = {
       var morph = !wasOpen && origin && morphOn() && window.hemmaMorph && !this._isSheet()
         && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? origin : null;
       if (morph) this.surface.style.visibility = 'hidden';
+      if (!wasOpen) this.toggleAttribute('morph', !!morph);
 
       this._dismissable = cfg.dismissable !== false;
       this._bgDismiss = cfg.dismiss_on_background === true;
@@ -8475,14 +8478,14 @@ window.hemmaMenuGlass = {
       var rim = root.querySelector('.rim');
       [g, rim, this.content].forEach(function (e) { if (e) e.style.animation = 'none'; });
       Object.assign(g.style, { inset: 'auto', left: '0px', top: '0px', width: S.width + 'px', height: S.height + 'px', overflow: 'hidden', boxShadow: 'none' });
-      card.style.visibility = 'hidden';
+      M.hideAfterPaint(card);
       var G = M.grow;
       var mo = this._morph;
       M.material(g, look, end.bg, end.filter, G.dur);
       var lifted = document.createElement('div');
       lifted.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:1;';
       root.appendChild(lifted);
-      M.lift(card, lifted, { left: x, top: y, width: S.width, height: S.height }, G.dur, G.ease);
+      M.lift(card, lifted, g, G.dur);
       setTimeout(function () { lifted.remove(); }, G.dur);
       g.animate([M.geometry(this._morphFrame(t, box, look, 0)), M.geometry(this._morphFrame(null, box, look, 1))], { duration: G.dur, easing: G.ease, fill: 'backwards' })
         .finished.then(() => {
