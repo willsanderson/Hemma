@@ -95,7 +95,8 @@ hemma_popup_lock:
           --popup-min-width: 340px;
           --popup-max-width: 340px;
           --popup-min-width-narrow: 340px;
-          --hemma-popup-row-min: 56px;
+          --hemma-popup-row-min: 44px;
+          --hemma-popup-row-pad-y: 6px;
           --hemma-popup-row-pad-x: 14px;
           --hemma-popup-row-label-size: 16px;
           --hemma-popup-row-label-weight: 600;
