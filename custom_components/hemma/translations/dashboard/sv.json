@@ -1114,5 +1114,6 @@
 	"lights.on": "På",
 	"network.hour_ago": "1 timme sedan",
 	"network.restarting": "Startar om…",
-	"plex.n_new": "{n} nya"
+	"plex.n_new": "{n} nya",
+	"ui.back": "Tillbaka"
 }

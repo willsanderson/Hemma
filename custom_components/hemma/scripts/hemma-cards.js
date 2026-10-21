@@ -249,8 +249,10 @@
     .pill { height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14.5px; font-weight: 600; }
     .gear { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
     .gear i { width: 22px; height: 22px; display: block; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
-    .back { flex: none; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 18px 0 14px; border-radius: 999px; font-size: 16px; font-weight: 600; }
-    .back svg { width: 10px; height: 17px; display: block; }
+    .back { flex: none; align-self: flex-start; width: 44px; height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; position: relative;
+      background-color: rgba(255,255,255,0.07); background-image: radial-gradient(140% 90% at 50% -20%, rgba(255,255,255,0.14), rgba(255,255,255,0.04) 45%, transparent 62%);
+      box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.14); }
+    .back svg { width: 11px; height: 18px; display: block; transform: translateX(-1px); }
     .pill::after, .gear::after, .back::after, .sw button:not(.wheel)::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #fff; opacity: 0; transition: opacity .40s ease; pointer-events: none; }
     @media (hover: hover) { .pill:hover::after, .gear:hover::after, .back:hover::after { opacity: .07; transition: opacity .18s ease; } }
     .lst { flex: none; background: rgba(255,255,255,0.10); border-radius: 22px; overflow: hidden; }
@@ -337,7 +339,7 @@
         + (favs.length ? `<div class="sw">${favs.map((f, i) => `<button type="button" data-i="${i}" style="--s:${favCss(f)}" aria-label="${esc(T('lights.favorite', 'Favorite {n}', { n: i + 1 }))}"></button>`).join('')}<button type="button" class="wheel${md.color ? '' : ' whites'}" aria-label="${esc(md.color ? T('lights.color', 'Color') : T('lights.whites', 'Whites'))}"></button></div>` : '<div></div>')
         + `<div class="foot">${group ? `<button type="button" class="act lights"><span class="o"><i style="--i:url('${esc(iconUrl('light'))}')"></i></span><small>${esc(T('lights.n_lights', '{n} Lights', { n: ids.length }))}</small></button>` : ''}`
         + `<button type="button" class="act gear"><span class="o"><i style="--i:url('${esc(iconUrl('settings'))}')"></i></span><small>${esc(T('lights.settings', 'Settings'))}</small></button></div>`
-        + `</div>${group ? `<div class="page list"><button type="button" class="back"><svg viewBox="0 0 10 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 1.5 1.5 8.5l7 7"/></svg>${esc(name)}</button><div class="lst"></div></div>` : ''}</div>`;
+        + `</div>${group ? `<div class="page list"><button type="button" class="back" aria-label="${esc(T('ui.back', 'Back'))}"><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.4 1.6 1.8 10l8.6 8.4"/></svg></button><div class="lst"></div></div>` : ''}</div>`;
       this._favs = favs;
       const cap = root.querySelector('.cap');
       let drag = null;
@@ -536,13 +538,14 @@
     .n small { font-size: 13px; line-height: 1.15; color: rgba(255,255,255,0.6); }
     .v { color: rgba(255,255,255,0.65); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .chev { width: 7px; height: 12px; flex: none; color: rgba(255,255,255,0.35); }
-    .back { flex: none; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 18px 0 14px; border-radius: 999px;
-      border: 0; background: rgba(255,255,255,0.10); color: #fff; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
-    .back svg { width: 10px; height: 17px; }
+    .back { flex: none; align-self: flex-start; border: 0; color: #fff; cursor: pointer; width: 44px; height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; position: relative;
+      background-color: rgba(255,255,255,0.07); background-image: radial-gradient(140% 90% at 50% -20%, rgba(255,255,255,0.14), rgba(255,255,255,0.04) 45%, transparent 62%);
+      box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.14); }
+    .back svg { width: 11px; height: 18px; display: block; transform: translateX(-1px); }
     @media (hover: hover) { button.li:hover, .back:hover, .seg button:not([aria-pressed="true"]):hover { background: rgba(255,255,255,0.06); } }
     button:focus-visible { outline: 2px solid rgba(255,255,255,0.7); outline-offset: -2px; }
   `;
-  const BACK_SVG = '<svg viewBox="0 0 10 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 1.5 1.5 8.5l7 7"/></svg>';
+  const BACK_SVG = '<svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.4 1.6 1.8 10l8.6 8.4"/></svg>';
   const DEVICE_HUES = ['var(--hemma-color-orange, #FF9230)', 'var(--hemma-color-blue, #0088FF)', 'var(--hemma-color-teal, #00C3D0)',
     'var(--hemma-color-purple, #9333ea)', 'var(--hemma-color-yellow, #FFCC00)', 'var(--hemma-color-green, #30D158)', 'var(--hemma-color-pink, #ff4d70)'];
   const num = (st) => { const n = st ? parseFloat(st.state) : NaN; return Number.isFinite(n) ? n : null; };
@@ -616,7 +619,7 @@
         + `<div class="w"><div class="plot"></div><div class="wt axis"></div></div>`
         + `<div class="g2"><button type="button" class="w a"></button><button type="button" class="w b"></button></div>`
         + `<div class="list"><button type="button" class="li plain top"><span class="n"><b>${esc(T('energy.top_devices', 'Top devices'))}</b></span><span class="v cnt"></span>${CHEV_SVG}</button></div>`
-        + `</div><div class="page two"><button type="button" class="back">${BACK_SVG}${esc(this._config.name || T('filter.energy', 'Energy'))}</button>`
+        + `</div><div class="page two"><button type="button" class="back" aria-label="${esc(T('ui.back', 'Back'))}">${BACK_SVG}</button>`
         + `<div class="h"><b>${esc(T('energy.top_devices', 'Top devices'))}</b><span>${esc(T('energy.now', 'Now'))}</span></div><div class="list devs"></div></div></div>`;
       root.querySelectorAll('.seg button').forEach((b) => { b.onclick = () => { this._range = b.dataset.r; root.querySelectorAll('.seg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); this._load(); }; });
       const wrap = root.querySelector('.wrap');
@@ -762,7 +765,7 @@
         + `<div class="wrap"><div class="page one"><div class="h"><b>${esc(name)}</b><span>${esc(T('filter.climate', 'Climate'))}</span></div>`
         + `<div class="big"></div><div class="cap sum"></div><div class="g2 tiles"></div>`
         + `<div class="list"><button type="button" class="li plain hist"><span class="n"><b>${esc(T('climate.history_24h', '24-hour history'))}</b></span>${CHEV_SVG}</button></div>`
-        + `</div><div class="page two"><button type="button" class="back">${BACK_SVG}${esc(name)}</button>`
+        + `</div><div class="page two"><button type="button" class="back" aria-label="${esc(T('ui.back', 'Back'))}">${BACK_SVG}</button>`
         + `<div class="h"><b>${esc(T('climate.history_24h', '24-hour history'))}</b></div><div class="charts"></div></div></div>`;
       const wrap = root.querySelector('.wrap');
       root.querySelector('.hist').onclick = () => { this._history(); wrap.classList.add('deep'); };
@@ -985,7 +988,7 @@
         .none { flex: none; text-align: center; color: rgba(255,255,255,0.6); font-size: 14px; padding: 18px 0 8px; }</style>`
         + `<div class="wrap"><div class="page one"><div class="h"><b>${esc(T('plex.recently_added', 'Recently Added'))}</b><span>${esc(n ? T('plex.n_new', '{n} new', { n }) : T('plex.up_to_date', 'Up to date'))}</span></div>`
         + (n ? shelf(T('plex.movies', 'Movies'), movies) + shelf(T('plex.tv_shows', 'TV Shows'), shows) : `<div class="none">${esc(T('plex.nothing_added', 'Nothing recently added'))}</div>`)
-        + `</div><div class="page two"><button type="button" class="back">${BACK_SVG}${esc(T('plex.recently_added', 'Recently Added'))}</button><div class="det"></div></div></div>`;
+        + `</div><div class="page two"><button type="button" class="back" aria-label="${esc(T('ui.back', 'Back'))}">${BACK_SVG}</button><div class="det"></div></div></div>`;
       const wrap = root.querySelector('.wrap');
       root.querySelectorAll('.po').forEach((b) => { b.onclick = () => {
         const i = this._list[Number(b.dataset.k)];

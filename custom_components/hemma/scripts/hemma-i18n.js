@@ -405,6 +405,7 @@
     "time.short.minutes": "{n} min sedan",
     "time.short.weeks": "{n} v sedan",
     "time.yesterday": "Igår",
+    "ui.back": "Tillbaka",
     "updates.available": "Tillgängliga uppdateringar",
     "updates.install_all_q": "Installera alla {n} uppdateringar nu?",
     "updates.installed": "Installerad",

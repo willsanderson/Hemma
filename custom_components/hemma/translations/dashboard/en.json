@@ -1115,5 +1115,6 @@
   "lights.on": "On",
   "network.hour_ago": "1 hour ago",
   "network.restarting": "Restarting…",
-  "plex.n_new": "{n} new"
+  "plex.n_new": "{n} new",
+  "ui.back": "Back"
 }
