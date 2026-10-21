@@ -1267,7 +1267,8 @@
     return () => parts.forEach((p) => p.el.remove());
   };
   // A copy's icon mask decodes a frame late, so the real tile stays up until the copy has painted.
-  const hideAfterPaint = (card) => requestAnimationFrame(() => requestAnimationFrame(() => { card.style.visibility = 'hidden'; }));
+  // Opened in place the glass covers its tile, so the tile hides; sent to the middle it leaves the tile where it was.
+  const hideAfterPaint = (card) => { if (!centered()) requestAnimationFrame(() => requestAnimationFrame(() => { card.style.visibility = 'hidden'; })); };
   // The tile's fill drains at once and the glass stays see-through until it frosts over at the end.
   const material = (el, look, endBg, endFilter, dur) => {
     const m = /rgba?\(([^)]+)\)/.exec(endBg || '');
@@ -1313,7 +1314,8 @@
   centered();
   const place = (t, W, H) => {
     const m = 16, B = bounds();
-    if (centered()) return { x: B.left + (B.right - B.left - W) / 2, y: B.top + Math.max(m, (B.bottom - B.top - H) / 2) };
+    // Centered in the window, as Home Assistant's dialogs are, and only pushed right when a sidebar would be covered.
+    if (centered()) return { x: Math.max(B.left + m, (window.innerWidth - W) / 2), y: Math.max(B.top + m, (window.innerHeight - H) / 2) };
     return { x: Math.max(B.left + m, Math.min(B.right - m - W, t.left + t.width / 2 - W / 2)), y: Math.max(B.top + m, Math.min(B.bottom - m - H, t.top + t.height / 2 - H / 2)) };
   };
   // A longer trip gets a little more time, so a panel from a corner tile does not rush.
@@ -1371,7 +1373,7 @@
       scrim.classList.add('out');
       if (tile && card.isConnected) {
         const back = tileLook(card) || tile;
-        card.style.visibility = 'hidden';
+        if (!centered()) card.style.visibility = 'hidden';
         const t = back.rect;
         glass.getAnimations().forEach((a) => a.cancel());
         glass.animate([frame(0, 0, W, H, 28, 'rgba(30,33,38,0.30)', 40, 1), frame(t.left - fx, t.top - fy, t.width, t.height, back.radius, back.fill, back.blur, 0)],
