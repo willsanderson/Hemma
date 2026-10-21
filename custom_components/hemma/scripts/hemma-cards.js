@@ -1279,7 +1279,26 @@
     walk(document, 0);
     return { left, top: 0, right: window.innerWidth, bottom: window.innerHeight };
   };
-  window.hemmaMorph = { look: tileLook, grow: GROW, shrink: SHRINK, settle, lift, material, geometry, hideAfterPaint, bounds };
+  // Testing switch (?hemma_center=1): panels travel from their tile to the middle of the dashboard instead of opening over it.
+  const centered = () => {
+    try {
+      const q = new URLSearchParams(location.search).get('hemma_center');
+      if (q === '1' || q === '0') localStorage.setItem('hemma_center', q);
+      return localStorage.getItem('hemma_center') === '1';
+    } catch (e) { return false; }
+  };
+  centered();
+  const place = (t, W, H) => {
+    const m = 16, B = bounds();
+    if (centered()) return { x: B.left + (B.right - B.left - W) / 2, y: B.top + Math.max(m, (B.bottom - B.top - H) / 2) };
+    return { x: Math.max(B.left + m, Math.min(B.right - m - W, t.left + t.width / 2 - W / 2)), y: Math.max(B.top + m, Math.min(B.bottom - m - H, t.top + t.height / 2 - H / 2)) };
+  };
+  // A longer trip gets a little more time, so a panel from a corner tile does not rush.
+  const timed = (spring, t, x, y, W, H) => {
+    const d = Math.hypot(x + W / 2 - (t.left + t.width / 2), y + H / 2 - (t.top + t.height / 2));
+    return { ease: spring.ease, dur: Math.round(spring.dur * (1 + Math.min(0.35, d / 1800))) };
+  };
+  window.hemmaMorph = { look: tileLook, grow: GROW, shrink: SHRINK, settle, lift, material, geometry, hideAfterPaint, bounds, place, timed, centered };
 
   const ask = (title, verb, card) => new Promise((done) => {
     if (asking) return done(false);
@@ -1302,9 +1321,8 @@
     if (tile) {
       const b = box.getBoundingClientRect();
       W = b.width; H = b.height;
-      const m = 16, B = bounds(), t = tile.rect;
-      fx = Math.max(B.left + m, Math.min(B.right - m - W, t.left + t.width / 2 - W / 2));
-      fy = Math.max(B.top + m, Math.min(B.bottom - m - H, t.top + t.height / 2 - H / 2));
+      const t = tile.rect, at = place(t, W, H);
+      fx = at.x; fy = at.y;
       Object.assign(box.style, { position: 'fixed', left: fx + 'px', top: fy + 'px', width: W + 'px', margin: '0' });
       Object.assign(glass.style, { animation: 'none', inset: 'auto', left: '0', top: '0', width: W + 'px', height: H + 'px', overflow: 'hidden' });
       content.style.animation = 'none';

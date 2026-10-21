@@ -8471,9 +8471,7 @@ window.hemmaMenuGlass = {
       var g = root.querySelector('.glass');
       var S = s.getBoundingClientRect();
       var t = look.rect, m = 16;
-      var B = M.bounds ? M.bounds() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
-      var x = Math.max(B.left + m, Math.min(B.right - m - S.width, t.left + t.width / 2 - S.width / 2));
-      var y = Math.max(B.top + m, Math.min(B.bottom - m - S.height, t.top + t.height / 2 - S.height / 2));
+      var at = M.place(t, S.width, S.height), x = at.x, y = at.y;
       s.style.left = (x - S.left) + 'px';
       s.style.top = (y - S.top) + 'px';
       // A panel that grows after it opens (a second page) moves up to stay on screen.
@@ -8503,7 +8501,7 @@ window.hemmaMenuGlass = {
       [g, rim, this.content].forEach(function (e) { if (e) e.style.animation = 'none'; });
       Object.assign(g.style, { inset: 'auto', left: '0px', top: '0px', width: S.width + 'px', height: S.height + 'px', overflow: 'hidden', boxShadow: 'none' });
       M.hideAfterPaint(card);
-      var G = M.grow;
+      var G = M.timed ? M.timed(M.grow, t, x, y, S.width, S.height) : M.grow;
       var mo = this._morph;
       M.material(g, look, end.bg, end.filter, G.dur);
       var lifted = document.createElement('div');
@@ -8543,6 +8541,23 @@ window.hemmaMenuGlass = {
         + (t.left - r.left) + 'px round ' + radius + 'px)';
     }
 
+    _behindMoreInfo() {
+      if (!window.hemmaMorph || !window.hemmaMorph.centered() || !this.hasAttribute('open')) return;
+      var s = this.surface;
+      s.style.transition = 'opacity .22s ease';
+      s.style.opacity = '0';
+      var ha = document.querySelector('home-assistant');
+      var seen = false, n = 0;
+      var check = () => {
+        var d = ha && ha.shadowRoot && ha.shadowRoot.querySelector('ha-more-info-dialog');
+        var openNow = !!(d && (d.open || (d.shadowRoot && d.shadowRoot.querySelector('ha-dialog[open], ha-adaptive-dialog[open], dialog[open]')) || d.hasAttribute('open')));
+        if (openNow) seen = true;
+        if ((seen && !openNow) || n++ > 600 || !this.hasAttribute('open')) { s.style.opacity = ''; setTimeout(() => { s.style.transition = ''; }, 260); return; }
+        setTimeout(check, 200);
+      };
+      setTimeout(check, 300);
+    }
+
     _morphOut() {
       var mo = this._morph;
       if (!mo) return 0;
@@ -8553,8 +8568,8 @@ window.hemmaMenuGlass = {
       card.style.visibility = 'hidden';
       var root = this.shadowRoot;
       var g = root.querySelector('.glass');
-      var S = M.shrink;
       var R = this.surface.getBoundingClientRect();
+      var S = M.timed ? M.timed(M.shrink, back.rect, R.left, R.top, R.width, R.height) : M.shrink;
       mo.box = { x: R.left, y: R.top, w: R.width, h: R.height };
       this.surface.style.animation = 'none';
       this.surface.style.overflow = 'visible';
@@ -8846,6 +8861,10 @@ window.hemmaMenuGlass = {
     var from = _lastTap && Date.now() - _lastTap.at < 1000 ? _lastTap.card : null;
     _lastTap = null;
     window.hemmaPopup.open(cfg, from);
+  }, true);
+
+  window.addEventListener('hass-more-info', function () {
+    if (_el && _el.hasAttribute('open') && !_el.hasAttribute('closing')) _el._behindMoreInfo();
   }, true);
 
   // ll-custom is fired from <home-assistant>, so the tile that asked for the popup is read off the hass-action before it.
