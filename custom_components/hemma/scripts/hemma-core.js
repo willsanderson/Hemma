@@ -8478,7 +8478,13 @@ window.hemmaMenuGlass = {
       card.style.visibility = 'hidden';
       var G = M.grow;
       var mo = this._morph;
-      g.animate([this._morphFrame(t, box, look, 0), this._morphFrame(null, box, look, 1)], { duration: G.dur, easing: G.ease, fill: 'backwards' })
+      M.material(g, look, end.bg, end.filter, G.dur);
+      var lifted = document.createElement('div');
+      lifted.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:1;';
+      root.appendChild(lifted);
+      M.lift(card, lifted, { left: x, top: y, width: S.width, height: S.height }, G.dur, G.ease);
+      setTimeout(function () { lifted.remove(); }, G.dur);
+      g.animate([M.geometry(this._morphFrame(t, box, look, 0)), M.geometry(this._morphFrame(null, box, look, 1))], { duration: G.dur, easing: G.ease, fill: 'backwards' })
         .finished.then(() => {
           if (this._morph !== mo) return;
           ['inset', 'left', 'top', 'width', 'height', 'overflow'].forEach(function (k) { g.style.removeProperty(k); });
@@ -8490,7 +8496,7 @@ window.hemmaMenuGlass = {
         if (!e || e.hidden) return;
         e.animate([{ clipPath: self._morphClip(e, t, look.radius) }, { clipPath: self._morphClip(e, full, end.radius) }],
           { duration: G.dur, easing: G.ease, fill: 'backwards' });
-        e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: G.dur * 0.45, delay: G.dur * 0.25, easing: 'ease-out', fill: 'backwards' });
+        e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: G.dur * 0.45, delay: G.dur * 0.5, easing: 'ease-out', fill: 'backwards' });
       });
     }
 

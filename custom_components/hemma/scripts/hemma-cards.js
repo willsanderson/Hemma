@@ -369,7 +369,44 @@
     });
     return () => parts.forEach((p) => p.el.remove());
   };
-  window.hemmaMorph = { look: tileLook, grow: GROW, shrink: SHRINK, settle };
+  // Apple's expand: the tile's own icon and text ride the growing shape and fade early.
+  const lift = (card, holder, to, dur, ease) => {
+    const sr = card.shadowRoot;
+    const hc = sr && sr.querySelector('ha-card');
+    if (!hc) return () => {};
+    const t = hc.getBoundingClientRect();
+    const parts = [];
+    const cell = sr.querySelector('#img-cell');
+    if (cell && cell.getBoundingClientRect().width) parts.push(cloneShown(cell));
+    ['#name', '#state', '#label'].forEach((sel) => {
+      const n = sr.querySelector(sel);
+      if (n && n.textContent.trim() && n.getBoundingClientRect().width) parts.push(cloneText(n));
+    });
+    const dx = to.left - t.left, dy = (to.top + to.height / 2) - (t.top + t.height / 2);
+    parts.forEach((p) => {
+      holder.appendChild(p.el);
+      p.el.animate([{ transform: 'translate(0, 0)' }, { transform: `translate(${dx}px, ${dy}px)` }], { duration: dur, easing: ease, fill: 'forwards' });
+      p.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur * 0.4, easing: 'ease-out', fill: 'forwards' });
+    });
+    return () => parts.forEach((p) => p.el.remove());
+  };
+  // The tile's fill drains at once and the glass stays see-through until it frosts over at the end.
+  const material = (el, look, endBg, endFilter, dur) => {
+    const m = /rgba?\(([^)]+)\)/.exec(endBg || '');
+    const c = m ? m[1].split(',').map((v) => v.trim()) : ['30', '33', '38', '0.3'];
+    const a = c.length > 3 ? Number(c[3]) : 1;
+    const tint = (k) => `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${(a * k).toFixed(3)})`;
+    const f = (b) => `blur(${b}px) saturate(${b ? 150 : 100}%)`;
+    const endBlur = Number((/blur\(([\d.]+)px\)/.exec(endFilter || '') || [])[1] || 40);
+    el.animate([
+      { backgroundColor: look.fill, backdropFilter: f(look.blur), webkitBackdropFilter: f(look.blur) },
+      { backgroundColor: tint(0.25), backdropFilter: f(endBlur * 0.15), webkitBackdropFilter: f(endBlur * 0.15), offset: 0.22 },
+      { backgroundColor: tint(0.5), backdropFilter: f(endBlur * 0.4), webkitBackdropFilter: f(endBlur * 0.4), offset: 0.65 },
+      { backgroundColor: endBg, backdropFilter: endFilter, webkitBackdropFilter: endFilter },
+    ], { duration: dur, easing: 'linear', fill: 'backwards' });
+  };
+  const geometry = (fr) => { const o = { ...fr }; delete o.backgroundColor; delete o.backdropFilter; delete o.webkitBackdropFilter; return o; };
+  window.hemmaMorph = { look: tileLook, grow: GROW, shrink: SHRINK, settle, lift, material, geometry };
 
   const ask = (title, verb, card) => new Promise((done) => {
     if (asking) return done(false);
@@ -399,9 +436,15 @@
       content.style.animation = 'none';
       card.style.visibility = 'hidden';
       const from = frame(t.left - fx, t.top - fy, t.width, t.height, tile.radius, tile.fill, tile.blur, 0);
-      glass.animate([from, frame(0, 0, W, H, 28, 'rgba(30,33,38,0.30)', 40, 1)], { duration: GROW.dur, easing: GROW.ease, fill: 'backwards' });
+      glass.animate([geometry(from), geometry(frame(0, 0, W, H, 28, 'rgba(30,33,38,0.30)', 40, 1))], { duration: GROW.dur, easing: GROW.ease, fill: 'backwards' });
+      material(glass, tile, 'rgba(30, 33, 38, 0.3)', 'blur(40px) saturate(170%)', GROW.dur);
+      const lifted = document.createElement('div');
+      lifted.style.cssText = 'position:fixed;inset:0;pointer-events:none;';
+      scrim.appendChild(lifted);
+      lift(card, lifted, { left: fx, top: fy, width: W, height: H }, GROW.dur, GROW.ease);
+      setTimeout(() => lifted.remove(), GROW.dur);
       content.animate([{ transform: 'scale(0.94)' }, { transform: 'scale(1)' }], { duration: GROW.dur, easing: GROW.ease, fill: 'backwards' });
-      content.animate([{ opacity: 0 }, { opacity: 1 }], { duration: GROW.dur * 0.45, delay: GROW.dur * 0.25, easing: 'ease-out', fill: 'backwards' });
+      content.animate([{ opacity: 0 }, { opacity: 1 }], { duration: GROW.dur * 0.45, delay: GROW.dur * 0.5, easing: 'ease-out', fill: 'backwards' });
     }
 
     const finish = (yes) => {
