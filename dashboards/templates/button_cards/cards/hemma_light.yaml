@@ -1,18 +1,15 @@
 hemma_light:
   template:
     - hemma_entity
-    - hemma_popup_light
+    - hemma_popup_light_panel
 
   show_icon: false
   show_last_changed: false
 
 
   hold_action:
-    haptic: medium
-    action: >
-      [[[
-        return window.hemmaPopupAction ? window.hemmaPopupAction() : 'more-info';
-      ]]]
+    action: more-info
+    entity: '[[[ return entity?.entity_id ]]]'
 
   icon_tap_action:
     action: call-service

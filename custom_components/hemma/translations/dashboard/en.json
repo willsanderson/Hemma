@@ -1100,5 +1100,12 @@
   "tap.start": "Start",
   "tap.turn_off": "Turn Off",
   "tap.turn_on": "Turn On",
-  "tap.unlock": "Unlock"
+  "tap.unlock": "Unlock",
+  "lights.brightness": "Brightness",
+  "lights.favorite": "Favorite {n}",
+  "lights.color": "Color",
+  "lights.whites": "Whites",
+  "lights.n_lights": "{n} Lights",
+  "lights.settings": "Settings",
+  "lights.done": "Done"
 }

@@ -176,6 +176,259 @@
   }
   if (!customElements.get('hemma-status-badges')) customElements.define('hemma-status-badges', HemmaStatusBadges);
 
+  // The light panel, after Apple Home's: a brightness capsule, favorite colors, and for a group a page of its lights.
+  const BULB = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2Zm-3 18h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-1Z"/></svg>';
+  const GEAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-1l2.11-1.63a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.37-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11c-.04.34-.07.67-.07 1s.03.65.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65a7.3 7.3 0 0 0 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.66Z"/></svg>';
+  const COLOR_FAVS = [{ k: 2700 }, { hs: [30, 100] }, { hs: [0, 90] }, { k: 4000 }];
+  const WHITE_FAVS = [{ k: 2200 }, { k: 2700 }, { k: 4000 }, { k: 6500 }];
+  const kelvinRgb = (k) => {
+    const t = k / 100;
+    const r = t <= 66 ? 255 : 329.7 * Math.pow(t - 60, -0.1332);
+    const g = t <= 66 ? 99.47 * Math.log(t) - 161.12 : 288.12 * Math.pow(t - 60, -0.0755);
+    const b = t >= 66 ? 255 : t <= 19 ? 0 : 138.52 * Math.log(t - 10) - 305.04;
+    const c = (v) => Math.round(Math.max(0, Math.min(255, v)));
+    return `rgb(${c(r)}, ${c(g)}, ${c(b)})`;
+  };
+  const favCss = (f) => (f.k ? kelvinRgb(f.k) : `hsl(${f.hs[0]}, ${f.hs[1]}%, 55%)`);
+  const lightColor = (st) => {
+    const a = (st && st.attributes) || {};
+    if (Array.isArray(a.rgb_color)) return `rgb(${a.rgb_color.join(', ')})`;
+    if (a.color_temp_kelvin) return kelvinRgb(a.color_temp_kelvin);
+    return 'var(--hemma-color-yellow, #FFCC00)';
+  };
+  const pctOf = (st) => (st && st.state === 'on' ? Math.max(1, Math.round((Number(st.attributes.brightness) || 255) / 2.55)) : 0);
+  // Studio's rule: a lamp made of several bulbs is one light; only groups of groups are opened up.
+  const memsOf = (states, id) => {
+    const m = ((states[id] || {}).attributes || {}).entity_id;
+    return Array.isArray(m) ? m.filter((x) => typeof x === 'string' && x.startsWith('light.')) : [];
+  };
+  const unitOf = (states, id, seen) => {
+    if (!id || seen.has(id)) return [];
+    const m = memsOf(states, id);
+    if (!m.length || !m.some((x) => memsOf(states, x).length)) return [id];
+    seen.add(id);
+    return m.flatMap((x) => unitOf(states, x, seen));
+  };
+  const unitsOf = (states, id) => {
+    const m = memsOf(states, id);
+    if (!m.length) return [id];
+    const seen = new Set([id]);
+    return [...new Set(m.flatMap((x) => unitOf(states, x, seen)))];
+  };
+  const PANEL_CSS = `
+    :host { display: block; --lc: var(--hemma-color-yellow, #FFCC00); color: #fff; font-family: var(--hemma-font, -apple-system, system-ui, sans-serif); }
+    .wrap { position: relative; width: 100%; height: min(600px, calc(100svh - 64px)); margin: -8px -8px -20px; width: calc(100% + 16px); overflow: hidden; }
+    .page { position: absolute; inset: 0; transition: transform .38s cubic-bezier(0.2, 0.9, 0.25, 1), opacity .26s ease; }
+    .main { display: grid; grid-template-rows: auto 1fr auto auto; justify-items: center; gap: 18px; padding: 28px 22px 20px; box-sizing: border-box; }
+    .list { transform: translateX(100%); opacity: 0; padding: 18px 16px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+    .deep .main { transform: translateX(-30%); opacity: 0; pointer-events: none; }
+    .deep .list { transform: none; opacity: 1; }
+    .h { text-align: center; display: grid; gap: 4px; }
+    .h b { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+    .h span { font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.72); font-variant-numeric: tabular-nums; }
+    .cap { position: relative; width: 116px; height: 100%; min-height: 180px; max-height: 300px; align-self: center; border-radius: 36px; overflow: hidden;
+      background: rgba(0,0,0,0.30); cursor: ns-resize; touch-action: none; border: 0; padding: 0; color: #fff; -webkit-tap-highlight-color: transparent; }
+    .cap .fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--lc); transition: height .12s ease, background-color .3s ease; }
+    .cap.dragging .fill { transition: background-color .3s ease; }
+    .cap .bulb { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); }
+    .cap .bulb svg { width: 28px; height: 28px; display: block; }
+    .sw { display: flex; gap: 12px; justify-content: center; }
+    .sw button { width: 46px; height: 46px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; background: var(--s); position: relative; -webkit-tap-highlight-color: transparent; }
+    .sw button.on::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; box-shadow: 0 0 0 2.5px #fff; }
+    .sw button.wheel { background: conic-gradient(#ff3b30, #ff9500, #ffcc00, #34c759, #00c3d0, #0088ff, #af52de, #ff3b30); }
+    .sw button.wheel.whites { background: linear-gradient(90deg, ${kelvinRgb(2000)}, #fff, ${kelvinRgb(6500)}); }
+    .sw button.wheel::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--lc); }
+    .foot { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+    .pill, .gear, .back { border: 0; color: #fff; font: inherit; cursor: pointer; background: rgba(255,255,255,0.10); position: relative; -webkit-tap-highlight-color: transparent; }
+    .pill { height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14.5px; font-weight: 600; }
+    .gear { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
+    .gear svg { width: 22px; height: 22px; }
+    .back { align-self: flex-start; height: 36px; padding: 0 14px 0 10px; border-radius: 999px; font-size: 14px; font-weight: 600; }
+    .pill::after, .gear::after, .back::after, .sw button:not(.wheel)::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #fff; opacity: 0; transition: opacity .40s ease; pointer-events: none; }
+    @media (hover: hover) { .pill:hover::after, .gear:hover::after, .back:hover::after { opacity: .07; transition: opacity .18s ease; } }
+    .lst { background: rgba(255,255,255,0.10); border-radius: 22px; overflow: hidden; }
+    .lr { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; padding: 12px 16px; position: relative; }
+    .lr + .lr::before { content: ""; position: absolute; top: 0; left: 16px; right: 16px; height: 0.5px; background: rgba(255,255,255,0.12); }
+    .lr b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lr span { font-size: 13.5px; color: rgba(255,255,255,0.65); font-variant-numeric: tabular-nums; }
+    .mini { grid-column: 1 / -1; position: relative; height: 30px; border-radius: 999px; background: rgba(0,0,0,0.28); overflow: hidden; cursor: ew-resize; touch-action: none; border: 0; padding: 0; }
+    .mini .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--lc); }
+    .picker { position: absolute; inset: 0; padding: 26px 22px 20px; box-sizing: border-box; display: grid; grid-template-rows: auto 1fr auto; gap: 16px; justify-items: center; }
+    .wheelbig { width: 220px; height: 220px; border-radius: 50%; align-self: center; cursor: crosshair; touch-action: none; border: 0; padding: 0;
+      background: radial-gradient(circle, #fff 0%, rgba(255,255,255,0) 68%), conic-gradient(from 90deg, #ff3b30, #ffcc00, #34c759, #00c3d0, #0088ff, #af52de, #ff3b30); }
+    .kbar { width: 100%; height: 56px; border-radius: 999px; align-self: center; cursor: ew-resize; touch-action: none; border: 0; padding: 0;
+      background: linear-gradient(90deg, ${kelvinRgb(2000)}, ${kelvinRgb(3500)}, #fff, ${kelvinRgb(6500)}); }
+    button:focus-visible { outline: 2px solid rgba(255,255,255,0.7); outline-offset: 2px; }
+  `;
+  class HemmaLightPanel extends HTMLElement {
+    constructor() { super(); this.attachShadow({ mode: 'open' }); this._pending = {}; }
+    setConfig(c) { this._config = c || {}; this._built = false; }
+    getCardSize() { return 8; }
+    set hass(h) { this._hass = h; if (!this._built) this._build(); else this._sync(); }
+    _ids() {
+      const S = this._hass.states, c = this._config;
+      const list = Array.isArray(c.lights) && c.lights.length ? c.lights : unitsOf(S, c.entity);
+      return list.filter((id) => S[id]);
+    }
+    _call(svc, data) { return this._hass.callService('light', svc, data).catch(() => {}); }
+    _setBrightness(pct) {
+      const ids = this._config.entity;
+      clearTimeout(this._bt);
+      this._bt = setTimeout(() => (pct > 0 ? this._call('turn_on', { entity_id: ids, brightness_pct: pct }) : this._call('turn_off', { entity_id: ids })), 120);
+    }
+    _setColor(f) {
+      const d = { entity_id: this._config.entity };
+      if (f.k) d.color_temp_kelvin = f.k; else d.hs_color = f.hs;
+      this._call('turn_on', d);
+    }
+    _modes() {
+      const all = new Set();
+      this._ids().forEach((id) => ((this._hass.states[id].attributes || {}).supported_color_modes || []).forEach((m) => all.add(m)));
+      const color = ['hs', 'xy', 'rgb', 'rgbw', 'rgbww'].some((m) => all.has(m));
+      return { color, temp: color || all.has('color_temp'), dim: [...all].some((m) => m !== 'onoff') };
+    }
+    _build() {
+      if (!this._config || !this._hass) return;
+      this._built = true;
+      const S = this._hass.states, c = this._config;
+      const ids = this._ids();
+      const group = ids.length > 1;
+      const md = this._modes();
+      const favs = md.color ? COLOR_FAVS : md.temp ? WHITE_FAVS : [];
+      const name = c.name || (S[c.entity] && S[c.entity].attributes.friendly_name) || c.entity;
+      const root = this.shadowRoot;
+      root.innerHTML = `<style>${PANEL_CSS}</style><div class="wrap"><div class="page main">`
+        + `<div class="h"><b>${esc(name)}</b><span class="st"></span></div>`
+        + `<button type="button" class="cap" role="slider" aria-label="${esc(T('lights.brightness', 'Brightness'))}" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span><span class="bulb">${BULB}</span></button>`
+        + (favs.length ? `<div class="sw">${favs.map((f, i) => `<button type="button" data-i="${i}" style="--s:${favCss(f)}" aria-label="${esc(T('lights.favorite', 'Favorite {n}', { n: i + 1 }))}"></button>`).join('')}<button type="button" class="wheel${md.color ? '' : ' whites'}" aria-label="${esc(md.color ? T('lights.color', 'Color') : T('lights.whites', 'Whites'))}"></button></div>` : '<div></div>')
+        + `<div class="foot">${group ? `<button type="button" class="pill lights">${esc(T('lights.n_lights', '{n} Lights', { n: ids.length }))} ›</button>` : '<span></span>'}<button type="button" class="gear" aria-label="${esc(T('lights.settings', 'Settings'))}">${GEAR}</button></div>`
+        + `</div>${group ? `<div class="page list"><button type="button" class="back">‹ ${esc(name)}</button><div class="lst"></div></div>` : ''}</div>`;
+      this._favs = favs;
+      const cap = root.querySelector('.cap');
+      let drag = null;
+      cap.addEventListener('pointerdown', (ev) => { cap.setPointerCapture(ev.pointerId); drag = { y: ev.clientY, v: this._val(), moved: false }; });
+      cap.addEventListener('pointermove', (ev) => {
+        if (!drag) return;
+        const dy = drag.y - ev.clientY;
+        if (Math.abs(dy) > 4) drag.moved = true;
+        if (!drag.moved || !md.dim) return;
+        cap.classList.add('dragging');
+        const v = Math.round(Math.max(0, Math.min(100, drag.v + dy / cap.getBoundingClientRect().height * 100)));
+        this._local = v; this._paint(); this._setBrightness(v);
+      });
+      const up = () => {
+        if (drag && !drag.moved) { this._local = this._on() ? 0 : (this._val() || 100); this._paint(); this._call('toggle', { entity_id: c.entity }); }
+        drag = null; cap.classList.remove('dragging');
+        clearTimeout(this._lt); this._lt = setTimeout(() => { this._local = null; this._paint(); }, 2500);
+      };
+      cap.addEventListener('pointerup', up);
+      cap.addEventListener('pointercancel', () => { drag = null; cap.classList.remove('dragging'); });
+      cap.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown') return;
+        ev.preventDefault();
+        const v = Math.max(0, Math.min(100, this._val() + (ev.key === 'ArrowUp' ? 10 : -10)));
+        this._local = v; this._paint(); this._setBrightness(v);
+      });
+      root.querySelectorAll('.sw button[data-i]').forEach((b) => { b.onclick = () => { const f = favs[Number(b.dataset.i)]; this._localColor = favCss(f); this._paint(); this._setColor(f); }; });
+      const wheel = root.querySelector('.sw .wheel');
+      if (wheel) wheel.onclick = () => this._picker(md.color);
+      root.querySelector('.gear').onclick = () => this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: c.entity }, bubbles: true, composed: true }));
+      if (group) {
+        const wrap = root.querySelector('.wrap');
+        root.querySelector('.lights').onclick = () => { this._rows(); wrap.classList.add('deep'); };
+        root.querySelector('.back').onclick = () => wrap.classList.remove('deep');
+      }
+      this._paint();
+    }
+    _on() { return this._local != null ? this._local > 0 : this._ids().some((id) => this._hass.states[id].state === 'on'); }
+    _val() {
+      if (this._local != null) return this._local;
+      const on = this._ids().map((id) => this._hass.states[id]).filter((s) => s.state === 'on');
+      return on.length ? Math.round(on.reduce((a, s) => a + pctOf(s), 0) / on.length) : 0;
+    }
+    _color() {
+      if (this._localColor) return this._localColor;
+      const s = this._ids().map((id) => this._hass.states[id]).find((x) => x.state === 'on') || this._hass.states[this._config.entity];
+      return lightColor(s);
+    }
+    _paint() {
+      const root = this.shadowRoot;
+      const st = root.querySelector('.st');
+      if (!st) return;
+      const on = this._on(), v = this._val();
+      root.host.style.setProperty('--lc', this._color());
+      root.querySelector('.cap .fill').style.height = (on ? Math.max(v, 4) : 0) + '%';
+      root.querySelector('.cap').setAttribute('aria-valuenow', String(on ? v : 0));
+      st.textContent = on ? v + '%' : (this._hass.formatEntityState ? this._hass.formatEntityState({ ...this._hass.states[this._config.entity], state: 'off' }) : 'Off');
+      if (root.querySelector('.wrap.deep')) this._rows();
+    }
+    _sync() { if (this._local == null) this._localColor = null; this._paint(); }
+    _rows() {
+      const lst = this.shadowRoot.querySelector('.lst');
+      if (!lst) return;
+      const S = this._hass.states;
+      const ids = this._ids();
+      if (lst.childElementCount !== ids.length) {
+        lst.textContent = '';
+        ids.forEach((id) => {
+          const r = document.createElement('div');
+          r.className = 'lr';
+          r.innerHTML = `<b></b><span></span><button type="button" class="mini" role="slider" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span></button>`;
+          const mini = r.querySelector('.mini');
+          const at = (ev) => {
+            const b = mini.getBoundingClientRect();
+            const v = Math.round(Math.max(0, Math.min(100, (ev.clientX - b.left) / b.width * 100)));
+            r.querySelector('.mini .fill').style.width = v + '%';
+            r.querySelector('span').textContent = v ? v + '%' : T('lights.off', 'Off');
+            clearTimeout(r._t);
+            r._t = setTimeout(() => (v ? this._call('turn_on', { entity_id: id, brightness_pct: v }) : this._call('turn_off', { entity_id: id })), 120);
+            r._hold = Date.now() + 2500;
+          };
+          mini.addEventListener('pointerdown', (ev) => { mini.setPointerCapture(ev.pointerId); at(ev); mini.onpointermove = at; });
+          mini.addEventListener('pointerup', () => { mini.onpointermove = null; });
+          lst.appendChild(r);
+        });
+      }
+      [...lst.children].forEach((r, i) => {
+        const s = S[ids[i]];
+        if (!s || (r._hold && Date.now() < r._hold)) return;
+        const v = pctOf(s);
+        r.style.setProperty('--lc', lightColor(s));
+        r.querySelector('b').textContent = s.attributes.friendly_name || ids[i];
+        r.querySelector('span').textContent = s.state === 'on' ? v + '%' : (this._hass.formatEntityState ? this._hass.formatEntityState(s) : s.state);
+        r.querySelector('.mini').setAttribute('aria-label', s.attributes.friendly_name || ids[i]);
+        r.querySelector('.mini .fill').style.width = v + '%';
+      });
+    }
+    _picker(color) {
+      const main = this.shadowRoot.querySelector('.main');
+      const p = document.createElement('div');
+      p.className = 'page picker';
+      p.innerHTML = `<div class="h"><b>${esc(color ? T('lights.color', 'Color') : T('lights.whites', 'Whites'))}</b></div>`
+        + (color ? `<button type="button" class="wheelbig" aria-label="${esc(T('lights.color', 'Color'))}"></button>` : `<button type="button" class="kbar" aria-label="${esc(T('lights.whites', 'Whites'))}"></button>`)
+        + `<button type="button" class="pill">${esc(T('lights.done', 'Done'))}</button>`;
+      const pad = p.querySelector(color ? '.wheelbig' : '.kbar');
+      const pick = (ev) => {
+        const r = pad.getBoundingClientRect();
+        let f;
+        if (color) {
+          const x = ev.clientX - r.left - r.width / 2, y = ev.clientY - r.top - r.height / 2;
+          f = { hs: [Math.round((Math.atan2(y, x) * 180 / Math.PI + 360) % 360), Math.round(Math.min(100, Math.hypot(x, y) / (r.width / 2) * 100))] };
+        } else {
+          f = { k: Math.round(2000 + Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) * 4500) };
+        }
+        this._localColor = favCss(f); this._paint();
+        clearTimeout(this._ct); this._ct = setTimeout(() => this._setColor(f), 120);
+      };
+      pad.addEventListener('pointerdown', (ev) => { pad.setPointerCapture(ev.pointerId); pick(ev); pad.onpointermove = pick; });
+      pad.addEventListener('pointerup', () => { pad.onpointermove = null; });
+      p.querySelector('.pill').onclick = () => { p.remove(); main.style.visibility = ''; };
+      main.style.visibility = 'hidden';
+      this.shadowRoot.querySelector('.wrap').appendChild(p);
+    }
+  }
+  if (!customElements.get('hemma-light-panel')) customElements.define('hemma-light-panel', HemmaLightPanel);
+
   // Tile Tap: Ask First confirms anything that changes a device; View Only lets nothing through.
   const boot = () => {
     const ha = document.querySelector('home-assistant');

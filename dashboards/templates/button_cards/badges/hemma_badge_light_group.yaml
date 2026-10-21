@@ -1,5 +1,5 @@
 hemma_badge_light_group:
-  template: [hemma_badge_base, hemma_popup_light]
+  template: [hemma_badge_base, hemma_popup_light_panel]
 
   icon_tap_action:
     action: none
