@@ -25,7 +25,8 @@ hemma_popup_cover:
           /* The pane stays - these are control sheets. Only the close control
              keeps what it gained: a surface of its own, and room above it so
              the fill is not against the top edge of the sheet. */
-          .header { padding-top: var(--hemma-popup-header-gap, 10px); }
+          .header { padding-top: var(--hemma-popup-header-gap, 10px); padding-bottom: 0; }
+          .header-bar { min-height: 30px; }
           /* Equal inset on both axes: the bar's own padding plus the
              close control's 2px optical nudge has to come to the same
              number as the padding above it, or the circle sits further
@@ -47,6 +48,50 @@ hemma_popup_cover:
             backdrop-filter: var(--hemma-popup-plate-backdrop, blur(24px) saturate(180%));
             -webkit-backdrop-filter: var(--hemma-popup-plate-backdrop, blur(24px) saturate(180%));
             box-shadow: var(--hemma-popup-plate-shadow, none);
+          }
+          /* The sheet is full height, so short content floats mid-screen. On
+             a phone the card has to fill it for the grid's `1fr` row to have
+             any slack to hand the toggle - otherwise the rows bunch under it
+             instead of sitting at the bottom.
+             Flex, not percentages: .content is `flex: 1 1 auto` inside a
+             surface with only a max-height, so `min-height: 100%` here had no
+             definite height to resolve against and computed to nothing. A
+             flex chain gives every link a real height without one. */
+          @media (max-width: 768px) {
+            /* The root cause, and why two attempts at the chain below did
+               nothing: .surface is capped with max-height, never given one.
+               A flex item in a content-sized container is itself
+               content-sized, so every percentage under it resolved to
+               nothing and the grid's `1fr` row had no slack to hand out.
+               Same expression as its own max-height, as a height. */
+            .surface {
+              height: calc(100svh - var(--hemma-popup-top, 112px) - 8px
+                           - var(--safe-area-inset-bottom, 0px));
+            }
+            .content { display: flex; flex-direction: column; }
+            /* A viewport unit, not a percentage. Every attempt to make this
+               work by giving each link a definite height failed in the real
+               DOM even though the chain measures correct in isolation - so
+               the height is taken from the viewport directly and nothing has
+               to resolve against a parent at all. 112 is the surface's top
+               offset, 58 the header row, 8 the bottom gap. */
+            .content .container {
+              flex: 1 1 auto;
+              min-height: var(--hemma-panel-h, calc(100svh - var(--hemma-popup-top, 112px)
+                               - 58px - 8px
+                               - var(--safe-area-inset-bottom, 0px)));
+              display: flex; flex-direction: column; box-sizing: border-box;
+            }
+            /* The direct child AND anything HA wraps the card in: measured in
+               isolation this chain resolves and the tiles land 8px off the
+               bottom, so the only way it can still fail is a link in the real
+               DOM that this does not name. */
+            .content .container > *,
+            .content .container hui-card,
+            .content .container > * > * {
+              flex: 1 1 auto; min-height: 0;
+              display: flex; flex-direction: column;
+            }
           }
       content: |
         [[[
@@ -646,14 +691,11 @@ hemma_popup_cover:
               const value = moving
                 ? (ids.some(id => states[id]?.state === 'opening') ? T('covers.opening', 'Opening…') : T('covers.closing', 'Closing…'))
                 : openCount === 0 ? (tot === 1 ? L('component.cover.entity_component._.state.closed', 'Closed') : T('covers.all_closed', 'All closed'))
-                : openCount === tot ? (part ? T('covers.partly_open', 'Partly open') : (tot === 1 ? L('component.cover.entity_component._.state.open', 'Open') : T('covers.all_open', 'All open')))
+                : openCount === tot ? (part ? (tot === 1 ? T('covers.pct_open', '{n}% open', { n: avg }) : T('covers.partly_open', 'Partly open')) : (tot === 1 ? L('component.cover.entity_component._.state.open', 'Open') : T('covers.all_open', 'All open')))
                 : T('covers.n_open', '{n} open', { n: openCount });
               const newest = ids.map(id => states[id]?.last_changed).filter(Boolean).sort().pop();
-              return window._hemmaUI.hero({
-                value: value,
-                sub: ago(newest),
-                center: true,
-              });
+              /* Apple Home's panels: the name above, the state small beneath it, no time. */
+              return '<div style="text-align:center;font-family:var(--primary-font-family,system-ui);font-size:16px;font-weight:600;letter-spacing:-0.01em;color:rgba(255,255,255,0.72);line-height:1.3;">' + value + '</div>';
             ]]]`);
 
             /* The height goes to the control: a grab-anywhere vertical track,
@@ -764,6 +806,21 @@ hemma_popup_cover:
                 + '\n:host { --ha-card-backdrop-filter: none !important; --ha-card-background: transparent !important; --card-background-color: transparent !important; --ha-card-box-shadow: none !important; --ha-card-border-width: 0px !important; }'
                 + '\nha-card::before, ha-card::after, #card::before, #card::after, #container::before, #container::after { display: none !important; }'
                 + '\nha-card { will-change: auto !important; }'
+                + '\n@media (max-width: 768px) {'
+                + ' :host { flex: 1 1 auto !important; min-height: 0 !important;'
+                + '   display: flex !important; flex-direction: column !important; }'
+                + ' ha-card { flex: 1 1 auto !important; min-height: 0 !important;'
+                + '   display: flex !important; flex-direction: column !important;'
+                + '   box-sizing: border-box !important; }'
+                /* min-height: 0 here was overriding the grid's own inline
+                   min-height: 100% and leaving `1fr` no slack to give. A
+                   viewport figure resolves against nothing above it:
+                   112 the surface top, 58 the header, 28 the card's own
+                   padding, 8 the bottom gap. */
+                + ' #container { flex: 1 1 auto !important;'
+                + '   min-height: calc(var(--hemma-panel-h, calc(100svh - var(--hemma-popup-top, 112px) - 58px - 8px)) - 20px'
+                + '     - var(--safe-area-inset-bottom, 0px)) !important;'
+                + '   box-sizing: border-box !important; } }'
                 + '\n#container { background: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }' },
               entity: groupId || undefined,
               tap_action: { action: 'none' },
@@ -771,18 +828,22 @@ hemma_popup_cover:
               styles: {
                 card: [
                   { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
-                  { padding: '6px 26px 14px 26px' },
+                  { padding: '0 26px 14px 26px' },
                 ],
                 grid: [
                   { 'grid-template-areas': areas.join(' ') },
                   { 'grid-template-columns': '1fr' },
+                  { 'grid-template-rows': 'auto 1fr' + ' auto'.repeat(Math.max(0, areas.length - 2)) },
+                  { 'align-content': 'stretch' },
+                  { 'align-items': 'center' },
                   { 'row-gap': '18px' },
+                  { 'min-height': '100%' },
                 ],
                 custom_fields: fstyle,
               },
               custom_fields: fields,
             };
-            return { type: 'vertical-stack', cards: [uiCard] };
+            return uiCard;
           }
 
           const stackCards = [headerCard, controlsCard, tilesCard];

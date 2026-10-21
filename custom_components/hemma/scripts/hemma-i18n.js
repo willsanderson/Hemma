@@ -202,6 +202,7 @@
     "nav.scenes": "Scener",
     "network.active": "Aktiv",
     "network.activity": "{tier} {dir}",
+    "network.ask": "{action}?",
     "network.confirm": "Bekräfta",
     "network.connected": "Ansluten",
     "network.connection": "Anslutning",

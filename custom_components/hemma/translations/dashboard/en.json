@@ -1116,5 +1116,6 @@
   "network.hour_ago": "1 hour ago",
   "network.restarting": "Restarting…",
   "plex.n_new": "{n} new",
-  "ui.back": "Back"
+  "ui.back": "Back",
+  "network.ask": "{action}?"
 }

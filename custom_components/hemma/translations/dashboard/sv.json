@@ -1115,5 +1115,6 @@
 	"network.hour_ago": "1 timme sedan",
 	"network.restarting": "Startar om…",
 	"plex.n_new": "{n} nya",
-	"ui.back": "Tillbaka"
+	"ui.back": "Tillbaka",
+	"network.ask": "{action}?"
 }

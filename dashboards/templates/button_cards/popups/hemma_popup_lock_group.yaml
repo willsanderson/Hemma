@@ -29,7 +29,8 @@ hemma_popup_lock:
           /* The pane stays - these are control sheets. Only the close control
              keeps what it gained: a surface of its own, and room above it so
              the fill is not against the top edge of the sheet. */
-          .header { padding-top: var(--hemma-popup-header-gap, 10px); }
+          .header { padding-top: var(--hemma-popup-header-gap, 10px); padding-bottom: 0; }
+          .header-bar { min-height: 30px; }
           /* Equal inset on both axes: the bar's own padding plus the
              close control's 2px optical nudge has to come to the same
              number as the padding above it, or the circle sits further
@@ -76,9 +77,9 @@ hemma_popup_lock:
                offset, 58 the header row, 8 the bottom gap. */
             .content .container {
               flex: 1 1 auto;
-              min-height: calc(100svh - var(--hemma-popup-top, 112px)
+              min-height: var(--hemma-panel-h, calc(100svh - var(--hemma-popup-top, 112px)
                                - 58px - 8px
-                               - var(--safe-area-inset-bottom, 0px));
+                               - var(--safe-area-inset-bottom, 0px)));
               display: flex; flex-direction: column; box-sizing: border-box;
             }
             /* The direct child AND anything HA wraps the card in: measured in
@@ -593,11 +594,8 @@ hemma_popup_lock:
                 : lk === tot ? (tot === 1 ? L('component.lock.entity_component._.state.locked', 'Locked') : T('locks.popup.all_locked', 'All locked'))
                 : lk === 0   ? (tot === 1 ? L('component.lock.entity_component._.state.unlocked', 'Unlocked') : T('locks.popup.all_unlocked', 'All unlocked'))
                 : T('locks.popup.n_locked', '{n} locked', { n: lk });
-              return window._hemmaUI.hero({
-                value: value,
-                sub: ago(newest),
-                center: true,
-              });
+              /* Apple Home's panels: the name above, the state small beneath it, no time. */
+              return '<div style="text-align:center;font-family:var(--primary-font-family,system-ui);font-size:16px;font-weight:600;letter-spacing:-0.01em;color:rgba(255,255,255,0.72);line-height:1.3;">' + value + '</div>';
             ]]]`);
 
             /* The toggle. Same machinery as the pill it replaces - a template
@@ -777,8 +775,7 @@ hemma_popup_lock:
                    112 the surface top, 58 the header, 28 the card's own
                    padding, 8 the bottom gap. */
                 + ' #container { flex: 1 1 auto !important;'
-                + '   min-height: calc(100svh - var(--hemma-popup-top, 112px)'
-                + '     - 58px - 28px - 8px'
+                + '   min-height: calc(var(--hemma-panel-h, calc(100svh - var(--hemma-popup-top, 112px) - 58px - 8px)) - 20px'
                 + '     - var(--safe-area-inset-bottom, 0px)) !important;'
                 + '   box-sizing: border-box !important; } }'
                 + '\n#container { background: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }' },
@@ -788,7 +785,7 @@ hemma_popup_lock:
               styles: {
                 card: [
                   { background: 'transparent' }, { border: 'none' }, { 'box-shadow': 'none' },
-                  { padding: '6px 26px 14px 26px' },
+                  { padding: '0 26px 14px 26px' },
                 ],
                 grid: [
                   { 'grid-template-areas': areas.join(' ') },

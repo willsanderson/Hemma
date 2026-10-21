@@ -513,6 +513,7 @@
     button.w { border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
     @media (hover: hover) { button.w:hover { background: rgba(255,255,255,0.13); } }
     .plot { position: relative; touch-action: pan-y; }
+    .enddot { position: absolute; width: 8px; height: 8px; border-radius: 50%; margin: -4px 0 0 -4px; pointer-events: none; }
     .scrub { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .15s ease; }
     .plot.on .scrub { opacity: 1; }
     .scrub .ln { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,0.5); }
@@ -559,7 +560,7 @@
   // A chart answers the pointer: a line, a dot and the reading at that time, as the old popups' charts did.
   const scrub = (plot, series, fmtV, fmtT) => {
     if (!series || series.length < 2) return;
-    const vals = series.map((p) => p.v), max = Math.max(...vals) || 1, min = Math.min(0, ...vals), pad = 4, H = 96;
+    const vals = series.map((p) => p.v), max = Math.max(...vals) || 1, min = Math.min(0, ...vals), pad = 6, H = 96;
     const layer = document.createElement('div');
     layer.className = 'scrub';
     layer.innerHTML = '<div class="ln"></div><div class="dt"></div><div class="tip"></div>';
@@ -569,7 +570,7 @@
       const r = plot.getBoundingClientRect();
       const f = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width));
       const i = Math.round(f * (series.length - 1)), p = series[i];
-      const x = (i / (series.length - 1)) * r.width;
+      const x = (i / (series.length - 1)) * (r.width * 294 / 300);
       const y = (H - pad - ((p.v - min) / (max - min || 1)) * (H - pad * 2)) / H * r.height;
       ln.style.left = x + 'px'; dt.style.left = x + 'px'; dt.style.top = y + 'px';
       tip.style.left = Math.max(44, Math.min(r.width - 44, x)) + 'px';
@@ -583,16 +584,16 @@
   };
   const chartSvg = (pts, color) => {
     if (!pts || pts.length < 2) return null;
-    const W = 300, H = 96, pad = 4;
+    const W = 300, H = 96, pad = 6, inset = 6;
     const max = Math.max(...pts) || 1, min = Math.min(0, ...pts);
-    const x = (i) => (i / (pts.length - 1)) * W;
+    const x = (i) => (i / (pts.length - 1)) * (W - inset);
     const y = (v) => H - pad - ((v - min) / (max - min || 1)) * (H - pad * 2);
     const line = pts.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
     const id = 'g' + Math.random().toString(36).slice(2, 8);
     return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1">`
       + `<stop offset="0" style="stop-color:${color};stop-opacity:.5"/><stop offset="1" style="stop-color:${color};stop-opacity:0"/></linearGradient></defs>`
       + `<path d="${line} L${W} ${H} L0 ${H} Z" fill="url(#${id})"/><path d="${line}" fill="none" style="stroke:${color}" stroke-width="2.4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`
-      + `<circle cx="${x(pts.length - 1).toFixed(1)}" cy="${y(pts[pts.length - 1]).toFixed(1)}" r="4" style="fill:${color}"/></svg>`;
+      + `</svg><span class="enddot" style="left:${((W - inset) / W * 100).toFixed(2)}%;top:${(y(pts[pts.length - 1]) / H * 100).toFixed(2)}%;background:${color}"></span>`;
   };
   class HemmaEnergyPanel extends HTMLElement {
     constructor() { super(); this.attachShadow({ mode: 'open' }); this._range = 'day'; this._series = {}; }
@@ -874,7 +875,7 @@
       const name = c.name || T('network.title', 'Network');
       root.innerHTML = `<style>${WIDGET_CSS} :host { --accent: var(--hemma-color-blue, #0088FF); }
         .acts { flex: none; display: flex; gap: 10px; }
-        .acts button { flex: 1; height: 46px; border: 0; border-radius: 999px; color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.12); transition: background-color .3s ease; }
+        .acts button { flex: 1 1 0; min-width: 0; min-height: 46px; padding: 6px 18px; box-sizing: border-box; border: 0; border-radius: 999px; color: #fff; font: inherit; font-size: 15px; font-weight: 600; line-height: 1.2; cursor: pointer; background: rgba(255,255,255,0.12); transition: background-color .3s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .acts button.arm { background: var(--hemma-color-red, #FF4245); }
         .acts button.done { background: var(--hemma-color-green, #30D158); }
         @media (hover: hover) { .acts button:not(.arm):not(.done):hover { background: rgba(255,255,255,0.18); } }</style>`
@@ -938,31 +939,26 @@
       if (!this._cleared) { this._cleared = true; this._clearActs(); }
       const A = this._actions();
       acts.style.display = A.length ? '' : 'none';
-      const armed = A.find((a) => S[a.confirm] && S[a.confirm].state === 'on');
-      const done = A.find((a) => S[a.done] && S[a.done].state === 'on');
       const nameOf = (a) => a.label || (S[a.id].attributes.friendly_name || a.id);
-      const key = (armed ? 'a' + armed.id : '') + (done ? 'd' + done.id : '') + A.map(nameOf).join('|');
+      const key = A.map(nameOf).join('|') + '|' + (this._busy || '');
       if (key === this._actKey) return;
       this._actKey = key;
-      clearTimeout(this._armT); clearTimeout(this._doneT);
-      const run = (a) => {
-        const hasHelpers = S[a.confirm] && S[a.done];
-        const call = hasHelpers ? this._hass.callService('script', 'turn_on', { entity_id: 'script.hemma_restart_toggle', variables: { button_entity: a.id, helper_entity: a.confirm, done_entity: a.done } })
-          : this._hass.callService('button', 'press', { entity_id: a.id });
-        Promise.resolve(call).catch(() => {});
-      };
-      if (armed) {
-        acts.innerHTML = `<button type="button" class="cancel">${esc(T('tap.cancel', 'Cancel'))}</button><button type="button" class="arm">${esc(nameOf(armed))}</button>`;
-        acts.querySelector('.cancel').onclick = () => this._off(armed.confirm);
-        acts.querySelector('.arm').onclick = () => run(armed);
-        this._armT = setTimeout(() => this._off(armed.confirm), 10000);
-        return;
-      }
-      if (done) this._doneT = setTimeout(() => this._off(done.done), 15000);
-      acts.innerHTML = A.map((a, i) => `<button type="button" data-i="${i}" class="${a === done ? 'done' : ''}">${esc(a === done ? T('network.restarting', 'Restarting…') : nameOf(a))}</button>`).join('');
+      acts.innerHTML = A.map((a, i) => `<button type="button" data-i="${i}" class="${this._busy === a.id ? 'done' : ''}">${esc(this._busy === a.id ? T('network.restarting', 'Restarting…') : nameOf(a))}</button>`).join('');
       acts.querySelectorAll('button').forEach((bt) => {
         const a = A[Number(bt.dataset.i)];
-        bt.onclick = () => (a === done ? this._off(a.done) : run(a));
+        bt.onclick = () => {
+          if (this._busy === a.id) return;
+          // The same glass confirmation as Ask First; the router's button is pressed only once it is answered.
+          const ask = window.hemmaTap && window.hemmaTap.ask;
+          const go = () => {
+            Promise.resolve(this._hass.callService('button', 'press', { entity_id: a.id })).catch(() => {});
+            this._busy = a.id; this._actKey = null; this._paintActs();
+            clearTimeout(this._doneT);
+            this._doneT = setTimeout(() => { this._busy = null; this._actKey = null; this._paintActs(); }, 15000);
+          };
+          if (!ask) return go();
+          ask(T('network.ask', '{action}?', { action: nameOf(a) }), nameOf(a).split(' ')[0], null, true).then((yes) => { if (yes) go(); });
+        };
       });
     }
   }
@@ -1094,6 +1090,7 @@
       background:rgba(255,255,255,0.12); box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.22);
       -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
     button.ok { font-weight:600; background:rgba(0,195,208,0.82); }
+    .danger button.ok { background:rgba(255,66,69,0.85); }
     button::after { content:""; position:absolute; inset:0; border-radius:inherit; background:#fff; opacity:0; transition:opacity .40s ease; pointer-events:none; }
     @media (hover: hover) { button:hover::after { opacity:.07; transition:opacity .18s ease; } }
     button:active::after { opacity:.12; transition:opacity .08s ease; }
@@ -1325,11 +1322,11 @@
   };
   window.hemmaMorph = { look: tileLook, grow: GROW, shrink: SHRINK, settle, lift, material, geometry, hideAfterPaint, bounds, place, timed, centered };
 
-  const ask = (title, verb, card) => new Promise((done) => {
+  const ask = (title, verb, card, danger) => new Promise((done) => {
     if (asking) return done(false);
     const host = document.createElement('div');
     const root = host.attachShadow({ mode: 'open' });
-    root.innerHTML = `<style>${ASK_CSS}</style><div class="scrim"><div class="box" role="alertdialog" aria-modal="true" aria-label="${esc(title)}">`
+    root.innerHTML = `<style>${ASK_CSS}</style><div class="scrim${danger ? ' danger' : ''}"><div class="box" role="alertdialog" aria-modal="true" aria-label="${esc(title)}">`
       + `<div class="glass"></div><div class="content"><div class="t">${esc(title)}</div><div class="r"><button class="no" type="button">${esc(T('tap.cancel', 'Cancel'))}</button>`
       + `<button class="ok" type="button">${esc(verb)}</button></div></div></div></div>`;
     const scrim = root.querySelector('.scrim');
