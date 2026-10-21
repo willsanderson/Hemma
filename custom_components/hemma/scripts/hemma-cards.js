@@ -177,8 +177,6 @@
   if (!customElements.get('hemma-status-badges')) customElements.define('hemma-status-badges', HemmaStatusBadges);
 
   // The light panel, after Apple Home's: a brightness capsule, favorite colors, and for a group a page of its lights.
-  const BULB = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2Zm-3 18h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-1Z"/></svg>';
-  const GEAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-1l2.11-1.63a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.37-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11c-.04.34-.07.67-.07 1s.03.65.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65a7.3 7.3 0 0 0 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.66Z"/></svg>';
   const COLOR_FAVS = [{ k: 2700 }, { hs: [30, 100] }, { hs: [0, 90] }, { k: 4000 }];
   const WHITE_FAVS = [{ k: 2200 }, { k: 2700 }, { k: 4000 }, { k: 6500 }];
   const kelvinRgb = (k) => {
@@ -232,7 +230,7 @@
     .cap .fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--lc); transition: height .12s ease, background-color .3s ease; }
     .cap.dragging .fill { transition: background-color .3s ease; }
     .cap .bulb { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); }
-    .cap .bulb svg { width: 28px; height: 28px; display: block; }
+    .cap .bulb i { width: 30px; height: 30px; display: block; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
     .sw { display: flex; gap: 12px; justify-content: center; }
     .sw button { width: 46px; height: 46px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; background: var(--s); position: relative; -webkit-tap-highlight-color: transparent; }
     .sw button.on::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; box-shadow: 0 0 0 2.5px #fff; }
@@ -243,7 +241,7 @@
     .pill, .gear, .back { border: 0; color: #fff; font: inherit; cursor: pointer; background: rgba(255,255,255,0.10); position: relative; -webkit-tap-highlight-color: transparent; }
     .pill { height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14.5px; font-weight: 600; }
     .gear { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
-    .gear svg { width: 22px; height: 22px; }
+    .gear i { width: 22px; height: 22px; display: block; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
     .back { flex: none; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 18px 0 14px; border-radius: 999px; font-size: 16px; font-weight: 600; }
     .back svg { width: 10px; height: 17px; display: block; }
     .pill::after, .gear::after, .back::after, .sw button:not(.wheel)::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #fff; opacity: 0; transition: opacity .40s ease; pointer-events: none; }
@@ -321,9 +319,9 @@
       const root = this.shadowRoot;
       root.innerHTML = `<style>${PANEL_CSS}</style><div class="wrap"><div class="page main">`
         + `<div class="h"><b>${esc(name)}</b><span class="st"></span></div>`
-        + `<button type="button" class="cap" role="slider" aria-label="${esc(T('lights.brightness', 'Brightness'))}" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span><span class="bulb">${BULB}</span></button>`
+        + `<button type="button" class="cap" role="slider" aria-label="${esc(T('lights.brightness', 'Brightness'))}" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span><span class="bulb"><i style="--i:url('${esc(iconUrl('light'))}')"></i></span></button>`
         + (favs.length ? `<div class="sw">${favs.map((f, i) => `<button type="button" data-i="${i}" style="--s:${favCss(f)}" aria-label="${esc(T('lights.favorite', 'Favorite {n}', { n: i + 1 }))}"></button>`).join('')}<button type="button" class="wheel${md.color ? '' : ' whites'}" aria-label="${esc(md.color ? T('lights.color', 'Color') : T('lights.whites', 'Whites'))}"></button></div>` : '<div></div>')
-        + `<div class="foot">${group ? `<button type="button" class="pill lights">${esc(T('lights.n_lights', '{n} Lights', { n: ids.length }))} ›</button>` : '<span></span>'}<button type="button" class="gear" aria-label="${esc(T('lights.settings', 'Settings'))}">${GEAR}</button></div>`
+        + `<div class="foot">${group ? `<button type="button" class="pill lights">${esc(T('lights.n_lights', '{n} Lights', { n: ids.length }))} ›</button>` : '<span></span>'}<button type="button" class="gear" aria-label="${esc(T('lights.settings', 'Settings'))}"><i style="--i:url('${esc(iconUrl('settings'))}')"></i></button></div>`
         + `</div>${group ? `<div class="page list"><button type="button" class="back"><svg viewBox="0 0 10 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 1.5 1.5 8.5l7 7"/></svg>${esc(name)}</button><div class="lst"></div></div>` : ''}</div>`;
       this._favs = favs;
       const cap = root.querySelector('.cap');

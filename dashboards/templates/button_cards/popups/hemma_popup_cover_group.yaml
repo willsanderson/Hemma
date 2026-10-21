@@ -17,7 +17,7 @@ hemma_popup_cover:
     hemma_popup:
       title: "[[[ const T = window._hemmaT || ((k, en, v) => { let s = String(en); if (v) for (const p in v) s = s.split(String.fromCharCode(123) + p + String.fromCharCode(125)).join(String(v[p])); return s; }); const n = String(this._config?.name || '').trim(); const many = Array.isArray(variables.covers) && variables.covers.length > 1; return many || !n || n.startsWith('[' + '[[') ? T('covers.title', 'Covers') : n; ]]]"
       dismissable: true
-      style: '--popup-min-width: 340px; --popup-max-width: 340px; --popup-min-width-narrow: 340px;'
+      style: '--popup-min-width: 340px; --popup-max-width: 340px; --popup-min-width-narrow: 340px; --hemma-popup-row-min: 56px; --hemma-popup-row-pad-x: 14px; --hemma-popup-row-label-size: 16px; --hemma-popup-row-label-weight: 600; --hemma-popup-row-value-size: 15px; --hemma-popup-sub-size: 13px; --hemma-popup-icon-tile: 30px;'
       popup_styles:
       - style: all
         styles: |
@@ -31,7 +31,7 @@ hemma_popup_cover:
              from the left edge than it does from the top. */
           --hemma-popup-header-gap: 14px;
             --hemma-popup-gutter-wide: 20px;
-            --hemma-popup-row-radius: 30px;
+            --hemma-popup-row-radius: 22px;
             /* The inactive presets read brighter than the tiles under them. */
             --hemma-popup-seg-fill: rgba(255, 255, 255, 0.10);
             --hemma-popup-seg-fill-hover: rgba(255, 255, 255, 0.16);
@@ -668,7 +668,7 @@ hemma_popup_cover:
               /* Shorter than the shared control height by the presets row this
                  popup has and the lock does not, so both sheets land their
                  tiles on the same line. */
-              height: 267,
+              height: 297,
               value: avg == null ? (allClosed ? 0 : 100) : avg,
               invert: true,
               live: { entities: coverIds, attr: 'current_position' },
@@ -786,7 +786,7 @@ hemma_popup_cover:
                 grid: [
                   { 'grid-template-areas': areas.join(' ') },
                   { 'grid-template-columns': '1fr' },
-                  { 'row-gap': '28px' },
+                  { 'row-gap': '18px' },
                 ],
                 custom_fields: fstyle,
               },
