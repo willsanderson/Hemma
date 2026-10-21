@@ -15,7 +15,7 @@ hemma_popup_cover:
         return window.hemmaPopupAction ? window.hemmaPopupAction() : 'more-info';
       ]]]
     hemma_popup:
-      title: "[[[ const T = window._hemmaT || ((k, en, v) => { let s = String(en); if (v) for (const p in v) s = s.split(String.fromCharCode(123) + p + String.fromCharCode(125)).join(String(v[p])); return s; }); return T('covers.title', 'Covers'); ]]]"
+      title: "[[[ const T = window._hemmaT || ((k, en, v) => { let s = String(en); if (v) for (const p in v) s = s.split(String.fromCharCode(123) + p + String.fromCharCode(125)).join(String(v[p])); return s; }); const n = String(this._config?.name || '').trim(); const many = Array.isArray(variables.covers) && variables.covers.length > 1; return many || !n || n.startsWith('[' + '[[') ? T('covers.title', 'Covers') : n; ]]]"
       dismissable: true
       style: '--popup-min-width: 460px; --popup-max-width: 460px;'
       popup_styles:

@@ -1,5 +1,5 @@
 hemma_cover:
-  template: [hemma_entity]
+  template: [hemma_entity, hemma_popup_cover]
 
   variables:
     mobile_filter_category: climate
@@ -9,9 +9,6 @@ hemma_cover:
   show_name: true
   show_state: true
   name: Cover
-
-  tap_action:
-    action: more-info
 
   hold_action:
     action: toggle

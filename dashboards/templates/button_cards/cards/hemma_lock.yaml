@@ -1,5 +1,5 @@
 hemma_lock:
-  template: [hemma_entity]
+  template: [hemma_entity, hemma_popup_lock]
 
   show_entity_picture: true
   show_icon: true
@@ -26,10 +26,6 @@ hemma_lock:
       try { return hass.formatEntityState(entity) || entity.state; }
       catch (e) { return entity.state; }
     ]]]
-
-  tap_action:
-    action: more-info
-    entity: '[[[ return entity?.entity_id ]]]'
 
   hold_action:
     action: more-info
