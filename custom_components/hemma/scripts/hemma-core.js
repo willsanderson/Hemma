@@ -8298,6 +8298,11 @@ window.hemmaMenuGlass = {
 
       if (!wasOpen) this._replayChrome();
       if (morph) this._morphIn(morph);
+      // On a phone the sheet is full height, so a panel is told how much room it has and spreads into it.
+      if (this._isSheet()) {
+        var fit = () => { if (this.hasAttribute('open')) this.style.setProperty('--hemma-panel-h', this.content.clientHeight + 'px'); };
+        requestAnimationFrame(fit);
+      } else this.style.removeProperty('--hemma-panel-h');
 
       setTimeout(() => this._probe(), 900);   // after card_mod has landed
 

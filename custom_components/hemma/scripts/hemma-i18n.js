@@ -57,6 +57,7 @@
     "cameras.unmute": "Slå på ljud",
     "cameras.zoom_to_fill": "Zooma för att fylla",
     "cameras.zoom_to_fit": "Zooma för att anpassa",
+    "climate.history_24h": "Historik 24 timmar",
     "climate.pct_humidity": "{n}% luftfuktighet",
     "climate.temp_short": "Temp",
     "climate.value": "Värde",

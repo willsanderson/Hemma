@@ -215,10 +215,10 @@
   };
   const PANEL_CSS = `
     :host { display: block; --lc: var(--hemma-color-yellow, #FFCC00); color: #fff; font-family: var(--hemma-font, -apple-system, system-ui, sans-serif); }
-    .wrap { position: relative; width: 100%; height: min(600px, calc(100svh - 64px)); margin: -8px -8px -20px; width: calc(100% + 16px); overflow: hidden; }
+    .wrap { position: relative; height: var(--hemma-panel-h, min(600px, calc(100svh - 64px))); margin: -8px -8px -20px; width: calc(100% + 16px); overflow: hidden; }
     .page { position: absolute; inset: 0; transition: transform .38s cubic-bezier(0.2, 0.9, 0.25, 1), opacity .26s ease; }
-    .main { display: grid; grid-template-rows: auto 1fr auto auto; justify-items: center; gap: 18px; padding: 28px 22px 20px; box-sizing: border-box; }
-    .list { transform: translateX(100%); opacity: 0; padding: 18px 16px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+    .main { display: grid; grid-template-rows: auto 1fr auto auto; justify-items: center; gap: 18px; padding: 28px 22px calc(20px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; }
+    .list { transform: translateX(100%); opacity: 0; padding: 18px 16px calc(16px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
     .list::-webkit-scrollbar { display: none; }
     .deep .main { transform: translateX(-30%); opacity: 0; pointer-events: none; }
     .deep .list { transform: none; opacity: 1; }
@@ -259,6 +259,7 @@
     .kbar { width: 100%; height: 56px; border-radius: 999px; align-self: center; cursor: default; touch-action: none; border: 0; padding: 0;
       background: linear-gradient(90deg, ${kelvinRgb(2000)}, ${kelvinRgb(3500)}, #fff, ${kelvinRgb(6500)}); }
     button:focus-visible { outline: 2px solid rgba(255,255,255,0.7); outline-offset: 2px; }
+    @media (max-width: 768px) { .main { gap: 26px; padding-top: 36px; } .cap { max-height: 440px; width: 132px; border-radius: 40px; } .h b { font-size: 26px; } .h span { font-size: 17px; } }
   `;
   class HemmaLightPanel extends HTMLElement {
     constructor() { super(); this.attachShadow({ mode: 'open' }); this._pending = {}; }
@@ -457,8 +458,9 @@
   // Panels made of widgets (Energy first): a headline, one chart, two small widgets and a second page, after Apple Home.
   const WIDGET_CSS = `
     :host { display: block; color: #fff; font-family: var(--hemma-font, -apple-system, system-ui, sans-serif); --accent: var(--hemma-color-orange, #FF9230); }
-    .wrap { position: relative; max-height: calc(100svh - 64px); margin: -8px -8px -20px; width: calc(100% + 16px); overflow: hidden; display: flex; }
+    .wrap { position: relative; max-height: calc(100svh - 64px); min-height: var(--hemma-panel-h, 0px); margin: -8px -8px -20px; width: calc(100% + 16px); overflow: hidden; display: flex; }
     .one { position: relative; flex: 1; max-height: calc(100svh - 64px); }
+    @media (max-width: 768px) { .one { justify-content: center; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); } }
     .two { position: absolute; inset: 0; }
     .plot { min-height: 96px; }
     .page { transition: transform .38s cubic-bezier(0.2, 0.9, 0.25, 1), opacity .26s ease; box-sizing: border-box;
@@ -630,6 +632,115 @@
     }
   }
   if (!customElements.get('hemma-energy-panel')) customElements.define('hemma-energy-panel', HemmaEnergyPanel);
+
+  const COMFORT_F = { veryCold: 65, cool: 70, comfortable: 76, warm: 81, hot: 85 };
+  const COMFORT_C = { veryCold: 18, cool: 21, comfortable: 24, warm: 27, hot: 29 };
+  const comfortWord = (v, unit) => {
+    if (v == null) return '';
+    const t = /F/i.test(unit || '') ? COMFORT_F : COMFORT_C;
+    return v <= t.veryCold ? T('temp.very_cold', 'Very Cold') : v <= t.cool ? T('temp.cool', 'Cool') : v <= t.comfortable ? T('temp.comfortable', 'Comfortable')
+      : v <= t.warm ? T('temp.warm', 'Warm') : v <= t.hot ? T('temp.hot', 'Hot') : T('temp.very_hot', 'Very Hot');
+  };
+  // Thresholds as the old climate popup set them, so a reading is judged the same way everywhere.
+  const sensorKind = (st, id) => {
+    const a = (st && st.attributes) || {};
+    const dc = String(a.device_class || '').toLowerCase(), i = String(id || '').toLowerCase(), u = String(a.unit_of_measurement || '');
+    if (dc === 'pm25' || /pm25|pm2_5/.test(i)) return { label: 'PM2.5', good: 12, mod: 35.4 };
+    if (dc === 'pm10' || /pm10/.test(i)) return { label: 'PM10', good: 54, mod: 154 };
+    if (dc === 'carbon_dioxide' || /co2|carbon/.test(i)) return { label: 'CO₂', good: 1000, mod: 1500 };
+    if (dc.includes('volatile') || /voc/.test(i)) return /index/i.test(u) || /_index$/.test(i) ? { label: 'VOC', good: 6, mod: 8 } : { label: 'VOC', good: 100, mod: 200 };
+    if (dc === 'nitrogen_dioxide' || /no2/.test(i)) return { label: 'NO₂', good: 53, mod: 100 };
+    return { label: a.friendly_name || id, good: null, mod: null };
+  };
+  const toneOf = (n, k) => (n == null || k.good == null ? '' : n <= k.good ? 'var(--hemma-color-green, #30D158)' : n <= k.mod ? 'var(--hemma-color-yellow, #FFCC00)' : 'var(--hemma-color-red, #FF4245)');
+  const AIR_WORDS = { excellent: ['air_quality.excellent', 'Excellent', 'air_quality.is_great', 'Air quality is great', 'g'],
+    good: ['air_quality.good', 'Good', 'air_quality.is_good', 'Air quality is good', 'g'],
+    moderate: ['air_quality.moderate', 'Moderate', 'air_quality.is_moderate', 'Air quality is moderate', 'y'],
+    fair: ['air_quality.fair', 'Fair', 'air_quality.is_moderate', 'Air quality is moderate', 'y'],
+    poor: ['air_quality.poor', 'Poor', 'air_quality.consider_ventilating', 'Consider ventilating', 'r'],
+    bad: ['air_quality.bad', 'Bad', 'air_quality.ventilate_now', 'Ventilate now', 'r'] };
+  const AIR_TONES = { g: 'var(--hemma-color-green, #30D158)', y: 'var(--hemma-color-yellow, #FFCC00)', r: 'var(--hemma-color-red, #FF4245)' };
+  class HemmaClimatePanel extends HTMLElement {
+    constructor() { super(); this.attachShadow({ mode: 'open' }); this._series = {}; }
+    setConfig(c) { this._config = c || {}; this._built = false; }
+    getCardSize() { return 8; }
+    set hass(h) { this._hass = h; if (!this._built) this._build(); else this._paint(); }
+    _sensors() { const S = this._hass.states; return (this._config.sensors || []).filter((id) => id && S[id] && num(S[id]) != null); }
+    _air() {
+      const S = this._hass.states, q = S[this._config.entity_quality];
+      if (!q) return null;
+      const w = AIR_WORDS[String(q.state).toLowerCase()];
+      if (w) return { value: T(w[0], w[1]), unit: '', advice: T(w[2], w[3]), tone: AIR_TONES[w[4]] };
+      const n = num(q);
+      if (n == null) return null;
+      const k = n <= 50 ? 'g' : n <= 100 ? 'y' : 'r';
+      return { value: String(Math.round(n)), unit: q.attributes.unit_of_measurement || 'AQI', advice: k === 'g' ? T('air_quality.is_great', 'Air quality is great') : k === 'y' ? T('air_quality.is_moderate', 'Air quality is moderate') : T('air_quality.consider_ventilating', 'Consider ventilating'), tone: AIR_TONES[k] };
+    }
+    _build() {
+      if (!this._config || !this._hass) return;
+      this._built = true;
+      const root = this.shadowRoot, c = this._config;
+      const name = c.name || T('filter.climate', 'Climate');
+      root.innerHTML = `<style>${WIDGET_CSS} :host { --accent: var(--hemma-color-teal, #00C3D0); } .wv.t { color: var(--tone, #fff); }</style>`
+        + `<div class="wrap"><div class="page one"><div class="h"><b>${esc(name)}</b><span>${esc(T('filter.climate', 'Climate'))}</span></div>`
+        + `<div class="big"></div><div class="cap sum"></div><div class="g2 tiles"></div>`
+        + `<div class="list"><button type="button" class="li plain hist"><span class="n"><b>${esc(T('climate.history_24h', '24-hour history'))}</b></span>${CHEV_SVG}</button></div>`
+        + `</div><div class="page two"><button type="button" class="back">${BACK_SVG}${esc(name)}</button>`
+        + `<div class="h"><b>${esc(T('climate.history_24h', '24-hour history'))}</b></div><div class="charts" style="display:grid;gap:10px"></div></div></div>`;
+      const wrap = root.querySelector('.wrap');
+      root.querySelector('.hist').onclick = () => { this._history(); wrap.classList.add('deep'); };
+      root.querySelector('.back').onclick = () => wrap.classList.remove('deep');
+      this._paint();
+    }
+    _paint() {
+      const c = this._config, S = this._hass.states, root = this.shadowRoot;
+      const big = root.querySelector('.big');
+      if (!big) return;
+      const t = S[c.entity_temp], tv = num(t), tu = (t && t.attributes.unit_of_measurement) || '°';
+      big.innerHTML = tv == null ? '—' : `${Math.round(tv)}<small>${esc(tu)}</small>`;
+      const air = this._air();
+      root.querySelector('.sum').textContent = [comfortWord(tv, tu), air && air.advice].filter(Boolean).join(' · ');
+      const tiles = [];
+      const h = S[c.entity_humidity];
+      if (h && num(h) != null) tiles.push({ id: c.entity_humidity, label: T('humidity.title', 'Humidity'), value: String(Math.round(num(h))), unit: '%' });
+      if (air) tiles.push({ id: c.entity_quality, label: T('air_quality.label', 'Air quality'), value: air.value, unit: air.unit, tone: air.tone });
+      const kinds = new Set();
+      this._sensors().filter((id) => id !== c.entity_quality).forEach((id) => {
+        const st = S[id], k = sensorKind(st, id), n = num(st);
+        if (kinds.has(k.label)) return;
+        kinds.add(k.label);
+        tiles.push({ id, label: k.label, value: n >= 100 ? String(Math.round(n)) : String(Math.round(n * 10) / 10), unit: st.attributes.unit_of_measurement || '', tone: toneOf(n, k) });
+      });
+      root.querySelector('.tiles').innerHTML = tiles.slice(0, 4).map((x) => `<button type="button" class="w" data-id="${esc(x.id)}" style="border:0;color:inherit;font:inherit;text-align:left;cursor:pointer">`
+        + `<div class="wt">${esc(x.label)}</div><div class="wv t" style="--tone:${x.tone || '#fff'}">${esc(x.value)}<small>${esc(x.unit)}</small></div></button>`).join('');
+      root.querySelectorAll('.tiles .w').forEach((b) => { b.onclick = () => this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: b.dataset.id }, bubbles: true, composed: true })); });
+      root.querySelector('.list').style.display = this._ids().length ? '' : 'none';
+    }
+    _ids() {
+      const c = this._config, S = this._hass.states, kinds = new Set();
+      const once = this._sensors().filter((id) => { const k = sensorKind(S[id], id).label; if (kinds.has(k)) return false; kinds.add(k); return true; });
+      return [c.entity_temp, c.entity_humidity, ...once].filter((id, i, a) => id && S[id] && num(S[id]) != null && a.indexOf(id) === i);
+    }
+    async _history() {
+      const box = this.shadowRoot.querySelector('.charts');
+      const ids = this._ids(), S = this._hass.states, c = this._config;
+      box.innerHTML = ids.map((id) => {
+        const label = id === c.entity_temp ? T('temp.title', 'Temperature') : id === c.entity_humidity ? T('humidity.title', 'Humidity') : sensorKind(S[id], id).label;
+        return `<div class="w" data-id="${esc(id)}"><div class="wt"><span>${esc(label)}</span><span>${esc(S[id].state)} ${esc(S[id].attributes.unit_of_measurement || '')}</span></div><div class="plot"></div></div>`;
+      }).join('');
+      if (!this._hass.callWS) return;
+      const start = new Date(Date.now() - 864e5).toISOString();
+      if (!this._series[start.slice(0, 13)]) {
+        this._series[start.slice(0, 13)] = this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: start, statistic_ids: ids, period: 'hour', types: ['mean'] }).catch(() => ({}));
+      }
+      const res = await this._series[start.slice(0, 13)];
+      box.querySelectorAll('.w').forEach((w) => {
+        const pts = ((res && res[w.dataset.id]) || []).map((p) => p.mean).filter((v) => v != null);
+        w.querySelector('.plot').innerHTML = chartSvg(pts, 'var(--accent)') || `<div class="empty">${esc(T('energy.no_history', 'No history yet'))}</div>`;
+      });
+    }
+  }
+  if (!customElements.get('hemma-climate-panel')) customElements.define('hemma-climate-panel', HemmaClimatePanel);
 
   // Tile Tap: Ask First confirms anything that changes a device; View Only lets nothing through.
   const boot = () => {

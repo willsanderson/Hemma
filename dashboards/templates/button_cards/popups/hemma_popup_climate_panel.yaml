@@ -1,0 +1,21 @@
+hemma_climate_panel:
+  template:
+  - hemma_popup_base
+  variables:
+    room_name: null
+    entity_quality: null
+    entity_temp: null
+    entity_humidity: null
+    sensors: null
+  tap_action:
+    hemma_popup:
+      title: ''
+      dismissable: true
+      style: '--popup-min-width: 340px; --popup-max-width: 340px; --popup-min-width-narrow: 340px; --hemma-popup-radius: 34px;'
+      content:
+        type: custom:hemma-climate-panel
+        name: '[[[ return variables.room_name || ""; ]]]'
+        entity_temp: '[[[ return variables.entity_temp || (entity?.attributes?.device_class === "temperature" ? entity.entity_id : null); ]]]'
+        entity_humidity: '[[[ return variables.entity_humidity || (entity?.attributes?.device_class === "humidity" ? entity.entity_id : null); ]]]'
+        entity_quality: '[[[ const s = Array.isArray(variables.sensors) ? variables.sensors.filter(Boolean) : []; return variables.entity_quality || s[0] || null; ]]]'
+        sensors: '[[[ return Array.isArray(variables.sensors) ? variables.sensors.filter(Boolean) : []; ]]]'

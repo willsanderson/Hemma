@@ -1,5 +1,5 @@
 hemma_badge_humidity:
-  template: [hemma_badge_base, hemma_popup_base, hemma_climate_popup]
+  template: [hemma_badge_base, hemma_popup_base, hemma_climate_panel]
 
   variables:
     enabled: true

@@ -1110,5 +1110,6 @@
   "lights.done": "Done",
   "energy.week": "Week",
   "energy.top_devices": "Top devices",
-  "energy.no_history": "No history yet"
+  "energy.no_history": "No history yet",
+  "climate.history_24h": "24-hour history"
 }
