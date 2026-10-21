@@ -218,8 +218,8 @@
     .box { position:relative; width:min(290px, 100%); border-radius:28px; text-align:center; color:#fff; }
     .glass { position:absolute; inset:0; border-radius:inherit; pointer-events:none;
       background-color:rgba(30,33,38,0.30); -webkit-backdrop-filter:blur(40px) saturate(170%); backdrop-filter:blur(40px) saturate(170%);
-      animation:glassIn .48s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
-    .content { position:relative; box-sizing:border-box; padding:22px 16px 16px; animation:contentIn .48s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
+      animation:glassIn .48s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+    .content { position:relative; box-sizing:border-box; padding:22px 16px 16px; animation:contentIn .48s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
     .t { font-size:17px; font-weight:600; line-height:1.3; letter-spacing:-0.01em; margin:0 4px 16px; overflow-wrap:anywhere; }
     .r { display:flex; gap:10px; }
     button { position:relative; flex:1; height:44px; border:0; border-radius:999px; font:inherit; font-size:16px; cursor:pointer; color:#fff;
@@ -252,17 +252,17 @@
   `;
   let asking = null;
   // A damped spring sampled into linear(), so the morph settles the way Apple's panels do.
-  const spring = (response, damping) => {
-    const w0 = 2 * Math.PI / response, wd = w0 * Math.sqrt(1 - damping * damping);
-    const x = (t) => 1 - Math.exp(-damping * w0 * t) * (Math.cos(wd * t) + (damping * w0 / wd) * Math.sin(wd * t));
-    const dur = Math.log(1000) / (damping * w0);
+  const spring = (response) => {
+    const w0 = 2 * Math.PI / response;
+    const x = (t) => 1 - Math.exp(-w0 * t) * (1 + w0 * t);
+    const dur = 8.4 / w0;
     const pts = [];
     for (let i = 0; i <= 60; i++) pts.push(i === 60 ? 1 : +x(dur * i / 60).toFixed(4));
     return { ease: 'linear(' + pts.join(', ') + ')', dur: Math.round(dur * 1000) };
   };
   const SPRING = window.CSS && CSS.supports && CSS.supports('animation-timing-function', 'linear(0, 1)');
-  const GROW = SPRING ? spring(0.34, 0.86) : { ease: 'cubic-bezier(0.3, 1.2, 0.5, 1)', dur: 380 };
-  const SHRINK = SPRING ? spring(0.3, 0.92) : { ease: 'cubic-bezier(0.3, 0.95, 0.4, 1)', dur: 300 };
+  const GROW = SPRING ? spring(0.32) : { ease: 'cubic-bezier(0.2, 0.9, 0.25, 1)', dur: 420 };
+  const SHRINK = SPRING ? spring(0.28) : { ease: 'cubic-bezier(0.2, 0.9, 0.25, 1)', dur: 370 };
   const alphaOf = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ''); if (!m) return 0; const p = m[1].split(','); return p.length > 3 ? Number(p[3]) : 1; };
   const tileLook = (card) => {
     const sr = card.shadowRoot;
