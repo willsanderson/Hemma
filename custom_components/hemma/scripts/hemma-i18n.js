@@ -137,6 +137,7 @@
     "lights.n_lights": "{n} lampor",
     "lights.n_on": "{n} på",
     "lights.off": "Av",
+    "lights.on": "På",
     "lights.popup.all_off": "Alla av",
     "lights.popup.all_on": "Alla på",
     "lights.popup.n_on": "{n} på",

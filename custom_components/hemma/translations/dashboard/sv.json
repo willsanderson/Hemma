@@ -1110,5 +1110,6 @@
 	"energy.week": "Vecka",
 	"energy.top_devices": "Största förbrukare",
 	"energy.no_history": "Ingen historik än",
-	"climate.history_24h": "Historik 24 timmar"
+	"climate.history_24h": "Historik 24 timmar",
+	"lights.on": "På"
 }

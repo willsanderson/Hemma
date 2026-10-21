@@ -237,7 +237,14 @@
     .sw button.wheel { background: conic-gradient(#ff3b30, #ff9500, #ffcc00, #34c759, #00c3d0, #0088ff, #af52de, #ff3b30); }
     .sw button.wheel.whites { background: linear-gradient(90deg, ${kelvinRgb(2000)}, #fff, ${kelvinRgb(6500)}); }
     .sw button.wheel::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--lc); }
-    .foot { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+    .foot { width: 100%; display: flex; justify-content: space-around; align-items: flex-start; }
+    .act { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; background: none; color: #fff; font: inherit; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .act .o { position: relative; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,0.12); }
+    .act .o::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #fff; opacity: 0; transition: opacity .40s ease; }
+    @media (hover: hover) { .act:hover .o::after { opacity: .07; transition: opacity .18s ease; } }
+    .act:active .o::after { opacity: .12; transition: opacity .08s ease; }
+    .act .o i { width: 22px; height: 22px; display: block; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+    .act small { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.78); }
     .pill, .gear, .back { border: 0; color: #fff; font: inherit; cursor: pointer; background: rgba(255,255,255,0.10); position: relative; -webkit-tap-highlight-color: transparent; }
     .pill { height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14.5px; font-weight: 600; }
     .gear { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
@@ -247,10 +254,16 @@
     .pill::after, .gear::after, .back::after, .sw button:not(.wheel)::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #fff; opacity: 0; transition: opacity .40s ease; pointer-events: none; }
     @media (hover: hover) { .pill:hover::after, .gear:hover::after, .back:hover::after { opacity: .07; transition: opacity .18s ease; } }
     .lst { flex: none; background: rgba(255,255,255,0.10); border-radius: 22px; overflow: hidden; }
-    .lr { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; padding: 12px 16px; position: relative; }
-    .lr + .lr::before { content: ""; position: absolute; top: 0; left: 16px; right: 16px; height: 0.5px; background: rgba(255,255,255,0.12); }
-    .lr b { font-size: 16px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .lr span { font-size: 13.5px; color: rgba(255,255,255,0.65); font-variant-numeric: tabular-nums; }
+    .lr { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 12px; align-items: center; padding: 10px 14px; position: relative; }
+    .lr .tg { width: 34px; height: 34px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: grid; place-items: center; background: rgba(0,0,0,0.28); color: rgba(255,255,255,0.55); -webkit-tap-highlight-color: transparent; transition: background-color .2s ease; }
+    .lr.on .tg { background: var(--lc); color: #fff; }
+    .lr .tg i { width: 18px; height: 18px; display: block; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+    .lr .nm { border: 0; background: none; color: inherit; font: inherit; padding: 0; text-align: left; cursor: pointer; min-width: 0; display: grid; }
+    .lr .nm small { font-size: 13px; line-height: 1.15; color: rgba(255,255,255,0.6); font-variant-numeric: tabular-nums; }
+    .lr .chev { width: 7px; height: 12px; color: rgba(255,255,255,0.35); }
+    .lr .mini { grid-column: 1 / -1; }
+    .lr + .lr::before { content: ""; position: absolute; top: 0; left: 60px; right: 14px; height: 0.5px; background: rgba(255,255,255,0.12); }
+    .lr b { font-size: 16px; font-weight: 550; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .mini { grid-column: 1 / -1; position: relative; height: 30px; border-radius: 999px; background: rgba(0,0,0,0.28); overflow: hidden; cursor: default; touch-action: none; border: 0; padding: 0; }
     .mini .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--lc); }
     .picker { position: absolute; inset: 0; padding: 26px 22px 20px; box-sizing: border-box; display: grid; grid-template-rows: auto 1fr auto; gap: 16px; justify-items: center; }
@@ -261,6 +274,7 @@
     button:focus-visible { outline: 2px solid rgba(255,255,255,0.7); outline-offset: 2px; }
     @media (max-width: 768px) { .main { gap: 26px; padding-top: 36px; } .cap { max-height: 340px; width: 124px; border-radius: 38px; } .h b { font-size: 26px; } .h span { font-size: 17px; } }
   `;
+  const CHEV_SVG = '<svg class="chev" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg>';
   class HemmaLightPanel extends HTMLElement {
     constructor() { super(); this.attachShadow({ mode: 'open' }); this._pending = {}; }
     setConfig(c) { this._config = c || {}; this._built = false; }
@@ -322,7 +336,8 @@
         + `<div class="h"><b>${esc(name)}</b><span class="st"></span></div>`
         + `<button type="button" class="cap" role="slider" aria-label="${esc(T('lights.brightness', 'Brightness'))}" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span><span class="bulb"><i style="--i:url('${esc(iconUrl('light'))}')"></i></span></button>`
         + (favs.length ? `<div class="sw">${favs.map((f, i) => `<button type="button" data-i="${i}" style="--s:${favCss(f)}" aria-label="${esc(T('lights.favorite', 'Favorite {n}', { n: i + 1 }))}"></button>`).join('')}<button type="button" class="wheel${md.color ? '' : ' whites'}" aria-label="${esc(md.color ? T('lights.color', 'Color') : T('lights.whites', 'Whites'))}"></button></div>` : '<div></div>')
-        + `<div class="foot">${group ? `<button type="button" class="pill lights">${esc(T('lights.n_lights', '{n} Lights', { n: ids.length }))} ›</button>` : '<span></span>'}<button type="button" class="gear" aria-label="${esc(T('lights.settings', 'Settings'))}"><i style="--i:url('${esc(iconUrl('settings'))}')"></i></button></div>`
+        + `<div class="foot">${group ? `<button type="button" class="act lights"><span class="o"><i style="--i:url('${esc(iconUrl('light'))}')"></i></span><small>${esc(T('lights.n_lights', '{n} Lights', { n: ids.length }))}</small></button>` : ''}`
+        + `<button type="button" class="act gear"><span class="o"><i style="--i:url('${esc(iconUrl('settings'))}')"></i></span><small>${esc(T('lights.settings', 'Settings'))}</small></button></div>`
         + `</div>${group ? `<div class="page list"><button type="button" class="back"><svg viewBox="0 0 10 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 1.5 1.5 8.5l7 7"/></svg>${esc(name)}</button><div class="lst"></div></div>` : ''}</div>`;
       this._favs = favs;
       const cap = root.querySelector('.cap');
@@ -399,13 +414,25 @@
         ids.forEach((id) => {
           const r = document.createElement('div');
           r.className = 'lr';
-          r.innerHTML = `<b></b><span></span><button type="button" class="mini" role="slider" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span></button>`;
+          r.innerHTML = `<button type="button" class="tg"><i style="--i:url('${esc(iconUrl('light'))}')"></i></button>`
+            + `<button type="button" class="nm"><b></b><small></small></button>${CHEV_SVG}`
+            + `<button type="button" class="mini" role="slider" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span></button>`;
           const mini = r.querySelector('.mini');
+          r.querySelector('.tg').onclick = () => {
+            const on = !r.classList.contains('on');
+            r.classList.toggle('on', on);
+            r.querySelector('small').textContent = on ? (r._v ? r._v + '%' : '') : T('lights.off', 'Off');
+            r.querySelector('.mini .fill').style.width = (on ? (r._v || 100) : 0) + '%';
+            r._hold = Date.now() + 2500;
+            this._call(on ? 'turn_on' : 'turn_off', { entity_id: id });
+          };
+          r.querySelector('.nm').onclick = () => this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: id }, bubbles: true, composed: true }));
           const at = (ev) => {
             const b = mini.getBoundingClientRect();
             const v = Math.round(Math.max(0, Math.min(100, (ev.clientX - b.left) / b.width * 100)));
             r.querySelector('.mini .fill').style.width = v + '%';
-            r.querySelector('span').textContent = v ? v + '%' : T('lights.off', 'Off');
+            r.querySelector('small').textContent = v ? v + '%' : T('lights.off', 'Off');
+            r.classList.toggle('on', v > 0);
             clearTimeout(r._t);
             r._t = setTimeout(() => (v ? this._call('turn_on', { entity_id: id, brightness_pct: v }) : this._call('turn_off', { entity_id: id })), 120);
             r._hold = Date.now() + 2500;
@@ -421,7 +448,10 @@
         const v = pctOf(s);
         r.style.setProperty('--lc', lightColor(s));
         r.querySelector('b').textContent = s.attributes.friendly_name || ids[i];
-        r.querySelector('span').textContent = s.state === 'on' ? v + '%' : (this._hass.formatEntityState ? this._hass.formatEntityState(s) : s.state);
+        r.querySelector('small').textContent = s.state === 'on' ? v + '%' : (this._hass.formatEntityState ? this._hass.formatEntityState(s) : s.state);
+        r.classList.toggle('on', s.state === 'on');
+        if (v) r._v = v;
+        r.querySelector('.tg').setAttribute('aria-label', (s.attributes.friendly_name || ids[i]) + ', ' + (s.state === 'on' ? T('lights.off', 'Off') : T('lights.on', 'On')));
         r.querySelector('.mini').setAttribute('aria-label', s.attributes.friendly_name || ids[i]);
         r.querySelector('.mini .fill').style.width = v + '%';
       });
@@ -513,7 +543,6 @@
     @media (hover: hover) { button.li:hover, .back:hover, .seg button:not([aria-pressed="true"]):hover { background: rgba(255,255,255,0.06); } }
     button:focus-visible { outline: 2px solid rgba(255,255,255,0.7); outline-offset: -2px; }
   `;
-  const CHEV_SVG = '<svg class="chev" viewBox="0 0 7 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l5 5-5 5"/></svg>';
   const BACK_SVG = '<svg viewBox="0 0 10 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 1.5 1.5 8.5l7 7"/></svg>';
   const DEVICE_HUES = ['var(--hemma-color-orange, #FF9230)', 'var(--hemma-color-blue, #0088FF)', 'var(--hemma-color-teal, #00C3D0)',
     'var(--hemma-color-purple, #9333ea)', 'var(--hemma-color-yellow, #FFCC00)', 'var(--hemma-color-green, #30D158)', 'var(--hemma-color-pink, #ff4d70)'];
