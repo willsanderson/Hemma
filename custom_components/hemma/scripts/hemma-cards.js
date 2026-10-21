@@ -433,7 +433,8 @@
     document.body.appendChild(host);
 
     const wide = window.matchMedia('(min-width: 768px)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let tile = wide && card ? tileLook(card) : null;
+    const inPopup = (n) => { for (; n; n = n.parentNode || n.host) if (n.tagName === 'HEMMA-POPUP') return true; return false; };
+    let tile = wide && card && !inPopup(card) ? tileLook(card) : null;
     let W = 0, H = 0, fx = 0, fy = 0;
     if (tile) {
       const b = box.getBoundingClientRect();
