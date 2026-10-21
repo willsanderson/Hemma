@@ -258,7 +258,7 @@
     .lst { flex: none; background: rgba(255,255,255,0.10); border-radius: 22px; overflow: hidden; }
     .lr { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center; padding: 10px 14px; position: relative; }
     .lr .tg { width: 34px; height: 34px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: grid; place-items: center; background: rgba(0,0,0,0.28); color: rgba(255,255,255,0.55); -webkit-tap-highlight-color: transparent; transition: background-color .2s ease; }
-    .lr.on .tg { background: var(--hemma-color-yellow, #FFCC00); color: #fff; }
+    .lr.on .tg { background: var(--lc); color: #fff; }
     .lr .tg i { width: 18px; height: 18px; display: block; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
     .lr .nm { border: 0; background: none; color: inherit; font: inherit; padding: 0; text-align: left; cursor: pointer; min-width: 0; display: grid; }
     .lr .nm small { font-size: 13px; line-height: 1.15; color: rgba(255,255,255,0.6); font-variant-numeric: tabular-nums; }
@@ -965,20 +965,25 @@
       const url = (raw) => (!raw ? '' : String(raw).startsWith('/') ? location.origin + raw : String(raw));
       const clean = (t) => String(t || '').replace(/\s+/g, ' ').trim();
       const sub = (i) => i.tv ? [clean(i.number), clean(i.episode)].filter(Boolean).join(' · ') : ((String(i.aired || '').match(/^(\d{4})/) || [])[1] || '');
+      const first = (i) => i.tv ? clean(i.number) : ((String(i.aired || '').match(/^(\d{4})/) || [])[1] || clean(i.genres).split(',')[0] || '');
+      const second = (i) => i.tv ? (clean(i.episode) && clean(i.episode).toLowerCase() !== clean(i.title).toLowerCase() ? clean(i.episode) : '') : '';
       const ago = (iso) => { const h = (Date.now() - new Date(iso).getTime()) / 36e5; return h < 1 ? T('time.just_now', 'just now') : h < 24 ? T('time.short.hours', '{n}h ago', { n: Math.floor(h) }) : T('time.short.days', '{n}d ago', { n: Math.floor(h / 24) }); };
       this._list = movies.concat(shows);
-      const shelf = (label, list) => !list.length ? '' : `<div class="sh"><div class="wt" style="padding:0 4px"><span>${esc(label)}</span><span>${list.length}</span></div><div class="row">`
-        + list.map((i) => `<button type="button" class="po" data-k="${this._list.indexOf(i)}"><span class="art" style="background-image:url('${esc(url(i.poster || i.fanart))}')"></span><b>${esc(clean(i.title))}</b><small>${esc(sub(i) || ago(i.airdate))}</small></button>`).join('')
+      const shelf = (label, list) => !list.length ? '' : `<div class="sh"><div class="wt" style="padding:0 4px"><span>${esc(label)}</span></div><div class="row">`
+        + list.map((i) => `<button type="button" class="po" data-k="${this._list.indexOf(i)}"><span class="art" style="background-image:url('${esc(url(i.poster || i.fanart))}')"></span><b>${esc(clean(i.title))}</b><small>${esc(first(i) || ago(i.airdate))}</small>${second(i) ? `<small class="ep">${esc(second(i))}</small>` : ''}</button>`).join('')
         + `</div></div>`;
       const n = this._list.length;
       root.innerHTML = `<style>${WIDGET_CSS} :host { --accent: var(--hemma-color-gold, #e5a00d); }
         .sh { flex: none; display: grid; gap: 8px; }
         .row { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 2px 2px 4px; margin: 0 -2px; }
         .row::-webkit-scrollbar { display: none; }
-        .po { flex: none; width: 92px; scroll-snap-align: start; display: grid; gap: 5px; border: 0; background: none; color: #fff; font: inherit; padding: 0; text-align: left; cursor: pointer; }
+        .po { flex: none; width: 116px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 3px; border: 0; background: none; color: #fff; font: inherit; padding: 0; text-align: left; cursor: pointer; }
+        .po .art { margin-bottom: 6px; }
         .art { display: block; aspect-ratio: 2 / 3; width: 100%; border-radius: 12px; background: rgba(255,255,255,0.08) center / cover no-repeat; }
-        .po b { font-size: 12.5px; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .po small { font-size: 11.5px; color: rgba(255,255,255,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -3px; }
+        .po b { font-size: 14px; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .po small { font-size: 12.5px; line-height: 1.25; color: rgba(255,255,255,0.62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .po small.ep { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: rgba(255,255,255,0.8); }
+        .row { gap: 14px; }
         @media (hover: hover) { .po:hover .art { filter: brightness(1.08); } }
         .det { display: grid; gap: 10px; }
         .det .fan { aspect-ratio: 16 / 9; max-width: 100%; border-radius: 18px; background: rgba(255,255,255,0.08) center / cover no-repeat; }

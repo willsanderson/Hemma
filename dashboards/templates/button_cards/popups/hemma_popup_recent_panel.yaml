@@ -9,6 +9,6 @@ hemma_popup_recent_panel:
     hemma_popup:
       title: ''
       dismissable: true
-      style: '--popup-min-width: 340px; --popup-max-width: 340px; --popup-min-width-narrow: 340px; --hemma-popup-radius: 34px;'
+      style: '--popup-min-width: 420px; --popup-max-width: 420px; --popup-min-width-narrow: 420px; --hemma-popup-radius: 34px;'
       content:
         type: custom:hemma-recent-panel
