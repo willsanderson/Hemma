@@ -91,11 +91,10 @@ hemma_popup_lock:
               display: flex; flex-direction: column;
             }
           }
-          /* One measure for a control-plus-list popup, whatever the count.
-             The rows are short and a wider sheet only stretches them; cover
-             is the same shape and holds the same width. */
-          --popup-min-width: 460px;
-          --popup-max-width: 460px;
+          /* The light panel's width, as Apple Home's panels share one. */
+          --popup-min-width: 340px;
+          --popup-max-width: 340px;
+          --popup-min-width-narrow: 340px;
       content: |
         [[[
           const T = window._hemmaT || ((k, en, v) => { let s = String(en); if (v) for (const p in v) s = s.split(String.fromCharCode(123) + p + String.fromCharCode(125)).join(String(v[p])); return s; });

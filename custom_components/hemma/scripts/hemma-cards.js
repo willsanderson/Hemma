@@ -220,7 +220,8 @@
     .wrap { position: relative; width: 100%; height: min(600px, calc(100svh - 64px)); margin: -8px -8px -20px; width: calc(100% + 16px); overflow: hidden; }
     .page { position: absolute; inset: 0; transition: transform .38s cubic-bezier(0.2, 0.9, 0.25, 1), opacity .26s ease; }
     .main { display: grid; grid-template-rows: auto 1fr auto auto; justify-items: center; gap: 18px; padding: 28px 22px 20px; box-sizing: border-box; }
-    .list { transform: translateX(100%); opacity: 0; padding: 18px 16px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+    .list { transform: translateX(100%); opacity: 0; padding: 18px 16px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+    .list::-webkit-scrollbar { display: none; }
     .deep .main { transform: translateX(-30%); opacity: 0; pointer-events: none; }
     .deep .list { transform: none; opacity: 1; }
     .h { text-align: center; display: grid; gap: 4px; }
@@ -243,10 +244,11 @@
     .pill { height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14.5px; font-weight: 600; }
     .gear { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
     .gear svg { width: 22px; height: 22px; }
-    .back { align-self: flex-start; height: 36px; padding: 0 14px 0 10px; border-radius: 999px; font-size: 14px; font-weight: 600; }
+    .back { flex: none; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 18px 0 14px; border-radius: 999px; font-size: 16px; font-weight: 600; }
+    .back svg { width: 10px; height: 17px; display: block; }
     .pill::after, .gear::after, .back::after, .sw button:not(.wheel)::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: #fff; opacity: 0; transition: opacity .40s ease; pointer-events: none; }
     @media (hover: hover) { .pill:hover::after, .gear:hover::after, .back:hover::after { opacity: .07; transition: opacity .18s ease; } }
-    .lst { background: rgba(255,255,255,0.10); border-radius: 22px; overflow: hidden; }
+    .lst { flex: none; background: rgba(255,255,255,0.10); border-radius: 22px; overflow: hidden; }
     .lr { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; padding: 12px 16px; position: relative; }
     .lr + .lr::before { content: ""; position: absolute; top: 0; left: 16px; right: 16px; height: 0.5px; background: rgba(255,255,255,0.12); }
     .lr b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -271,13 +273,33 @@
       return list.filter((id) => S[id]);
     }
     _call(svc, data) { return this._hass.callService('light', svc, data).catch(() => {}); }
+    // A group acts on the lights that are on, and from off brings back the ones that were on last, never every light it holds.
+    _memKey() { return 'hemma_lights_on:' + this._config.entity; }
+    _target() {
+      const ids = this._ids();
+      if (ids.length < 2) return this._config.entity;
+      if (this._scope && this._scope.length) return this._scope;
+      const on = ids.filter((id) => this._hass.states[id].state === 'on');
+      if (on.length) return on;
+      let last = null;
+      try { last = JSON.parse(localStorage.getItem(this._memKey()) || 'null'); } catch (e) { last = null; }
+      const back = Array.isArray(last) ? last.filter((id) => ids.includes(id)) : [];
+      return back.length ? back : ids;
+    }
+    _remember() {
+      const ids = this._ids();
+      if (ids.length < 2) return;
+      const on = ids.filter((id) => this._hass.states[id].state === 'on');
+      if (on.length) { try { localStorage.setItem(this._memKey(), JSON.stringify(on)); } catch (e) {} }
+    }
     _setBrightness(pct) {
-      const ids = this._config.entity;
+      const ids = this._target();
+      this._scope = Array.isArray(ids) ? ids : null;
       clearTimeout(this._bt);
       this._bt = setTimeout(() => (pct > 0 ? this._call('turn_on', { entity_id: ids, brightness_pct: pct }) : this._call('turn_off', { entity_id: ids })), 120);
     }
     _setColor(f) {
-      const d = { entity_id: this._config.entity };
+      const d = { entity_id: this._target() };
       if (f.k) d.color_temp_kelvin = f.k; else d.hs_color = f.hs;
       this._call('turn_on', d);
     }
@@ -302,7 +324,7 @@
         + `<button type="button" class="cap" role="slider" aria-label="${esc(T('lights.brightness', 'Brightness'))}" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span><span class="bulb">${BULB}</span></button>`
         + (favs.length ? `<div class="sw">${favs.map((f, i) => `<button type="button" data-i="${i}" style="--s:${favCss(f)}" aria-label="${esc(T('lights.favorite', 'Favorite {n}', { n: i + 1 }))}"></button>`).join('')}<button type="button" class="wheel${md.color ? '' : ' whites'}" aria-label="${esc(md.color ? T('lights.color', 'Color') : T('lights.whites', 'Whites'))}"></button></div>` : '<div></div>')
         + `<div class="foot">${group ? `<button type="button" class="pill lights">${esc(T('lights.n_lights', '{n} Lights', { n: ids.length }))} ›</button>` : '<span></span>'}<button type="button" class="gear" aria-label="${esc(T('lights.settings', 'Settings'))}">${GEAR}</button></div>`
-        + `</div>${group ? `<div class="page list"><button type="button" class="back">‹ ${esc(name)}</button><div class="lst"></div></div>` : ''}</div>`;
+        + `</div>${group ? `<div class="page list"><button type="button" class="back"><svg viewBox="0 0 10 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 1.5 1.5 8.5l7 7"/></svg>${esc(name)}</button><div class="lst"></div></div>` : ''}</div>`;
       this._favs = favs;
       const cap = root.querySelector('.cap');
       let drag = null;
@@ -317,9 +339,14 @@
         this._local = v; this._paint(); this._setBrightness(v);
       });
       const up = () => {
-        if (drag && !drag.moved) { this._local = this._on() ? 0 : (this._val() || 100); this._paint(); this._call('toggle', { entity_id: c.entity }); }
+        if (drag && !drag.moved) {
+          const ids = this._target();
+          const turnOff = this._on();
+          this._local = turnOff ? 0 : (this._val() || 100); this._paint();
+          this._call(turnOff ? 'turn_off' : 'turn_on', { entity_id: ids });
+        }
         drag = null; cap.classList.remove('dragging');
-        clearTimeout(this._lt); this._lt = setTimeout(() => { this._local = null; this._paint(); }, 2500);
+        clearTimeout(this._lt); this._lt = setTimeout(() => { this._local = null; this._scope = null; this._paint(); }, 2500);
       };
       cap.addEventListener('pointerup', up);
       cap.addEventListener('pointercancel', () => { drag = null; cap.classList.remove('dragging'); });
@@ -340,7 +367,7 @@
       }
       this._paint();
     }
-    _on() { return this._local != null ? this._local > 0 : this._ids().some((id) => this._hass.states[id].state === 'on'); }
+    _on() { if (this._local == null) this._remember(); return this._local != null ? this._local > 0 : this._ids().some((id) => this._hass.states[id].state === 'on'); }
     _val() {
       if (this._local != null) return this._local;
       const on = this._ids().map((id) => this._hass.states[id]).filter((s) => s.state === 'on');
@@ -362,7 +389,7 @@
       st.textContent = on ? v + '%' : (this._hass.formatEntityState ? this._hass.formatEntityState({ ...this._hass.states[this._config.entity], state: 'off' }) : 'Off');
       if (root.querySelector('.wrap.deep')) this._rows();
     }
-    _sync() { if (this._local == null) this._localColor = null; this._paint(); }
+    _sync() { this._remember(); if (this._local == null) this._localColor = null; this._paint(); }
     _rows() {
       const lst = this.shadowRoot.querySelector('.lst');
       if (!lst) return;
@@ -669,7 +696,25 @@
     ], { duration: dur, easing: 'linear', fill: 'backwards' });
   };
   const geometry = (fr) => { const o = { ...fr }; delete o.backgroundColor; delete o.backdropFilter; delete o.webkitBackdropFilter; return o; };
-  window.hemmaMorph = { look: tileLook, grow: GROW, shrink: SHRINK, settle, lift, material, geometry, hideAfterPaint };
+  // The sidebars count as off-screen: a panel never grows over them.
+  const bounds = () => {
+    let left = 0;
+    const seen = (el) => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || r.left > 1 || r.right <= 0) return;
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) < 0.5) return;
+      left = Math.max(left, r.right);
+    };
+    const walk = (root, depth) => {
+      if (depth > 12) return;
+      root.querySelectorAll('ha-sidebar, nav.side').forEach(seen);
+      root.querySelectorAll('*').forEach((e) => { if (e.shadowRoot) walk(e.shadowRoot, depth + 1); });
+    };
+    walk(document, 0);
+    return { left, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+  };
+  window.hemmaMorph = { look: tileLook, grow: GROW, shrink: SHRINK, settle, lift, material, geometry, hideAfterPaint, bounds };
 
   const ask = (title, verb, card) => new Promise((done) => {
     if (asking) return done(false);
@@ -692,9 +737,9 @@
     if (tile) {
       const b = box.getBoundingClientRect();
       W = b.width; H = b.height;
-      const m = 16, vw = window.innerWidth, vh = window.innerHeight, t = tile.rect;
-      fx = Math.max(m, Math.min(vw - m - W, t.left + t.width / 2 - W / 2));
-      fy = Math.max(m, Math.min(vh - m - H, t.top + t.height / 2 - H / 2));
+      const m = 16, B = bounds(), t = tile.rect;
+      fx = Math.max(B.left + m, Math.min(B.right - m - W, t.left + t.width / 2 - W / 2));
+      fy = Math.max(B.top + m, Math.min(B.bottom - m - H, t.top + t.height / 2 - H / 2));
       Object.assign(box.style, { position: 'fixed', left: fx + 'px', top: fy + 'px', width: W + 'px', margin: '0' });
       Object.assign(glass.style, { animation: 'none', inset: 'auto', left: '0', top: '0', width: W + 'px', height: H + 'px', overflow: 'hidden' });
       content.style.animation = 'none';

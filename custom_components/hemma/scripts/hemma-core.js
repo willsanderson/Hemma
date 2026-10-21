@@ -8464,8 +8464,9 @@ window.hemmaMenuGlass = {
       var g = root.querySelector('.glass');
       var S = s.getBoundingClientRect();
       var t = look.rect, m = 16;
-      var x = Math.max(m, Math.min(window.innerWidth - m - S.width, t.left + t.width / 2 - S.width / 2));
-      var y = Math.max(m, Math.min(window.innerHeight - m - S.height, t.top + t.height / 2 - S.height / 2));
+      var B = M.bounds ? M.bounds() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+      var x = Math.max(B.left + m, Math.min(B.right - m - S.width, t.left + t.width / 2 - S.width / 2));
+      var y = Math.max(B.top + m, Math.min(B.bottom - m - S.height, t.top + t.height / 2 - S.height / 2));
       s.style.left = (x - S.left) + 'px';
       s.style.top = (y - S.top) + 'px';
       var gcs = getComputedStyle(g);
