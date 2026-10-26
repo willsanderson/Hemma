@@ -8,9 +8,9 @@ const REQUIREMENTS = [
     why: "provides card_mod, which Hemma's templates use throughout",
     repo: "Lint-Free-Technology/uix", docs: "https://uix.lf.technology" },
   { kind: "card", id: "button-card", label: "button-card", required: true,
-    why: "every Hemma tile is one", repo: "custom-cards/button-card" },
-  { kind: "card", id: "apexcharts-card", label: "apexcharts-card",
-    why: "the energy popup's charts", repo: "RomRider/apexcharts-card" },
+    why: "every Hemma tile is one", repo: "custom-cards/button-card",
+    // Older releases load but lay tiles out wrongly (issue #93); the file announces itself as "BUTTON-CARD v7.0.1".
+    min: "7.0.0", banner: /BUTTON-CARD[^0-9]{0,40}?(\d+\.\d+\.\d+)/ },
 ];
 
 
@@ -1474,6 +1474,16 @@ const SECTIONS = [
     repeats: mediaRepeats(),
   },
   {
+    label: "Cameras", icon: "doorbell", iconColor: "var(--hemma-color-blue, #0088FF)", group: "rooms",
+    scope: "dashboard", toggleFn: "cameras",
+    fields: [
+      { key: "cameras_list", label: "Cameras", type: "list", domains: ["camera"], always: true, ord: 1, empty: "All cameras" },
+      { key: "cameras_on_security", label: "Security page", type: "bool", boolDefault: true, always: true, ord: 2 },
+      { ...T("cameras_refresh", "Refresh (seconds)"), always: true, ord: 3, placeholder: "10" },
+      { ...T("cameras_motion_minutes", "Motion dot (minutes)"), advanced: true, ord: 4, placeholder: "5" },
+    ],
+  },
+  {
     label: "Climate", bid: "climate", icon: "fan", toggle: "show_climate",
     iconColor: "var(--hemma-badge-climate-color, var(--hemma-color-teal, #00C3D0))", group: "badges",
     fields: [
@@ -1549,6 +1559,8 @@ const SECTIONS = [
         { ...T("security_label_%", "Label"), advanced: true, ord: 1 },
       ], "One badge each", [
         { id: "lock", label: "Lock", domains: ["lock"] },
+        { id: "opening", label: "Door or Window", domains: ["binary_sensor"], classes: ["door", "window", "garage_door", "opening"] },
+        { id: "cover", label: "Garage or Gate", domains: ["cover"], classes: ["garage", "gate", "door"] },
         { id: "camera", label: "Camera", domains: ["camera"] },
       ]),
     ],
@@ -1776,6 +1788,38 @@ function seedScenePrefs(rooms, sources) {
     });
   });
   return n;
+}
+
+// The Cameras section's settings ride at the dashboard's top level, where Overview and the phone pages read them.
+function applyCameras(cfg, rooms) {
+  if (!cfg) return;
+  const V = (((rooms || []).find((r) => (r.variables || {}).cameras_section !== undefined)) || (rooms || [])[0] || {}).variables || {};
+  if (V.cameras_section !== true) { delete cfg.hemma_cameras; return; }
+  const num = (v, d) => (Number(v) > 0 ? Number(v) : d);
+  cfg.hemma_cameras = {
+    enabled: true,
+    cameras: Array.isArray(V.cameras_list) ? V.cameras_list.slice() : [],
+    security: V.cameras_on_security !== false,
+    refresh: num(V.cameras_refresh, 10),
+    motion: num(V.cameras_motion_minutes, 5),
+  };
+}
+
+// On the phone the section sits right under Now Playing, as on Overview.
+function syncCameraSectionMobile(pair) {
+  const rooms = ((pair.desktop || {}).compact || {}).rooms || [];
+  const on = rooms.some((r) => (r.variables || {}).cameras_section === true);
+  const items = ((pair.mobile || {}).chrome || {}).items;
+  if (!Array.isArray(items)) return false;
+  const at = items.findIndex((it) => it && it.card && it.card.type === "custom:hemma-camera-strip");
+  if (!on) { if (at >= 0) items.splice(at, 1); return false; }
+  if (at >= 0) return true;
+  const tplOf = (it) => [].concat((it && it.card && it.card.template) || []).join(" ");
+  const np = items.findIndex((it) => /now_playing/.test(tplOf(it)));
+  let where = np >= 0 ? np + 1 : items.findIndex((it) => it && (it.room !== undefined || /hemma_mobile_header|hemma_scene_row/.test(tplOf(it))));
+  if (where < 0) where = items.length;
+  items.splice(where, 0, { card: { type: "custom:hemma-camera-strip", heading: true } });
+  return true;
 }
 
 function applyMotion(cfg, rooms) {
@@ -2859,6 +2903,7 @@ const TILE_TYPES = [
       MEDIA_ACTIVE_FIELD,
       ...PROGRESS_FIELDS,
       TOGGLE_FIELD,
+      { key: "media_sources", label: "Inputs in popup", type: "sources" },
     ] },
   { id: "game", label: "Game activity", template: "hemma_game",
     domains: ["sensor"], entityLabel: "Account sensor",
@@ -2873,7 +2918,8 @@ const TILE_TYPES = [
     domains: ["cover"], fields: [ICON_OPEN_FIELD, ICON_CLOSED_FIELD] },
   { id: "lock", 
     label: "Lock", template: "hemma_lock",
-    domains: ["lock"], fields: [TOGGLE_FIELD_ON, ICON_LOCKED_FIELD, ICON_UNLOCKED_FIELD] },
+    domains: ["lock"], fields: [TOGGLE_FIELD_ON, ICON_LOCKED_FIELD, ICON_UNLOCKED_FIELD,
+      { key: "show_battery", label: "Battery in popup", type: "bool", boolDefault: false }] },
   { id: "vacuum", label: "Vacuum", template: "hemma_vacuum",
     domains: ["vacuum"], fields: [
       { ...ICON_FIELD },
@@ -2951,6 +2997,7 @@ const TILE_TYPES = [
     domains: ["sensor"], whenDefault: "active", fields: [
       ICON_FIELD,
       { key: "show_watched", label: "Watched marker", type: "bool", boolDefault: true },
+      { key: "hide_spoilers", label: "Hide spoilers", type: "bool", boolDefault: false },
       WHEN_FIELD("When something has been added"),
     ] },
   { id: "cameras", label: "Cameras", template: "hemma_cameras",
@@ -2965,6 +3012,7 @@ const TILE_TYPES = [
     template: ["hemma_lock", "hemma_popup_lock"],
     domains: ["lock"], fields: [
       TOGGLE_FIELD_ON, ICON_LOCKED_FIELD, ICON_UNLOCKED_FIELD,
+      { key: "show_battery", label: "Battery in popup", type: "bool", boolDefault: false },
       { key: "room_name", label: "Popup title", type: "text", advanced: true },
     ] },
   { id: "cover_group", label: "Cover group", hidden: true, multiEntity: true,
@@ -2977,6 +3025,7 @@ const TILE_TYPES = [
     ] },
   { id: "entity_actions",
     label: "Entity with buttons", template: "hemma_entity_actions",
+    largeByDefault: true,
     domains: ACTION_DOMAINS,
     entityPlaceholder: "The entity this tile shows",
     glyphFromEntity: ACTION_GLYPH,
@@ -2985,6 +3034,7 @@ const TILE_TYPES = [
       ...PROGRESS_FIELDS,
       ...actionFields(1),
       ...actionFields(2),
+      { key: "show_button_names", label: "Button names", type: "bool", boolDefault: true },
       { key: "active_entities", type: "list", label: "Active when these are on",
         domains: ACTION_DOMAINS, advanced: true },
       { key: "active_entities_mode", label: "Active when", type: "select",
@@ -3027,11 +3077,16 @@ const SURFACE_FIELD = {
     desktop: "Desktop only" },
 };
 
-const MOBILE_TILE_FIELDS = [SURFACE_FIELD, SIZE_FIELD];
+const SIZE_FIELD_LARGE = {
+  key: "size", label: "Size", type: "select",
+  options: ["small", ""],
+  optionLabels: { small: "Small", "": "Large" },
+};
 
 // "desktop" is a truthy string, so test the two affirmative values, not truth.
 const tileFieldsFor = (type, phone) => (type && type.fields ? type.fields : [])
-  .concat(phone === true || phone === "mobile" ? MOBILE_TILE_FIELDS : []);
+  .concat(phone === true || phone === "mobile"
+    ? [SURFACE_FIELD, type && type.largeByDefault ? SIZE_FIELD_LARGE : SIZE_FIELD] : []);
 
 const tileLabel = (tile) => {
   const t = tile.template;
@@ -6642,6 +6697,15 @@ class HemmaPanel extends HTMLElement {
           color:rgba(255,255,255,0.78); font-size:13px; font-weight:500;
           white-space:nowrap;
         }
+        .mini-catpage .mc-cams { display:flex; gap:5.9px; overflow:hidden; }
+        .mini-catpage .mc-cams .pv-cam { width:var(--cam-w, 200px); }
+        .miniphone .mp-cams { display:flex; gap:var(--ph-gap); overflow:hidden; margin:0 calc(var(--pad-x) * -1); padding:0 var(--pad-x); }
+        .miniphone .mp-cams .pv-cam { width:calc(100% - 18px); }
+        .pv-cam { position:relative; flex:none; aspect-ratio:2 / 1; border-radius:calc(22px * var(--pv-k, 0.593)); overflow:hidden; background:rgba(28,28,30,0.72); }
+        .miniphone .pv-cam { border-radius:16px; }
+        .pv-cam img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+        .pv-cam .pv-camname { position:absolute; left:7%; bottom:9%; font-size:8px; font-weight:600; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,0.5); }
+        .miniphone .pv-cam .pv-camname { font-size:12px; }
         .miniphone .mp-nprow {
           display:flex; gap:var(--ph-gap);
           overflow-x:auto; overflow-y:hidden;
@@ -6791,10 +6855,7 @@ class HemmaPanel extends HTMLElement {
         .miniphone .mp-tiles .mtile { --tc:var(--ph-circle); }
         .miniphone .mp-tiles .mtile .mglyph { width:var(--ph-glyph); height:var(--ph-glyph); }
         .miniphone .mp-tiles .mtile .mtgl,
-        .miniphone .mp-tiles .mtile:not(.hasmore) .mprog { display:none; }
-        .miniphone .mp-tiles .mtile.hasmore .mtop {
-          display:flex; align-items:center; width:100%;
-        }
+        .miniphone .mp-tiles .mtile .mprog { display:none; }
         .miniphone .mp-tiles .mtile.mp-lg {
           grid-template-columns:minmax(0, 1fr);
           grid-template-areas:"i" "n" "s";
@@ -7511,24 +7572,6 @@ class HemmaPanel extends HTMLElement {
         .mnum {
           color:rgba(255,255,255,0.9); font-weight:800; line-height:1;
           font-size:calc(var(--tc) * 0.386); letter-spacing:-0.02em;
-        }
-        .mtile.hasmore .mtop {
-          justify-content:flex-start; gap:calc(var(--tc) * 0.1);
-        }
-        .mtile.hasmore .mcircle { margin-right:auto; }
-        .mmore {
-          flex:0 0 auto; width:var(--tc); height:var(--tc);
-          display:grid; place-items:center; color:#fff;
-          align-self:flex-start; margin:calc(var(--tc) * -0.119) calc(var(--tc) * -0.119) 0 0;
-        }
-        .mmore:not(:last-child) { align-self:center; margin:0; }
-        .miniphone .mp-tiles .mtile .mmore:has(+ .mtgl) {
-          align-self:flex-start; margin:calc(var(--tc) * -0.119) calc(var(--tc) * -0.119) 0 0;
-        }
-        .mtile.on .mmore { color:rgba(0,0,0,0.88); }
-        .mmore svg {
-          width:50%; height:50%;
-          display:block; fill:currentColor; opacity:.9;
         }
         /* --hemma-progress-size-mq: the icon circle times 0.9, where the toggle would be. */
         .mprog { width:calc(var(--tc) * 0.9); height:calc(var(--tc) * 0.9); flex:0 0 auto; }
@@ -11005,9 +11048,26 @@ class HemmaPanel extends HTMLElement {
       if (customElements.get(r.id)) return false;
       return urls === null ? false : !urls.some((u) => u.includes(r.id));
     });
+    // Installed is not enough when an old release breaks the layout: compare against the minimum Hemma is tested with.
+    const newer = (a, b) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return true; };
+    let hacs = null;
+    for (const r of REQUIREMENTS) {
+      if (!r.min || missing.includes(r)) continue;
+      let ver = null;
+      try {
+        hacs = hacs || await this._ws({ type: "hacs/repositories/list" });
+        const repo = (hacs || []).find((x) => String(x.full_name || "").toLowerCase() === r.repo.toLowerCase());
+        if (repo && repo.installed_version) ver = String(repo.installed_version).replace(/^v/i, "");
+      } catch (e) { /* no HACS access: read the file instead */ }
+      if (!ver && r.banner && urls) {
+        const u = urls.find((x) => x.includes(r.id));
+        try { const m = u && (await (await fetch(u.split("?")[0])).text()).match(r.banner); if (m) ver = m[1]; } catch (e) { /* unreadable: leave it */ }
+      }
+      if (ver && /^\d+\.\d+/.test(ver) && !newer(ver, r.min)) missing.push({ ...r, state: "old", version: ver });
+    }
     // Downloading from HACS is only half of an integration; one that is not running may be waiting to be added, or added and failing.
     return Promise.all(missing.map(async (r) => {
-      if (r.kind !== "integration") return r;
+      if (r.kind !== "integration" || r.state) return r;
       try {
         const entries = await this._ws({ type: "config_entries/get", domain: r.id });
         if (entries && entries.length) return { ...r, state: "failed" };
@@ -11054,9 +11114,10 @@ class HemmaPanel extends HTMLElement {
     const restart = blockers.some((r) => r.kind === "integration");
     const one = blockers.length === 1;
 
+    const updates = blockers.every((r) => r.state === "old");
     const s = this._flowScreen({
       full: true, icon: "get",
-      title: one ? _sx("One More Thing to Install") : _sx("A Few More Things to Install"),
+      title: updates ? (one ? _sx("One Thing to Update") : _sx("A Few Things to Update")) : one ? _sx("One More Thing to Install") : _sx("A Few More Things to Install"),
       lede: (one ? _sx("Hemma needs this from HACS before your dashboard can render.")
         : _sx("Hemma needs these from HACS before your dashboard can render.")) + " " + (restart ? _sx("Restart Home Assistant once installed.")
           : _sx("Come back here once installed.")),
@@ -11068,7 +11129,10 @@ class HemmaPanel extends HTMLElement {
       let sub = r.why, get = _sx("Get");
       let href = "https://my.home-assistant.io/redirect/hacs_repository/?owner="
         + encodeURIComponent(owner) + "&repository=" + encodeURIComponent(repository);
-      if (r.state === "downloaded") {
+      if (r.state === "old") {
+        sub = _sx("Version {v} is installed. Hemma needs {min} or newer. Update it in HACS, then reload this page.", { v: r.version, min: r.min });
+        get = _sx("Update");
+      } else if (r.state === "downloaded") {
         sub = _sx("Downloaded, but not added yet. Add it under Settings > Devices & services.");
         get = _sx("Add");
         href = "https://my.home-assistant.io/redirect/config_flow_start/?domain=" + encodeURIComponent(r.id);
@@ -11414,6 +11478,45 @@ class HemmaPanel extends HTMLElement {
     return isFav(sec) ? sec : null;
   }
 
+  // The Cameras section as the dashboard draws it: the cameras it would list, newest stills, name and a dot for recent motion.
+  _camIds(opts) {
+    const rooms = this._state.compact.rooms || [];
+    const V = ((rooms.find((r) => (r.variables || {}).cameras_section !== undefined)) || rooms[0] || {}).variables || {};
+    if (V.cameras_section !== true) return [];
+    if (opts && opts.security && V.cameras_on_security === false) return [];
+    const H = this._hass || {}, st = H.states || {}, reg = H.entities || {};
+    const own = Array.isArray(V.cameras_list) ? V.cameras_list.filter((id) => st[id]) : [];
+    let ids = own.length ? own : Object.keys(st).filter((id) => id.startsWith("camera.") && !/record|snapshot/.test(id) && !(reg[id] && (reg[id].hidden || reg[id].hidden_by)));
+    if (opts && opts.area) ids = ids.filter((id) => String(hemmaAreaOf(H, id) || "").trim().toLowerCase() === opts.area);
+    return ids;
+  }
+
+  _camRow(ids, cls) {
+    const H = this._hass || {};
+    const row = document.createElement("div");
+    row.className = cls;
+    row.dataset.jump = "Cameras";
+    ids.forEach((id) => {
+      const s = (H.states || {})[id];
+      const pv = document.createElement("div");
+      pv.className = "pv-cam";
+      const pic = s && s.attributes.entity_picture;
+      if (pic && !["unavailable", "unknown"].includes(s.state)) {
+        const im = document.createElement("img");
+        im.alt = "";
+        im.onerror = () => im.remove();
+        im.src = pic.startsWith("/") && H.hassUrl ? H.hassUrl(pic) : pic;
+        pv.appendChild(im);
+      }
+      const lb = document.createElement("span");
+      lb.className = "pv-camname";
+      lb.textContent = String((s && s.attributes.friendly_name) || id).replace(/\s+(Live View|Live)$/i, "");
+      pv.appendChild(lb);
+      row.appendChild(pv);
+    });
+    return row;
+  }
+
   _mirrorToPair(key, value, rooms) {
     const pair = this._pair;
     if (!pair || pair.safe === false) return 0;
@@ -11530,6 +11633,7 @@ class HemmaPanel extends HTMLElement {
       cfg = fixed.config;
       applyScenePick(cfg, s.compact.rooms);
     }
+    applyCameras(cfg, s.compact.rooms);
     applyKiosk(cfg, s.compact.rooms);
     if (!mobile) {
       (s.compact.rooms || []).forEach((r) => { r.variables.hemma_ui_managed = true; });
@@ -11576,6 +11680,8 @@ class HemmaPanel extends HTMLElement {
         const scOn = this._scenesOn();
         syncScenesMobile(pair, scOn);
         this._log(`phone Scenes: ${scOn ? "on" : "off"}`, "ok");
+        const camSec = syncCameraSectionMobile(pair);
+        this._log(`phone Cameras section: ${camSec ? "on" : "off"}`, "ok");
         const nc = syncCamerasMobile(pair, this._hass);
         if (nc) this._log(`phone Cameras tile: ${nc} camera(s)`, "ok");
         st.unmatched.slice(0, 6).forEach((u) => this._log(
@@ -11592,6 +11698,7 @@ class HemmaPanel extends HTMLElement {
         mcfg = markPhoneManaged(
           expandAny(pair.mobile, { extras: mextras, templates }), bellOnFor(pair), assistOnFor(pair));
         applyScenePick(mcfg, s.compact.rooms);
+        applyCameras(mcfg, s.compact.rooms);
         applyMotion(mcfg, s.compact.rooms);
         applyKiosk(mcfg, s.compact.rooms);
       } catch (e) {
@@ -12842,6 +12949,13 @@ class HemmaPanel extends HTMLElement {
           else this._phoneScenesIn = true;
           this._setScenes(on);
         },
+      } : (sec.toggleFn === "cameras" ? {
+        get: () => this._state.compact.rooms.some((r) => (r.variables || {}).cameras_section === true),
+        set: () => {
+          const on = !this._state.compact.rooms.some((r) => (r.variables || {}).cameras_section === true);
+          this._state.compact.rooms.forEach((r) => { if (on) r.variables.cameras_section = true; else delete r.variables.cameras_section; });
+          this._mirrorToPair("cameras_section", on ? true : undefined, this._state.compact.rooms);
+        },
       } : (sec.toggleFn === "nowplaying" ? {
         get: () => room.variables.show_media !== false && !!room.variables.show_now_playing,
         set: () => {
@@ -12852,7 +12966,7 @@ class HemmaPanel extends HTMLElement {
             if (room.variables.show_media === false) delete room.variables.show_media;
           }
         },
-      } : null));
+      } : null)));
 
       if (toggle) {
         const on = toggle.get();
@@ -13164,7 +13278,7 @@ class HemmaPanel extends HTMLElement {
           const pinned = f.repeatKinds && this._slotKind.get(room.path + "|" + unitOf(f));
           const kind = pinned && f.repeatKinds.find((k) => k.id === pinned);
           const doms = (kind && kind.domains) || f.domains;
-          const c = this._combo(cur, this._entityList(doms, f.classes),
+          const c = this._combo(cur, this._entityList(doms, (kind && kind.classes) || f.classes),
             f.placeholder || doms.map((d) => d + ".").join(" / "),
             (v) => {
               setVar(f.key, v, f);
@@ -15824,7 +15938,7 @@ class HemmaPanel extends HTMLElement {
         return v <= k[0] ? _studioT("temp.very_cold", "Very Cold") : v <= k[1] ? _studioT("temp.cool", "Cool") : v <= k[2] ? _studioT("temp.comfortable", "Comfortable")
           : v <= k[3] ? _studioT("temp.warm", "Warm") : v <= k[4] ? _studioT("temp.hot", "Hot") : _studioT("temp.very_hot", "Very Hot");
       };
-      const humWord = (v) => (v <= 29.99 ? _studioT("humidity.very_dry", "Very Dry") : v >= 61 ? _studioT("humidity.high", "High") : _studioT("humidity.good", "Good"));
+      const humWord = (v) => (v < 30 ? _studioT("humidity.very_dry", "Very Dry") : v < 40 ? _studioT("humidity.dry", "Dry") : v < 61 ? _studioT("humidity.comfortable", "Comfortable") : v < 70 ? _studioT("humidity.humid", "Humid") : _studioT("humidity.very_humid", "Very Humid"));
       const tempKeys = () => (V.temp_unit === "C" ? [18, 21, 24, 27, 29] : [65, 70, 76, 81, 85]);
       const tempColor = (v) => {
         const k = tempKeys();
@@ -15984,14 +16098,33 @@ class HemmaPanel extends HTMLElement {
     }
 
     const secEntities = list("security_entity_", 8);
+    // Each device worded by its kind, as the dashboard's hemmaSecurityWord does; Studio has no hemma-core to borrow it from.
+    const secWord = (e) => {
+      const s = st(e) || {}, d = String(e).split(".")[0], v = String(s.state || "").toLowerCase();
+      const dc = String((s.attributes || {}).device_class || "").toLowerCase(), dead = !s.state || v === "unavailable" || v === "unknown";
+      if (d === "lock") {
+        const u = !dead && v !== "locked" && v !== "locking";
+        return { lock: true, alert: u, icon: u ? "lock-open-fill" : "lock-fill",
+          text: u ? _studioL("component.lock.entity_component._.state.unlocked", "Unlocked") : _studioL("component.lock.entity_component._.state.locked", "Locked") };
+      }
+      if (d === "camera") return { alert: false, icon: "doorbell", text: dead ? _studioT("cameras.offline", "Offline") : _studioT("security.no_alerts", "No Alerts") };
+      if (d === "binary_sensor" && dc === "motion") return { alert: false, icon: "person-walking-motion", text: v === "on" ? _studioT("motion.title", "Motion") : _studioL("component.binary_sensor.entity_component.motion.state.off", "Clear") };
+      const garage = dc === "garage_door" || dc === "garage";
+      const o = !dead && (d === "cover" ? v !== "closed" : v === "on");
+      return { alert: o && (d !== "cover" || garage || dc === "gate" || dc === "door"), icon: dc === "window" ? (o ? "window-shade-open" : "window-shade-closed") : garage ? (o ? "garage-open" : "garage-closed") : (o ? "door-open" : "door-closed"),
+        text: o ? _studioT("security.open", "Open") : _studioT("security.closed", "Closed") };
+    };
     const locks = (Array.isArray(V.security_locks) ? V.security_locks : [])
       .concat([V.security_lock_entity, V.security_lock_entity_2]).filter(Boolean);
     const cams = (Array.isArray(V.security_cameras) ? V.security_cameras : []).filter(Boolean);
     if (on("show_security") && (secEntities.length || locks.length || cams.length)) {
-      const open = locks.filter((e) => String((st(e) || {}).state || "").toLowerCase() !== "locked").length;
+      const unl = new Set(locks.filter((e) => String((st(e) || {}).state || "").toLowerCase() !== "locked")), opn = new Set();
+      secEntities.forEach((e) => { const w = secWord(e); if (w.alert) (w.lock ? unl : opn).add(e); });
+      const u = unl.size, o = opn.size;
       out.push({
-        id: "security", label: _studioT("filter.security", "Security"), icon: open ? "lock-open-fill" : "lock-fill", color: TEAL,
-        text: open ? _studioT("locks.n_unlocked", "{n} Unlocked", { n: open }) : _studioT("security.no_alerts", "No Alerts"),
+        id: "security", label: _studioT("filter.security", "Security"), icon: u ? "lock-open-fill" : o ? "door-open" : "lock-fill", color: TEAL,
+        text: u && o ? _studioT("security.n_alerts", "{n} Alerts", { n: u + o }) : u ? _studioT("locks.n_unlocked", "{n} Unlocked", { n: u })
+          : o ? _studioT("security.n_open", "{n} Open", { n: o }) : _studioT("security.no_alerts", "No Alerts"),
         subs: [].concat(
           locks.length ? [(() => {
             const unl = locks.filter((e) =>
@@ -16013,12 +16146,8 @@ class HemmaPanel extends HTMLElement {
             };
           })()] : [],
           secEntities.map((e, i) => {
-            const isOpen = /^(unlocked|on|open)$/i.test((st(e) || {}).state || "");
-            return {
-              icon: isOpen ? "lock-open-fill" : "lock-fill", color: TEAL, dim: !isOpen,
-              label: V["security_label_" + (i + 1)] || nameOf(e),
-              text: isOpen ? _studioL("component.lock.entity_component._.state.unlocked", "Unlocked") : _studioL("component.lock.entity_component._.state.locked", "Locked"),
-            };
+            const w = secWord(e);
+            return { icon: w.icon, color: TEAL, dim: !w.alert, label: V["security_label_" + (i + 1)] || nameOf(e), text: w.text };
           })
         ),
       });
@@ -16863,6 +16992,20 @@ class HemmaPanel extends HTMLElement {
       }
     }
 
+    if (!this._phoneFilter) {
+      const ids = this._camIds();
+      if (ids.length) {
+        const ch = document.createElement("div");
+        ch.className = "mp-head";
+        ch.dataset.jump = "Cameras";
+        const ct = document.createElement("span");
+        ct.textContent = _studioT("cameras.title", "Cameras");
+        ch.appendChild(ct);
+        body.appendChild(ch);
+        body.appendChild(this._camRow(ids, "mp-cams"));
+      }
+    }
+
     if (this._scenesOn() && !this._phoneFilter) {
       const scenes = this._sceneList();
       if (scenes.length) {
@@ -16927,7 +17070,8 @@ class HemmaPanel extends HTMLElement {
         const isActions = Array.isArray(tmpl)
           ? tmpl.indexOf("hemma_entity_actions") !== -1
           : tmpl === "hemma_entity_actions";
-        if ((tile.variables || {}).size === "large" || isActions) {
+        const sz = (tile.variables || {}).size;
+        if (sz === "large" || (isActions && sz !== "small")) {
           el.classList.add("mp-lg");
         }
         const twin = this._wideTwinOf(tile);
@@ -17645,6 +17789,21 @@ class HemmaPanel extends HTMLElement {
         page.appendChild(row);
       }
     }
+    const camIds = home ? this._camIds(scope ? { area: scope } : null) : (k === "security" ? this._camIds({ security: true }) : []);
+    if (camIds.length) {
+      const ch = Object.assign(document.createElement("div"), { className: "mc-h mc-camh", textContent: _studioT("cameras.title", "Cameras") });
+      ch.dataset.jump = "Cameras";
+      page.appendChild(ch);
+      let cw = 2 * chipW + chipGap;
+      if (this._miniSize === "desktop" && page.classList.contains("ov")) {
+        const realW = 1440 - (host.classList.contains("sidebar") ? 264 + 15 : 22) - 22;
+        const cols = Math.max(1, Math.floor((realW + 10) / 175));
+        cw = 2 * (realW * scale - 5.9 * (cols - 1)) / cols + 5.9;
+      }
+      const row = this._camRow(camIds, "mc-cams");
+      row.style.setProperty("--cam-w", cw + "px");
+      page.appendChild(row);
+    }
     if (!home && k !== "scenes" && this._scenesOn()) {
       const catScenes = this._sceneListForCategory(k);
       if (catScenes.length) {
@@ -17842,19 +18001,6 @@ class HemmaPanel extends HTMLElement {
           circle.style.setProperty("--sc", kind === "plant" && active
             ? "var(--hemma-color-yellow, #FFCC00)"
             : (TILE_COLOR[kind] || TILE_TINT));
-        }
-      }
-      if (kind === "entity_actions") {
-        const tv = tile.variables || {};
-        const has = [1, 2].some((n) => tv["action_" + n + "_enabled"] !== false
-          && String(tv["action_" + n + "_entity"] || "").trim());
-        if (has) {
-          const more = document.createElement("span");
-          more.className = "mmore";
-          more.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="3" cy="12" r="2.5"/>'
-            + '<circle cx="12" cy="12" r="2.5"/><circle cx="21" cy="12" r="2.5"/></svg>';
-          el.classList.add("hasmore");
-          el.querySelector(".mtop").appendChild(more);
         }
       }
       el.querySelector(".mname").textContent = tile.name || (type && _sx(type.label)) || _sx("Tile");
@@ -20503,6 +20649,39 @@ class HemmaPanel extends HTMLElement {
             after();
           },
           { fixed: true, labels: { "": _sx("Default"), ...(f.optionLabels || {}) } }).wrap);
+        hintUnder();
+        return;
+      }
+      if (f.type === "sources") {
+        const st = tile.entity && this._hass.states[tile.entity];
+        const all = [...new Set(((st && st.attributes.source_list) || []).map(String))];
+        if (!all.length) return;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "colorfield";
+        const lb = document.createElement("span");
+        lb.className = "clabel";
+        btn.appendChild(lb);
+        const chosen = () => (Array.isArray((tile.variables || {})[f.key]) ? tile.variables[f.key] : []).filter((x) => all.includes(x));
+        const paint = () => {
+          const n = chosen().length;
+          lb.textContent = n ? _sx("{n} of {total}", { n, total: all.length }) : _sx("All inputs");
+          lb.classList.toggle("ph", !n);
+        };
+        paint();
+        // Each pick reopens the menu, so several inputs are ticked in one go.
+        const open = () => this._menuAt(btn, all.map((x) => ({ id: x, label: x, checked: chosen().includes(x) })), (id) => {
+          const set = new Set(chosen());
+          if (set.has(id)) set.delete(id); else set.add(id);
+          const next = all.filter((x) => set.has(x));
+          if (next.length) { if (!tile.variables) tile.variables = {}; tile.variables[f.key] = next; }
+          else if (tile.variables) { delete tile.variables[f.key]; if (!Object.keys(tile.variables).length) delete tile.variables; }
+          paint();
+          after();
+          requestAnimationFrame(() => { if (btn.isConnected) open(); });
+        });
+        btn.onclick = open;
+        put(f.label, btn);
         hintUnder();
         return;
       }

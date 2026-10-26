@@ -619,24 +619,6 @@ window.hemmaMenuGlass = {
     window.HEMMA_TEMPLATE_SIZES = {};
   }
 
-  window.hemmaDeviceId = function () {
-    try {
-      var k = 'hemma_device_id';
-      var v = localStorage.getItem(k);
-      if (!v) {
-        v = Math.random().toString(36).slice(2, 8);
-        localStorage.setItem(k, v);
-      }
-      return v;
-    } catch (e) {
-      return 'nostore';
-    }
-  };
-
-  window.hemmaOverlayKey = function (eid) {
-    return window.hemmaDeviceId() + '|' + String(eid || '');
-  };
-
   // A card can render before its variables resolve, so the weather entity is
   // remembered - but per dashboard, and never on a Hemma-managed one, where
   // the config is the whole truth. The unscoped key this replaces was shared
@@ -785,13 +767,29 @@ window.hemmaMenuGlass = {
     const d = Math.floor(h / 24);
     return d === 1 ? T('time.day_ago', '{n} day ago', { n: 1 }) : T('time.days_ago', '{n} days ago', { n: d });
   };
-  window.hemmaBatterySvg = function (states, id) {
+  window.hemmaBatteryInfo = function (states, id) {
     var s = id && states && states[id];
     var lvl = s ? Math.round(Number(s.state)) : NaN;
-    if (!Number.isFinite(lvl)) return '';
-    var pct = Math.max(0, Math.min(100, lvl));
+    if (!Number.isFinite(lvl)) return null;
     var st = String((states[id.replace(/_battery_level$/, '_battery_state')] || {}).state || '').toLowerCase();
-    var charging = (s.attributes && s.attributes.is_charging === true) || (st.indexOf('charging') >= 0 && st.indexOf('not') < 0);
+    var base = id.split('.')[1].replace(/_battery(_level)?$/, '');
+    var plug = ['binary_sensor.' + base + '_charging', 'binary_sensor.' + base + '_battery_charging', 'binary_sensor.' + base + '_is_charging']
+      .some(function (b) { return states[b] && states[b].state === 'on'; });
+    return { pct: Math.max(0, Math.min(100, lvl)), charging: plug || (s.attributes && s.attributes.is_charging === true) || (st.indexOf('charging') >= 0 && st.indexOf('not') < 0) };
+  };
+  // The same battery with no digits: the level as an inset fill, the bolt beside it while charging.
+  window.hemmaBatteryGlyph = function (pct, charging) {
+    var fill = charging ? '#34C759' : (pct <= 20 ? '#FF3B30' : '#fff');
+    var w = Math.max(1.5, 20.5 * pct / 100).toFixed(2);
+    return '<svg viewBox="0 0 27.3 13" width="29.4" height="14" aria-hidden="true">'
+      + '<rect x=".5" y=".5" width="23.5" height="12" rx="3.8" fill="none" stroke="rgba(255,255,255,0.38)"/>'
+      + '<rect x="2" y="2" width="' + w + '" height="9" rx="2.2" fill="' + fill + '"/>'
+      + '<rect x="25.4" y="4.3" width="1.9" height="4.4" rx="0.95" fill="rgba(255,255,255,0.4)"/></svg>';
+  };
+  window.hemmaBatterySvg = function (states, id) {
+    var info = window.hemmaBatteryInfo(states, id);
+    if (!info) return '';
+    var pct = info.pct, charging = info.charging;
     var fill = charging ? '#34C759' : (pct <= 20 ? '#FF3B30' : '#fff');
     var w = (24.5 * pct / 100).toFixed(2);
     // As iOS draws it: the bolt is cut out of the body beside the digits, which move left to make room.
@@ -1008,343 +1006,6 @@ window.hemmaMenuGlass = {
     };
   }
 
-  window._hemmaActions = (function () {
-    var OFF = ['false', '0', 'no', 'off', 'disabled'];
-    var ON_STATES = [
-      'on', 'open', 'opening', 'unlocked', 'unlocking',
-      'playing', 'buffering', 'home', 'connected', 'online',
-      'cooling', 'heating', 'cleaning', 'running', 'active',
-    ];
-    var DEAD = ['unknown', 'unavailable', 'none', ''];
-
-    function esc(v) {
-      return String(v == null ? '' : v)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
-
-    function enabled(variables, idx) {
-      var v = variables['action_' + idx + '_enabled'];
-      var ok = (v === undefined || v === null) ? true
-        : (typeof v === 'boolean') ? v
-        : (typeof v === 'number') ? v !== 0
-        : OFF.indexOf(String(v).trim().toLowerCase()) === -1;
-      return ok && !!variables['action_' + idx + '_entity'];
-    }
-
-    function order(variables) {
-      return [1, 2].filter(function (i) { return enabled(variables, i); });
-    }
-
-    function any(variables) {
-      return enabled(variables, 1) || enabled(variables, 2);
-    }
-
-    // Counted from the end, so slot 0 is always the bottom pill.
-    function slot(variables, idx) {
-      var o = order(variables);
-      var p = o.indexOf(idx);
-      return p < 0 ? 0 : (o.length - 1 - p);
-    }
-
-    function stateClass(states, eid) {
-      if (!eid || !states[eid]) return 'unavailable';
-      var st = String(states[eid].state || '').toLowerCase().replace(/_/g, ' ');
-      if (DEAD.indexOf(st) !== -1) return 'unavailable';
-      return ON_STATES.indexOf(st) !== -1 ? 'active' : 'normal';
-    }
-
-    function glyph(variables, idx, states, cls, hass) {
-      var eid = variables['action_' + idx + '_entity'];
-      var attrs = (states[eid] && states[eid].attributes) || {};
-      var raw = String(variables['action_' + idx + '_icon'] || attrs.icon || '').trim();
-
-      if (!raw && window.hemmaEntityIcon) raw = window.hemmaEntityIcon(hass, states, eid);
-      if (!raw) raw = 'mdi:bookmark';
-
-      if (raw.indexOf(':') !== -1) {
-        return '<ha-icon class="hemma-act-icon hemma-act-ha-icon ' + cls + '"'
-          + ' icon="' + esc(raw) + '"></ha-icon>';
-      }
-
-      var src;
-      if (/^(\/|https?:\/\/)/.test(raw) || /\.(svg|png|webp)$/.test(raw)) {
-        src = raw;
-      } else {
-        var base = String(variables.svg_path || '/hemma_assets/icons').replace(/\/$/, '');
-        src = base + '/' + raw + '.svg';
-      }
-      return '<img class="hemma-act-icon hemma-act-svg ' + cls + '" src="' + esc(src) + '" alt="">';
-    }
-
-    function label(variables, idx, states, prefix) {
-      var explicit = variables['action_' + idx + '_label'];
-      if (explicit) return String(explicit);
-
-      var eid = variables['action_' + idx + '_entity'];
-      var attrs = (states[eid] && states[eid].attributes) || {};
-      var name = String(attrs.friendly_name || eid || '');
-      var p = String(prefix || '').trim();
-
-      if (p && name.toLowerCase().indexOf(p.toLowerCase() + ' ') === 0) {
-        var rest = name.slice(p.length).trim();
-        if (rest) name = rest.charAt(0).toUpperCase() + rest.slice(1);
-      }
-      return name;
-    }
-
-    var FIT_REF_PX = 12;
-    var fitCtx = null;
-    var fitFam = null;
-
-    function fitEm(text, weight) {
-      if (!fitCtx) {
-        if (!document.createElement) return 0;
-        fitCtx = document.createElement('canvas').getContext('2d');
-      }
-      if (!fitFam) {
-        fitFam = getComputedStyle(document.documentElement)
-          .getPropertyValue('--primary-font-family').trim() || 'system-ui, sans-serif';
-      }
-      fitCtx.font = (weight || 500) + ' ' + FIT_REF_PX + 'px ' + fitFam;
-      return (fitCtx.measureText(String(text)).width / FIT_REF_PX) * 1.015;
-    }
-
-    function fitStyle(variables, states, prefix) {
-      var em = 0;
-      try {
-        order(variables).forEach(function (i) {
-          var w = fitEm(label(variables, i, states, prefix), 500);
-          if (w > em) em = w;
-        });
-      } catch (e) { return ''; }
-      if (!(em > 0)) return '';
-      return ' style="font-size:clamp(var(--hemma-actions-label-min, 12px),'
-        + ' calc((100cqi - var(--hemma-actions-label-inset, 0px)) / ' + em.toFixed(3) + '),'
-        + ' var(--hemma-actions-label-size, 15px))"';
-    }
-
-    function markup(variables, idx, states, prefix, hass) {
-      if (!enabled(variables, idx)) return '';
-      var cls = stateClass(states, variables['action_' + idx + '_entity']);
-      var text = label(variables, idx, states, prefix);
-      return '<div class="hemma-act-hit hemma-act-pill ' + cls + '" data-action-index="' + idx + '">'
-        + '<span class="hemma-act-glyphbox">' + glyph(variables, idx, states, cls, hass) + '</span>'
-        + '<span class="hemma-act-label"' + fitStyle(variables, states, prefix)
-        + '>' + esc(text) + '</span></div>';
-    }
-
-    var TOGGLE_SCRIPT = 'script.hemma_actions_overlay_toggle';
-
-    function moreMarkup(variables, eid) {
-      if (!any(variables)) return '';
-      return '<div class="hemma-act-hit hemma-act-more" role="button" aria-label="' + _hemmaT('a11y.actions', 'Actions') + '"'
-        + ' data-more-key="' + esc(openKey(eid)) + '">'
-        + '<svg class="hemma-act-dots" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
-        + '<circle cx="3" cy="12" r="2.5"></circle>'
-        + '<circle cx="12" cy="12" r="2.5"></circle>'
-        + '<circle cx="21" cy="12" r="2.5"></circle>'
-        + '</svg></div>';
-    }
-
-    function run(card, variables, idx, fallbackHass) {
-      var eid = variables['action_' + idx + '_entity'];
-      if (!eid) return;
-
-      var H = (card && card._hass) || fallbackHass;
-      if (!H) return;
-
-      var action = variables['action_' + idx + '_action'] || 'more-info';
-
-      if (action === 'more-info') {
-        card.dispatchEvent(new CustomEvent('hass-more-info', {
-          bubbles: true, composed: true, detail: { entityId: eid },
-        }));
-        return;
-      }
-
-      if (action === 'toggle') {
-        var domain = String(eid).split('.')[0];
-        if (domain) H.callService(domain, 'toggle', { entity_id: eid });
-        return;
-      }
-
-      if (action === 'call-service') {
-        var full = variables['action_' + idx + '_service'];
-        if (!full || String(full).indexOf('.') === -1) return;
-        var parts = String(full).split('.');
-        var data = Object.assign({}, variables['action_' + idx + '_service_data'] || {});
-        if (!data.entity_id) data.entity_id = eid;
-        H.callService(parts[0], parts[1], data);
-        return;
-      }
-
-      if (action === 'navigate') {
-        var path = variables['action_' + idx + '_navigation_path'];
-        if (!path) return;
-        history.pushState(null, '', path);
-        window.dispatchEvent(new CustomEvent('location-changed', { bubbles: true, composed: true }));
-      }
-    }
-
-    function armRelease() {
-      if (window._hemmaActReleaseArmed) return;
-      window._hemmaActReleaseArmed = true;
-      var clear = function () {
-        var held = window._hemmaActHeld;
-        window._hemmaActHeld = null;
-        if (held && held.classList) held.classList.remove('pressed');
-      };
-      ['pointerup', 'pointercancel', 'touchend', 'touchcancel', 'blur']
-        .forEach(function (t) { window.addEventListener(t, clear, true); });
-    }
-
-    function press(el, on) {
-      if (!el || !el.classList) return;
-      if (on) {
-        var prev = window._hemmaActHeld;
-        if (prev && prev !== el && prev.classList) prev.classList.remove('pressed');
-        window._hemmaActHeld = el;
-        el.classList.add('pressed');
-      } else {
-        if (window._hemmaActHeld === el) window._hemmaActHeld = null;
-        el.classList.remove('pressed');
-      }
-    }
-
-    function bind(card, variables, hass) {
-      armRelease();
-      // So a late icon-translation answer can ask this card to redraw.
-      if (window.hemmaIconCardSeen) window.hemmaIconCardSeen(card);
-      setTimeout(function () {
-        try {
-          var root = card && card.shadowRoot;
-          if (!root) return;
-          root.querySelectorAll('.hemma-act-hit').forEach(function (el) {
-            if (el._hemmaActBound) return;
-            el._hemmaActBound = true;
-
-            el.addEventListener('click', function (ev) {
-              ev.preventDefault();
-              ev.stopPropagation();
-              var key = el.getAttribute('data-more-key');
-              if (key) {
-                var H = (card && card._hass) || hass;
-                if (H) H.callService('script', 'turn_on', {
-                  entity_id: TOGGLE_SCRIPT, variables: { actions_entity_id: key },
-                });
-                return;
-              }
-              run(card, variables, el.getAttribute('data-action-index'), hass);
-            });
-
-            el.addEventListener('pointerdown', function (ev) {
-              ev.stopPropagation();
-              press(el, true);
-              try {
-                window.dispatchEvent(new CustomEvent('haptic', { detail: 'light' }));
-              } catch (e) {}
-            });
-            ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
-              el.addEventListener(t, function () { press(el, false); });
-            });
-
-            ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(function (t) {
-              el.addEventListener(t, function (ev) { ev.stopPropagation(); }, { passive: true });
-            });
-          });
-        } catch (e) {}
-      }, 0);
-    }
-
-    function repeat(term, n) {
-      var out = '';
-      for (var i = 0; i < n; i++) out += term;
-      return out;
-    }
-
-    function deviceId() { return window.hemmaDeviceId(); }
-    function openKey(eid) { return window.hemmaOverlayKey(eid); }
-
-    function isOpen(variables, states, eid) {
-      var t = states[variables.actions_toggle_helper];
-      var a = states[variables.actions_active_helper];
-      return !!(t && t.state === 'on' && a && a.state === openKey(eid));
-    }
-
-    // Safari cannot evaluate calc() over a clamp(), so every length is a sum of whole variables.
-    function cornerWidth(variables, entityState) {
-      if (variables.show_progress) {
-        var active = variables.progress_active_states || [];
-        var st = String(entityState || '').toLowerCase();
-        if (active.indexOf(st) !== -1) return 'var(--hemma-progress-size-mq)';
-      }
-      if (variables.show_toggle) return 'var(--hemma-toggle-width)';
-      return null;
-    }
-
-    function moreGeom(variables, entityState) {
-      var corner = cornerWidth(variables, entityState);
-      var lineTop = 'var(--hemma-icon-center-y) - var(--hemma-actions-hit) / 2';
-      return {
-        top: corner
-          ? 'calc(' + lineTop + ')'
-          : 'calc(' + lineTop + ' - var(--hemma-actions-more-inset))',
-        right: corner
-          ? 'calc(var(--hemma-actions-pad) + ' + corner
-            + ' + var(--hemma-actions-corner-gap) - var(--hemma-actions-more-inset))'
-          : 'calc(var(--hemma-actions-pad) - var(--hemma-actions-more-inset))',
-        width: 'var(--hemma-actions-hit)',
-        height: 'var(--hemma-actions-hit)',
-      };
-    }
-
-    function pillGeom(variables, idx) {
-      var s = slot(variables, idx);
-      var n = Math.max(1, order(variables).length);
-      var h = 'max(24px, min(var(--hemma-actions-pill-h), calc((100% - var(--hemma-actions-pad)'
-        + ' - var(--hemma-icon-circle-size, 44px) - var(--hemma-actions-pill-clear, 10px)'
-        + ' - var(--hemma-actions-pill-bottom)' + repeat(' - var(--hemma-actions-pill-gap)', n - 1)
-        + ') / ' + n + ')))';
-      return {
-        top: 'calc(100% - var(--hemma-actions-pill-bottom)'
-          + repeat(' - ' + h, s + 1)
-          + repeat(' - var(--hemma-actions-pill-gap)', s) + ')',
-        right: 'var(--hemma-actions-pad)',
-        width: 'calc(100% - var(--hemma-actions-pad) - var(--hemma-actions-pad))',
-        height: h,
-      };
-    }
-
-    function motion(variables, states, eid, idx) {
-      var open = isOpen(variables, states, eid);
-      var s = slot(variables, idx);
-      var step = open ? s : (order(variables).length - 1 - s);
-      return {
-        opacity: open ? '1' : '0',
-        transform: open
-          ? 'scale(1) translateY(0)'
-          : 'scale(var(--hemma-actions-pill-scale, 0.94)) translateY(var(--hemma-actions-pill-rise, 6px))',
-        pointerEvents: open ? 'auto' : 'none',
-        duration: open
-          ? 'var(--hemma-actions-dur-in, 0.30s)'
-          : 'var(--hemma-actions-dur-out, 0.14s)',
-        easing: open
-          ? 'var(--hemma-actions-ease-in, cubic-bezier(0.32, 0.72, 0, 1))'
-          : 'var(--hemma-actions-ease-out, cubic-bezier(0.4, 0, 0.7, 1))',
-        delay: open ? (60 + step * 40) + 'ms' : (step * 25) + 'ms',
-      };
-    }
-
-    return {
-      enabled: enabled, any: any, order: order, slot: slot, stateClass: stateClass,
-      markup: markup, moreMarkup: moreMarkup, run: run, bind: bind, esc: esc,
-      isOpen: isOpen, motion: motion,
-      deviceId: deviceId, openKey: openKey,
-      cornerWidth: cornerWidth, moreGeom: moreGeom, pillGeom: pillGeom,
-    };
-  }());
-
   if (typeof window.hemmaStateFit !== 'function') {
     const emCache = new Map();
     let ctx = null;
@@ -1454,8 +1115,7 @@ window.hemmaMenuGlass = {
         if (used.has(id)) return;
         used.add(id);
         const fn = String((st[id] && st[id].attributes && st[id].attributes.friendly_name) || '');
-        const card = { type: 'custom:button-card', template: 'hemma_light', entity: id, variables: { as_light: true },
-          tap_action: { action: 'more-info' }, hold_action: { action: 'more-info' } };
+        const card = { type: 'custom:button-card', template: 'hemma_light', entity: id, variables: { as_light: true } };
         if (fn.toLowerCase().indexOf(pre) === 0 && fn.length > pre.length) card.name = fn.slice(pre.length);
         cards.push(card);
       });
@@ -3891,6 +3551,7 @@ window.hemmaMenuGlass = {
         src.dispatchEvent(new CustomEvent('hass-action', { detail: e.detail, bubbles: true, composed: true }));
       });
       this._catPage = page;
+      window._hemmaCatOpen = true;
       this._catCards = [];
       page.addEventListener('scroll', () => {
         const y = page.scrollTop;
@@ -4446,6 +4107,26 @@ window.hemmaMenuGlass = {
       }
       const group = () => body.appendChild(Object.assign(document.createElement('div'), { className: 'cat-sec' }));
       if ((k === 'media' || k === 'home') && !scope && head.np && cards === this._catCards) this._mountNP(group(), cfg, head.np, helpers);
+      // Cameras sit under Now Playing on Home, first in a room (its own cameras) and first on Security.
+      const CS = cfg && cfg.hemma_cameras, CV = window.hemmaCams;
+      if (CV && CV.on(CS) && ((k === 'home') || (k === 'security' && !scope && CS.security !== false))) {
+        const ids = CV.list(this._hass, CS, k === 'home' && scope ? { area: scope } : null);
+        if (ids.length) {
+          const box = group();
+          const h = document.createElement('h2');
+          h.className = 'cat-link';
+          h.innerHTML = '<span></span><svg viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2.5 8 8l-5.5 5.5"/></svg>';
+          h.firstChild.textContent = _hemmaT('cameras.title', 'Cameras');
+          h.onclick = () => window.hemmaCameraView && window.hemmaCameraView.openAll(CV.list(this._hass, CS));
+          box.appendChild(h);
+          const el = document.createElement('hemma-camera-strip');
+          el.setConfig({ cameras: ids });
+          el.classList.add('cat-cams');
+          box.appendChild(el);
+          try { el.hass = this._hass; } catch (_) {}
+          cards.push(el);
+        }
+      }
       sections.forEach((sec) => {
         const box = group();
         if (sec.name && (!(k === 'home' && scope) || sec.bucket || sec.scenes)) {
@@ -4739,11 +4420,6 @@ window.hemmaMenuGlass = {
         + '<div class="cat-en"><h3>' + esc(_hemmaT('nav.energy_devices_title', 'Individual devices')) + '</h3><div class="sub">' + esc(_hemmaT('nav.energy_today', 'Today')) + '</div>'
         + sorted.map((d) => '<div class="hb"><span class="hn">' + esc(d.name) + '</span><span class="hbar"><i style="width:' + Math.round((d.total / big) * 100) + '%;background:' + d.color + '"></i></span><span class="hv">' + kwh(d.total) + '</span></div>').join('')
         + '</div>';
-      row.querySelectorAll('.cat-en').forEach((card) => {
-        card.addEventListener('click', () => {
-          if (window._hemmaOpenTarget) window._hemmaOpenTarget(['hemma_energy', 'hemma_badge_energy_group', 'hemma_badge_energy'], null);
-        });
-      });
       clearTimeout(this._energyTick);
       this._energyTick = setTimeout(() => { if (row.isConnected && this._cat === 'energy') this._drawEnergy(row, devices); }, 300000);
     }
@@ -4758,6 +4434,7 @@ window.hemmaMenuGlass = {
       if (!els) { this._cat = null; return; }
       this._catEls = null;
       this._catPage = null;
+      window._hemmaCatOpen = false;
       this._catCards = [];
       this._catHead = null;
       this._catWx = null;
@@ -5681,7 +5358,7 @@ window.hemmaMenuGlass = {
 
     _setPush(el, px) {
       el.style.translate = px + 'px 0px';
-      if (el.tagName === 'HEMMA-SMART-ROW') el.style.setProperty('--hemma-push-end', px + 'px');
+      if (el.tagName === 'HEMMA-SMART-ROW') { el.style.setProperty('--hemma-push-end', px + 'px'); el.style.setProperty('--hemma-push-start', px + 'px'); }
     }
 
     // translate:none is the only value that leaves fixed descendants alone, so each is unset when idle.
@@ -5784,6 +5461,8 @@ window.hemmaMenuGlass = {
     // A tablet left on "Same as desktop" follows the desktop's layout.
     _overview() {
       const V = this._statusVars();
+      // Before the room card exists its settings are unknown, so the last known layout stands in rather than Focus.
+      if (!this._sRoom) { try { return localStorage.getItem('hemma_ov_boot') === String(location.pathname.split('/')[1] || ''); } catch (_) { return false; } }
       const t = this._variant === 'tablet' ? V.home_layout_tablet : '';
       if (t === 'focus') return false;
       if (t === 'overview') return true;
@@ -5800,7 +5479,7 @@ window.hemmaMenuGlass = {
       window._hemmaOverview = on;
       try {
         const seg = String(location.pathname.split('/')[1] || '');
-        if (on) localStorage.setItem('hemma_ov_boot', seg); else if (localStorage.getItem('hemma_ov_boot') === seg) localStorage.removeItem('hemma_ov_boot');
+        if (this._sRoom) { if (on) localStorage.setItem('hemma_ov_boot', seg); else if (localStorage.getItem('hemma_ov_boot') === seg) localStorage.removeItem('hemma_ov_boot'); }
       } catch (_) {}
       if (window._hemmaOvBoot) {
         window._hemmaOvBoot = false;
@@ -7214,8 +6893,8 @@ window.hemmaMenuGlass = {
           :host(.compact) .cat-chrome { right: var(--cat-gutter, 20px); }
           /* A dashboard is tapped, not read: a double tap on a title must not select it. */
           .bar, .side, .cat, .cat-mini, .cat-chrome { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-          .cat.compact .cat-np { --np-col: min(var(--cat-two-tiles, 366px), 100%); }
-          .cat.compact .cat-np > * { --np-tile-width: min(var(--cat-two-tiles, 366px), 100%); --np-inner-radius: 20px; }
+          .cat.compact .cat-np { --np-col: min(var(--cat-two-tiles, 366px), 332px, 100%); }
+          .cat.compact .cat-np > * { --np-tile-width: min(var(--cat-two-tiles, 366px), 332px, 100%); --np-inner-radius: 20px; }
           /* Apple Home on a Mac: 19px corners on 54px tiles, so 20 on these 62px ones. */
           .cat.compact { --hemma-tile-radius-phone: 20px; --hemma-scene-tile-radius: 20px; }
           .cat.room .cat-pills { display: none; }
@@ -7223,10 +6902,14 @@ window.hemmaMenuGlass = {
           .cat.scenes .cat-pills, .cat.scenes .cat-chipcard { display: none; }
           .cat-warm { position: fixed; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
           /* The tile's #container is z-index 2, which would tie the veil's and paint over it: keep it in here. */
-          .cat-np { position: relative; z-index: 0; display: grid; grid-template-columns: repeat(auto-fill, var(--np-col, min(360px, 100%))); grid-auto-rows: 1fr; gap: 10px; --np-elevation: 0 0 #0000; }
+          .cat-np { position: relative; z-index: 0; display: grid; grid-template-columns: repeat(auto-fill, var(--np-col, min(352px, 100%))); grid-auto-rows: 1fr; gap: 10px; --np-elevation: 0 0 #0000; }
           /* The tile's :host sizes it with !important, so it is fed variables instead. */
-          .cat-np > * { flex: none; --np-tile-width: min(360px, 100%); --np-max-w: 100%; --np-inner-radius: 26px; margin: 0 !important; }
+          .cat-np > * { flex: none; --np-tile-width: min(352px, 100%); --np-max-w: 100%; --np-inner-radius: 26px; margin: 0 !important; }
           .cat-scenes-row { margin: 0 -22px 0 calc(-1 * var(--cat-gutter, 20px)); }
+          .cat-body h2.cat-link { display: flex; align-items: center; gap: 6px; cursor: pointer; width: max-content; -webkit-tap-highlight-color: transparent; }
+          .cat-body h2.cat-link svg { width: 8px; height: 13px; opacity: .55; margin-top: 1px; }
+          .cat-cams { margin: 0 -22px 0 calc(-1 * var(--cat-gutter, 20px)); --hemma-cam-pad: var(--cat-gutter, 20px); --hemma-cam-pad-r: 22px; --hemma-cam-w: min(352px, 100%); --hemma-cam-h: 140px; --hemma-cam-r: 26px; }
+          .cat.compact .cat-cams { --hemma-cam-w: min(var(--cat-two-tiles, 366px), 332px, 100%); --hemma-cam-r: 20px; }
           .cat-scenes-row > .cat-scenes { --hemma-rail-left: var(--cat-gutter, 20px); }
           .cat-scenes { display: block; margin-top: 14px; --hemma-rail-left: 0px; --hemma-measured-safe-left: 0px;
             --hemma-scene-grid-cols: repeat(auto-fill, minmax(190px, 1fr)); --hemma-scene-grid-col-gap: 10px; --hemma-scene-grid-row-gap: 10px; }
@@ -7237,7 +6920,6 @@ window.hemmaMenuGlass = {
             -webkit-backdrop-filter: var(--hemma-perf-none, blur(24px) saturate(1.8)); backdrop-filter: var(--hemma-perf-none, blur(24px) saturate(1.8));
             box-shadow: 0 18px 40px -22px rgba(0, 0, 0, 0.50);
           }
-          .cat-en { cursor: pointer; -webkit-tap-highlight-color: transparent; }
           .cat-en h3 { margin: 0 0 2px; font-size: 16px; font-weight: 600; }
           .cat-en .sub { font-size: 12.5px; opacity: 0.6; margin-bottom: 8px; }
           .cat-en svg { display: block; }
@@ -7282,7 +6964,7 @@ window.hemmaMenuGlass = {
           /* Fades a registered --cat-edge, never opacity on the card: an animated ancestor opacity kills the tile's own glass blur. */
           @supports (animation-timeline: view()) {
             @keyframes cat-edge { to { --cat-edge: 0; } }
-            .cat:not(.pushed) :is(.cat-in > h1, .cat-pills, .cat-chipcard, .cat-body h2, .cat-grid > *, .cat-scenes-row, .cat-np > *) {
+            .cat:not(.pushed) :is(.cat-in > h1, .cat-pills, .cat-chipcard, .cat-body h2, .cat-grid > *, .cat-scenes-row, .cat-np > *, .cat-cams) {
               animation: cat-edge linear both; animation-timeline: view(block 0px 0px);
               animation-range: exit calc(50% - 45px) exit calc(50% + 5px);
             }
@@ -7559,15 +7241,26 @@ window.hemmaMenuGlass = {
     } catch (e) { return true; }
   }
 
-  var CHART_WAIT_MAX = 1600;
 
   var FOREIGN = /([^\w.#-]|^)(ha-adaptive-dialog|ha-bottom-sheet|ha-dialog|wa-dialog|wa-drawer)(?![\w-])/g;
   function retarget(css) { return String(css == null ? '' : css).replace(FOREIGN, '$1.surface'); }
 
   var BASE_CSS = `
+    .tip { position: fixed; z-index: 1000; transform: translate(-50%, -100%); padding: 4px 8px; border-radius: 6px; background: #fff; color: #111;
+      font: 400 14px/1.25 var(--hemma-font, -apple-system, system-ui, sans-serif); white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .12s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+    .cornerx { position: absolute; top: 16px; left: 16px; z-index: 6; transform: translateZ(0); -webkit-backface-visibility: hidden; width: 44px; height: 44px; border: 0; padding: 0; border-radius: 50%; display: none; place-items: center; cursor: pointer; color: #fff;
+      background-color: rgba(255,255,255,0.135); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cdefs%3E%3ClinearGradient id='t' x1='0' x2='1'%3E%3Cstop offset='0.000' stop-color='white' stop-opacity='0.000'/%3E%3Cstop offset='0.030' stop-color='white' stop-opacity='0.060'/%3E%3Cstop offset='0.067' stop-color='white' stop-opacity='0.080'/%3E%3Cstop offset='0.117' stop-color='white' stop-opacity='0.085'/%3E%3Cstop offset='0.179' stop-color='white' stop-opacity='0.210'/%3E%3Cstop offset='0.250' stop-color='white' stop-opacity='0.305'/%3E%3Cstop offset='0.329' stop-color='white' stop-opacity='0.330'/%3E%3Cstop offset='0.413' stop-color='white' stop-opacity='0.415'/%3E%3Cstop offset='0.500' stop-color='white' stop-opacity='0.500'/%3E%3Cstop offset='0.587' stop-color='white' stop-opacity='0.415'/%3E%3Cstop offset='0.671' stop-color='white' stop-opacity='0.330'/%3E%3Cstop offset='0.750' stop-color='white' stop-opacity='0.305'/%3E%3Cstop offset='0.821' stop-color='white' stop-opacity='0.210'/%3E%3Cstop offset='0.883' stop-color='white' stop-opacity='0.085'/%3E%3Cstop offset='0.933' stop-color='white' stop-opacity='0.080'/%3E%3Cstop offset='0.970' stop-color='white' stop-opacity='0.060'/%3E%3Cstop offset='1.000' stop-color='white' stop-opacity='0.000'/%3E%3C/linearGradient%3E%3ClinearGradient id='b' x1='0' x2='1'%3E%3Cstop offset='0.000' stop-color='white' stop-opacity='0.000'/%3E%3Cstop offset='0.117' stop-color='white' stop-opacity='0.000'/%3E%3Cstop offset='0.179' stop-color='white' stop-opacity='0.030'/%3E%3Cstop offset='0.250' stop-color='white' stop-opacity='0.305'/%3E%3Cstop offset='0.329' stop-color='white' stop-opacity='0.320'/%3E%3Cstop offset='0.413' stop-color='white' stop-opacity='0.455'/%3E%3Cstop offset='0.500' stop-color='white' stop-opacity='0.450'/%3E%3Cstop offset='0.587' stop-color='white' stop-opacity='0.455'/%3E%3Cstop offset='0.671' stop-color='white' stop-opacity='0.320'/%3E%3Cstop offset='0.750' stop-color='white' stop-opacity='0.305'/%3E%3Cstop offset='0.821' stop-color='white' stop-opacity='0.030'/%3E%3Cstop offset='0.883' stop-color='white' stop-opacity='0.000'/%3E%3Cstop offset='1.000' stop-color='white' stop-opacity='0.000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M.5 22A21.5 21.5 0 0 1 43.5 22' fill='none' stroke='url(%23t)'/%3E%3Cpath d='M43.5 22A21.5 21.5 0 0 1 .5 22' fill='none' stroke='url(%23b)'/%3E%3C/svg%3E"), linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.07) 6%, rgba(255,255,255,0.025) 12%, rgba(255,255,255,0) 18%), linear-gradient(to top, rgba(255,255,255,0.11), rgba(255,255,255,0.05) 6%, rgba(255,255,255,0.015) 12%, rgba(255,255,255,0) 18%); background-size: 100% 100%;
+      box-shadow: -1px 0 0 -0.4px rgba(0,0,0,0.28), 1px 0 0 -0.4px rgba(0,0,0,0.28);; -webkit-tap-highlight-color: transparent; }
+    .cornerx svg { width: 18px; height: 18px; }
+    :host([corner-x]:not([deep])) .cornerx { display: grid; }
+    @media (hover: hover) { .cornerx:hover { filter: brightness(1.12); } }
     :host {
       position: fixed;
       inset: 0;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
       z-index: var(--hemma-popup-z, 2147483000);
       display: none;
       color: var(--primary-text-color, #fff);
@@ -7589,8 +7282,14 @@ window.hemmaMenuGlass = {
                   var(--hemma-popup-scrim-ease, cubic-bezier(0.25, 0.6, 0.3, 1));
     }
     :host([shown]) .scrim { opacity: 1; }
-    /* Grown from a tile, the panel sits on the dashboard as Apple Home's do: no dimming, no blur. */
-    :host([morph]) .scrim { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+    /* Grown from a tile, the panel dims the room as Apple Home's do: measured at 34% black, no blur. */
+    :host([morph]) .scrim {
+      background: var(--hemma-morph-scrim, rgba(0, 0, 0, 0.32));
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      transition-duration: var(--hemma-morph-scrim-enter, 280ms);
+      transition-timing-function: ease-out;
+    }
     /* Out faster than in, and inside the 400ms teardown or it gets cut off. */
     :host([closing]) .scrim {
       transition-duration: var(--hemma-popup-scrim-exit, 200ms);
@@ -7621,10 +7320,7 @@ window.hemmaMenuGlass = {
       background: transparent;
       overflow: hidden;
     }
-    /* A sheet may size itself to its content - see hemma_popup_recently_added,
-       where two shelves of two tiles must not sit in a sheet built for three.
-       Below the two-column breakpoint the shelves go fluid and have no
-       intrinsic width, so a popup that opts in names what to use instead. */
+    /* Below the two-column breakpoint fluid content has no intrinsic width; a popup that sizes to its content names what to use. */
     @media (max-width: 900px) {
       .surface { width: var(--popup-min-width-narrow, var(--popup-min-width, 580px)); }
     }
@@ -7649,25 +7345,26 @@ window.hemmaMenuGlass = {
       animation: hemma-popup-fade var(--hemma-popup-enter, 260ms) ease-out;
       isolation: isolate;
       box-shadow: var(--hemma-popup-shadow,
-        0 40px 90px -32px rgba(0, 0, 0, 0.78),
-        0 10px 28px -14px rgba(0, 0, 0, 0.55));
+        0 12px 32px -16px rgba(0, 0, 0, 0.32));
       background: var(--hemma-popup-tint,
-        var(--ha-dialog-surface-background, var(--ha-dialog-background, rgba(0, 0, 5, 0.5))));
+        rgba(0, 0, 5, 0.16));
     }
     :host(:not([flat])) .glass {
       backdrop-filter: var(--hemma-popup-backdrop,
-        var(--hemma-surface-backdrop, blur(28px) saturate(200%)));
+        var(--hemma-surface-backdrop, blur(28px) saturate(60%) brightness(0.78)));
       -webkit-backdrop-filter: var(--hemma-popup-backdrop,
-        var(--hemma-surface-backdrop, blur(28px) saturate(200%)));
+        var(--hemma-surface-backdrop, blur(28px) saturate(60%) brightness(0.78)));
     }
     :host([flat]) .glass { background: var(--hemma-popup-tint-flat, rgba(8, 8, 12, 0.24)); }
+    /* A third of the room's contrast washed out, as Apple's Mac app does, but toward dark gray so the screen never brightens. localStorage hemma_glass = 'dark' restores the black dim. */
+    :host([lightglass][morph]) .scrim { background: var(--hemma-popup-veil, rgba(46, 46, 50, 0.33)); }
 
     /* A mix-blend-mode layer makes the browser read the backdrop back and
        composite the subtree as one group, and zero opacity does not remove it -
        an invisible grain costs exactly what a visible one costs. Every widget
        popup runs at grain 0, so the layer has to be able to go entirely. */
     .glass::before, .glass::after {
-      content: var(--hemma-popup-grain-content, "");
+      content: var(--hemma-popup-grain-content, none);
       position: absolute;
       inset: 0;
       border-radius: inherit;
@@ -7698,6 +7395,9 @@ window.hemmaMenuGlass = {
     }
 
     :host([closing]) .surface { animation: hemma-popup-out 140ms ease-in forwards; }
+    .sbveil { position: absolute; left: 0; right: 0; top: 0; height: env(safe-area-inset-top, 0px); z-index: 20; pointer-events: none; opacity: 0; transition: opacity .22s ease;
+      -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3); background: rgba(30,30,34,0.45); }
+    .surface.sbv .sbveil { opacity: 1; }
 
     @keyframes hemma-popup-fade {
       from { opacity: 0; }
@@ -7855,10 +7555,6 @@ window.hemmaMenuGlass = {
       :host { --hemma-popup-gutter: var(--hemma-popup-gutter-phone, 14px);
               --hemma-popup-value-gap: 0px; }
     }
-    /* Parked chart cards. Off screen but connected, so apexcharts keeps the
-       chart it already drew instead of fetching and drawing it again. */
-    .keep { position: absolute; left: -99999px; top: 0; width: 1px; height: 1px;
-            overflow: hidden; pointer-events: none; }
     .header-close {
       transition: opacity 0.16s ease;
       appearance: none;
@@ -7922,6 +7618,9 @@ window.hemmaMenuGlass = {
       -webkit-overflow-scrolling: touch;
       -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
       outline: none !important;
+      /* Above the absolutely positioned glass by order, not only while an animation happens to lift it. */
+      position: relative;
+      z-index: 1;
       scrollbar-width: none;
       -ms-overflow-style: none;
       animation: hemma-popup-fade var(--hemma-popup-enter, 260ms) ease-out;
@@ -8002,6 +7701,18 @@ window.hemmaMenuGlass = {
         margin: 0 auto;
         border-radius: 2px;
         background: var(--hemma-popup-grabber, rgba(255, 255, 255, 0.28));
+      }
+      :host([stage]) .layer { align-items: stretch; }
+      :host([stage]) .surface {
+        height: 100dvh; min-height: 100dvh; max-height: 100dvh; border-radius: 0; animation: none;
+        padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); box-sizing: border-box;
+      }
+      :host([stage][closing]) .surface { animation: none; }
+      :host([stage]) .glass, :host([stage]) .rim, :host([stage]) .grab { display: none; }
+      /* Blur and dim animate as values, never through opacity: iOS shows a fading backdrop-filter as all or nothing. */
+      :host([stage]) .scrim {
+        opacity: 1; transition: none; background: rgba(0, 0, 0, 0);
+        backdrop-filter: blur(0px) saturate(1); -webkit-backdrop-filter: blur(0px) saturate(1);
       }
     }
   `;
@@ -8142,12 +7853,59 @@ window.hemmaMenuGlass = {
   class HemmaPopup extends HTMLElement {
     constructor() {
       super();
+      // One tooltip for every popup: an icon-only button names itself on hover, as HA's do.
+      var tipFor = function (path) {
+        for (var i = 0; i < path.length; i++) {
+          var n = path[i];
+          if (!n || n.nodeType !== 1) continue;
+          if (n === this) return null;
+          if (n.dataset && n.dataset.tip) return { el: n, text: n.dataset.tip };
+          if (n.hasAttribute('data-notip') || n.classList.contains('back') || n.classList.contains('rback') || n.classList.contains('tg')) return null;
+          if ((n.tagName === 'BUTTON' || n.getAttribute('role') === 'button') && n.getAttribute('aria-label') && !n.hasAttribute('data-i')) {
+            var r = n.getBoundingClientRect();
+            if (r.width > 64 || r.height > 64 || n.textContent.trim()) return null;
+            return { el: n, text: n.getAttribute('aria-label') };
+          }
+        }
+        return null;
+      }.bind(this);
+      var tipT = 0, tipEl = null, tipOn = null;
+      var hideTip = function () { clearTimeout(tipT); tipOn = null; if (tipEl) tipEl.style.opacity = '0'; };
+      var onTip = (e) => {
+        if (e.pointerType !== 'mouse') return;
+        var hit = tipFor(e.composedPath());
+        if (hit && hit.el === tipOn) return;
+        hideTip();
+        if (!hit) return;
+        tipOn = hit.el;
+        tipT = setTimeout(() => {
+          if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'tip'; this.shadowRoot.appendChild(tipEl); }
+          tipEl.textContent = hit.text;
+          var r = hit.el.getBoundingClientRect();
+          tipEl.style.left = (r.left + r.width / 2) + 'px';
+          tipEl.style.top = (r.top - 8) + 'px';
+          tipEl.style.opacity = '1';
+        }, 400);
+      };
+      // Move as well as over: a quick pass can skip the over event for a small button.
+      this.addEventListener('pointerover', onTip);
+      this.addEventListener('pointermove', onTip);
+      this.addEventListener('pointerleave', hideTip);
+      this.addEventListener('pointerdown', hideTip);
+      // HA hands focus back to whatever opened its dialog, and Safari rings that row in blue on return.
+      this.addEventListener('hass-more-info', function () {
+        var a = document.activeElement;
+        while (a && a.shadowRoot && a.shadowRoot.activeElement) a = a.shadowRoot.activeElement;
+        if (a && a !== document.body && a.blur) a.blur();
+      }, true);
       var root = this.attachShadow({ mode: 'open' });
       root.innerHTML =
         '<style>' + BASE_CSS + '</style><style id="dyn"></style>' +
         '<div class="scrim" part="scrim"></div>' +
         '<div class="layer">' +
           '<div class="surface" part="surface">' +
+          '<div class="sbveil"></div>' +
+            '<button type="button" class="cornerx" aria-label="Close"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round"><path d="M1.5 1.5 10.5 10.5M10.5 1.5 1.5 10.5"/></svg></button>' +
             '<div class="glass" part="glass"></div>' +
             '<div class="grab"><span></span></div>' +
             '<div class="header" hidden>' +
@@ -8168,13 +7926,15 @@ window.hemmaMenuGlass = {
             '</div>' +
             '<div class="content" tabindex="-1"><div class="container"></div></div>' +
             '<div class="rim" part="rim"></div>' +
-            '<div class="keep" aria-hidden="true"></div>' +
             '<hemma-popup-hass></hemma-popup-hass>' +
           '</div>' +
         '</div>';
 
       this.scrim = root.querySelector('.scrim');
       this.surface = root.querySelector('.surface');
+      // A panel's header veil stops where its page does, under the status bar; this band carries it to the screen's edge.
+      this.addEventListener('hemma-veil', (e) => this.surface.classList.toggle('sbv', !!e.detail));
+      this.addEventListener('hemma-deep', () => this.surface.classList.remove('sbv'));
       this.container = root.querySelector('.container');
       this.content = root.querySelector('.content');
       this._header = root.querySelector('.header');
@@ -8184,8 +7944,6 @@ window.hemmaMenuGlass = {
       this._headerClose = root.querySelector('.header-close');
       this._headerContent = root.querySelector('.header-content');
       this._dyn = root.querySelector('#dyn');
-      this._keep = root.querySelector('.keep');
-      this._parked = new Map();
       this._bridge = root.querySelector('hemma-popup-hass');
       this.content.addEventListener('scroll', () => {
         this.surface.classList.toggle('scrolled', this.content.scrollTop > 2);
@@ -8245,20 +8003,70 @@ window.hemmaMenuGlass = {
         e.stopPropagation();
         this.close();
       };
+      var cx = root.querySelector('.cornerx');
+      cx.addEventListener('click', closeTap);
+      cx.addEventListener('touchend', closeTap, { passive: false });
+      this.addEventListener('hemma-deep', (e) => this.toggleAttribute('deep', !!e.detail));
+      // A panel can ask for a new width; after the first, the change grows out from the center as the morph does.
+      this.addEventListener('hemma-width', (e) => {
+        var w = Math.round(Number(e.detail) || 0);
+        if (!w) return;
+        var sf = this.surface, first = !this._widthSet;
+        this._widthSet = true;
+        var r0 = sf.getBoundingClientRect();
+        var set = () => ['--popup-min-width', '--popup-max-width', '--popup-min-width-narrow'].forEach((v) => this.style.setProperty(v, w + 'px'));
+        if (first || this._isSheet()) { set(); if (e.measure) e.measure(); return; }
+        (this._widthAnim || []).forEach(function (a) { a.cancel(); });
+        set();
+        var r1 = sf.getBoundingClientRect(), dw = r1.width - r0.width;
+        if (e.measure) e.measure();
+        if (!dw) return;
+        var l0 = parseFloat(sf.style.left) || 0, l1 = l0;
+        if (sf.style.left) {
+          var b = window.hemmaMorph && window.hemmaMorph.bounds ? window.hemmaMorph.bounds() : { left: 0, right: window.innerWidth };
+          var to = Math.max(b.left + 16, Math.min(b.right - 16 - r1.width, r0.left - dw / 2));
+          l1 = l0 + (to - r1.left);
+          sf.style.left = l1 + 'px';
+        }
+        var from = { width: r0.width + 'px', maxWidth: 'none' }, to1 = { width: r1.width + 'px', maxWidth: 'none' };
+        if (sf.style.left) { from.left = l0 + 'px'; to1.left = l1 + 'px'; }
+        this._widthAnim = [sf.animate([from, to1], { duration: 380, easing: 'cubic-bezier(0.2, 0.9, 0.25, 1)' })];
+      });
       this._headerClose.addEventListener('click', closeTap);
       this._headerClose.addEventListener('touchend', closeTap, { passive: false });
       this._bindSheetDrag(this.surface, root.querySelector('.grab'), this.content);
+      this.surface.addEventListener('click', (e) => {
+        if (!this.hasAttribute('stage') || !this._dismissable || Date.now() - (this._dragAt || 0) < 400) return;
+        if (this._stageBackground(e)) this.close();
+      });
     }
 
     async open(data, origin) {
       var cfg = data || {};
       var wasOpen = this.hasAttribute('open');
-      var morph = !wasOpen && origin && morphOn() && window.hemmaMorph && !this._isSheet()
+      // Focus pins its tiles to the bottom edge, so there the popup simply opens centered and the tile stays put; its category pages are laid out like Overview and morph like it.
+      var focus = window._hemmaOverview === false && !window._hemmaCatOpen;
+      var morph = !wasOpen && origin && !cfg.sheet && morphOn() && window.hemmaMorph && !focus
         && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? origin : null;
-      if (morph) this.surface.style.visibility = 'hidden';
+      // A control that pins itself visible (the thermostat's - and +) reads this, or it shows through before the morph.
+      if (morph) { this.surface.style.visibility = 'hidden'; this.surface.style.setProperty('--hemma-pop-hidden', 'hidden'); }
       if (!wasOpen) this.toggleAttribute('morph', !!morph);
+      // On a phone a tile opens Apple's way: no card, the room blurs behind and the tile becomes the control.
+      if (!wasOpen) this.toggleAttribute('stage', !!morph && this._isSheet());
+      if (!wasOpen) {
+        var dark = false;
+        try { dark = localStorage.getItem('hemma_glass') === 'dark'; } catch (e) {}
+        this.toggleAttribute('lightglass', !this._isSheet() && !dark);
+      }
 
       this._dismissable = cfg.dismissable !== false;
+      // Only a sheet that slides up, short of full screen, closes from an X, as Apple Home's sensor sheets do.
+      this.toggleAttribute('corner-x', !morph && this._dismissable && this._isSheet());
+      // Focus leaves the whole page open behind a centered popup, so it is drawn larger to use the room.
+      this.toggleAttribute('roomy', !morph && !this._isSheet() && focus && window.matchMedia('(hover: hover) and (min-width: 1100px) and (min-height: 760px)').matches);
+      ['--popup-min-width', '--popup-max-width', '--popup-min-width-narrow'].forEach((v) => this.style.removeProperty(v));
+      this._widthSet = false;
+      this.removeAttribute('deep');
       this._bgDismiss = cfg.dismiss_on_background === true;
 
       var isCard = !!cfg.content && typeof cfg.content === 'object';
@@ -8275,12 +8083,11 @@ window.hemmaMenuGlass = {
 
       this.container.textContent = '';
       this._bridge.target = null;
-      this.removeAttribute('data-hemma-charts-ready');
-      if (this._chartPoll) { clearTimeout(this._chartPoll); this._chartPoll = null; }
 
       if (!wasOpen) {
         this.setAttribute('open', '');
-        requestAnimationFrame(() => this.setAttribute('shown', ''));
+        this.surface.classList.remove('sbv');
+        if (!morph) requestAnimationFrame(() => this.setAttribute('shown', ''));
         // Pinned invisible, entrance replayed below once the cards are in.
         this._holdChrome();
         document.addEventListener('keydown', this._onKey, true);
@@ -8297,8 +8104,13 @@ window.hemmaMenuGlass = {
 
       if (isCard) await this._buildCard(cfg.content);
       else if (cfg.content) this.container.textContent = String(cfg.content);
+      if (window.ResizeObserver && !this._growRO) {
+        this._growRO = new ResizeObserver(() => { cancelAnimationFrame(this._growF); this._growF = requestAnimationFrame(() => { this._rescroll(); this._fitRoomy(); }); });
+        this._growRO.observe(this.container);
+      }
 
       if (!wasOpen) this._replayChrome();
+      requestAnimationFrame(() => this._fitRoomy());
       if (morph) this._morphIn(morph);
       // On a phone the sheet is full height, so a panel is told how much room it has and spreads into it.
       if (this._isSheet()) {
@@ -8307,31 +8119,6 @@ window.hemmaMenuGlass = {
       } else this.style.removeProperty('--hemma-panel-h');
 
       setTimeout(() => this._probe(), 900);   // after card_mod has landed
-
-      this._gateOnCharts(isCard ? cfg.content : null);
-    }
-
-
-    _gateOnCharts(config) {
-      if (this.hasAttribute('open')) this.setAttribute('data-hemma-charts-ready', '');
-      var hasChart = false;
-      try { hasChart = JSON.stringify(config || '').indexOf('custom:apexcharts-card') > -1; }
-      catch (e) { hasChart = false; }
-      if (!hasChart) return;
-      if (this._chartPoll) clearTimeout(this._chartPoll);
-      this._chartPoll = setTimeout(() => {
-        this._chartPoll = null;
-        if (!this.hasAttribute('open')) return;
-        (function walk(node) {
-          if (!node || !node.querySelectorAll) return;
-          node.querySelectorAll('*').forEach((el) => {
-            if (el.tagName === 'APEXCHARTS-CARD' && !el.hasAttribute('data-hemma-ready')) {
-              el.setAttribute('data-hemma-ready', 'timeout');
-            }
-            if (el.shadowRoot) walk(el.shadowRoot);
-          });
-        })(this.shadowRoot);
-      }, CHART_WAIT_MAX);
     }
 
     _probe() {
@@ -8418,12 +8205,6 @@ window.hemmaMenuGlass = {
       return hit;
     }
 
-    _parkedHas(el) {
-      var found = false;
-      this._parked.forEach(function (v) { if (v === el) found = true; });
-      return found;
-    }
-
     // animation-name before opacity, never the other way round.
     _holdChrome() {
       var els = [this._headerClose, this._headerContent, this._headerActions];
@@ -8463,10 +8244,12 @@ window.hemmaMenuGlass = {
         if (nh === h && nh > 60) break;
         h = nh;
       }
-      if (!this.hasAttribute('open') || this.hasAttribute('closing')) { s.style.visibility = ''; return; }
+      if (!this.hasAttribute('open') || this.hasAttribute('closing')) { s.style.visibility = ''; s.style.removeProperty('--hemma-pop-hidden'); return; }
       var look = M.look(card);
       s.style.visibility = '';
-      if (!look) return;
+      s.style.removeProperty('--hemma-pop-hidden');
+      if (!look) { this.setAttribute('shown', ''); return; }
+      if (this.hasAttribute('stage')) return this._stageIn(card, look);
       var root = this.shadowRoot;
       var g = root.querySelector('.glass');
       var S = s.getBoundingClientRect();
@@ -8500,21 +8283,39 @@ window.hemmaMenuGlass = {
       var rim = root.querySelector('.rim');
       [g, rim, this.content].forEach(function (e) { if (e) e.style.animation = 'none'; });
       Object.assign(g.style, { inset: 'auto', left: '0px', top: '0px', width: S.width + 'px', height: S.height + 'px', overflow: 'hidden', boxShadow: 'none' });
-      M.hideAfterPaint(card);
       var G = M.timed ? M.timed(M.grow, t, x, y, S.width, S.height) : M.grow;
       var mo = this._morph;
+      // The first frame rasterizes the blur and the clones; started live, it ate the opening third of the spring.
+      var held = [], ends = [], animate = Element.prototype.animate;
+      Element.prototype.animate = function () { var a = animate.apply(this, arguments); a.pause(); held.push(a); return a; };
+      try { this._morphStart(card, g, s, root, look, end, box, mo, G, t, x, y, S, ends); } finally { Element.prototype.animate = animate; }
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        held.forEach(function (a) { if (a.playState === 'paused') a.play(); });
+        ends.forEach(function (f) { setTimeout(f, G.dur); });
+        this.setAttribute('shown', '');
+      }));
+    }
+
+    _morphStart(card, g, s, root, look, end, box, mo, G, t, x, y, S, ends) {
+      var M = window.hemmaMorph;
+      mo.fade = M.tileFade(card, G.dur);
       M.material(g, look, end.bg, end.filter, G.dur);
-      var lifted = document.createElement('div');
-      lifted.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:1;';
-      root.appendChild(lifted);
-      M.lift(card, lifted, g, G.dur);
-      setTimeout(function () { lifted.remove(); }, G.dur);
       g.animate([M.geometry(this._morphFrame(t, box, look, 0)), M.geometry(this._morphFrame(null, box, look, 1))], { duration: G.dur, easing: G.ease, fill: 'backwards' })
         .finished.then(() => {
           if (this._morph !== mo) return;
           ['inset', 'left', 'top', 'width', 'height', 'overflow'].forEach(function (k) { g.style.removeProperty(k); });
           s.style.removeProperty('overflow');
+          this._rescroll();
         }).catch(function () {});
+      var hero = M.heroFly && this._heroOf();
+      if (hero) {
+        var flight = document.createElement('div');
+        flight.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2;';
+        root.appendChild(flight);
+        hero.el.style.visibility = 'hidden';
+        M.heroFly(card, look, hero, true, G.dur, G.ease, flight);
+        ends.push(function () { hero.el.style.visibility = ''; flight.remove(); });
+      }
       var self = this;
       var full = { left: x, top: y, right: x + S.width, bottom: y + S.height };
       [this._header, this.content, root.querySelector('.grab')].forEach(function (e) {
@@ -8523,6 +8324,101 @@ window.hemmaMenuGlass = {
           { duration: G.dur, easing: G.ease, fill: 'backwards' });
         e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: G.dur * 0.45, delay: G.dur * 0.5, easing: 'ease-out', fill: 'backwards' });
       });
+    }
+
+    _stageIn(card, look) {
+      var M = window.hemmaMorph, root = this.shadowRoot, G = M.grow;
+      var mo = this._morph = { card: card, look: look, stage: true };
+      var held = [], ends = [], animate = Element.prototype.animate;
+      Element.prototype.animate = function () { var a = animate.apply(this, arguments); a.pause(); held.push(a); return a; };
+      try {
+        mo.fade = M.tileFade(card, G.dur);
+        var layer = document.createElement('div');
+        layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2;';
+        root.appendChild(layer);
+        var t = look.rect;
+        var hero = M.heroFly && this._heroOf(true);
+        if (hero) {
+          if (!hero.card) hero.el.style.visibility = 'hidden';
+          M.heroFly(card, look, hero, true, G.dur, G.ease, layer);
+        }
+        ends.push(() => { if (hero) hero.el.style.visibility = ''; layer.remove(); this._rescroll(); });
+        root.querySelector('.scrim').animate([this._stageVeil(false), this._stageVeil(true)], { duration: G.dur * 0.8, easing: 'ease-out', fill: 'both' });
+        var zoom = hero ? null : this._stageZoom(t);
+        [this._header, this.content].forEach(function (e) {
+          if (!e || e.hidden) return;
+          if (zoom) e.animate([{ transform: zoom }, { transform: 'none' }], { duration: G.dur, easing: G.ease, fill: 'backwards' });
+          e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: G.dur * 0.45, delay: G.dur * (hero ? (hero.card ? 0.45 : 0.35) : 0.15), easing: 'ease-out', fill: 'backwards' });
+        });
+      } finally { Element.prototype.animate = animate; }
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        held.forEach(function (a) { if (a.playState === 'paused') a.play(); });
+        ends.forEach(function (f) { setTimeout(f, G.dur); });
+        this.setAttribute('shown', '');
+      }));
+    }
+
+    _stageOut() {
+      var mo = this._morph, card = mo.card, M = window.hemmaMorph, root = this.shadowRoot;
+      var back = M.look(card) || mo.look, S = M.shrink;
+      card.style.visibility = '';
+      if (mo.fade) mo.fade.cancel();
+      var hero = M.heroFly && this._heroOf(true);
+      mo.fade = M.tileFade(card, S.dur, true, hero ? (hero.card ? 'card' : 'land') : false);
+      root.querySelector('.scrim').animate([this._stageVeil(true), this._stageVeil(false)], { duration: S.dur * 0.85, easing: 'ease-in-out', fill: 'forwards' });
+      var holder = document.createElement('div');
+      holder.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2;';
+      root.appendChild(holder);
+      mo.holder = holder;
+      if (M.bounce) M.bounce(holder, back.rect, S.dur);
+      if (hero) {
+        if (!hero.card) hero.el.style.visibility = 'hidden';
+        M.heroFly(card, back, Object.assign({ land: true }, hero), false, S.dur, S.ease, holder);
+      }
+      var zoom = hero ? null : this._stageZoom(back.rect);
+      [this._header, this.content].forEach(function (e) {
+        if (!e || e.hidden) return;
+        if (zoom) e.animate([{ transform: 'none' }, { transform: zoom }], { duration: S.dur, easing: S.ease, fill: 'forwards' });
+        e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: S.dur * (hero && hero.card ? 0.15 : 0.5), easing: 'ease-in', fill: 'forwards' });
+      });
+      return S.dur;
+    }
+
+    // Safari sizes a scroller's layer once; content that grew since, or a morph that just ended, leaves its lower part blank until hover.
+    _rescroll() {
+      var c = this.content;
+      if (!c) return;
+      c.style.overflowY = 'hidden';
+      void c.offsetHeight;
+      c.style.removeProperty('overflow-y');
+    }
+
+    _stageVeil(on) {
+      var cs = getComputedStyle(this);
+      var dim = cs.getPropertyValue('--hemma-stage-dim').trim() || 'rgba(0, 0, 0, 0.24)';
+      var bf = cs.getPropertyValue('--hemma-stage-backdrop').trim() || 'blur(34px) saturate(1.5)';
+      return on ? { backgroundColor: dim, backdropFilter: bf, webkitBackdropFilter: bf }
+        : { backgroundColor: 'rgba(0, 0, 0, 0)', backdropFilter: 'blur(0px) saturate(1)', webkitBackdropFilter: 'blur(0px) saturate(1)' };
+    }
+
+    // A popup with no control to fly into grows out of its tile instead.
+    _stageZoom(t) {
+      var c = this.content.getBoundingClientRect();
+      if (!c.width || !c.height) return null;
+      return 'translate(' + (t.left + t.width / 2 - (c.left + c.width / 2)) + 'px, ' + (t.top + t.height / 2 - (c.top + c.height / 2)) + 'px) scale('
+        + Math.max(0.05, t.width / c.width).toFixed(3) + ')';
+    }
+
+    // Apple dismisses a phone popup from anywhere that is not a control or a block of content.
+    _stageBackground(e) {
+      var path = e.composedPath(), stop = path.indexOf(this.surface);
+      for (var i = 0; i < stop; i++) {
+        var n = path[i];
+        if (!n || n.nodeType !== 1) continue;
+        if (n.matches('button, a, input, select, textarea, label, svg, canvas, img, video, [role], .ctl, .menu, .list, .tiles, .t, .li, .w, .dial, .ctiles, .mini, .acts, .fpow, .ptile, .row, .shelf, .det, .lr')) return false;
+        if (n.tagName.indexOf('-') > 0 && n.tagName.indexOf('HEMMA-') !== 0) return false;
+      }
+      return true;
     }
 
     _morphFrame(t, box, look, k) {
@@ -8541,42 +8437,30 @@ window.hemmaMenuGlass = {
         + (t.left - r.left) + 'px round ' + radius + 'px)';
     }
 
-    _behindMoreInfo() {
-      if (!window.hemmaMorph || !window.hemmaMorph.centered() || !this.hasAttribute('open')) return;
-      var s = this.surface;
-      s.style.transition = 'opacity .22s ease';
-      s.style.opacity = '0';
-      var ha = document.querySelector('home-assistant');
-      var seen = false, n = 0;
-      var check = () => {
-        var d = ha && ha.shadowRoot && ha.shadowRoot.querySelector('ha-more-info-dialog');
-        var openNow = !!(d && (d.open || (d.shadowRoot && d.shadowRoot.querySelector('ha-dialog[open], ha-adaptive-dialog[open], dialog[open]')) || d.hasAttribute('open')));
-        if (openNow) seen = true;
-        if ((seen && !openNow) || n++ > 600 || !this.hasAttribute('open')) { s.style.opacity = ''; setTimeout(() => { s.style.transition = ''; }, 260); return; }
-        setTimeout(check, 200);
-      };
-      setTimeout(check, 300);
-    }
-
     _morphOut() {
       var mo = this._morph;
       if (!mo) return 0;
       var card = mo.card;
       if (!card.isConnected) { card.style.visibility = ''; return 0; }
       var M = window.hemmaMorph;
+      if (mo.stage) return this._stageOut();
       var back = M.look(card) || mo.look;
-      if (!M.centered || !M.centered()) card.style.visibility = 'hidden';
+      card.style.visibility = '';
       var root = this.shadowRoot;
       var g = root.querySelector('.glass');
       var R = this.surface.getBoundingClientRect();
       var S = M.timed ? M.timed(M.shrink, back.rect, R.left, R.top, R.width, R.height) : M.shrink;
+      if (mo.fade) mo.fade.cancel();
+      var hero = M.heroFly && this._heroOf();
+      mo.fade = M.tileFade(card, S.dur, true, hero ? (hero.card ? 'card' : 'land') : false);
       mo.box = { x: R.left, y: R.top, w: R.width, h: R.height };
       this.surface.style.animation = 'none';
       this.surface.style.overflow = 'visible';
       g.getAnimations().forEach(function (a) { a.cancel(); });
       Object.assign(g.style, { inset: 'auto', left: '0px', top: '0px', width: R.width + 'px', height: R.height + 'px', overflow: 'hidden' });
-      g.animate([this._morphFrame(null, mo.box, back, 1), this._morphFrame(back.rect, mo.box, back, 0)],
+      g.animate([M.geometry(this._morphFrame(null, mo.box, back, 1)), M.geometry(this._morphFrame(back.rect, mo.box, back, 0))],
         { duration: S.dur, easing: S.ease, fill: 'forwards' });
+      M.material(g, back, mo.end.bg, mo.end.filter, S.dur, true, !!hero);
       mo.look = back;
       var self = this;
       var full = { left: R.left, top: R.top, right: R.right, bottom: R.bottom };
@@ -8588,11 +8472,31 @@ window.hemmaMenuGlass = {
         e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: S.dur * 0.3, easing: 'ease-in', fill: 'forwards' });
       });
       var holder = document.createElement('div');
-      holder.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:1;';
+      holder.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2;';
       root.appendChild(holder);
       mo.holder = holder;
-      M.settle(card, holder, R, S.dur, S.ease);
+      if (M.bounce) M.bounce(holder, back.rect, S.dur);
+      // Apple's control is what lands as the tile, so the glass clears early and the control takes the tile's fill.
+      if (hero) {
+        hero.el.style.visibility = 'hidden';
+        M.heroFly(card, back, Object.assign({ land: true }, hero), false, S.dur, S.ease, holder);
+      }
       return S.dur;
+    }
+
+    // A phone popup with no control to fly into names a card instead; desktop keeps growing from the tile.
+    _heroOf(stage) {
+      var found = null;
+      var walk = function (n, d) {
+        if (found || !n || d > 8) return;
+        if (typeof n.hemmaHero === 'function' || (stage && typeof n.hemmaAnchor === 'function')) { found = n; return; }
+        Array.prototype.forEach.call(n.children || [], function (k) { walk(k, d + 1); });
+        if (n.shadowRoot) Array.prototype.forEach.call(n.shadowRoot.children, function (k) { walk(k, d + 1); });
+      };
+      walk(this.content, 0);
+      var h = found && typeof found.hemmaHero === 'function' ? found.hemmaHero() : null;
+      if (!h && found && stage && typeof found.hemmaAnchor === 'function') h = found.hemmaAnchor();
+      return h && h.el && h.el.getBoundingClientRect().width ? h : null;
     }
 
     _morphReset() {
@@ -8601,6 +8505,8 @@ window.hemmaMenuGlass = {
       this._morph = null;
       if (this._keepIn) this._keepIn.disconnect();
       mo.card.style.visibility = '';
+      this.shadowRoot.querySelector('.scrim').getAnimations().forEach(function (a) { a.cancel(); });
+      if (mo.fade) mo.fade.cancel();
       if (mo.holder) mo.holder.remove();
       var root = this.shadowRoot;
       var g = root.querySelector('.glass');
@@ -8609,13 +8515,40 @@ window.hemmaMenuGlass = {
         if (e) e.getAnimations().forEach(function (a) { a.cancel(); });
       });
       ['inset', 'left', 'top', 'width', 'height', 'overflow', 'animation', 'box-shadow'].forEach(function (k) { g.style.removeProperty(k); });
-      ['left', 'top', 'overflow', 'animation', 'visibility', 'transition'].forEach((k) => this.surface.style.removeProperty(k));
+      ['left', 'top', 'overflow', 'animation', 'visibility', 'transition', 'transform'].forEach((k) => this.surface.style.removeProperty(k));
       if (rim) rim.style.removeProperty('animation');
       this.content.style.removeProperty('animation');
     }
 
+    // A more-info over the popup dims the whole room behind it by color and blur, never opacity, so no glass loses its frost.
+    _veil(on) {
+      var root = this.shadowRoot, v = root.querySelector('.veil');
+      var cs = getComputedStyle(this);
+      var dim = cs.getPropertyValue('--hemma-stacked-veil').trim() || 'rgba(0, 0, 0, 0.4)';
+      var bf = cs.getPropertyValue('--hemma-stacked-veil-backdrop').trim() || 'blur(6px) saturate(1.35)';
+      var off = { backgroundColor: 'rgba(0, 0, 0, 0)', backdropFilter: 'blur(0px) saturate(1)', webkitBackdropFilter: 'blur(0px) saturate(1)' };
+      var lit = { backgroundColor: dim, backdropFilter: bf, webkitBackdropFilter: bf };
+      if (on) {
+        if (!v) {
+          v = document.createElement('div');
+          v.className = 'veil';
+          v.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:20;';
+          root.appendChild(v);
+        }
+        v.getAnimations().forEach(function (a) { a.cancel(); });
+        Object.assign(v.style, lit);
+        v.animate([off, lit], { duration: 250, easing: 'ease-out' });
+      } else if (v) {
+        v.getAnimations().forEach(function (a) { a.cancel(); });
+        v.animate([lit, off], { duration: 240, easing: 'ease-in', fill: 'forwards' })
+          .finished.then(function () { v.remove(); }).catch(function () {});
+      }
+    }
+
     close() {
       if (!this.hasAttribute('open') || this.hasAttribute('closing')) return;
+      var veil = this.shadowRoot.querySelector('.veil');
+      if (veil) veil.remove();
       document.removeEventListener('keydown', this._onKey, true);
       window.removeEventListener('location-changed', this._onNav, true);
       window.removeEventListener('popstate', this._onNav, true);
@@ -8631,22 +8564,27 @@ window.hemmaMenuGlass = {
         this.removeAttribute('closing');
         this.removeAttribute('swipe-out');
         this.removeAttribute('open');
-        this.removeAttribute('data-hemma-charts-ready');
-        if (this._chartPoll) { clearTimeout(this._chartPoll); this._chartPoll = null; }
+        this.removeAttribute('roomy');
+        this.surface.style.removeProperty('zoom');
         this.surface.style.removeProperty('transform');
         this.surface.style.removeProperty('transition');
-        var live = this.container.firstElementChild;
-        if (live && this._keep && this._parkedHas(live)) this._keep.appendChild(live);
         this.container.textContent = '';
         this._bridge.target = null;
         this._dyn.textContent = '';
         this.dispatchEvent(new CustomEvent('hemma-popup-closed', { bubbles: true, composed: true }));
       };
-      var morphMs = this._morphOut();
+      // Held like the open: the setup's first frames would otherwise eat the start of the shrink.
+      var held = [], animate = Element.prototype.animate, morphMs;
+      Element.prototype.animate = function () { var a = animate.apply(this, arguments); a.pause(); held.push(a); return a; };
+      try { morphMs = this._morphOut(); } finally { Element.prototype.animate = animate; }
       if (morphMs) {
-        setTimeout(() => { finish(); this._morphReset(); }, morphMs);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          held.forEach(function (a) { if (a.playState === 'paused') a.play(); });
+          setTimeout(() => { finish(); this._morphReset(); }, morphMs);
+        }));
         return;
       }
+      held.forEach(function (a) { a.play(); });
       this._morphReset();
       this.surface.addEventListener('animationend', finish, { once: true });
       setTimeout(finish, 400);
@@ -8654,6 +8592,13 @@ window.hemmaMenuGlass = {
 
     _dynamicCss(cfg) {
       var out = ':host {\n' + (cfg.style || '') + '\n}\n';
+      var ty = cfg.content && cfg.content.type;
+      if (/^custom:hemma-[a-z-]+-panel$/.test(ty || ''))
+        out += '@media (min-width: 769px) { :host { --popup-min-width: 340px; --popup-max-width: 340px; --hemma-panel-h: min(600px, calc(100svh - 64px)); } }\n'
+          + '@media (min-width: 769px) and (pointer: coarse) { :host { --popup-min-width: 376px; --popup-max-width: 376px; --hemma-panel-h: min(729px, calc(100svh - 90px)); } }\n';
+      if (ty === 'custom:hemma-camera-panel')
+        out += '@media (min-width: 769px) { :host { --popup-min-width: min(760px, calc(100vw - 40px)); --popup-max-width: min(760px, calc(100vw - 40px)); } }\n'
+          + '@media (min-width: 769px) and (pointer: coarse) { :host { --popup-min-width: min(820px, calc(100vw - 40px)); --popup-max-width: min(820px, calc(100vw - 40px)); } }\n';
       var list = Array.isArray(cfg.popup_styles) ? cfg.popup_styles : [];
       for (var i = 0; i < list.length; i++) {
         var e = list[i];
@@ -8671,22 +8616,6 @@ window.hemmaMenuGlass = {
         try { hasLive = JSON.stringify(config || '').indexOf('data-hemma-live') > -1; }
         catch (e) { hasLive = true; }
         this._bridge._liveCache = { none: !hasLive, nodes: null, at: 0 };
-      }
-      var key = null;
-      try {
-        var cfgStr = JSON.stringify(config || '');
-        if (cfgStr.indexOf('custom:apexcharts-card') > -1) key = target === this.container ? cfgStr : null;
-      } catch (e) { key = null; }
-      if (key && this._parked.has(key)) {
-        var kept = this._parked.get(key);
-        if (kept && kept.isConnected) {
-          kept.hass = (this._bridge.hass || (document.querySelector('home-assistant') || {}).hass);
-          target.textContent = '';
-          target.appendChild(kept);
-          this._syncTargets();
-          return;
-        }
-        this._parked.delete(key);
       }
 
       var helpers = await cardHelpers();
@@ -8715,16 +8644,6 @@ window.hemmaMenuGlass = {
       target.textContent = '';
       target.appendChild(el);
       this._syncTargets();
-      if (key) {
-        this._parked.set(key, el);
-        // Two is enough to cover going back and forth between two popups.
-        while (this._parked.size > 2) {
-          var oldest = this._parked.keys().next().value;
-          var drop = this._parked.get(oldest);
-          this._parked.delete(oldest);
-          if (drop && drop.parentNode) drop.parentNode.removeChild(drop);
-        }
-      }
 
       if (!customElements.get(el.localName)) {
         customElements.whenDefined(el.localName).then(() => {
@@ -8742,25 +8661,124 @@ window.hemmaMenuGlass = {
       this._bridge.targets = list;
     }
 
+    // Up to a quarter larger, but never taller than the window.
+    _fitRoomy() {
+      var sf = this.surface;
+      if (!this.hasAttribute('roomy') || !this.hasAttribute('open')) { sf.style.removeProperty('zoom'); return; }
+      var z = Number(sf.style.zoom) || 1, h = sf.getBoundingClientRect().height / z;
+      if (!h) return;
+      var next = Math.max(1, Math.min(1.25, (window.innerHeight - 140) / h));
+      if (Math.abs(next - z) > 0.01) sf.style.zoom = next.toFixed(3);
+      this._textZoom(Number(sf.style.zoom) || 1);
+    }
+
+    // The popup grows, its words do not: each piece of text is set back to the size it has at 1x, so it reads like the tiles and HA's dialogs.
+    _textZoom(z) {
+      this._tz = z;
+      var seen = new Set(), self = this;
+      var fix = function (el) {
+        if (!el.__fz) el.__fz = parseFloat(getComputedStyle(el).fontSize);
+        el.style.fontSize = z > 1 ? (el.__fz / z).toFixed(2) + 'px' : '';
+      };
+      var walk = function (root) {
+        if (!root || seen.has(root)) return;
+        seen.add(root);
+        if (root !== self.container && !(root.__tzObs) && window.MutationObserver) {
+          root.__tzObs = new MutationObserver(function () { if (self._tz > 1) { cancelAnimationFrame(self._tzF); self._tzF = requestAnimationFrame(function () { self._textZoom(self._tz); }); } });
+          root.__tzObs.observe(root, { childList: true, subtree: true });
+        }
+        root.querySelectorAll('*').forEach(function (el) {
+          if (el.shadowRoot) walk(el.shadowRoot);
+          if (el.closest('svg') || /^(STYLE|SCRIPT|SVG)$/.test(el.tagName)) return;
+          for (var i = 0; i < el.childNodes.length; i++) {
+            var n = el.childNodes[i];
+            if (n.nodeType === 3 && n.textContent.trim()) { fix(el); return; }
+          }
+        });
+      };
+      walk(this.container);
+    }
+
     _isSheet() {
       try { return window.matchMedia('(max-width: ' + SHEET_MAX + 'px)').matches; }
       catch (e) { return window.innerWidth <= SHEET_MAX; }
     }
 
     _bindSheetDrag(surface, grab, content) {
-      var y0 = 0, dy = 0, tracking = false, dragging = false;
+      var y0 = 0, dy = 0, tracking = false, dragging = false, lastY = 0, lastT = 0, speed = 0;
 
+      // The iPad's centered popups dismiss with the same downward swipe, as Apple Home's do.
+      var touchCard = () => !this._isSheet() && window.matchMedia('(pointer: coarse) and (min-width: 769px)').matches;
+      var held = false;
       var start = (e) => {
-        if (!this._isSheet() || !this._dismissable) return;
+        held = false;
+        if (!this._dismissable || (!this._isSheet() && !touchCard())) return;
         var t = e.touches ? e.touches[0] : e;
         y0 = t.clientY;
         dy = 0;
         dragging = false;
-        var onGrab = e.composedPath && e.composedPath().indexOf(grab) !== -1;
-        tracking = onGrab || content.scrollTop <= 0;
+        var path = e.composedPath ? e.composedPath() : [];
+        var onGrab = path.indexOf(grab) !== -1;
+        var mine = path.indexOf(surface) >= 0 ? path.slice(0, path.indexOf(surface)) : [];
+        var inner = mine.some((n) => n !== content && n.nodeType === 1 && n.scrollTop > 0 && n.scrollHeight > n.clientHeight);
+        var onCtl = mine.some((n) => n.nodeType === 1 && getComputedStyle(n).touchAction === 'none');
+        tracking = onGrab || (content.scrollTop <= 0 && !inner && !onCtl);
+        // On the iPad nothing in a popup scrolls, so a vertical drag there would only bounce the page behind it.
+        var scrolls = mine.some((n) => n.nodeType === 1 && n.scrollHeight > n.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(n).overflowY));
+        held = touchCard() && !scrolls && !onCtl;
       };
 
+      // Apple's upward pull on an iPad popup: the content rides up with resistance, the title shrinks into a pinned header over a frosted band, and it all springs back.
+      var pull = null;
+      var findHd = () => {
+        var q = [content];
+        while (q.length) {
+          var r = q.shift();
+          var hit = r.querySelector && r.querySelector('.hd, .h, .lhd');
+          if (hit && hit.offsetHeight) return hit;
+          (r.querySelectorAll ? [...r.querySelectorAll('*')] : []).forEach((n) => { if (n.shadowRoot) q.push(n.shadowRoot); });
+        }
+        return null;
+      };
+      var pullTo = (d) => {
+        // A popup that is one full-bleed picture (Recently Added) stays put.
+        if (content.querySelector('hemma-recent-panel')) return;
+        if (!pull) {
+          var hd = findHd();
+          if (!hd) return;
+          var veil = document.createElement('div');
+          var sr = surface.getBoundingClientRect(), hr = hd.getBoundingClientRect();
+          veil.style.cssText = 'position:absolute;left:0;right:0;top:' + (sr.top - hr.top + hd.offsetTop) + 'px;height:62px;pointer-events:none;z-index:4;opacity:0;'
+            + '-webkit-backdrop-filter:blur(20px) saturate(1.3);backdrop-filter:blur(20px) saturate(1.3);background:rgba(36,36,40,0.32);box-shadow:inset 0 -0.5px 0 rgba(255,255,255,0.16);';
+          hd.parentNode.insertBefore(veil, hd);
+          hd.style.position = hd.style.position || 'relative';
+          hd.style.zIndex = '5';
+          hd.style.transformOrigin = '50% 0';
+          pull = { hd: hd, veil: veil, gap: Math.max(0, hr.top - sr.top - 10) };
+        }
+        var r = 140 * (1 - Math.exp(d / 140));
+        var k = Math.min(1, r / Math.max(40, pull.gap));
+        content.style.transform = 'translateY(' + (-r) + 'px)';
+        pull.hd.style.transform = 'translateY(' + (r - pull.gap * k) + 'px) scale(' + (1 - 0.32 * k).toFixed(3) + ')';
+        pull.veil.style.transform = 'translateY(' + r + 'px)';
+        pull.veil.style.opacity = k.toFixed(3);
+      };
+      var pullBack = () => {
+        if (!pull) return;
+        var P = pull, opts = { duration: 420, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' };
+        pull = null;
+        [[content, content.style.transform], [P.hd, P.hd.style.transform], [P.veil, P.veil.style.transform]].forEach(([el, from]) => {
+          el.animate([{ transform: from }, { transform: 'none' }], opts);
+          el.style.transform = '';
+        });
+        P.veil.animate([{ opacity: P.veil.style.opacity }, { opacity: 0 }], opts).finished.then(() => { P.veil.remove(); P.hd.style.zIndex = ''; }, () => P.veil.remove());
+      };
       var move = (e) => {
+        if (held && e.cancelable && !dragging) e.preventDefault();
+        if (held && !dragging && touchCard()) {
+          var tt = e.touches ? e.touches[0] : e, dd = tt.clientY - y0;
+          if (dd < -4 || pull) { tracking = false; pullTo(Math.min(0, dd)); return; }
+        }
         if (!tracking) return;
         var t = e.touches ? e.touches[0] : e;
         var d = t.clientY - y0;
@@ -8771,18 +8789,26 @@ window.hemmaMenuGlass = {
           surface.style.transition = 'none';
         }
         dy = Math.max(0, d);
+        var now = performance.now();
+        if (lastT) speed = (t.clientY - lastY) / Math.max(1, now - lastT);
+        lastY = t.clientY; lastT = now;
         if (e.cancelable) e.preventDefault();
         surface.style.transform = 'translateY(' + dy + 'px)';
       };
 
       var end = () => {
+        pullBack();
         if (!tracking) return;
         var moved = dragging, traveled = dy;
         tracking = false;
         dragging = false;
         if (!moved) return;
 
-        if (traveled > Math.min(120, surface.offsetHeight * 0.25)) {
+        var flick = speed > 0.5 && traveled > 40;
+        lastT = 0; speed = 0;
+        this._dragAt = Date.now();
+        if ((this.hasAttribute('stage') || touchCard()) && (flick || traveled > 120)) { this.close(); return; }
+        if (flick || traveled > Math.min(120, surface.offsetHeight * 0.25)) {
           this.setAttribute('swipe-out', '');
           surface.style.transition = 'transform 200ms ease-in';
           surface.style.transform = 'translateY(100%)';
@@ -8830,7 +8856,17 @@ window.hemmaMenuGlass = {
   };
 
   window.hemmaPopup = {
-    open: function (data, origin) { return instance().open(data || {}, origin); },
+    open: function (data, origin) {
+      var c = data && data.content;
+      // A camera opens Apple's camera view, not a popup: one camera straight to it, several to the Cameras page.
+      if (c && c.type === 'custom:hemma-camera-panel' && window.hemmaCameraView) {
+        var ex = Array.isArray(c.exclude) ? c.exclude : [];
+        var ids = (Array.isArray(c.cameras) && c.cameras.length ? c.cameras : [c.entity]).filter(function (x) { return x && ex.indexOf(x) < 0; });
+        if (ids.length > 1) window.hemmaCameraView.openAll(ids); else window.hemmaCameraView.open(ids[0], ids);
+        return Promise.resolve();
+      }
+      return instance().open(data || {}, origin);
+    },
     close: function () { if (_el) _el.close(); },
     moreInfo: function (entityId, view) {
       var ha = document.querySelector('home-assistant');
@@ -8859,18 +8895,16 @@ window.hemmaMenuGlass = {
     if (ev.detail.hemma_filter !== undefined || ev.detail.hemma_category !== undefined) return;
     ev.stopPropagation();
     var from = _lastTap && Date.now() - _lastTap.at < 1000 ? _lastTap.card : null;
+    // Only a tile morphs; a badge's popup opens centered, as Home Assistant's dialogs do.
+    if (from && from.shadowRoot && from.shadowRoot.querySelector('.badge-wrap')) from = null;
     _lastTap = null;
     window.hemmaPopup.open(cfg, from);
-  }, true);
-
-  window.addEventListener('hass-more-info', function () {
-    if (_el && _el.hasAttribute('open') && !_el.hasAttribute('closing')) _el._behindMoreInfo();
   }, true);
 
   // ll-custom is fired from <home-assistant>, so the tile that asked for the popup is read off the hass-action before it.
   var _lastTap = null;
   window.addEventListener('hass-action', function (ev) {
-    var card = ev.composedPath().find(function (n) { return n && n.tagName === 'BUTTON-CARD' && n._stateObj; });
+    var card = ev.composedPath().find(function (n) { return n && n.tagName === 'BUTTON-CARD' && (n._stateObj || (n._config && n._config.tap_action && n._config.tap_action.hemma_popup)); });
     if (card) _lastTap = { card: card, at: Date.now() };
   }, true);
 })();
@@ -8909,6 +8943,15 @@ window.hemmaMenuGlass = {
     '  -webkit-backdrop-filter: var(--hemma-stacked-scrim-backdrop, none) !important;' +
     '}';
 
+  var POPUP_SHADOW = 'var(--hemma-popup-shadow, 0 12px 32px -16px rgba(0, 0, 0, 0.32))';
+  var POPUP_GLASS =
+    'dialog { box-shadow: ' + POPUP_SHADOW + ' !important; }' +
+    ':host(:not([placement])) dialog, :host([placement="center"]) dialog { border-radius: var(--hemma-dialog-radius, 34px) !important; }' +
+    ':host([placement="bottom"]) .body {' +
+    '  border-start-start-radius: var(--hemma-sheet-radius, 24px) !important;' +
+    '  border-start-end-radius: var(--hemma-sheet-radius, 24px) !important;' +
+    '}';
+
   var DRAWER_SLIDE =
     '@keyframes hemma-drawer-in { from { translate: 0 100%; } to { translate: 0 0; } }' +
     ':host([placement="bottom"]) dialog { animation-name: hemma-drawer-in !important; }';
@@ -8919,8 +8962,8 @@ window.hemmaMenuGlass = {
       '  margin-block-start: var(--hemma-popup-top, 112px) !important;' +
       '  max-block-size: calc(100dvh - var(--hemma-popup-top, 112px)' +
       '                  - var(--hemma-dialog-bottom-gap, 16px)) !important;' +
-      '}' + NO_ENTRANCE + STACKED_SCRIM + GRAIN,
-    'wa-drawer': NO_ENTRANCE + STACKED_SCRIM + DRAWER_SLIDE + SHEET_RADIUS + GRAIN,
+      '}' + NO_ENTRANCE + STACKED_SCRIM + GRAIN + POPUP_GLASS,
+    'wa-drawer': NO_ENTRANCE + STACKED_SCRIM + DRAWER_SLIDE + SHEET_RADIUS + GRAIN + POPUP_GLASS,
   };
 
   // The sidebar is a wa-drawer too; only the bottom sheet counts as a dialog.
@@ -8962,10 +9005,48 @@ window.hemmaMenuGlass = {
           injectInto(root.host);
           var hp = window.hemmaPopup && window.hemmaPopup.element;
           root.host.toggleAttribute('hemma-stacked', !!(hp && hp.hasAttribute('open')));
+          if (hp && hp.hasAttribute('open') && hp._veil) {
+            var host = root.host, dlg = this, gone = false;
+            var lift = function () {
+              if (gone) return;
+              gone = true;
+              host.removeEventListener('wa-hide', lift);
+              dlg.removeEventListener('close', lift);
+              hp._veil(false);
+            };
+            hp._veil(true);
+            host.addEventListener('wa-hide', lift);
+            dlg.addEventListener('close', lift);
+          }
         }
       } catch (e) {}
       return orig.apply(this, arguments);
     };
+  }
+
+  // A view transition shows the page as flat snapshots, and backdrop blur is missing from them until it ends.
+  function glassOnScreen() {
+    var hp = window.hemmaPopup && window.hemmaPopup.element;
+    if (hp && hp.hasAttribute('open')) return true;
+    return !!getComputedStyle(document.documentElement).getPropertyValue('--hemma-glass-background');
+  }
+
+  function patchViewTransitions() {
+    [window.Document && Document.prototype, window.Element && Element.prototype].forEach(function (P) {
+      if (!P || !P.startViewTransition || P._hemmaVT) return;
+      P._hemmaVT = true;
+      var orig = P.startViewTransition;
+      P.startViewTransition = function () {
+        var vt = orig.apply(this, arguments);
+        try {
+          if (vt && glassOnScreen()) {
+            if (vt.ready) vt.ready.catch(function () {});
+            vt.skipTransition();
+          }
+        } catch (e) {}
+        return vt;
+      };
+    });
   }
 
   function patchClass() {
@@ -9028,6 +9109,7 @@ window.hemmaMenuGlass = {
   }
 
   patchShowModal();
+  patchViewTransitions();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { boot(); warmFilter(); });
   } else {
@@ -10696,7 +10778,7 @@ window.hemmaMenuGlass = {
           image: it.poster || null,
           imageFit: 'cover',
           entity: src[0],
-          opens: ['hemma_plex_recently_added', 'hemma_popup_recently_added'],
+          opens: ['hemma_plex_recently_added', 'hemma_popup_recent_panel'],
         });
       });
     });
@@ -11246,7 +11328,6 @@ window.hemmaMenuGlass = {
     setTimeout(function () { finish(false); }, 400);
   }
 
-  window._hemmaOpenTarget = function (what, fallbackEntity) { openTarget(what, fallbackEntity); };
 
   function openTarget(what, fallbackEntity) {
     // dataset stringifies an array, so a retagged row arrives comma-joined.
@@ -12997,6 +13078,7 @@ window.hemmaMenuGlass = {
     pm1: 'aqi-medium', volatile_organic_compounds: 'aqi-medium', volatile_organic_compounds_parts: 'aqi-medium',
     carbon_dioxide: 'co2', power: 'energy', energy: 'energy', door: 'door-closed', garage_door: 'door-closed',
     opening: 'door-closed', window: 'window-shade-closed', tamper: 'exclamation', lock: 'lock', doorbell: 'doorbell' };
+  SENSOR_ICON.garage_door = 'garage-closed';
 
   function tileFor(hass, id) {
     var d = id.split('.')[0], st = (hass.states || {})[id], dc = st && st.attributes && st.attributes.device_class;
@@ -13089,6 +13171,64 @@ window.hemmaMenuGlass = {
     var set = (Array.isArray(V && V.locks) && V.locks.length) ? V.locks.filter(Boolean)
       : [V && V.lock_entity, V && V.lock_entity_2].filter(Boolean);
     return set.length || !hass ? set : homeLocks(hass);
+  };
+
+  var OPENING = { door: 1, window: 1, garage_door: 1, opening: 1, gate: 1, garage: 1 };
+  // One security device in words, as Apple Home's Security tile reads it, and whether it needs a look.
+  window.hemmaSecurityWord = function (hass, id) {
+    var st = hass && hass.states && hass.states[id], d = String(id || '').split('.')[0];
+    var s = String((st && st.state) || '').toLowerCase(), dc = String((st && st.attributes && st.attributes.device_class) || '').toLowerCase();
+    var L = function (k, en) { var v = hass && hass.localize && hass.localize(k); return v && v !== k ? v : en; };
+    var T = window._hemmaT || function (k, en) { return en; };
+    var dead = !st || s === 'unavailable' || s === 'unknown';
+    if (d === 'lock') {
+      var unl = !dead && s !== 'locked' && s !== 'locking';
+      return { kind: 'lock', alert: unl, icon: unl ? 'lock-open-fill' : 'lock-fill',
+        text: s === 'locked' ? L('component.lock.entity_component._.state.locked', 'Locked') : s === 'jammed' ? L('component.lock.entity_component._.state.jammed', 'Jammed') : L('component.lock.entity_component._.state.unlocked', 'Unlocked') };
+    }
+    if (d === 'alarm_control_panel') return { kind: 'alarm', alert: s === 'triggered', icon: 'lock-fill',
+      text: s === 'disarmed' ? L('component.alarm_control_panel.entity_component._.state.disarmed', 'Disarmed') : s === 'triggered' ? L('component.alarm_control_panel.entity_component._.state.triggered', 'Triggered') : T('security.armed', 'Armed') };
+    if (d === 'camera') return { kind: 'camera', alert: false, icon: 'doorbell', text: dead ? T('cameras.offline', 'Offline') : T('security.no_alerts', 'No Alerts') };
+    var garage = dc === 'garage_door' || dc === 'garage';
+    if (d === 'cover') {
+      var o = !dead && s !== 'closed';
+      return { kind: 'opening', alert: o && (garage || dc === 'gate' || dc === 'door'), icon: garage ? (o ? 'garage-open' : 'garage-closed') : (o ? 'door-open' : 'door-closed'),
+        text: o ? L('component.cover.entity_component._.state.open', 'Open') : L('component.cover.entity_component._.state.closed', 'Closed') };
+    }
+    if (d === 'binary_sensor' && dc === 'motion') return { kind: 'motion', alert: false, icon: 'person-walking-motion', text: s === 'on' ? T('motion.title', 'Motion') : L('component.binary_sensor.entity_component.motion.state.off', 'Clear') };
+    var on = !dead && s === 'on';
+    return { kind: 'opening', alert: on, icon: dc === 'window' ? (on ? 'window-shade-open' : 'window-shade-closed') : garage ? (on ? 'garage-open' : 'garage-closed') : (on ? 'door-open' : 'door-closed'),
+      text: on ? T('security.open', 'Open') : T('security.closed', 'Closed') };
+  };
+  // A room's own security devices; the phone's whole-home badge, which has none set, takes every door and window a room holds.
+  window.hemmaSecurityDevices = function (V, hass) {
+    if (Array.isArray(V && V.devices)) return V.devices.filter(function (x) { return typeof x === 'string' && x.indexOf('.') > 0; });
+    if (!hass || !hass.entities) return [];
+    var st = hass.states || {}, seen = {};
+    return Object.keys(hass.entities).filter(function (id) {
+      var e = hass.entities[id], a = st[id] && st[id].attributes;
+      return id.indexOf('binary_sensor.') === 0 && a && OPENING[a.device_class] && !e.hidden && !e.entity_category && !!areaOf(hass, id);
+    }).sort().filter(function (id) {
+      var d = (hass.devices || {})[hass.entities[id].device_id] || {}, key = (d.name_by_user || d.name || id).toLowerCase() + '|' + (areaOf(hass, id) || '');
+      if (seen[key]) return false;
+      return (seen[key] = true);
+    });
+  };
+  // The Security badge's line and glyph: unlocked locks first, then anything open.
+  window.hemmaSecuritySummary = function (V, hass) {
+    var T = window._hemmaT || function (k, en, v) { var x = String(en); if (v) for (var p in v) x = x.split('{' + p + '}').join(String(v[p])); return x; };
+    var st = (hass && hass.states) || {}, unl = {}, open = {};
+    window.hemmaSecurityLocks(V, hass).forEach(function (id) { if (String((st[id] || {}).state || '').toLowerCase() !== 'locked') unl[id] = 1; });
+    window.hemmaSecurityDevices(V, hass).forEach(function (id) {
+      var w = window.hemmaSecurityWord(hass, id);
+      if (w.alert) (w.kind === 'lock' ? unl : open)[id] = 1;
+    });
+    var u = Object.keys(unl).length, o = Object.keys(open).length;
+    return {
+      unlocked: u, open: o,
+      icon: u ? 'lock-open-fill' : o ? 'door-open' : 'lock-fill',
+      text: u && o ? T('security.n_alerts', '{n} Alerts', { n: u + o }) : u ? T('locks.n_unlocked', '{n} Unlocked', { n: u }) : o ? T('security.n_open', '{n} Open', { n: o }) : T('security.no_alerts', 'No Alerts'),
+    };
   };
 
   window.hemmaHome = { CATS: CATS, SLOTS: SLOTS, keyOf: keyOf, categoryOf: categoryOf, derive: derive, read: read, compare: compare,

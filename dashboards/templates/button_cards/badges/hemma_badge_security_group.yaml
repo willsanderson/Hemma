@@ -10,6 +10,8 @@ hemma_badge_security_group:
     locks: null
     lock_entity: null
     lock_entity_2: null
+    # Ids from the room's "One badge each" slots; left unset, the phone's whole-home badge takes every door and window.
+    devices: null
 
   tap_action:
     action: fire-dom-event
@@ -22,6 +24,7 @@ hemma_badge_security_group:
 
   icon: >
     [[[
+      if (window.hemmaSecuritySummary) return window.hemmaSecuritySummary(variables, hass).unlocked ? 'mdi:lock-open-variant' : 'mdi:lock';
       const locks = window.hemmaSecurityLocks ? window.hemmaSecurityLocks(variables, hass) : ((Array.isArray(variables?.locks) && variables.locks.length)
         ? variables.locks.filter(Boolean)
         : [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean));
@@ -69,7 +72,8 @@ hemma_badge_security_group:
         ? variables.locks.filter(Boolean)
         : [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean));
       const open = locks.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
-      const sub = open === 0 ? T('security.no_alerts', 'No Alerts') : T('locks.n_unlocked', '{n} Unlocked', { n: open });
+      const sub = window.hemmaSecuritySummary ? window.hemmaSecuritySummary(variables, hass).text
+        : open === 0 ? T('security.no_alerts', 'No Alerts') : T('locks.n_unlocked', '{n} Unlocked', { n: open });
       return `
         <div class="badge-wrap">
           <div class="badge-title">${T('filter.security', 'Security')}</div>
@@ -90,7 +94,7 @@ hemma_badge_security_group:
         ? variables.locks.filter(Boolean)
         : [variables?.lock_entity, variables?.lock_entity_2].filter(Boolean));
       const open = ids.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
-      const URL = window.hemmaIconUrl(open === 0 ? 'lock-fill' : 'lock-open-fill');
+      const URL = window.hemmaIconUrl(window.hemmaSecuritySummary ? window.hemmaSecuritySummary(variables, hass).icon : open === 0 ? 'lock-fill' : 'lock-open-fill');
 
       return `:host{display:${enabled ? 'inline-block' : 'none'} !important;order:var(--hemma-badge-order-security,5);}
         #img-cell, .img-cell{ position: relative; }

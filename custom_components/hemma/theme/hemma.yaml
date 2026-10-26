@@ -13,6 +13,7 @@ Hemma:
       ha-card-background: rgba(0,0,0,0.2)
       ha-card-background-active: rgba(255,255,255,0.3)
       badge-background: rgba(26,28,30,0.65)
+      hemma-popup-veil: rgba(46,46,50,0.33)
       text-primary-color: rgba(255,255,255,0.95)
       secondary-text-color: rgba(240,240,240,0.9)
       disabled-text-color: rgba(245,245,245,0.65)
@@ -92,7 +93,7 @@ Hemma:
 
       ha-card-box-shadow: var(--ha-card-box-shadow-light)
       dialog-box-shadow: transparent
-      mdc-dialog-scrim-color: rgba(0,0,0,0.40)
+      mdc-dialog-scrim-color: var(--hemma-popup-veil)
       button-card-box-shadow: none
       button-card-box-shadow-mobile: none
       button-card-box-shadow-active: 0 2px 10px rgba(0,0,0,0.16), 0 0 3px rgba(0,0,0,0.08)
@@ -116,7 +117,7 @@ Hemma:
       mdc-theme-surface: var(--ha-card-background)
       md-list-container-color: var(--ha-card-background)
       dialog-background-color: var(--ha-card-background)
-      hemma-dialog-bg: rgba(0,0,5,0.5)
+      hemma-dialog-bg: rgba(0,0,5,0.16)
       ha-dialog-background: var(--hemma-dialog-bg)
       ha-dialog-surface-background: var(--hemma-dialog-bg)
 
@@ -144,6 +145,7 @@ Hemma:
       ha-card-background: rgba(0,0,0,0.4)
       ha-card-background-active: rgba(240,240,240,0.07)
       badge-background: rgba(10,12,14,0.65)
+      hemma-popup-veil: rgba(46,46,50,0.33)
       text-primary-color: rgba(255,255,255,0.98)
       secondary-text-color: rgba(240,240,240,0.9)
       disabled-text-color: rgba(208,208,208,0.5)
@@ -176,9 +178,9 @@ Hemma:
       # ------------------------------------------------------------------------
 
       hemma-entity-background: rgba(0,0,0,0.40)
-      hemma-entity-background-active: rgba(255,255,255,0.80)
-      hemma-entity-active-tint: rgba(255,255,255,0.76)
-      hemma-entity-active-tint-mobile: rgba(255,255,255,0.80)
+      hemma-entity-background-active: rgba(255,255,255,1)
+      hemma-entity-active-tint: rgba(255,255,255,0.94)
+      hemma-entity-active-tint-mobile: rgba(255,255,255,1.0)
       hemma-entity-hover-tint: rgba(255,255,255,0.45)
       hemma-hover-overlay-opacity: 0.035
       hemma-entity-name: rgba(255,255,255,0.95)
@@ -222,8 +224,8 @@ Hemma:
       # ------------------------------------------------------------------------
 
       ha-card-box-shadow: var(--ha-card-box-shadow-dark)
-      dialog-box-shadow: "inset 0 0 28px rgba(0,0,0,0.25)"
-      mdc-dialog-scrim-color: rgba(0,0,0,0.40)
+      dialog-box-shadow: transparent
+      mdc-dialog-scrim-color: var(--hemma-popup-veil)
       button-card-box-shadow: none
       button-card-box-shadow-mobile: none
       button-card-box-shadow-active: 0 2px 12px rgba(0,0,0,0.28), 0 0 3px rgba(0,0,0,0.14)
@@ -231,7 +233,7 @@ Hemma:
       button-card-box-shadow-hover: none
       button-card-box-shadow-hover-mobile: none
 
-      hemma-dialog-bg: rgba(0,0,0,0.6)
+      hemma-dialog-bg: rgba(0,0,5,0.16)
       ha-dialog-background: var(--hemma-dialog-bg)
       ha-dialog-surface-background: var(--hemma-dialog-bg)
 
@@ -242,7 +244,7 @@ Hemma:
       hemma-perf-glass-fill: rgb(44,46,52)
       hemma-perf-pill-fill: rgb(38,40,46)
       hemma-perf-sidebar-fill: rgb(18,20,24)
-      hemma-perf-dialog-fill: rgb(16,18,23)
+      hemma-perf-dialog-fill: rgb(26,28,34)
       hemma-perf-scrim-fill: rgba(0,0,0,0.52)
       hemma-perf-badge-fill: rgb(10,12,14)
       hemma-perf-tile-fill: rgb(32,34,38)
@@ -1010,11 +1012,13 @@ Hemma:
   app-header-border-bottom: none
 
   # Dialogs
-  hemma-surface-backdrop: blur(28px) saturate(200%)
+  hemma-surface-backdrop: blur(28px) saturate(60%) brightness(0.78)
   ha-dialog-surface-backdrop-filter: var(--hemma-surface-backdrop)
   ha-dialog-surface-background: var(--ha-dialog-background)
   hemma-scrim-backdrop: blur(6px) saturate(1.35)
-  ha-dialog-scrim-backdrop-filter: var(--hemma-scrim-backdrop)
+  ha-dialog-scrim-backdrop-filter: none
+  hemma-stacked-veil: var(--hemma-popup-veil)
+  hemma-stacked-veil-backdrop: blur(0px) saturate(1)
   hemma-stacked-scrim: transparent
   hemma-stacked-scrim-backdrop: none
   ha-dialog-border-radius: var(--hemma-popup-radius, 38px)

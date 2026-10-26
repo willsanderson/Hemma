@@ -124,9 +124,12 @@ hemma_mobile_sensor_chips:
             ha-card { background: transparent !important; box-shadow: none !important; overflow: visible !important; padding: 0 !important; contain: none !important; isolation: auto !important; will-change: auto !important; width: max-content !important; min-width: 100% !important; }
         cards:
           - type: custom:button-card
-            template: hemma_badge_temp
+            template: [hemma_badge_temp, hemma_sensor_panel]
             entity: '[[[ return variables.temp_entity ]]]'
             variables:
+              sensor_kind: temperature
+              sensor_scope: home
+              sensor_rooms: '[[[ const o = {}; Object.entries(variables.room_chips || {}).forEach(([k, r]) => { const id = k.replace(/^room_/, ""); if (r && r.temp_entity) o[r.temp_entity] = r.aqi_room_name || hass.areas?.[id]?.name || Object.values(hass.areas || {}).find((a) => a.area_id.replace(/_/g, "") === id)?.name || ""; }); return o; ]]]'
               enabled: '[[[ return !!variables.temp_entity ]]]'
               gauge: true
               temp_unit: '[[[ return variables.temp_unit || "F" ]]]'
@@ -136,9 +139,12 @@ hemma_mobile_sensor_chips:
               entity_humidity: '[[[ return variables.entity_humidity || variables.humidity_entity ]]]'
               sensors: '[[[ return variables.aqi_sensors ]]]'
           - type: custom:button-card
-            template: hemma_badge_humidity
+            template: [hemma_badge_humidity, hemma_sensor_panel]
             entity: '[[[ return variables.humidity_entity ]]]'
             variables:
+              sensor_kind: humidity
+              sensor_scope: home
+              sensor_rooms: '[[[ const o = {}; Object.entries(variables.room_chips || {}).forEach(([k, r]) => { const id = k.replace(/^room_/, ""); if (r && r.humidity_entity) o[r.humidity_entity] = r.aqi_room_name || hass.areas?.[id]?.name || Object.values(hass.areas || {}).find((a) => a.area_id.replace(/_/g, "") === id)?.name || ""; }); return o; ]]]'
               enabled: '[[[ return !!variables.humidity_entity ]]]'
               gauge: true
               room_name: '[[[ return variables.aqi_room_name || hass?.config?.location_name || "" ]]]'
@@ -147,9 +153,12 @@ hemma_mobile_sensor_chips:
               entity_humidity: '[[[ return variables.entity_humidity || variables.humidity_entity ]]]'
               sensors: '[[[ return variables.aqi_sensors ]]]'
           - type: custom:button-card
-            template: hemma_badge_air_quality
+            template: [hemma_badge_air_quality, hemma_sensor_panel]
             entity: '[[[ return variables.entity_quality ]]]'
             variables:
+              sensor_kind: air
+              sensor_scope: home
+              sensor_rooms: '[[[ const o = {}; Object.entries(variables.room_chips || {}).forEach(([k, r]) => { const id = k.replace(/^room_/, ""); if (r && r.entity_quality) o[r.entity_quality] = r.aqi_room_name || hass.areas?.[id]?.name || Object.values(hass.areas || {}).find((a) => a.area_id.replace(/_/g, "") === id)?.name || ""; }); return o; ]]]'
               enabled: '[[[ return !!variables.entity_quality ]]]'
               gauge: true
               room_name: '[[[ return variables.aqi_room_name || hass?.config?.location_name || "" ]]]'
@@ -177,13 +186,14 @@ hemma_mobile_sensor_chips:
             ha-card { background: transparent !important; box-shadow: none !important; overflow: visible !important; padding: 0 !important; contain: none !important; isolation: auto !important; will-change: auto !important; width: max-content !important; min-width: 100% !important; }
         cards:
           - type: custom:button-card
-            template: hemma_badge_temp
+            template: [hemma_badge_temp, hemma_sensor_panel]
             entity: >
               [[[
                 const f = states['input_select.hemma_mobile_filter']?.state;
                 return variables.room_chips?.[f]?.temp_entity || null;
               ]]]
             variables:
+              sensor_kind: temperature
               enabled: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return !!variables.room_chips?.[f]?.temp_entity ]]]'
               gauge: true
               temp_unit: '[[[ return variables.temp_unit || "F" ]]]'
@@ -193,13 +203,14 @@ hemma_mobile_sensor_chips:
               entity_humidity: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.humidity_entity ]]]'
               sensors: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.aqi_sensors ]]]'
           - type: custom:button-card
-            template: hemma_badge_humidity
+            template: [hemma_badge_humidity, hemma_sensor_panel]
             entity: >
               [[[
                 const f = states['input_select.hemma_mobile_filter']?.state;
                 return variables.room_chips?.[f]?.humidity_entity || null;
               ]]]
             variables:
+              sensor_kind: humidity
               enabled: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return !!variables.room_chips?.[f]?.humidity_entity ]]]'
               gauge: true
               room_name: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.aqi_room_name || variables.aqi_room_name || hass?.config?.location_name || "" ]]]'
@@ -208,13 +219,14 @@ hemma_mobile_sensor_chips:
               entity_humidity: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.humidity_entity ]]]'
               sensors: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.aqi_sensors ]]]'
           - type: custom:button-card
-            template: hemma_badge_air_quality
+            template: [hemma_badge_air_quality, hemma_sensor_panel]
             entity: >
               [[[
                 const f = states['input_select.hemma_mobile_filter']?.state;
                 return variables.room_chips?.[f]?.entity_quality || null;
               ]]]
             variables:
+              sensor_kind: air
               enabled: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return !!variables.room_chips?.[f]?.entity_quality ]]]'
               gauge: true
               room_name: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.aqi_room_name || variables.aqi_room_name || hass?.config?.location_name || "" ]]]'
@@ -224,6 +236,18 @@ hemma_mobile_sensor_chips:
               sensors: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.aqi_sensors ]]]'
           - type: custom:button-card
             template: hemma_badge_light
+            tap_action:
+              haptic: light
+              action: call-service
+              service: script.turn_on
+              service_data:
+                entity_id: script.hemma_light_smart_toggle
+                variables:
+                  light_entity: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.lights_entity || null; ]]]'
+            hold_action:
+              haptic: medium
+              action: '[[[ return window.hemmaPopupAction ? window.hemmaPopupAction() : "more-info"; ]]]'
+              entity: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.lights_entity || null; ]]]'
             variables:
               bare: true
               hide_host: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return !variables.room_chips?.[f]?.lights_entity; ]]]'

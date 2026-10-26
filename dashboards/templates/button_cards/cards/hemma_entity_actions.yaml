@@ -24,23 +24,9 @@ hemma_entity_actions:
       ]]]
     svg_path: /hemma_assets/icons
 
-    # The compact phone tile puts the name in the top right corner, which is
-    # where the action glyphs go. hemma-core's HEMMA_TEMPLATE_SIZES carries the
-    # matching entry so hemmaCardSize agrees from the RAW config, before
-    # button-card has merged this in.
     # Mirrored in hemma-core's HEMMA_TEMPLATE_SIZES, which reads the RAW config.
     size: large
-
-    # action_N_icon is deliberately EMPTY, not mdi:help-circle. renderIcon reads
-    # `iconRaw || the entity's own icon attribute || mdi:help-circle`, and a
-    # declared default is never falsy - so declaring the question mark here made
-    # both fallbacks dead code and every unset button drew a question mark.
-
-    # Shared overlay state. A bare input_boolean cannot say WHICH tile was
-    # tapped, so the companion input_text carries the entity and every gate
-    # checks both. See feedback_shared_overlay_needs_active_entity_guard.
-    actions_toggle_helper: input_boolean.hemma_actions_overlay
-    actions_active_helper: input_text.hemma_actions_active_entity
+    show_button_names: true
 
     action_1_enabled: true
     action_1_entity:
@@ -64,467 +50,46 @@ hemma_entity_actions:
     haptic: light
     action: |
       [[[
-        return window._hemmaActions?.isOpen(variables, states, entity?.entity_id)
-          ? 'call-service' : 'more-info';
+        return window.hemmaPopupAction ? window.hemmaPopupAction() : 'more-info';
       ]]]
-    service: script.turn_on
-    service_data:
-      entity_id: script.hemma_actions_overlay_toggle
-      variables:
-        # Device-scoped, so the helper pair (one for the whole install) can only
-        # match the surface that was tapped. Safe to bake: this and the action
-        # above are evaluated in the same render, so if hemma-core were missing
-        # the action would already be more-info and this would go unused.
-        actions_entity_id: |
-          [[[ return window._hemmaActions?.openKey(entity?.entity_id) || entity?.entity_id; ]]]
+    hemma_popup:
+      title: ''
+      dismissable: true
+      close: false
+      style: '--popup-min-width: 300px; --popup-max-width: 300px; --popup-min-width-narrow: 300px; --hemma-popup-radius: 34px; --hemma-popup-tint: rgba(0, 0, 5, 0.16);'
+      content:
+        type: custom:hemma-actions-panel
+        entity: '[[[ return entity?.entity_id || null; ]]]'
+        name: |
+          [[[
+            const n = String(this._config?.name || '').trim();
+            return n.startsWith('[' + '[[') || n.indexOf('<') >= 0 ? '' : n;
+          ]]]
+        icon: '[[[ return variables.icon || null; ]]]'
+        show_progress: '[[[ return variables.show_progress === true; ]]]'
+        progress_entity: '[[[ return variables.progress_entity || null; ]]]'
+        show_names: '[[[ return variables.show_button_names !== false; ]]]'
+        action_1_enabled: '[[[ return variables.action_1_enabled ?? null; ]]]'
+        action_1_entity: '[[[ return variables.action_1_entity ?? null; ]]]'
+        action_1_label: '[[[ return variables.action_1_label ?? null; ]]]'
+        action_1_icon: '[[[ return variables.action_1_icon ?? null; ]]]'
+        action_1_action: '[[[ return variables.action_1_action ?? null; ]]]'
+        action_1_navigation_path: '[[[ return variables.action_1_navigation_path ?? null; ]]]'
+        action_1_service: '[[[ return variables.action_1_service ?? null; ]]]'
+        action_1_service_data: '[[[ return variables.action_1_service_data ?? null; ]]]'
+        action_1_active_color: '[[[ return variables.action_1_active_color ?? null; ]]]'
+        action_2_enabled: '[[[ return variables.action_2_enabled ?? null; ]]]'
+        action_2_entity: '[[[ return variables.action_2_entity ?? null; ]]]'
+        action_2_label: '[[[ return variables.action_2_label ?? null; ]]]'
+        action_2_icon: '[[[ return variables.action_2_icon ?? null; ]]]'
+        action_2_action: '[[[ return variables.action_2_action ?? null; ]]]'
+        action_2_navigation_path: '[[[ return variables.action_2_navigation_path ?? null; ]]]'
+        action_2_service: '[[[ return variables.action_2_service ?? null; ]]]'
+        action_2_service_data: '[[[ return variables.action_2_service_data ?? null; ]]]'
+        action_2_active_color: '[[[ return variables.action_2_active_color ?? null; ]]]'
 
   hold_action:
     action: none
 
   double_tap_action:
     action: none
-
-  styles:
-    card:
-      - padding: var(--hemma-actions-pad)
-      - position: relative
-      - overflow: hidden !important
-
-    name:
-      - opacity: |
-          [[[
-            return window._hemmaActions?.isOpen(variables, states, entity.entity_id) ? '0' : '1';
-          ]]]
-      - transition: opacity 0.18s ease
-
-    state:
-      - opacity: |
-          [[[
-            return window._hemmaActions?.isOpen(variables, states, entity.entity_id) ? '0' : '1';
-          ]]]
-      - transition: opacity 0.18s ease
-
-    custom_fields:
-      more:
-        - display: |
-            [[[ return window._hemmaActions?.any(variables) ? 'block' : 'none'; ]]]
-        - position: absolute
-        - z-index: 9
-        - overflow: hidden
-        - box-sizing: border-box
-        - padding: 0
-        - margin: 0
-        - border-radius: 50%
-        - top: |
-            [[[ return window._hemmaActions?.moreGeom(variables, entity?.state)?.top || ''; ]]]
-        - right: |
-            [[[ return window._hemmaActions?.moreGeom(variables, entity?.state)?.right || ''; ]]]
-        - width: |
-            [[[ return window._hemmaActions?.moreGeom(variables, entity?.state)?.width || ''; ]]]
-        - height: |
-            [[[ return window._hemmaActions?.moreGeom(variables, entity?.state)?.height || ''; ]]]
-        - background-size: |
-            [[[
-              return window._hemmaActions?.isOpen(variables, states, entity?.entity_id)
-                ? '100% 100%' : '0% 0%';
-            ]]]
-        - transition-property: background-size, right, top
-        - transition-duration: 0.24s, var(--hemma-actions-corner-shift, 0.26s), var(--hemma-actions-corner-shift, 0.26s)
-        - transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1)
-      pill_1:
-        - display: |
-            [[[ return window._hemmaActions?.enabled(variables, 1) ? 'block' : 'none'; ]]]
-        - position: absolute
-        - z-index: 8
-        - overflow: hidden
-        - box-sizing: border-box
-        - padding: 0
-        - margin: 0
-        - border-radius: var(--hemma-actions-btn-radius)
-        - top: |
-            [[[ return window._hemmaActions?.pillGeom(variables, 1)?.top || ''; ]]]
-        - right: |
-            [[[ return window._hemmaActions?.pillGeom(variables, 1)?.right || ''; ]]]
-        - width: |
-            [[[ return window._hemmaActions?.pillGeom(variables, 1)?.width || ''; ]]]
-        - height: |
-            [[[ return window._hemmaActions?.pillGeom(variables, 1)?.height || ''; ]]]
-        - opacity: |
-            [[[
-              const m = window._hemmaActions?.motion(variables, states, entity.entity_id, 1);
-              return m ? m.opacity : '1';
-            ]]]
-        - transform: |
-            [[[
-              const m = window._hemmaActions?.motion(variables, states, entity.entity_id, 1);
-              return m ? m.transform : 'none';
-            ]]]
-        - pointer-events: |
-            [[[
-              const m = window._hemmaActions?.motion(variables, states, entity.entity_id, 1);
-              return m ? m.pointerEvents : 'auto';
-            ]]]
-        - transition-property: opacity, transform
-        - transition-duration: |
-            [[[
-              const m = window._hemmaActions?.motion(variables, states, entity.entity_id, 1);
-              if (!m) return '';
-              return [m.duration, m.duration].join(', ');
-            ]]]
-        - transition-timing-function: |
-            [[[
-              const m = window._hemmaActions?.motion(variables, states, entity.entity_id, 1);
-              if (!m) return '';
-              return [m.easing, m.easing].join(', ');
-            ]]]
-        - transition-delay: |
-            [[[
-              const m = window._hemmaActions?.motion(variables, states, entity.entity_id, 1);
-              if (!m) return '';
-              return [m.delay, m.delay].join(', ');
-            ]]]
-      pill_2:
-        - display: |
-            [[[ return window._hemmaActions?.enabled(variables, 2) ? 'block' : 'none'; ]]]
-        - position: absolute
-        - z-index: 8
-        - overflow: hidden
-        - box-sizing: border-box
-        - padding: 0
-        - margin: 0
-        - border-radius: var(--hemma-actions-btn-radius)
-        - top: |
-            [[[ return window._hemmaActions?.pillGeom(variables, 2)?.top || ''; ]]]
-        - right: |
-            [[[ return window._hemmaActions?.pillGeom(variables, 2)?.right || ''; ]]]
-        - width: |
-            [[[ return window._hemmaActions?.pillGeom(variables, 2)?.width || ''; ]]]
-        - height: |
-            [[[ return window._hemmaActions?.pillGeom(variables, 2)?.height || ''; ]]]
-        - opacity: |
-            [[[
-              const m = window._hemmaActions?.motion(variables, states, entity.entity_id, 2);
-              return m ? m.opacity : '1';
-            ]]]
-        - transform: |
-            [[[
-              const m = window._hemmaActions?.motion(variables, states, entity.entity_id, 2);
-              return m ? m.transform : 'none';
-            ]]]
-        - pointer-events: |
-            [[[
-              const m = window._hemmaActions?.motion(variables, states, entity.entity_id, 2);
-              return m ? m.pointerEvents : 'auto';
-            ]]]
-        - transition-property: opacity, transform
-        - transition-duration: |
-            [[[
-              const m = window._hemmaActions?.motion(variables, states, entity.entity_id, 2);
-              if (!m) return '';
-              return [m.duration, m.duration].join(', ');
-            ]]]
-        - transition-timing-function: |
-            [[[
-              const m = window._hemmaActions?.motion(variables, states, entity.entity_id, 2);
-              if (!m) return '';
-              return [m.easing, m.easing].join(', ');
-            ]]]
-        - transition-delay: |
-            [[[
-              const m = window._hemmaActions?.motion(variables, states, entity.entity_id, 2);
-              if (!m) return '';
-              return [m.delay, m.delay].join(', ');
-            ]]]
-
-  custom_fields:
-    more: |
-      [[[
-        void states[variables.actions_toggle_helper];
-        void states[variables.actions_active_helper];
-        const A = window._hemmaActions;
-        if (!A) {
-          if (window._hemmaCoreWaiters !== null) {
-            (window._hemmaCoreWaiters = window._hemmaCoreWaiters || new Set()).add(this);
-          }
-          return '';
-        }
-        A.bind(this, variables, hass);
-        return A.moreMarkup(variables, entity?.entity_id);
-      ]]]
-
-    pill_1: |
-      [[[
-        const A = window._hemmaActions;
-        if (!A) return '';
-        A.bind(this, variables, hass);
-        const raw = this._config?.name;
-        const own = (typeof raw === 'string' && raw.indexOf('[' + '[[') === -1)
-          ? raw : (entity?.attributes?.friendly_name || '');
-        return A.markup(variables, 1, states, own, hass);
-      ]]]
-
-    pill_2: |
-      [[[
-        const A = window._hemmaActions;
-        if (!A) return '';
-        A.bind(this, variables, hass);
-        const raw = this._config?.name;
-        const own = (typeof raw === 'string' && raw.indexOf('[' + '[[') === -1)
-          ? raw : (entity?.attributes?.friendly_name || '');
-        return A.markup(variables, 2, states, own, hass);
-      ]]]
-
-  extra_styles: |
-    :host {
-      --hemma-actions-pad: var(--hemma-entity-inner-pad-current, var(--hemma-entity-inner-pad-desktop, 20px));
-      --hemma-actions-btn-radius: 13px;
-      --hemma-actions-icon-size: 23px;
-      --hemma-actions-svg-size: 20px;
-      --hemma-actions-corner-gap: 4px;
-      --hemma-actions-more-size: 21px;
-      --hemma-actions-more-offset: 16px;
-      --hemma-actions-more-fill-r: 18px;
-      --hemma-actions-corner-shift: 0.26s;
-      --hemma-actions-pill-h: 40px;
-      --hemma-actions-pill-gap: 8px;
-      --hemma-actions-pill-bottom: var(--hemma-actions-pad);
-      --hemma-actions-label-size: 15px;
-      /* FIT_REF_PX in hemma-core must equal this floor. */
-      --hemma-actions-label-min: 12px;
-      --hemma-actions-glyph-gap: 10px;
-      --hemma-actions-label-gap: 12px;
-
-      --hemma-actions-dur-in: 0.30s;
-      --hemma-actions-dur-out: 0.14s;
-      --hemma-actions-ease-in: cubic-bezier(0.32, 0.72, 0, 1);
-      --hemma-actions-ease-out: cubic-bezier(0.4, 0, 0.7, 1);
-      --hemma-actions-pill-scale: 0.94;
-      --hemma-actions-pill-rise: 6px;
-
-      --hemma-actions-press-more: 0.86;
-      --hemma-actions-press-pill: 0.97;
-      --hemma-actions-press-down: 0.12s;
-      --hemma-actions-press-up: 0.28s;
-      --hemma-actions-ease-press-down: cubic-bezier(0.2, 0, 0.4, 1);
-      --hemma-actions-ease-press-up: cubic-bezier(0.32, 0.72, 0, 1);
-    }
-
-    /* On ha-card, not :host: --hemma-icon-circle-size lives here and a :host
-       var cannot read one from a descendant. */
-    ha-card {
-      --hemma-actions-hit: var(--hemma-icon-circle-size, 40px);
-      /* The button is one fixed size everywhere; only its distance from the
-         corner follows the tile's own padding. --more-offset is half the dots
-         plus the gap that keeps the fill off the edge. */
-      --hemma-actions-more-inset: calc(
-        var(--hemma-actions-hit) / 2 - var(--hemma-actions-more-offset));
-      --hemma-actions-more-fill: radial-gradient(circle closest-side,
-        var(--hemma-actions-pill-bg) var(--hemma-actions-more-fill-r),
-        transparent calc(var(--hemma-actions-more-fill-r) + 0.5px));
-      --hemma-actions-pill-pad-start: calc(
-        (var(--hemma-actions-hit) - var(--hemma-actions-icon-size)) / 2);
-      --hemma-side-lit: var(--hemma-active-overlay-opacity, 0);
-      --hemma-actions-ink: color-mix(in srgb, #000 calc(var(--hemma-side-lit) * 100%), #fff);
-      /* Matches the tile toggle, whose track is rgba(0,0,0,0.75) under
-         --hemma-toggle-opacity. That 0.75 is the theme's track-fill alpha. */
-      --hemma-actions-dots-opacity: calc(0.75 * var(--hemma-toggle-opacity, 0.8));
-      --hemma-actions-pill-bg-on: color-mix(in srgb,
-        rgba(0, 0, 0, 0.20) calc(var(--hemma-side-lit) * 100%),
-        rgba(255, 255, 255, 0.26));
-      --hemma-actions-pill-bg: color-mix(in srgb,
-        rgba(0, 0, 0, 0.10) calc(var(--hemma-side-lit) * 100%),
-        rgba(255, 255, 255, 0.13));
-      --hemma-actions-pill-bg-hover: color-mix(in srgb,
-        rgba(0, 0, 0, 0.16) calc(var(--hemma-side-lit) * 100%),
-        rgba(255, 255, 255, 0.19));
-    }
-
-    @media (max-width: 767px), (max-height: 600px) {
-      .hemma-act-pill .hemma-act-glyphbox { display: none; }
-      .hemma-act-pill {
-        gap: 0;
-        --hemma-actions-label-inset: 0px;
-        --hemma-actions-pill-pad-start: 14px;
-      }
-
-      :host {
-        --hemma-actions-btn-radius: 12px;
-        --hemma-actions-icon-size: 22px;
-        --hemma-actions-svg-size: 19px;
-        --hemma-actions-corner-gap: 2px;
-        --hemma-actions-pill-h: 30px;
-        --hemma-actions-pill-gap: 6px;
-        --hemma-actions-pill-bottom: 10px;
-        --hemma-actions-label-size: 14px;
-      }
-    }
-    :host(.hemma-compact) .hemma-act-pill .hemma-act-glyphbox { display: none; }
-    :host(.hemma-compact) .hemma-act-pill {
-      gap: 0;
-      --hemma-actions-label-inset: 0px;
-      --hemma-actions-pill-pad-start: 14px;
-    }
-
-    :host(.hemma-compact) {
-      --hemma-actions-btn-radius: 12px;
-      --hemma-actions-icon-size: 22px;
-      --hemma-actions-svg-size: 19px;
-      --hemma-actions-corner-gap: 2px;
-      --hemma-actions-pill-h: 30px;
-      --hemma-actions-pill-gap: 6px;
-      --hemma-actions-pill-bottom: 10px;
-      --hemma-actions-label-size: 14px;
-    }
-
-    /* The press lives one level in: the pill wrapper's transform belongs to
-       the cross-fade. */
-    .hemma-act-hit {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      gap: var(--hemma-actions-glyph-gap, 10px);
-      box-sizing: border-box;
-      border-radius: inherit;
-      overflow: hidden;
-      cursor: pointer;
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
-
-      transform: scale(1);
-      transition:
-        transform var(--hemma-actions-press-up, 0.28s)
-          var(--hemma-actions-ease-press-up, cubic-bezier(0.32, 0.72, 0, 1)),
-        background-color 0.18s ease;
-    }
-
-    .hemma-act-hit.pressed {
-      transform: scale(var(--hemma-act-press, 0.96));
-      background: var(--hemma-actions-pill-bg-hover);
-      transition:
-        transform var(--hemma-actions-press-down, 0.12s)
-          var(--hemma-actions-ease-press-down, cubic-bezier(0.2, 0, 0.4, 1)),
-        background-color var(--hemma-actions-press-down, 0.12s) ease;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .hemma-act-hit, .hemma-act-hit.pressed { transform: none; }
-    }
-
-    .hemma-act-more {
-      justify-content: center;
-      background: transparent;
-      --hemma-act-press: var(--hemma-actions-press-more, 0.86);
-    }
-
-    .hemma-act-more.pressed {
-      background: radial-gradient(circle closest-side,
-        var(--hemma-actions-pill-bg-hover) var(--hemma-actions-more-fill-r),
-        transparent calc(var(--hemma-actions-more-fill-r) + 0.5px));
-    }
-
-    .hemma-act-dots {
-      display: block;
-      flex: none;
-      width: var(--hemma-actions-more-size);
-      height: var(--hemma-actions-more-size);
-      fill: var(--hemma-actions-ink);
-      opacity: var(--hemma-actions-dots-opacity);
-      pointer-events: none;
-    }
-
-    .hemma-act-pill {
-      background: var(--hemma-actions-pill-bg);
-      --hemma-act-press: var(--hemma-actions-press-pill, 0.97);
-      padding-inline-start: var(--hemma-actions-pill-pad-start);
-      padding-inline-end: var(--hemma-actions-label-gap, 12px);
-      /* The label sizes off 100cqi, which is the CONTENT box. */
-      container-type: inline-size;
-      --hemma-actions-label-inset: calc(
-        var(--hemma-actions-icon-size)
-        + var(--hemma-actions-glyph-gap, 10px));
-    }
-
-    .hemma-act-glyphbox {
-      flex: none;
-      display: grid;
-      place-items: center;
-      width: var(--hemma-actions-icon-size);
-      height: var(--hemma-actions-icon-size);
-    }
-
-    .hemma-act-label {
-      flex: 0 1 auto;
-      /* Without it the label refuses to shrink and clips mid-word. */
-      min-width: 0;
-      display: block;
-      line-height: 1.25;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: var(--hemma-actions-label-size);
-      font-weight: 500;
-      letter-spacing: -0.01em;
-      color: var(--hemma-actions-ink);
-      opacity: 0.9;
-    }
-
-    .hemma-act-icon {
-      display: block;
-      object-fit: contain;
-
-      background: transparent !important;
-      background-color: transparent !important;
-      border-radius: 0 !important;
-      box-shadow: none !important;
-      filter: none;
-
-      color: var(--hemma-actions-ink);
-      opacity: 0.52;
-
-      transition: color 0.18s ease, opacity 0.18s ease;
-    }
-
-    /* HA's own hook; without it mdi glyphs ride a text baseline and sit low. */
-    .hemma-act-ha-icon {
-      --mdc-icon-size: var(--hemma-actions-icon-size);
-      --ha-icon-display: block;
-      width: var(--hemma-actions-icon-size);
-      height: var(--hemma-actions-icon-size);
-      line-height: 0;
-    }
-
-    .hemma-act-svg {
-      filter: brightness(0) invert(calc(1 - var(--hemma-side-lit)));
-      width: var(--hemma-actions-svg-size);
-      height: var(--hemma-actions-svg-size);
-      object-fit: contain;
-    }
-
-    .hemma-act-hit.active .hemma-act-icon {
-      opacity: 1;
-    }
-
-    .hemma-act-pill.active {
-      background: var(--hemma-actions-pill-bg-on);
-    }
-
-    .hemma-act-hit.unavailable .hemma-act-icon {
-      opacity: 0.35;
-      color: var(--disabled-text-color);
-    }
-
-    .hemma-act-hit.unavailable .hemma-act-label {
-      opacity: 0.5;
-    }
-
-    #glyph_1, #glyph_2, #pill_1, #pill_2 {
-      overflow: hidden !important;
-    }
-
-    /* Hover only. Press is a pointerdown class: :active on touch lands late
-       and can stick. */
-    @media (hover: hover) and (pointer: fine) {
-      .hemma-act-more:hover { background: var(--hemma-actions-more-fill); }
-      .hemma-act-pill:hover { background: var(--hemma-actions-pill-bg-hover); }
-    }

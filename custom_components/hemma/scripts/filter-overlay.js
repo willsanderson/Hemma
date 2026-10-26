@@ -1100,8 +1100,10 @@
               rooms.push({ ...pending, cards: (hsr._config?.cards || []).slice() });
             }
           } else if (pending.name && pending.name !== 'Favorites') {
-            const cards = (hsr._config?.cards || []).filter(
+            let cards = (hsr._config?.cards || []).filter(
               (c) => _cardCategory(c) === this._config.filter_category);
+            if (this._config.filter_category === 'lights' && window.hemmaExpandLights)
+              cards = window.hemmaExpandLights(this._hass?.states || {}, pending.name, cards);
             if (cards.length) rooms.push({ ...pending, cards });
           }
           pending = null;
@@ -1110,6 +1112,21 @@
       if (!rooms.length) return;
       this._autoSectionsDone = true;
       let i = 0;
+
+      const CV = window.hemmaCams, CS = CV && CV.settings();
+      const camHead = (pad) => ({
+        type: 'custom:button-card', template: 'hemma_mobile_header', full_width: true, name: _hemmaT('cameras.title', 'Cameras'),
+        variables: { hide_caret: true, mobile_filter_categories: null },
+        styles: { card: [{ padding: `${pad}px var(--hemma-rail-left, 16px) 10px calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + ${LANDSCAPE_GUTTER_CALC})` }], custom_fields: { arrow: [{ display: 'none' }] } },
+      });
+      const camOn = CV && CV.on(CS) && this._hass;
+      const camIds = camOn ? (roomMode ? CV.list(this._hass, CS, { area: roomMode }) : this._config.filter_category === 'security' && CS.security !== false ? CV.list(this._hass, CS) : []) : [];
+      if (camIds.length) {
+        this._appendRevealCard(camHead(roomMode ? 18 : 24), this._contentEl, 0);
+        this._appendRevealCard({ type: 'custom:hemma-camera-strip', cameras: camIds }, this._contentEl, 0);
+        this._camWraps = [...this._contentEl.children].slice(-2);
+      }
+
 
       if (roomMode && this._config.scenes !== false && window._hemmaSC) {
         let sceneCount = 0;
@@ -1142,6 +1159,7 @@
       }
 
       for (const room of rooms) {
+        if (!room.cards.length) continue;
         if (!roomMode) {
           this._appendRevealCard({
             type:      'custom:button-card',
@@ -1200,6 +1218,7 @@
 
     _ensureFavoritesPopupSection() {
       if (this._favPopupDone) return;
+      if (this._config.filter_category === 'lights') { this._favPopupDone = true; return; }
       const container = this._container;
       if (!container || !this._helpers || !this._contentEl) return;
       let rowEl = null, seenHeader = false;
@@ -1956,6 +1975,8 @@
       // Auto sections first (rooms), then Favorites prepends itself in front.
       this._ensureAutoSections();
       this._ensureFavoritesPopupSection();
+      // Cameras lead the Security page, ahead of Favorites.
+      if (this._camWraps && !this._config.room && this._contentEl && this._contentEl.firstElementChild !== this._camWraps[0]) this._contentEl.prepend(...this._camWraps);
 
       // Active cards first, before anything becomes visible.
       this._sortSectionGrids();

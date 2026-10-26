@@ -1,6 +1,14 @@
 // smart-row.js
 
 const EMPTY_SET = new Set();
+
+// This row draws before hemma-core loads, so it reads the Overview boot hint itself rather than show Focus first.
+(function () {
+  try {
+    const seg = String(location.pathname.split('/')[1] || '');
+    if (seg && localStorage.getItem('hemma_ov_boot') === seg) document.documentElement.style.setProperty('--hemma-fx-vis', 'hidden');
+  } catch (e) {}
+})();
 const activeStates     = () => window.HEMMA_ACTIVE_STATES || EMPTY_SET;
 const filterCategories = () => window.HEMMA_FILTER_CATEGORIES || {};
 
@@ -166,6 +174,7 @@ function cardFlag(cfg, flag) {
   if (inner !== cfg) return cardFlag(inner, flag);
   if (flag === 'no_filter'  && cfg.type === 'custom:hemma-filter-overlay') return true;
   if (flag === 'full_width' && cfg.type === 'custom:hemma-smart-row') return true;
+  if ((flag === 'full_width' || flag === 'no_filter') && cfg.type === 'custom:hemma-camera-strip') return true;
   const tmpl = cfg.template;
   const list = Array.isArray(tmpl) ? tmpl : (tmpl ? [tmpl] : []);
   return list.some((t) => ROW_TEMPLATE_FLAGS[t]?.[flag] === true);
@@ -1043,8 +1052,9 @@ class HemmaSmartRow extends HTMLElement {
         inset: auto
           var(--hemma-entity-right-inset-current, var(--hemma-entity-right-inset-desktop, var(--hemma-rail-left, var(--page-gutter, 8vw))))
           var(--hemma-entity-bottom-current, var(--hemma-entity-bottom-desktop, 0px))
-          0;
-        scroll-padding-left: var(--hsr-rail);
+          calc(0px - var(--hemma-push-start, 0px));
+        /* Pushed by the sidebar, the scroll window still starts at the screen edge, so cards slide under the glass instead of clipping on its line. */
+        scroll-padding-left: calc(var(--hsr-rail) + var(--hemma-push-start, 0px));
         box-sizing: border-box;
         overflow-x: auto;
         overflow-y: clip;
@@ -1080,7 +1090,7 @@ class HemmaSmartRow extends HTMLElement {
         align-items: flex-end;
         gap: 8px;
         padding: 20px calc(var(--hemma-entity-shadow-pad-right-current, var(--hemma-entity-shadow-pad-right-desktop, 0px))
-          + var(--hemma-entity-row-pad-end-current, 0px) + var(--hemma-push-end, var(--hemma-side-push, 0px))) var(--hemma-entity-row-pad-bottom-current, 40px) var(--hsr-rail);
+          + var(--hemma-entity-row-pad-end-current, 0px) + var(--hemma-push-end, var(--hemma-side-push, 0px))) var(--hemma-entity-row-pad-bottom-current, 40px) calc(var(--hsr-rail) + var(--hemma-push-start, 0px));
         min-width: max-content;
         box-sizing: border-box;
       }

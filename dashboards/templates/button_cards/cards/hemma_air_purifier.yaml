@@ -1,5 +1,5 @@
 hemma_air_purifier:
-  template: [hemma_air_device]
+  template: [hemma_air_device, hemma_popup_fan_panel]
 
   variables:
     icon: purifier

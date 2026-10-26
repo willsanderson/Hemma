@@ -1018,6 +1018,7 @@ hemma_room:
               locks: '[[[ return variables.security_locks || [] ]]]'
               lock_entity: '[[[ return variables.security_lock_entity ]]]'
               lock_entity_2: '[[[ return variables.security_lock_entity_2 ]]]'
+              devices: '[[[ return [1, 2, 3, 4, 5, 6, 7, 8].map((i) => variables["security_entity_" + i]).filter((x) => typeof x === "string" && x) ]]]'
 
           - type: custom:button-card
             template: hemma_badge_energy_group

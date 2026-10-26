@@ -138,7 +138,25 @@ hemma_media:
 
 
   tap_action:
-    action: more-info
+    haptic: light
+    action: |
+      [[[
+        return window.hemmaPopupAction ? window.hemmaPopupAction() : 'more-info';
+      ]]]
+    hemma_popup:
+      title: ''
+      dismissable: true
+      close: false
+      style: '--popup-min-width: 340px; --popup-max-width: 340px; --popup-min-width-narrow: 340px; --hemma-popup-radius: 34px; --hemma-popup-tint: rgba(0, 0, 5, 0.16);'
+      content:
+        type: custom:hemma-media-panel
+        entity: '[[[ return entity?.entity_id || null; ]]]'
+        sources: '[[[ return Array.isArray(variables.media_sources) ? variables.media_sources : []; ]]]'
+        name: |
+          [[[
+            const n = String(this._config?.name || '').trim();
+            return n.startsWith('[' + '[[') || n.indexOf('<') >= 0 ? '' : n;
+          ]]]
   hold_action:
     action: more-info
 

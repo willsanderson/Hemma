@@ -1,0 +1,24 @@
+hemma_sensor_panel:
+  template:
+  - hemma_popup_base
+  variables:
+    sensor_kind: temperature
+    room_name: null
+    popup_sensors: null
+    sensor_scope: null
+    sensor_rooms: null
+  tap_action:
+    hemma_popup:
+      title: ''
+      dismissable: true
+      close: false
+      sheet: true
+      style: '--popup-min-width: 440px; --popup-max-width: 440px; --popup-min-width-narrow: 440px; --hemma-popup-radius: 30px;'
+      content:
+        type: custom:hemma-sensor-panel
+        kind: '[[[ return variables.sensor_kind || "temperature"; ]]]'
+        name: '[[[ return variables.room_name || ""; ]]]'
+        entity: '[[[ return entity?.entity_id || null; ]]]'
+        include: '[[[ return Array.isArray(variables.popup_sensors) ? variables.popup_sensors.filter(Boolean) : null; ]]]'
+        scope: '[[[ return variables.sensor_scope || null; ]]]'
+        rooms: '[[[ return variables.sensor_rooms || null; ]]]'

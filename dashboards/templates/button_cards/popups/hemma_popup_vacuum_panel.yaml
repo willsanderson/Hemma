@@ -1,0 +1,23 @@
+hemma_popup_vacuum_panel:
+  template:
+  - hemma_popup_base
+  tap_action:
+    haptic: light
+    action: |
+      [[[
+        return window.hemmaPopupAction ? window.hemmaPopupAction() : 'more-info';
+      ]]]
+    entity: '[[[ return entity?.entity_id; ]]]'
+    hemma_popup:
+      title: ''
+      dismissable: true
+      close: false
+      style: '--popup-min-width: 300px; --popup-max-width: 300px; --popup-min-width-narrow: 300px; --hemma-popup-radius: 34px; --hemma-popup-tint: rgba(0, 0, 5, 0.16);'
+      content:
+        type: custom:hemma-vacuum-panel
+        entity: '[[[ return entity?.entity_id || null; ]]]'
+        name: |
+          [[[
+            const n = String(this._config?.name || '').trim();
+            return (variables.room_name || (n.startsWith('[' + '[[') || n.indexOf('<') >= 0 ? '' : n)).trim();
+          ]]]

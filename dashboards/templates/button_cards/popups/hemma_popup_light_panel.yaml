@@ -19,7 +19,7 @@ hemma_popup_light_panel:
           [[[
             const n = String(this._config?.name || '').trim();
             const g = variables.popup_group && variables.popup_group !== 'none' ? states[variables.popup_group] : null;
-            return n && !n.startsWith('[' + '[[') ? n : ((g || entity)?.attributes?.friendly_name || '');
+            return n && !n.startsWith('[' + '[[') && n.indexOf('<') < 0 ? n : ((g || entity)?.attributes?.friendly_name || '');
           ]]]
         lights: '[[[ return Array.isArray(variables.lights) && variables.lights.length ? variables.lights : null; ]]]'
   hold_action:
@@ -40,6 +40,6 @@ hemma_popup_light_panel:
           [[[
             const n = String(this._config?.name || '').trim();
             const g = variables.popup_group && variables.popup_group !== 'none' ? states[variables.popup_group] : null;
-            return n && !n.startsWith('[' + '[[') ? n : ((g || entity)?.attributes?.friendly_name || '');
+            return n && !n.startsWith('[' + '[[') && n.indexOf('<') < 0 ? n : ((g || entity)?.attributes?.friendly_name || '');
           ]]]
         lights: '[[[ return Array.isArray(variables.lights) && variables.lights.length ? variables.lights : null; ]]]'

@@ -1,5 +1,13 @@
 hemma_vacuum:
-  template: [hemma_entity]
+  template: [hemma_entity, hemma_popup_vacuum_panel]
+
+  # The popup's words, so the tile reads Ready where Home Assistant says idle or docked.
+  state_display: |
+    [[[
+      if (!entity?.state) return "";
+      if (window.hemmaVacuumWord) return window.hemmaVacuumWord(hass, entity);
+      try { return hass.formatEntityState(entity) || entity.state; } catch (e) { return entity.state; }
+    ]]]
 
   variables:
     mobile_filter_category: unfiltered
@@ -9,10 +17,6 @@ hemma_vacuum:
   show_label: false
 
   name: Vacuum
-
-  tap_action:
-    action: more-info
-    entity: '[[[ return entity?.entity_id ]]]'
 
   hold_action:
     action: more-info

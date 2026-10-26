@@ -1,16 +1,13 @@
 hemma_fan:
   template:
     - hemma_entity
+    - hemma_popup_fan_panel
 
   show_entity_picture: true
   show_icon: true
   show_name: true
   show_state: true
   name: Fan
-
-  tap_action:
-    action: more-info
-    entity: '[[[ return entity?.entity_id ]]]'
 
   hold_action:
     action: more-info

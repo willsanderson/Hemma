@@ -34,13 +34,12 @@ Inspired by the [Homio](https://github.com/iamtherufus/Homio) dashboard by @iamt
     packages: !include_dir_named packages
   ```
 
-Hemma checks for the cards below on first open and links you straight to each one, so you do not need to collect them up front. The requirements above are yours to set up.
+Hemma checks for the cards below on first open, including that button-card is new enough, and links you straight to each one, so you do not need to collect them up front. The requirements above are yours to set up.
 
 | From HACS | Why | |
 | --- | --- | --- |
 | [uix](https://github.com/Lint-Free-Technology/uix) | card styling, used throughout. Do not install card-mod alongside it. | **required** |
-| [button-card](https://github.com/custom-cards/button-card) | every Hemma tile is one | **required** |
-| [apexcharts-card](https://github.com/RomRider/apexcharts-card) | network, energy and climate charts | optional |
+| [button-card](https://github.com/custom-cards/button-card) | every Hemma tile is one. Version 7.0.0 or newer. | **required** |
 
 
 ## Installation
@@ -49,7 +48,7 @@ Hemma checks for the cards below on first open and links you straight to each on
 
 HACS > **Integrations** > menu > **Custom repositories**, add `https://github.com/willsanderson/Hemma` as an **Integration**, then find Hemma in the list and **Download**.
 
-While you are there, install **uix**, **button-card** and **apexcharts-card**.
+While you are there, install **uix** and **button-card**.
 
 ### 2. Copy the helpers
 

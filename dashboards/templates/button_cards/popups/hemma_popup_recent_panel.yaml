@@ -1,4 +1,6 @@
 hemma_popup_recent_panel:
+  variables:
+    hide_spoilers: false
   tap_action:
     haptic: light
     action: |
@@ -9,6 +11,7 @@ hemma_popup_recent_panel:
     hemma_popup:
       title: ''
       dismissable: true
-      style: '--popup-min-width: 420px; --popup-max-width: 420px; --popup-min-width-narrow: 420px; --hemma-popup-radius: 34px;'
+      style: '--popup-min-width: 600px; --popup-max-width: 600px; --popup-min-width-narrow: 600px; --hemma-popup-radius: 34px;'
       content:
         type: custom:hemma-recent-panel
+        hide_spoilers: '[[[ return variables.hide_spoilers === true; ]]]'

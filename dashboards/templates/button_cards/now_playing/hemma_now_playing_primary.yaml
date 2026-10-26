@@ -90,136 +90,22 @@ hemma_now_playing_primary:
         ]]]
 
   tap_action:
-    action: >
+    haptic: light
+    action: |
       [[[
-        return variables.src?.kind === 'plex'
-          ? (window.hemmaPopupAction ? window.hemmaPopupAction() : 'more-info') : 'more-info';
+        return variables.src?.entity && window.hemmaPopupAction ? window.hemmaPopupAction() : 'none';
       ]]]
     entity: '[[[ return variables.src?.entity || null; ]]]'
     hemma_popup:
-      title: "[[[ const T = window._hemmaT || ((k, en, v) => { let s = String(en); if (v) for (const p in v) s = s.split('{' + p + '}').join(String(v[p])); return s; }); return T('now_playing.title', 'Now Playing'); ]]]"
+      title: ''
       dismissable: true
-      # Card builder in hemma-core.js (window._hemmaPlexPopupCard); shared with popups/hemma_popup_plex.yaml and this template's _art.yaml/_chip.yaml siblings.
-      dismiss_on_background: true
-      popup_styles:
-        - style: all
-          styles: |
-            /* No pane. Unlike the other converted popups this one is not a set
-               of widgets - it is a single player, and the four detail tiles
-               inside it are panels of that one object rather than objects of
-               their own. What it shares with the rest is the chrome: no box
-               around the box, and the header reduced to a close control. */
-            --hemma-popup-tint: transparent;
-            /* The close control's box starts at the bar's padding and the
-               content starts at its own gutter; they line up only when the
-               two are the same number. */
-            --hemma-popup-header-pad: 26px;
-            --hemma-popup-header-pad-wide: 26px;
-            /* The popups have no pane, so headings and captions sit straight
-               on the room. 6px is enough behind a panel and not enough behind
-               bare text - this is scoped to the pane-less popups rather than
-               raised globally, so the cover and lock sheets keep the lighter
-               scrim they are built against. */
-            --hemma-popup-scrim-backdrop: blur(22px) saturate(1.5);
-            --hemma-popup-backdrop: none;
-            --hemma-popup-shadow: none;
-            /* The grain is two pseudo-elements on .glass, blending overlay and
-               screen. They keep painting after the tint goes transparent, and a
-               screen blend over noise is exactly the pale panel that survived
-               the first attempt. */
-            /* Removed, not hidden: at opacity 0 the blend layer is invisible
-               and costs the same as a visible one. */
-            --hemma-popup-grain-content: none;
-            --hemma-popup-grain: 0;
-            --hemma-popup-grain-dark: 0;
-            --hemma-popup-scrim: rgba(0, 0, 0, 0.26);
-
-            /* One plate, so one arrival. */
-            --hemma-popup-plate-enter:
-              hemma-plate-in 320ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
-            @media (prefers-reduced-motion: reduce) {
-              --hemma-popup-plate-enter: none;
-            }
-
-            --hemma-popup-header-pad-wide: 34px;
-            /* The player is the tallest widget of any popup, so the standard
-               112px drop left it sitting low with dead room above the close
-               control. It starts higher and gets that room back. */
-            --hemma-popup-top: 70px;
-            --hemma-popup-hero-label-size: 15px;
-            --hemma-popup-row-radius: 26px;
-            /* Frosted, not opaque. The pane's blur used to sit under these, and
-               .content still nulls --ha-card-backdrop-filter for every card in
-               the popup, so the frost has to be asked for here. The fills drop
-               to let it read. */
-            /* The theme lifts every ha-card with filter: brightness(1.01) on
-               hover. A filter on an ancestor makes every descendant's
-               backdrop-filter inert, so hovering the empty space around a
-               widget - the wrapper card - knocked the frost out of both of
-               them. Killed popup-wide; the plate re-declares its own shadow. */
-            --hemma-card-hover-filter: none;
-            --hemma-hover-filter: none;
-            --hemma-card-hover-shadow: none;
-
-            --hemma-popup-row-pad-x: 26px;
-            --hemma-popup-row-pad-y: 15px;
-            --hemma-popup-plate-backdrop: blur(24px) saturate(180%);
-            --hemma-popup-chart-fill: rgba(10, 12, 16, 0.68);
-            --hemma-popup-row-fill: rgba(12, 14, 19, 0.62);
-            /* Lifted, not slabbed: one wide soft pass carries the height, one
-               short contact pass keeps the edge from dissolving into the room. */
-            --hemma-popup-plate-shadow:
-              0 18px 40px -22px rgba(0, 0, 0, 0.50),
-              0 2px 8px -5px rgba(0, 0, 0, 0.28);
-
-            /* visionOS puts nothing bare on the room: the only chrome outside a
-               window is its close control, and that control is itself a glass
-               object. The title was printed twice - here and in the widget
-               eight pixels below - so it goes, clipped rather than removed so a
-               screen reader still gets it. */
-            --hemma-popup-grabber: transparent;
-            /* The chrome arrives with the first plate instead of being there
-               on frame one while everything under it fades in. */
-            --hemma-popup-chrome-enter:
-              hemma-popup-chrome-in 320ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
-            .content { animation: none; }
-            /* The title lives in the bar now, centered and level with the
-               close control, so it is no longer hidden. */
-            .header-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
-            /* 48px is left alone: the base sizes it so the glyph's ink lands on
-               the same left margin as the widgets below. */
-            .header-close {
-              border-radius: 50%;
-              background: var(--hemma-popup-row-fill, rgba(255, 255, 255, 0.10));
-              backdrop-filter: var(--hemma-popup-plate-backdrop, none);
-              -webkit-backdrop-filter: var(--hemma-popup-plate-backdrop, none);
-              box-shadow: var(--hemma-popup-plate-shadow, none);
-            }
-
-            /* The player is the content card itself, with no wrapper card to
-               inset it, so the gutter that the other popups get from their
-               wrapper's padding comes from here. */
-            .content .container > * {
-              margin: 0 18px 20px !important;
-              animation: var(--hemma-popup-plate-enter, none);
-            }
-            @keyframes hemma-plate-in {
-              from { opacity: 0; transform: perspective(900px) translateZ(-70px); }
-              to   { opacity: 1; transform: perspective(900px) translateZ(0); }
-            }
-
-            ha-adaptive-dialog, ha-dialog, wa-drawer {
-              --ha-card-backdrop-filter: none;
-              --ha-card-background: transparent;
-              --card-background-color: transparent;
-              --ha-card-box-shadow: none;
-              --ha-card-border-width: 0px;
-            }
-      content: |
-        [[[
-          const sid = variables?.src?.entity || '';
-          return window._hemmaPlexPopupCard(sid, states);
-        ]]]
+      close: false
+      style: '--popup-min-width: 340px; --popup-max-width: 340px; --popup-min-width-narrow: 340px; --hemma-popup-radius: 34px; --hemma-popup-tint: rgba(0, 0, 5, 0.16);'
+      content:
+        type: custom:hemma-media-panel
+        entity: '[[[ return variables.src?.entity || null; ]]]'
+        kind: '[[[ return variables.src?.kind === "player" ? null : (variables.src?.kind || null); ]]]'
+        src: '[[[ return variables.src || null; ]]]'
   # Hold clears any manual pin, handing the slot back to automatic ranking.
   hold_action:
     haptic: medium

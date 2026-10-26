@@ -125,9 +125,11 @@ hemma_badge_humidity:
         (m, p) => (v && Object.prototype.hasOwnProperty.call(v, p) ? String(v[p]) : m)));
       let label = T('humidity.unknown', 'Unknown');
       if (!isNaN(v)) {
-        if (v <= 29.99)   label = T('humidity.very_dry', 'Very Dry');
-        else if (v >= 61) label = T('humidity.high', 'High');
-        else              label = T('humidity.good', 'Good');
+        if (v < 30)       label = T('humidity.very_dry', 'Very Dry');
+        else if (v < 40)  label = T('humidity.dry', 'Dry');
+        else if (v < 61)  label = T('humidity.comfortable', 'Comfortable');
+        else if (v < 70)  label = T('humidity.humid', 'Humid');
+        else              label = T('humidity.very_humid', 'Very Humid');
       }
 
       const esc = (t) => String(t || '').replaceAll('"','&quot;');

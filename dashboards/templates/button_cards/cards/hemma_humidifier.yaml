@@ -1,5 +1,5 @@
 hemma_humidifier:
-  template: [hemma_air_device]
+  template: [hemma_air_device, hemma_popup_humidifier_panel]
 
   name: Humidifier
 
