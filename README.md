@@ -98,19 +98,6 @@ Everything is optional. A room with nothing but a light group is a valid room, a
 ### Mobile
 <img width="850" height="600" alt="mobile" src="https://github.com/user-attachments/assets/beb8537b-89f5-4f1b-ac7b-85af30117b68" />
 
-### Popups
-
-<img width="386" height="572" alt="popup-cover" hspace="15" src="https://github.com/user-attachments/assets/af162535-1ad7-477c-a6f7-add2f8f49c70" />
-<img width="386" height="572" alt="popup-lock" hspace="15" src="https://github.com/user-attachments/assets/99cfd111-d0bd-41b1-b994-ecd6c8856e74" />
-<br><br>
-<img width="386" height="572" alt="popup-plant" hspace="15" src="https://github.com/user-attachments/assets/734cd60a-a791-4613-8771-0e108707bc75" />
-<img width="386" height="572" alt="popup-aqi" hspace="15" src="https://github.com/user-attachments/assets/8e4bfb88-dbf9-4018-81c4-6fe32d4f950d" />
-<br><br>
-<img width="386" height="388" alt="popup-energy" hspace="15" src="https://github.com/user-attachments/assets/fcb01fb6-cbaf-467b-828e-6cb05824d9e5" />
-<img width="386" height="388" alt="popup-network" hspace="15" src="https://github.com/user-attachments/assets/a73d5b33-03d6-487c-ba13-39c3ae22346f" />
-<br><br>
-<img width="386" height="668" alt="popup-battery" hspace="15" src="https://github.com/user-attachments/assets/a68d4924-bcc6-42cb-810e-2104bb1ec152" />
-
 ## Upgrading from Hemma 2.0
 
 Your existing YAML dashboard keeps working. Nothing is removed or rewritten.
