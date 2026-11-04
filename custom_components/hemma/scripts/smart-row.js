@@ -218,7 +218,7 @@ class HemmaSmartRow extends HTMLElement {
       this.addEventListener('card-visibility-changed', this._onVisChange);
     }
     if (!this._initialized || !this._wrappers.length) return;
-    if (isDesktop()) this.scrollTo({ left: 0, behavior: 'instant' });
+    if (!this._scrollMode && isDesktop()) this.scrollTo({ left: 0, behavior: 'instant' });
     if (!this._probed) { this._probed = true; setTimeout(() => this._probe(), 900); }
 
     const inactive = this._config.cards.map((_, i) => i)
@@ -321,8 +321,15 @@ class HemmaSmartRow extends HTMLElement {
       return;
     }
 
-    for (const card of this._cards) {
-      if (card) card.hass = hass;
+    for (const [i, card] of this._cards.entries()) {
+      if (card) {
+        // A conditional wrapper may create or replace its child long after init.
+        if (this._scrollMode && this._sortEnabled && this._config.cards[i]?.type === 'conditional'
+            && !isRawCard(this._config.cards[i])) {
+          this._applyFlowCardStyles(card, getCardSize(this._config.cards[i]) === 'large');
+        }
+        card.hass = hass;
+      }
     }
 
     if (!this._initialized) return;
@@ -407,7 +414,7 @@ class HemmaSmartRow extends HTMLElement {
     const DUR  = 220;
     const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
 
-    const horizontal = isDesktop();
+    const horizontal = !this._scrollMode && isDesktop();
     const gap = horizontal
       ? (parseFloat(getComputedStyle(this._container).columnGap) || 0)
       : 0;
@@ -639,7 +646,33 @@ class HemmaSmartRow extends HTMLElement {
     });
   }
 
+  _applyFlowCardStyles(card, large, attempts = 0) {
+    // Conditional cards render their button-card through hui-card after the
+    // outer host exists. Style that inner host, not the conditional wrapper.
+    const visit = (el) => {
+      if (el.tagName === 'BUTTON-CARD') {
+        const changed = !el.classList.contains('hemma-flow');
+        el.classList.add('hemma-compact', 'hemma-flow');
+        el.classList.toggle('hemma-flow-large', large);
+        if (changed) el.requestUpdate?.();
+        return true;
+      }
+      let found = false;
+      for (const root of [el.shadowRoot, el]) {
+        for (const child of root?.children || []) found = visit(child) || found;
+      }
+      return found;
+    };
+    if (!visit(card) && attempts < 40) {
+      requestAnimationFrame(() => {
+        if (card.isConnected) this._applyFlowCardStyles(card, large, attempts + 1);
+      });
+    }
+  }
+
   _scheduleLargeFill(wrapper) {
+    // Flow grids size from content; forcing nested hosts to 100% creates a cycle.
+    if (this._scrollMode) return;
     const run = () => this._stampLargeFill(wrapper);
     requestAnimationFrame(run);
     setTimeout(run, 400);
@@ -774,6 +807,11 @@ class HemmaSmartRow extends HTMLElement {
         wrapper.dataset.showWhen = '1';
         wrapper.style.display = 'none';
         this._hiddenState[i] = true;
+      }
+      // Use the same compact contract as the category grids, independent of
+      // viewport size. Raw cards retain their own layout and natural height.
+      if (card && this._scrollMode && !isRawCard(cfg)) {
+        this._applyFlowCardStyles(card, getCardSize(cfg) === 'large');
       }
       wrapper.style.setProperty('--hemma-init-play', 'paused');
       if (card) wrapper.appendChild(card);
@@ -974,13 +1012,13 @@ class HemmaSmartRow extends HTMLElement {
 
     if (!animate || window._hemmaNoFilterAnim) {
       newOrder.forEach((origIdx, pos) => { this._wrappers[origIdx].style.order = pos; });
-      if (isDesktop()) this.scrollTo({ left: 0, behavior: 'instant' });
+      if (!this._scrollMode && isDesktop()) this.scrollTo({ left: 0, behavior: 'instant' });
       return;
     }
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       newOrder.forEach((origIdx, pos) => { this._wrappers[origIdx].style.order = pos; });
-      if (isDesktop()) this.scrollTo({ left: 0, behavior: 'instant' });
+      if (!this._scrollMode && isDesktop()) this.scrollTo({ left: 0, behavior: 'instant' });
       return;
     }
 
@@ -988,7 +1026,7 @@ class HemmaSmartRow extends HTMLElement {
     newOrder.forEach((origIdx, pos) => { this._wrappers[origIdx].style.order = pos; });
     const lastRects = this._wrappers.map(w => w.getBoundingClientRect());
 
-    if (isDesktop() && this.scrollLeft > 10) {
+    if (!this._scrollMode && isDesktop() && this.scrollLeft > 10) {
       this.scrollTo({ left: 0, behavior: 'smooth' });
     }
 
@@ -1091,11 +1129,12 @@ class HemmaSmartRow extends HTMLElement {
         scroll-snap-align: start;
       }
 
-      /* Phones reach this row only through the mobile dashboard, so portrait
-         and landscape share one in-flow scrolling layout. */
-      @media (max-width: 767px) and (orientation: portrait),
+      /* scroll_mode describes a scrolling surface, not a screen size. Keep it
+         in flow when a foldable opens or a phone browser changes orientation.
+         Non-scroll rows retain the existing narrow-screen fallback. */
+      @media ${this._scrollMode ? 'all' : `(max-width: 767px) and (orientation: portrait),
              (max-height: 500px) and (orientation: portrait),
-             (max-height: 600px) and (orientation: landscape) {
+             (max-height: 600px) and (orientation: landscape)`} {
         :host {
           position: relative;
           z-index: auto;
@@ -1109,7 +1148,9 @@ class HemmaSmartRow extends HTMLElement {
         }
         #container {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: ${this._scrollMode && this._sortEnabled
+            ? 'repeat(auto-fit, minmax(min(100%, var(--hemma-tile-min-width, 170px)), 1fr))'
+            : 'repeat(2, minmax(0, 1fr))'};
           align-content: start;
           gap: 8px;
           padding: ${this._rowPadding || '0'};
@@ -1117,11 +1158,10 @@ class HemmaSmartRow extends HTMLElement {
           overflow: visible;
           box-sizing: border-box;
           ${this._sortEnabled ? `
-          /* Fixed tracks make a large tile exactly two small ones tall and give
-             a row-spanning item an unambiguous height. Dense backfills the hole
-             a large tile leaves beside it. */
-          grid-auto-rows: var(--hemma-tile-row-h-current, 66px);
-          grid-auto-flow: row dense;
+          /* Scroll surfaces grow with content. The legacy viewport fallback
+             retains fixed tracks and two-row large tiles. */
+          grid-auto-rows: ${this._scrollMode ? 'auto' : 'var(--hemma-tile-row-h-current, 66px)'};
+          grid-auto-flow: ${this._scrollMode ? 'row' : 'row dense'};
           align-items: stretch;
           ` : `
           /* Outer row: weather, badges, headers, Now Playing all size to content. */
@@ -1132,9 +1172,11 @@ class HemmaSmartRow extends HTMLElement {
         .card-wrapper { flex: unset; width: auto; scroll-snap-align: none; will-change: auto; }
         ${this._sortEnabled ? `
         /* Child combinator load-bearing - see the collapsed-spacer rule below. */
-        #container > .card-wrapper[data-size="large"] { grid-row: span 2; }
+        #container > .card-wrapper[data-size="large"] {
+          ${this._scrollMode ? 'min-height: calc(var(--hemma-tile-row-h-current, 66px) * 2 + 8px);' : 'grid-row: span 2;'}
+        }
         /* Passes the track height down for the card's own height:100%. */
-        #container > .card-wrapper > * { display: block; height: 100%; }
+        #container > .card-wrapper > * { display: block; height: ${this._scrollMode ? 'auto' : '100%'}; min-width: 0; }
         /* And holds a pasted card to it. Safari leaks past overflow alone. */
         #container > .card-wrapper[data-raw="1"] {
           overflow: hidden;
@@ -1162,9 +1204,9 @@ class HemmaSmartRow extends HTMLElement {
       }
 
       /* Landscape has enough width for a third column of entity cards. */
-      @media (max-height: 600px) and (orientation: landscape) {
+      ${this._scrollMode ? '' : `@media (max-height: 600px) and (orientation: landscape) {
         #container { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      }
+      }`}
     `;
   }
 }

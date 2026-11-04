@@ -309,6 +309,20 @@ hemma_entity:
     }
     :host(.hemma-compact) #img-cell ha-icon { --mdc-icon-size: 24px !important; }
 
+    /* A scrolling row owns columns, while each tile owns its content height.
+       Keep category-grid compact tiles on their existing fixed-height contract. */
+    :host(.hemma-flow) ha-card {
+      height: auto !important;
+      min-height: var(--hemma-tile-row-h-current, 66px);
+      box-sizing: border-box;
+      animation: none;
+      --hemma-height-mq: auto;
+    }
+    :host(.hemma-flow-large) ha-card {
+      min-height: calc(var(--hemma-tile-row-h-current, 66px) * 2 + 8px);
+    }
+
+
     #toggle {
       opacity: var(--hemma-toggle-opacity, 0.65);
       transition: opacity 0.18s ease;

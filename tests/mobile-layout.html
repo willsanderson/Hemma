@@ -1,0 +1,41 @@
+<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{margin:0} #fixture{width:100%}</style>
+<script src="/custom_components/hemma/scripts/smart-row.js"></script><div id="fixture"></div>
+<script type="module">
+(async () => {
+const bundle = await (await fetch('/custom_components/hemma/panel/hemma-templates.json')).json();
+const real = new URLSearchParams(location.search).has('real');
+function host(parent,tag){const e=document.createElement(tag);parent.appendChild(e);return e.attachShadow({mode:'open'});}
+const ha=host(document.body,'home-assistant');const main=host(ha,'home-assistant-main');const drawer=document.createElement('ha-drawer');main.appendChild(drawer);const resolver=document.createElement('partial-panel-resolver');drawer.appendChild(resolver);const panel=host(resolver,'ha-panel-lovelace');const hui=document.createElement('hui-root');panel.appendChild(hui);hui.lovelace={config:{button_card_templates:bundle.templates,views:[]},current_view:0};
+window.hemmaIconUrl=()=>'';
+if(real) await import('/tests/runtime-button-card.js');
+class FixtureCard extends HTMLElement {
+ constructor(){super();this.attachShadow({mode:'open'});}
+ setConfig(cfg){this._config=cfg;const large=cfg.variables?.size==='large';const geometry=['areas','cols','rows','gap'].map(k=>`--hemma-tile-${k}:var(--hemma-tile-${k}-${large?'lg':'mq'});`).join('');this.shadowRoot.innerHTML=`<style>
+ :host{display:block} ha-card{display:block;height:var(--hemma-height-mq,200px);padding:12px;box-sizing:border-box;${geometry}}
+ #container{display:grid;grid-template-areas:var(--hemma-tile-areas);grid-template-columns:var(--hemma-tile-cols);grid-template-rows:var(--hemma-tile-rows);gap:var(--hemma-tile-gap)}
+ #img-cell{grid-area:i;width:42px;height:42px} #name{grid-area:n} #state{grid-area:s}
+ ${cfg.template ? bundle.templates.hemma_entity.extra_styles : ''}
+ </style><ha-card><div id="container"><div id="img-cell">Icon</div><div id="name">${cfg.name||'Device'}</div><div id="state">${'Long state<br>'.repeat(cfg.lines||1)}</div></div></ha-card>`;}
+ set hass(h){this._hass=h;}
+}
+if(!real)customElements.define('button-card',FixtureCard);
+customElements.define('fixture-raw',class extends FixtureCard{});
+class ConditionalCard extends HTMLElement {
+ constructor(){super();this.attachShadow({mode:'open'});}
+ setConfig(cfg){this._config=cfg;setTimeout(()=>{this.card=makeCard(cfg.card);this.card.hass=this._hass;this.shadowRoot.appendChild(this.card);},60);}
+ set hass(h){this._hass=h;if(this.card)this.card.hass=h;}
+}
+customElements.define('fixture-conditional',ConditionalCard);
+function makeCard(cfg){const e=document.createElement(cfg.type==='conditional'?'fixture-conditional':cfg.template?'button-card':'fixture-raw');e.setConfig(cfg);return e;}
+window.loadCardHelpers=async()=>({createCardElement:makeCard});
+window._hemmaNoFilterAnim=true;
+window.createRow=async(config)=>{
+ const fixture=document.querySelector('#fixture');fixture.replaceChildren();const r=document.createElement('hemma-smart-row');r.setConfig(config);fixture.appendChild(r);
+ r.hass={states:{'input_select.hemma_mobile_filter':{state:'all'}},config:{unit_system:{temperature:'°C'}},user:{name:'Test'},language:'en',locale:{language:'en',number_format:'language',time_format:'24',date_format:'language'},localize:()=>''};
+ for(let i=0;i<100&&!r._initialized;i++)await new Promise(x=>setTimeout(x,20));
+ if(!r._initialized)throw Error('row did not initialize');
+ window.row=r;return true;
+};
+window.layoutReady=true;
+})().catch(e=>window.fixtureError=String(e));
+</script>
