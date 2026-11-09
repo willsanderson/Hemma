@@ -94,6 +94,7 @@ const HV_TINT = { gray: "#97a9ae", sand: "#c8b9a2", sage: "#a3b29a", blue: "#93a
 const HV_NIGHT = "#49575c";
 const HV_NIGHTS = { gray: "#49575c", sand: "#5b564e", sage: "#4c5944", blue: "#44556d", rose: "#654d51", lavender: "#56506a", sea: "#395c5b", clay: "#684e42", plum: "#664b5c", honey: "#5c543f" };
 const HV_DEEP = { gray: "#5d6a6e", sand: "#6f6656", sage: "#606b59", blue: "#59697c", rose: "#776366", lavender: "#6a657c", sea: "#506d6d", clay: "#7e6255", plum: "#78616f", honey: "#72674a" };
+const GLASS_WASH = { day: "radial-gradient(70% 55% at 0% 58%, rgba(30,30,32,0.42) 0%, rgba(30,30,32,0.18) 50%, rgba(30,30,32,0) 80%), linear-gradient(to bottom, rgba(30,30,32,0.22) 0%, rgba(30,30,32,0) 15%), radial-gradient(70% 60% at 88% 6%, rgba(255,252,246,0.20) 0%, rgba(255,252,246,0) 65%), linear-gradient(to top, rgba(250,247,242,0.30) 0%, rgba(250,247,242,0.14) 22%, rgba(250,247,242,0) 45%)", night: "radial-gradient(70% 55% at 0% 58%, rgba(20,19,18,0.50) 0%, rgba(20,19,18,0.22) 50%, rgba(20,19,18,0) 80%), linear-gradient(to bottom, rgba(20,19,18,0.28) 0%, rgba(20,19,18,0) 15%), radial-gradient(70% 60% at 88% 6%, rgba(255,236,214,0.12) 0%, rgba(255,236,214,0) 65%), linear-gradient(to top, rgba(255,236,214,0.18) 0%, rgba(255,236,214,0.08) 22%, rgba(255,236,214,0) 45%), linear-gradient(rgba(20,19,18,0.08), rgba(20,19,18,0.08)), linear-gradient(rgba(255,255,255,0.06), rgba(255,255,255,0.06))" };
 const hvInkW = (V, dark) => !dark && (V || {}).hemma_hv_text === "white";
 const hvColor = (V, dark) => (V || {}).hemma_style !== "homeview" ? ""
   : dark ? (HV_NIGHTS[V.hemma_hv_color === "album" ? V.hemma_hv_rest : V.hemma_hv_color] || HV_NIGHT)
@@ -6774,7 +6775,7 @@ class HemmaPanel extends HTMLElement {
         .card.map {
           transform:scale(var(--map-scale, .5));
           transition:none;
-          --pad-x:58px; --pad-t:38px; --pad-b:26px;
+          --pad-x:43.2px; --pad-t:38px; --pad-b:26px;
           --wx:20px; --nm:31.2px; --nav:10.5px;
           /* --nav over the theme's chrome font size (18px). */
           --menu-k:0.583;
@@ -6796,7 +6797,7 @@ class HemmaPanel extends HTMLElement {
           --nav-lift:8.5px;
         }
         .card.map.size-tablet {
-          --pad-x:21px; --pad-t:24.1px; --pad-b:20.4px;
+          --pad-x:15.75px; --pad-t:24.1px; --pad-b:20.4px;
           --nav-top:20.17px; --nav-h:24.3px; --nav-inset:2.4px; --nav-gap:2.4px;
           --nav-label:9.5px; --nav-label-h:19.5px; --nav-pad-x:9.5px;
           --menu-k:0.5932;
@@ -7039,8 +7040,8 @@ class HemmaPanel extends HTMLElement {
           font-weight:640; letter-spacing:-0.01em;
         }
         .miniphone .mp-wcond {
-          display:block; color:rgba(255,255,255,0.92);
-          font-size:14px; font-weight:520; text-transform:capitalize;
+          display:block; color:rgba(235,235,245,0.62);
+          font-size:14px; font-weight:500;
         }
 
         .miniphone .mp-badges {
@@ -8035,7 +8036,7 @@ class HemmaPanel extends HTMLElement {
         .card.map .hv {
           --hv-ink:#fff; --hv-sub:rgba(235,235,245,0.6); --hv-off:color-mix(in oklab, color-mix(in oklab, var(--flat) 50%, rgb(24 24 27)) 70%, transparent); --hv-chrome:color-mix(in oklab, color-mix(in oklab, var(--flat) 16%, #fff) 82%, transparent); --pv-cap:rgba(28,28,30,0.68); --pv-rim:rgba(255,255,255,0.05);
           --pv-c:color-mix(in oklab, var(--flat) 55%, rgb(20 20 22)); --pv-w:color-mix(in oklab, var(--flat) 10%, #fff); --pv-l:color-mix(in oklab, var(--flat) 12%, #fbf8f2);
-          --pv-wash:radial-gradient(38% 24% at 0% 0%, color-mix(in oklab, var(--pv-c) 26%, transparent) 0%, color-mix(in oklab, var(--pv-c) 10%, transparent) 50%, color-mix(in oklab, var(--pv-c) 0%, transparent) 100%), radial-gradient(60% 45% at 0% 58%, color-mix(in oklab, var(--pv-c) 30%, transparent) 0%, color-mix(in oklab, var(--pv-c) 10%, transparent) 55%, color-mix(in oklab, var(--pv-c) 0%, transparent) 85%), linear-gradient(to top, color-mix(in oklab, var(--pv-w) 22%, transparent) 0%, color-mix(in oklab, var(--pv-w) 8%, transparent) 50%, color-mix(in oklab, var(--pv-w) 0%, transparent) 80%), linear-gradient(color-mix(in oklab, var(--pv-w) 34%, transparent), color-mix(in oklab, var(--pv-w) 34%, transparent)); --pv-top:none; --pv-grad:radial-gradient(90% 60% at 8% 0%, color-mix(in oklab, var(--flat) 58%, #fff) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 58%, #fff) 0%, transparent) 72%), radial-gradient(70% 55% at 100% 38%, color-mix(in oklab, var(--flat) 78%, #f2dccb) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 78%, #f2dccb) 0%, transparent) 70%), radial-gradient(110% 70% at 50% 100%, color-mix(in oklab, var(--flat) 84%, #000) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 84%, #000) 0%, transparent) 75%), linear-gradient(var(--flat), var(--flat)); --pv-pgrad:linear-gradient(to bottom, color-mix(in oklab, var(--flat) 60%, #fff) 0%, var(--flat) 45%, color-mix(in oklab, var(--flat) 66%, #000) 100%);
+          --pv-wash:radial-gradient(38% 24% at 0% 0%, color-mix(in oklab, var(--pv-c) 30%, transparent) 0%, color-mix(in oklab, var(--pv-c) 0%, transparent) 100%), radial-gradient(58% 52% at 0% 42%, color-mix(in oklab, var(--pv-c) 44%, transparent) 0%, color-mix(in oklab, var(--pv-c) 18%, transparent) 55%, color-mix(in oklab, var(--pv-c) 0%, transparent) 100%), linear-gradient(to top, color-mix(in oklab, var(--pv-w) 18%, transparent) 0%, color-mix(in oklab, var(--pv-w) 0%, transparent) 70%), linear-gradient(color-mix(in oklab, var(--pv-w) 18%, transparent), color-mix(in oklab, var(--pv-w) 18%, transparent)); --pv-top:none; --pv-grad:radial-gradient(90% 60% at 8% 0%, color-mix(in oklab, var(--flat) 58%, #fff) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 58%, #fff) 0%, transparent) 72%), radial-gradient(70% 55% at 100% 38%, color-mix(in oklab, var(--flat) 78%, #f2dccb) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 78%, #f2dccb) 0%, transparent) 70%), radial-gradient(110% 70% at 50% 100%, color-mix(in oklab, var(--flat) 84%, #000) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 84%, #000) 0%, transparent) 75%), linear-gradient(var(--flat), var(--flat)); --pv-pgrad:linear-gradient(to bottom, color-mix(in oklab, var(--flat) 60%, #fff) 0%, var(--flat) 45%, color-mix(in oklab, var(--flat) 66%, #000) 100%);
           --hv-bi-bg:color-mix(in oklab, color-mix(in oklab, var(--flat) 55%, rgb(20 20 22)) 58%, transparent); --hv-bi-ink:#fff; --hv-bi-sel:#fff; --hv-bi-sel-ink:#1c1c1e; --hv-bi-sel-sub:rgba(60,60,67,0.6); --hv-np:color-mix(in oklab, var(--flat) 88%, #000); --hv-wx:brightness(0) invert(1);
           --hv-side:rgba(255,255,255,0.05); --hv-side-on:rgba(255,255,255,0.14);
           --hv-name:#fff; --hv-state:rgba(255,255,255,0.62); --hv-scene-icon:#fff;
@@ -8094,6 +8095,9 @@ class HemmaPanel extends HTMLElement {
         .card.map .hv .mini-badges .pbi .pglyph { width:calc(var(--bgl, 15px) * 0.78); height:calc(var(--bgl, 15px) * 0.78); flex-basis:auto; }
         .card.map.size-desktop .hvl .mini-tab.on { box-shadow:inset 0 -1.5px 0 #fff; }
         .card.map .miniroom.gsoft .mini-photo { filter:none; transform:none; }
+        .card.map .miniroom.gsoft { --hemma-bg-grain:0.06; }
+        .card.map .miniroom.gsoft:not(.gink) .mini-tint { background:var(--pv-gwash, none); }
+        .card.map .miniroom.gsoft:not(.gink) .mini-scrim { display:none; }
         .card.map.size-desktop .miniroom:not(.hv) { --hemma-pill-fill:rgba(108,108,108,0.26); --hemma-nav-active-fill:rgba(0,0,0,0.26); }
         .card.map.size-desktop .miniroom.gink { --hemma-pill-fill:rgba(255,255,255,0.55); --hemma-nav-active-fill:rgba(255,255,255,0.88); }
         .card.map.size-desktop .miniroom:not(.ov) { --nm:36.2px; --wx:16px; }
@@ -8140,6 +8144,7 @@ class HemmaPanel extends HTMLElement {
         .card.map .miniroom.gink .mtile:not(.on) .mcircle:not(.art) { background-color:rgba(0,0,0,0.08); }
         .card.map .miniroom.gink .mtile:not(.on) .mglyph { background-color:rgba(0,0,0,0.62); }
         .card.map .miniroom.gink :is(.mini-bell, .mini-assist) svg { fill:rgba(28,28,30,0.82); }
+        .card.map .miniroom.gink.capsule .mini-wave i { background:rgba(28,28,30,0.82) !important; }
         .card.map .miniroom.gink .mini-settings i { background:rgba(28,28,30,0.82) !important; }
         .card.map .hv .mini-side { background:var(--hv-side); -webkit-backdrop-filter:none; backdrop-filter:none; }
         .card.map .hv .mini-side .ms-item.on { background:var(--hv-side-on); }
@@ -17366,6 +17371,11 @@ class HemmaPanel extends HTMLElement {
       const state = String(e.state || "").toLowerCase();
       if (["unavailable", "unknown", "off", "standby"].includes(state)) return false;
       if (["playing", "buffering", "on"].includes(state)) return true;
+      if (String(e.entity_id || "").indexOf("sensor.") === 0) {
+        const t = String((e.attributes || {}).full_title || (e.attributes || {}).media_title || (e.attributes || {}).title || "").trim();
+        return t ? !["paused", "idle", "none", ""].includes(state)
+          : !["playing", "paused", "idle", "on", "off", "home", "away", "online", "offline", "standby", "unavailable", "unknown", "none", "null", ""].includes(state);
+      }
       const a = e.attributes || {};
       const hasContent = !!(String(a.media_title || "").trim()
         || String(a.media_artist || a.artist || a.media_album_artist || "").trim());
@@ -17379,12 +17389,9 @@ class HemmaPanel extends HTMLElement {
     };
     const mediaShows = players.length > 0;
     if (on("show_media") && mediaShows) {
-      const live = players.map(st).find((e) => e && e.state === "playing");
+      const live = players.map(st).find((e) => mediaLive(e));
       const artOf = (e) => (e && e.attributes && e.attributes.entity_picture) || null;
-      const playing = players.filter((e) => {
-        const x = st(e);
-        return x && x.state === "playing";
-      }).length;
+      const playing = players.filter((e) => mediaLive(st(e))).length + Number(V.pc_count || 0);
       out.push({
         id: "media", label: _studioT("media.title", "Media"), icon: "media", color: "var(--ink)", dim: !live, clip: true,
         text: playing === 0 ? _studioT("media.none_playing", "None Playing")
@@ -18935,10 +18942,10 @@ class HemmaPanel extends HTMLElement {
       const V0 = ((rooms[0] || {}).variables) || {};
       const we0 = V0.weather_entity && this._hass.states[V0.weather_entity];
       const c0 = we0 ? String(we0.state).toLowerCase().trim() : "";
-      const WORD = { partlycloudy: "Partly Cloudy", "clear-night": "Clear Night", "snowy-rainy": "Snowy Rainy",
-        "lightning-rainy": "Lightning Rainy", "windy-variant": "Windy Variant" };
+      let w0 = "";
+      try { w0 = we0 && this._hass.formatEntityState ? this._hass.formatEntityState(we0) : ""; } catch (_) { w0 = ""; }
       w.querySelector(".mc-wt span").textContent = !c0 || ["unknown", "unavailable"].includes(c0) ? ""
-        : WORD[c0] || c0.replace(/[-_]/g, " ").replace(/\b\w/g, (x) => x.toUpperCase());
+        : w0 || c0.replace(/[-_]/g, " ").replace(/^\w/, (x) => x.toUpperCase());
       if (c0) w.appendChild(Object.assign(document.createElement("img"), { className: "mini-wglyph", alt: "",
         src: WEATHER_SVG[c0] ? "/hemma_assets/weather/" + WEATHER_SVG[c0] + "-fill.svg?v=2" : iconUrl("weather") }));
       page.appendChild(w);
@@ -19628,7 +19635,7 @@ class HemmaPanel extends HTMLElement {
     if (hv) q(".miniroom").style.setProperty("--flat", hv);
     if (flat) q(".miniroom").classList.add("flat");
     else if (soft) q(".mini-photo").src = soft;
-    else if (!hv && V.image && this._miniSize !== "phone") { q(".mini-photo").src = "/hemma_assets/rooms-glass/" + (dark ? (V.image_night || V.image + "-night") : V.image) + ".jpg?v=5"; q(".miniroom").classList.add("gsoft"); }
+    else if (!hv && V.image && this._miniSize !== "phone") { q(".mini-photo").src = "/hemma_assets/rooms-glass/" + (dark ? (V.image_night || V.image + "-night") : V.image) + ".jpg?v=5"; q(".miniroom").classList.add("gsoft"); q(".miniroom").style.setProperty("--pv-gwash", dark ? GLASS_WASH.night : GLASS_WASH.day); }
     else if (url) q(".mini-photo").src = url;
     else q(".miniroom").classList.add("nophoto");
     if (!hv && !dark && V.hemma_glass_text === "dark" && this._miniSize !== "phone") q(".miniroom").classList.add("gink");
