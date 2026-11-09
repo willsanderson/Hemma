@@ -96,7 +96,7 @@ hemma_badge_security_group:
       const open = ids.filter(id => String(states[id]?.state || '').toLowerCase() !== 'locked').length;
       const URL = window.hemmaIconUrl(window.hemmaSecuritySummary ? window.hemmaSecuritySummary(variables, hass).icon : open === 0 ? 'lock-fill' : 'lock-open-fill');
 
-      return `:host{display:${enabled ? 'inline-block' : 'none'} !important;order:var(--hemma-badge-order-security,5);}
+      return `:host{display:${enabled ? 'inline-block' : 'none'} !important;order:var(--hemma-badge-order-security,5);}${entity?.state === 'security' ? 'ha-card{--hemma-badge-tone-yellow:#D99A00;--hemma-badge-climate-color:#0096B4;--hemma-badge-temp-very-cold-color:#3A6FE0;--hemma-badge-temp-cool-color:#0096B4;--hemma-badge-temp-comfortable-color:#1E9E45;--hemma-badge-temp-warm-color:#D99A00;--hemma-badge-temp-hot-color:#E07400;--hemma-badge-temp-very-hot-color:#E0353A;--hemma-badge-presence-home-color:#1E9E45;--hemma-badge-presence-away-color:#D99A00;--hemma-badge-security-color:#00969F;--hemma-badge-energy-color:#1E9E45;--hemma-badge-energy-low-color:#1E9E45;--hemma-badge-energy-medium-color:#D99A00;--hemma-badge-energy-high-color:#E07400;--hemma-badge-energy-very-high-color:#E0353A;}' : ''}
         #img-cell, .img-cell{ position: relative; }
 
         #img-cell #icon, .img-cell #icon{

@@ -37,7 +37,7 @@ hemma_badge_presence_group:
         return (enabled && hasAny) ? 'inline-grid' : 'none';
       })();
       const _hide = String(_d).trim() === 'none';
-      return `:host{display:${_hide ? 'none' : 'inline-block'} !important;order:var(--hemma-badge-order-people,3);}` + `
+      return `:host{display:${_hide ? 'none' : 'inline-block'} !important;order:var(--hemma-badge-order-people,3);}${entity?.state === 'presence' ? 'ha-card{--hemma-badge-tone-yellow:#D99A00;--hemma-badge-climate-color:#0096B4;--hemma-badge-temp-very-cold-color:#3A6FE0;--hemma-badge-temp-cool-color:#0096B4;--hemma-badge-temp-comfortable-color:#1E9E45;--hemma-badge-temp-warm-color:#D99A00;--hemma-badge-temp-hot-color:#E07400;--hemma-badge-temp-very-hot-color:#E0353A;--hemma-badge-presence-home-color:#1E9E45;--hemma-badge-presence-away-color:#D99A00;--hemma-badge-security-color:#00969F;--hemma-badge-energy-color:#1E9E45;--hemma-badge-energy-low-color:#1E9E45;--hemma-badge-energy-medium-color:#D99A00;--hemma-badge-energy-high-color:#E07400;--hemma-badge-energy-very-high-color:#E0353A;}' : ''}` + `
     #img-cell, .img-cell{ position: relative; }
 
     #img-cell #icon, .img-cell #icon{
