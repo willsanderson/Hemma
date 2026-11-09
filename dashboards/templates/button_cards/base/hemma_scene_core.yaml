@@ -4,8 +4,8 @@ hemma_scene_core:
       force_eval: true
       value: |
         [[[
-            if (typeof window._hemmaSC !== 'object' || window._hemmaSCv !== 23) {
-              window._hemmaSCv = 23;
+            if (typeof window._hemmaSC !== 'object' || window._hemmaSCv !== 24) {
+              window._hemmaSCv = 24;
 
               const CFG_KEY = 'hemma_scene_cfg_v1';
               const IGN_KEY = 'hemma_scene_ignore_v1';
@@ -87,7 +87,7 @@ hemma_scene_core:
                 onBg: 'var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))',
                 offBg: 'var(--hemma-entity-background, rgba(0,0,0,0.40))',
                 onName: 'var(--hemma-entity-name-active, rgba(0,0,0,0.88))',
-                offName: 'rgba(255,255,255,0.90)',
+                offName: 'var(--hemma-scene-name-off, rgba(255,255,255,0.90))',
                 rim: 'var(--hemma-tile-glass-rim, inset 0 1px 0 -0.5px rgba(255,255,255,0.10), 0 2px 8px rgba(0,0,0,0.10))',
                 backdrop: 'var(--hemma-scene-chip-backdrop, blur(22px) saturate(1.2))',
               };
@@ -540,7 +540,7 @@ hemma_scene_core:
                         { 'align-items': 'center' },
                       ],
                       img_cell: [
-                        { background: '[[[ ' + act + ' return _sca?"var(--hemma-color-yellow,#FFCC00)":"rgba(255,255,255,0.10)"; ]]]' },
+                        { background: '[[[ ' + act + ' return _sca?"var(--hemma-color-yellow,#FFCC00)":"var(--hemma-scene-icon-off, rgba(255,255,255,0.10))"; ]]]' },
                         { 'border-radius': '50%' },
                         { width: '38px' },
                         { height: '38px' },

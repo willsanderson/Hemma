@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import timedelta
 
 from homeassistant.components.frontend import (
     async_register_built_in_panel,
@@ -12,14 +13,18 @@ from homeassistant.components.frontend import (
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.event import async_track_time_interval
 
-from .assets import HemmaAssetsView
+from .assets import HemmaAssetsView, warm_soft
 from .images import HemmaIconsView, HemmaImagesView
 from .templates import HemmaTemplatesView, rebuild_if_stale
 from .i18n import rebuild_if_stale as rebuild_translations_if_stale
 from .home import async_setup_home
 from .notify import async_setup_notify
+from .plant_ai import async_setup_plant_ai
 from .theme import async_setup_theme
+from .helpers import async_setup_helpers
+from .template_refresh import async_setup_template_refresh
 from .const import (
     ASSETS_DIR,
     ASSETS_URL_BASE,
@@ -33,6 +38,7 @@ from .const import (
     SCRIPTS_URL_BASE,
     SHARED_SCRIPTS,
     URL_BASE,
+    USER_ASSETS_DIR,
     VERSION,
 )
 
@@ -182,9 +188,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.debug("Hemma: %s is already served", url)
 
     await _sync_script_resources(hass, scripts_dir)
+    # Re-stamped whenever a script changes, not only at startup: an edited script kept its old URL, and Safari served its cached copy.
+    async def _restamp(_now) -> None:
+        await _sync_script_resources(hass, scripts_dir)
+
+    entry.async_on_unload(async_track_time_interval(hass, _restamp, timedelta(seconds=20)))
     await async_setup_theme(hass)
+    await async_setup_helpers(hass, entry)
+    await async_setup_template_refresh(hass, entry)
     await async_setup_notify(hass)
     await async_setup_home(hass)
+    await async_setup_plant_ai(hass)
 
     def _stamp() -> int:
         try:
@@ -196,6 +210,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if not hass.data.get(f"{DOMAIN}_views"):
         hass.http.register_view(HemmaAssetsView(hass.config.path(ASSETS_DIR)))
+
+        async def _warm() -> None:
+            await hass.async_add_executor_job(
+                warm_soft, hass.config.path("hemma_cache"), hass.config.path(ASSETS_DIR), hass.config.path(USER_ASSETS_DIR)
+            )
+
+        hass.async_create_background_task(_warm(), "hemma_warm_soft")
         hass.http.register_view(HemmaImagesView())
         hass.http.register_view(HemmaIconsView())
         hass.http.register_view(HemmaTemplatesView())

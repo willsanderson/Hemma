@@ -50,7 +50,27 @@
     }
   }
 
+  var lastContentL = -1;
+  function findPanel() {
+    try {
+      var ham = document.querySelector('home-assistant').shadowRoot.querySelector('home-assistant-main');
+      return ham.shadowRoot.querySelector('partial-panel-resolver, ha-drawer partial-panel-resolver');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function applyContentLeft() {
+    var p = findPanel();
+    var l = p ? Math.max(0, Math.round(p.getBoundingClientRect().left)) : 0;
+    if (l === lastContentL) return;
+    lastContentL = l;
+    html.style.setProperty('--hemma-content-left', l + 'px');
+    window.dispatchEvent(new Event('hemma-content-left'));
+  }
+
   function applySidebar() {
+    applyContentLeft();
     var sb = findSidebar();
     if (!sb) return false;
 
@@ -80,6 +100,7 @@
     sidebarObserversReady = true;
 
     try { new ResizeObserver(applySidebar).observe(sb); } catch (e) {}
+    try { var pn = findPanel(); if (pn) new ResizeObserver(applyContentLeft).observe(pn); } catch (e) {}
     try {
       var mo = new MutationObserver(applySidebar);
       mo.observe(sb, { attributes: true });

@@ -183,7 +183,7 @@ hemma_now_playing_header:
       border-radius: 1px;
       transform-origin: center;
       background: color-mix(in srgb, #1c1c20 calc((1 - var(--np-head-min, 0)) * var(--hemma-np-invert, 1) * 100%),
-                            rgba(255,255,255,0.90));
+                            var(--hemma-settings-ink, rgba(255,255,255,0.90)));
       transition: width 0.34s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.34s cubic-bezier(0.32, 0.72, 0, 1);
       animation: np-wave-bounce 1.53s ease-in-out infinite;
       /* Stopped, not paused. animation-play-state froze each bar wherever its

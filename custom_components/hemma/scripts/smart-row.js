@@ -284,6 +284,11 @@ class HemmaSmartRow extends HTMLElement {
     document.body.appendChild(out);
   }
 
+  _enter() {
+    const box = this.shadowRoot && this.shadowRoot.getElementById('container');
+    if (box) box.classList.remove('entering');
+  }
+
   disconnectedCallback() {
     window._hemmaSmartRows?.delete(this);
     if (this._filterOff) { this._filterOff(); this._filterOff = null; }
@@ -317,7 +322,7 @@ class HemmaSmartRow extends HTMLElement {
     // is the shared value it always was.
     this._rawHass = hass;
     const F = window._hemmaFilter;
-    if (F && !this._filterOff) {
+    if (F && !this._filterOff && this.isConnected) {
       this._filterOff = F.onChange(() => {
         if (this._rawHass) this.hass = this._rawHass;
       });
@@ -750,6 +755,7 @@ class HemmaSmartRow extends HTMLElement {
     this._haCards     = [];
     this._hiddenState = [];
     this._reported.clear();
+    container.classList.add('entering');
     let budget = performance.now();
 
     for (let i = 0; i < this._config.cards.length; i++) {
@@ -852,6 +858,7 @@ class HemmaSmartRow extends HTMLElement {
 
       if (!!window._hemmaFromBg) {
         this._wrappers.forEach(w => w.style.removeProperty('--hemma-init-play'));
+        container.classList.remove('entering');
         this._initialized = true;
         this._updateWrapperVisibility();
         return;
@@ -859,6 +866,7 @@ class HemmaSmartRow extends HTMLElement {
 
       const release = () => {
         this._wrappers.forEach(w => w.style.removeProperty('--hemma-init-play'));
+        this._enter();
         setTimeout(() => {
           this._initialized = true;
           // The build cleared _reported, and only a hass update drives a pass:
@@ -870,10 +878,8 @@ class HemmaSmartRow extends HTMLElement {
         }, PAGE_ANIM_MS);
       };
 
-      if (window.requestIdleCallback) window.requestIdleCallback(release, { timeout: 500 });
-      else requestAnimationFrame(() => requestAnimationFrame(release));
-
-    }, 100);
+      release();
+    }, 0);
   }
 
   // ── Active detection ────────────────────────────────────────────────────────
@@ -1095,6 +1101,7 @@ class HemmaSmartRow extends HTMLElement {
         box-sizing: border-box;
       }
 
+      #container.entering > .card-wrapper { opacity: 0; }
       .card-wrapper {
         flex: 0 0 var(--hemma-entity-col-width-current, var(--hemma-entity-col-width-desktop, 300px));
         width: var(--hemma-entity-col-width-current, var(--hemma-entity-col-width-desktop, 300px));
@@ -1164,6 +1171,7 @@ class HemmaSmartRow extends HTMLElement {
         }
         #container > .card-wrapper:has([data-hemma-np-empty]) + .card-wrapper {
           margin-top: -8px;
+          --hemma-cam-head-top: 10px;
         }
         #container > .card-wrapper[data-collapsed-spacer] {
           display: none;

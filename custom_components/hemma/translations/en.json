@@ -16,7 +16,7 @@
   "issues": {
     "theme_not_loaded": {
       "title": "The Hemma theme isn't loading",
-      "description": "Hemma keeps its theme in `themes/hemma/`, but Home Assistant isn't reading that folder. Add this to `configuration.yaml` and restart Home Assistant:\n\n```yaml\nfrontend:\n  themes: !include_dir_merge_named themes\n```\n\nIf you already have a `frontend:` section, add just the `themes:` line to it."
+      "description": "Hemma adds its theme to Home Assistant by itself, but it isn't in the theme list right now. Open Hemma from the sidebar and choose Run setup again from the ⋯ menu. If the theme is still missing, reload the Hemma integration under Settings > Devices & services."
     },
     "theme_replaced": {
       "title": "The Hemma theme was updated",
@@ -25,6 +25,22 @@
     "theme_duplicate": {
       "title": "There's a second copy of the Hemma theme",
       "description": "Hemma keeps its theme in `themes/hemma/hemma.yaml` and updates it for you, but this file also defines a theme called Hemma: `{paths}`.\n\nDelete that copy, or give its theme a new name, so Hemma can keep the theme up to date."
+    },
+    "helpers_missing": {
+      "title": "Some Hemma helpers couldn't be created",
+      "description": "Hemma creates its helpers under Settings > Helpers by itself, but these couldn't be added: {helpers}. Open Hemma from the sidebar and press Repair, or choose Run setup again from the ⋯ menu. If an entity with one of these names already exists and isn't a helper, rename or remove it first."
+    }
+  },
+  "services": {
+    "light_smart_toggle": {
+      "name": "Smart light toggle",
+      "description": "Turns a light or light group off and remembers which lights were on, then turns exactly those back on.",
+      "fields": {
+        "light_entity": {
+          "name": "Light",
+          "description": "The light or light group."
+        }
+      }
     }
   }
 }

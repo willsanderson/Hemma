@@ -112,7 +112,7 @@ hemma_weather:
       - padding-block: 0.16em
       - margin-block: -0.16em
       - max-width: 100%
-      # Apple Home's weather reads at about 96% white, temperature and condition alike.
+      # Weather reads at about 96% white, temperature and condition alike.
       - opacity: 0.96
 
     icon:
@@ -126,6 +126,7 @@ hemma_weather:
       - align-self: center
 
     entity_picture:
+      - filter: var(--hv-wx-filter, none)
       - grid-area: i
       - display: block
       - width: auto
@@ -152,7 +153,10 @@ hemma_weather:
       - overflow: visible
       - text-overflow: ellipsis
       - max-width: 100%
-      - opacity: 0.96
+      - opacity: |
+          [[[
+            return window.matchMedia('(max-width: 767px), (max-height: 600px)').matches ? '0.6' : '0.96';
+          ]]]
 
   name: >
     [[[
@@ -180,7 +184,10 @@ hemma_weather:
           const date = window.hemmaDate ? window.hemmaDate(hass, variables?.date_style === 'short' ? 'short' : 'long') : '';
           return date ? `<div style="font-size:1em;font-weight:500;letter-spacing:0;line-height:1.25;opacity:0.72;">${esc(date)}</div>` : '';
         }
-        if (tempVal === null) return '';
+        const both = variables?.hero_line === 'both';
+        const bdate = both && window.hemmaDate ? window.hemmaDate(hass, variables?.date_style === 'long' ? 'long' : 'short') : '';
+        const lead = bdate ? `<span style="font-weight:500;opacity:0.72;">${esc(bdate)}</span><span style="opacity:0.5;margin:0 6px;">·</span>` : '';
+        if (tempVal === null) return bdate ? `<div style="font-size:1em;font-weight:500;line-height:1.25;opacity:0.72;">${esc(bdate)}</div>` : '';
 
         let iconHtml = '';
         const shows = variables?.conditions || '';
@@ -207,7 +214,7 @@ hemma_weather:
           };
           const file = svgMap[condRaw];
           if (file) {
-            iconHtml = `<img src="/hemma_assets/weather/${file}.svg" style="width:auto;height:calc(var(--weather-icon-size,34px) * 0.68);object-fit:contain;opacity:0.92;flex-shrink:0;" />`;
+            iconHtml = `<img src="/hemma_assets/weather/${file}-fill.svg?v=2" style="width:auto;height:calc(var(--weather-icon-size,34px) * 0.68);object-fit:contain;opacity:0.92;flex-shrink:0;filter:var(--hv-wx-filter, none);" />`;
           }
         }
 
@@ -224,7 +231,7 @@ hemma_weather:
           const ts = tempEid ? states[tempEid] : null;
           unit = String((ts && ts.attributes.unit_of_measurement) || w?.attributes?.temperature_unit || hass.config?.unit_system?.temperature || '').replace('°', '').trim();
         }
-        return `<span style="display:inline-flex;align-items:center;gap:4px;"><span style="position:relative;top:var(--weather-hero-digit-align, 3px);">${tempVal}°${unit ? '&nbsp;' + esc(unit) : ''}</span>${iconHtml}${condHtml}</span>`;
+        return `<span style="display:inline-flex;align-items:center;gap:4px;">${lead}<span style="position:relative;top:var(--weather-hero-digit-align, 3px);">${tempVal}°${unit ? '&nbsp;' + esc(unit) : ''}</span>${iconHtml}${condHtml}</span>`;
       }
 
       return (tempVal === null) ? '' : `${tempVal}°`;
@@ -290,7 +297,7 @@ hemma_weather:
       const file = svgMap[condRaw];
       if (!file) return null;
 
-      return `/hemma_assets/weather/${file}.svg`;
+      return `/hemma_assets/weather/${file}-fill.svg?v=2`;
     ]]]
 
   label: >

@@ -1,186 +1,139 @@
-<img width="1729" height="1383" alt="hemma" src="https://github.com/user-attachments/assets/34ea8a3f-2f33-4337-9ca9-742e1f51f664" />
+<img width="1729" height="1383" alt="Hemma on a desktop display: a room photo, the greeting, badges and tiles" src="https://github.com/user-attachments/assets/34ea8a3f-2f33-4337-9ca9-742e1f51f664" />
 
+<div align="center">
+
+[Install](#install) · [Set up](#set-up) · [Using it](#using-it) · [Hemma Studio](#hemma-studio) · [Changelog](CHANGELOG.md)
+
+</div>
 
 ## Hemma
 
-A modern, mobile-friendly dashboard for Home Assistant, built and configured from a UI.
+A modern dashboard for Home Assistant that **you build without YAML**. Hemma installs as an integration, adds **Hemma Studio** to your sidebar, and sets up a dashboard for desktop, tablet and phone from your rooms and devices. You shape the rest in Studio with a live preview.
 
-Hemma installs as an integration and is added to your sidebar. There is no dashboard YAML to write and no card configuration to paste. You pick your rooms and entities, press Save, and Hemma writes the dashboard. 
+Two styles: **Glass**, frosted tiles over your own room photos, and **Minimal**, a clean, flat look in a color you choose, with a deeper shade at night and an option to follow whatever is playing.
 
-One setup gives you desktop, tablet and phone: Focus or Overview on desktop and tablet, and a phone layout inspired by Apple Home. Phones are routed to the phone one automatically.
+## Install
 
-Inspired by the [Homio](https://github.com/iamtherufus/Homio) dashboard by @iamtherufus, rebuilt and extended.
+You need **Home Assistant 2026.9** or newer and [HACS](https://hacs.xyz).
 
-[Requirements](#requirements) · [Installation](#installation) · [Screenshots](#screenshots) · [Upgrading](#upgrading-from-hemma-20) · [Features](#features)
+1. In HACS, add `https://github.com/willsanderson/Hemma` as a custom repository (type **Integration**) and download **Hemma**.
+2. Download **[uix](https://github.com/Lint-Free-Technology/uix)** and **[button-card](https://github.com/custom-cards/button-card)** (7.0.0 or newer) as well, if you don't have them. Use uix instead of card-mod, not both.
+3. Restart Home Assistant.
 
----
+## Set up
 
-## Requirements
+1. **Add the integration.** Settings > Devices & services > **Add integration** > **Hemma**.
+2. **Open Hemma Studio** in the sidebar. It checks that uix and button-card are ready and links you to anything missing.
+3. **Follow the setup assistant.** Pick a layout and style, then your rooms. Your Home Assistant areas are the starting point, and their devices are placed in each room for you. A preview shows every tile before anything is created.
 
-- Home Assistant **2026.9.0** or newer, with Lovelace in **storage** mode (the default)
-- [HACS](https://hacs.xyz)
-- **Themes enabled.** Hemma ships a theme, and Home Assistant only loads themes when `configuration.yaml` says so. If you have never installed a theme, add this and restart:
+That's it. Hemma creates its own helpers, registers its dashboard resources and selects its theme for you (unless you already use a theme of your own). Nothing is written to `configuration.yaml`, and if something ever goes missing, Studio offers to repair it.
 
-  ```yaml
-  frontend:
-    themes: !include_dir_merge_named themes
-  ```
+For the clock on your room cards, add the **Date & time** integration and enable its Time sensor. Without it, the clock simply isn't shown.
 
-- A time sensor, if you want the clock on your room cards. Settings > Devices & Services > **Add Integration > Date & time**, and enable the "Time" sensor. Without one the clock is simply not shown.
-- **Packages enabled.** Hemma's badges and overlays are driven by helper entities that ship in `packages/hemma_helpers.yaml`. Home Assistant only loads that folder when `configuration.yaml` says so:
+## Using it
 
-  ```yaml
-  homeassistant:
-    packages: !include_dir_named packages
-  ```
+| You do | Hemma does |
+|:--|:--|
+| Tap a tile | Opens its popup: a dial for lights, climate and covers, a remote for TVs, a live view for cameras |
+| Tap a badge | Opens a page with that category's tiles from every room |
+| Open the sidebar or navbar | Moves between rooms, categories and Home |
+| Open the bell | Shows what needs attention: arrivals, doorbells, locks, low batteries and updates |
+| Leave a wall tablet alone | Shows a screensaver in your dashboard's colors |
 
-Hemma checks for the cards below on first open, including that button-card is new enough, and links you straight to each one, so you do not need to collect them up front. The requirements above are yours to set up.
+On the phone, badges filter the page and each room opens as its own sheet.
 
-| From HACS | Why | |
-| --- | --- | --- |
-| [uix](https://github.com/Lint-Free-Technology/uix) | card styling, used throughout. Do not install card-mod alongside it. | **required** |
-| [button-card](https://github.com/custom-cards/button-card) | every Hemma tile is one. Version 7.0.0 or newer. | **required** |
+## Hemma Studio
 
+Rooms, tiles, badges, scenes, cameras, weather and screensavers, all set up in one place with a live preview for desktop, tablet and phone in light and dark.
 
-## Installation
+<img width="1582" height="833" alt="Hemma Studio with the live preview" src="https://github.com/user-attachments/assets/26743e60-1967-4d64-a395-71186ee86f16" />
 
-### 1. Install Hemma from HACS
+- **Two layouts for big screens.** Focus, a room photo with a row of tiles, or Overview, a Home screen of scenes, favorites and every room.
+- **Separate phone choices.** The phone can use its own backdrop and text color.
+- **Nothing changes until you press Save,** and updates to Hemma reach your dashboards on their own.
+- **Export and import.** Save your dashboard to a file and bring it back later, on the same Home Assistant or another one.
 
-HACS > **Integrations** > menu > **Custom repositories**, add `https://github.com/willsanderson/Hemma` as an **Integration**, then find Hemma in the list and **Download**.
+<details>
+<summary>More pictures</summary>
+<br/>
 
-While you are there, install **uix** and **button-card**.
+**Focus**
+<img width="1604" height="903" alt="Focus layout on a desktop" src="https://github.com/user-attachments/assets/5fae3633-edef-431b-8201-8c7856e8af17" />
 
-### 2. Copy the helpers
+**Overview**
+<img width="1605" height="907" alt="Overview layout on a desktop" src="https://github.com/user-attachments/assets/f27d8a56-d0e4-410b-87c6-1191a6653afb" />
 
-From this repo, copy `packages/hemma_helpers.yaml` into `/config/packages/`.
+**Light and dark**
+<img width="1525" height="904" alt="Light" src="https://github.com/user-attachments/assets/d41c2a2d-8e54-4a8c-8a48-a0a73b423367" />
+<img width="1525" height="904" alt="Dark" src="https://github.com/user-attachments/assets/c89b35ff-8481-4c12-9b72-aa82b78a44bd" />
 
-Without it, the phone's badges and filter pills do nothing. Hemma keeps the room list in it up to date for you once your dashboard is saved, and you never edit that file by hand.
+**Phone**
+<img width="850" height="600" alt="Phone layout" src="https://github.com/user-attachments/assets/beb8537b-89f5-4f1b-ac7b-85af30117b68" />
 
-### 3. Restart Home Assistant
+</details>
 
-### 4. Add the integration
+<details>
+<summary>Everything Hemma does</summary>
+<br/>
 
-Settings > Devices & Services > **Add Integration** > **Hemma**.
+- **Badges** for climate, lights, people, media, security and energy, plus **status badges** for any device, like a washer with 12 min left.
+- **Popups for every tile:** lights, climate, fans and air purifiers, humidifiers, locks, covers, vacuums, media with a TV remote, cameras, energy, network, plants, batteries, updates and Plex.
+- **Now Playing** with artwork and controls, and a full-screen player. Understands media players, Plex and Tautulli, Discord, Steam and PlayStation.
+- **Cameras** on Home, in rooms and on the Security page, with a timeline of today's motion and doorbell events.
+- **Energy** with today's total, usage by device, and Day, Week and Month.
+- **A plant assistant** that checks a plant's last week of readings against its needs and tells you what to do, using Home Assistant's AI Task when you have one set up.
+- **Screensavers** for wall tablets: Today (date, clock, weather and calendar), Clock, and Recently Added from Plex.
+- **Your choice of what a tap does** on each tile: Normal, Ask First, or View Only for a tablet you hand to a guest.
+- **Your language.** Hemma follows your Home Assistant language and number formats.
 
-Hemma registers its own dashboard resources at this point. You do not need to add anything under Settings > Dashboards > Resources.
+</details>
 
-Hemma's icons, fonts and room images come with the integration, and Hemma installs its theme in `/config/themes/hemma/` for you. It replaces that theme on every update, so don't edit it: to make your own version, copy the file and give the theme a new name.
+<details>
+<summary>Upgrading from 2.3</summary>
+<br/>
 
-### 5. Select the theme
+Update Hemma in HACS and restart Home Assistant. Your dashboards pick up the new templates automatically, so there is nothing to save.
 
-Click your user name at the bottom of the sidebar and set **Theme** to **Hemma**.
+Hemma 2.4 creates its helpers itself. If you copied `packages/hemma_helpers.yaml` for 2.3, Hemma takes those helpers over and you can remove the file and the `packages:` line whenever you like. The `frontend: themes:` line is no longer needed either.
 
-If Hemma is not in the list, the `frontend: themes:` line above is missing from
-`configuration.yaml`. Hemma also says so under Settings > Repairs.
+To try the new style, choose **Minimal** under Appearance > Style in Hemma Studio.
 
-### 6. Build your dashboard
+</details>
 
-Open **Hemma** in the sidebar and choose **Create dashboard**. Add a room, choose your entities, and press Save. Repeat for each room.
+<details>
+<summary>Coming from Hemma 2.0 (YAML)</summary>
+<br/>
 
-<img width="1582" height="833" alt="Studio" src="https://github.com/user-attachments/assets/26743e60-1967-4d64-a395-71186ee86f16" />
+Open Hemma Studio and choose **Import from YAML**. Hemma reads your rooms, entities and badges, shows you what it found, and creates a **new** dashboard next to your original, so you can compare the two before switching.
 
-Everything is optional. A room with nothing but a light group is a valid room, and you can come back and add badges, scenes and Now Playing whenever you like.
+</details>
 
----
+<details>
+<summary>Translating Hemma</summary>
+<br/>
 
-## Screenshots
+Hemma's text lives in one file per language in `custom_components/hemma/translations/dashboard/`. Copy `en.json` to your language code (like `de.json`) and change only the text on the right. Keep the name on the left, anything in braces like `{n}`, and any `%` signs. Lines starting with `studio.` are Hemma Studio; the rest is the dashboard. Anything you leave out shows in English.
 
-### Desktop (Focus Layout)
-<img width="1604" height="903" alt="Screenshot 2026-10-08 at 4 22 16 PM" src="https://github.com/user-attachments/assets/5fae3633-edef-431b-8201-8c7856e8af17" />
+`python3 tools/i18ncheck.py --missing de` lists what a language still needs. To share a translation, open a pull request with your file.
 
-### Desktop (Overview Layout)
-<img width="1605" height="907" alt="Screenshot 2026-10-08 at 4 23 34 PM" src="https://github.com/user-attachments/assets/f27d8a56-d0e4-410b-87c6-1191a6653afb" />
+</details>
 
-### Light and dark
-<img width="1525" height="904" alt="light" src="https://github.com/user-attachments/assets/d41c2a2d-8e54-4a8c-8a48-a0a73b423367" />
-<img width="1525" height="904" alt="dark" src="https://github.com/user-attachments/assets/c89b35ff-8481-4c12-9b72-aa82b78a44bd" />
+<details>
+<summary>Writing your own YAML</summary>
+<br/>
 
-### Mobile
-<img width="850" height="600" alt="mobile" src="https://github.com/user-attachments/assets/beb8537b-89f5-4f1b-ac7b-85af30117b68" />
+Hemma builds ordinary dashboards, so custom templates, hand-built views and per-card overrides keep working. See **[docs/ADVANCED.md](docs/ADVANCED.md)** for the folder layout, template variables and the card reference.
 
-## Upgrading from Hemma 2.0
+</details>
 
-Your existing YAML dashboard keeps working. Nothing is removed or rewritten.
+## Credits
 
-To move it into Hemma:
+- **[Homio](https://github.com/iamtherufus/Homio)** by [@iamtherufus](https://github.com/iamtherufus), the original concept and base implementation.
+- **[@SH1FT-W](https://github.com/SH1FT-W)**, for finding and fixing more of Hemma's rough edges than anyone, and for [Casora](https://github.com/SH1FT-W/casora), whose ideas several 2.4 features build on.
+- Built and maintained by [@willsanderson](https://github.com/willsanderson).
 
-1. Install the integration as above.
-2. Open Hemma and choose **Import from YAML**.
-3. Pick your existing dashboard. Hemma reads your rooms, entities and badges, and shows you what it found before it writes anything.
+[MIT](LICENSE)
 
-The import creates a **new** dashboard and leaves the original untouched, so you can compare the two and switch over when you are happy.
-
-Five things changed in 2.1 that are worth knowing:
-
-- **browser_mod is no longer required.** Every popup is now Hemma's own. You can remove it if nothing else uses it.
-- **navbar-card is no longer required**, replaced by Hemma's own `hemma-nav`.
-- **Dashboard resources moved.** Hemma's scripts now ship inside the integration, so HACS keeps them up to date with everything else, and Hemma registers them for you. Existing resource entries are repointed automatically on first setup. If you see a warning in the log about a resource Hemma no longer ships, remove that one entry by hand. Anything left behind in `/config/www/hemma/scripts/` is no longer read and can be deleted.
-- **Weather appears only where you configured it.** The weather entity used to be remembered per browser rather than per dashboard, so a second dashboard could draw the first one's forecast. If a dashboard has been showing weather you never set up there, it stops after upgrading.
-- **Motion dots are set per room now.** The pulsing dot beside a room in the navigation is configured in Appearance rather than through a helper. Pick the room's motion sensor once and it covers both the navigation and the phone. An imported dashboard starts without one, so set it on each room you want it on.
-
----
-
-## Features
-
-- **Built from a UI.** Rooms, entities, badges, tiles, scenes, weather, the clock and Now Playing are all set up in Hemma itself, with a live preview of the desktop, tablet and phone layouts as you go.
-- **Two layouts.** Focus, with a big room photo and a row of tiles, or Overview, a Home screen of your scenes, favorites and rooms. Pick one for desktop and one for tablet.
-- **Rooms** with a photo hero, live clock, weather, and per-room entity tiles
-- **Badges** for climate, lights, people, media, security and energy, each opening a page of that category's tiles
-- **Now Playing** showing every active source at once, with artwork, progress and controls. Understands media players, Plex and Tautulli, Discord, Steam and PlayStation.
-- **Scenes**, as a row, a page, and per-room sections
-- **Popups** for lights, locks, covers, climate and air quality, energy, network, plants, batteries, cameras, scenes, system updates, Plex and recently added
-- **Mobile dashboard** with filter pills, room popups, a collapsing header, and a wallpaper that samples your room photos for its gradient
-- **Sidebar** on tablet and desktop, with your rooms and a page for each category that gathers its tiles from every room, plus an Energy page with today's usage by device
-- **Notification Center** like the Mac's: arrivals, doorbells, locks, low batteries, updates and more as glass cards that stack repeats and clear on every device at once
-- **Motion** shows a pulsing dot beside a room in the navigation, and a motion icon on the phone
-- **Light and dark** throughout, with day and night room images
-- **Your language.** The dashboard and Hemma Studio follow your Home Assistant language, and numbers and money follow your Home Assistant settings
-
----
-
-## Translating Hemma
-
-Hemma follows the language set in your Home Assistant profile. Words Home Assistant already translates, like On, Off and Locked, come from Home Assistant itself. Everything else Hemma says lives in one file per language in `custom_components/hemma/translations/dashboard/`.
-
-`en.json` is the English original. Each line is a name on the left and the text on the right:
-
-```json
-"lights.all_off": "All Off",
-"lights.n_on": "{n} On",
-```
-
-To translate Hemma, copy `en.json` to a file named after your language code, like `sv.json` or `de.json`, and change only the text on the right. A few things to keep as they are:
-
-- **The name on the left.** It is how Hemma finds the line.
-- **Anything in braces,** like `{n}` or `{name}`. Hemma writes a number or a name there, so move it wherever your language needs it, but keep it: `"{n} On"` can become `"{n} tända"`.
-- **A `%` sign.** In Hemma Studio labels like `"Button % action"` it is where Hemma writes the number, so `"Åtgärd för knapp %"` works. Elsewhere it is a real percent sign. Either way, keep the same number of them.
-
-The lines starting with `studio.` are Hemma Studio, the editor. The rest are the dashboard itself, which is the part most people see, so it is a good place to start. You don't have to translate everything at once. Anything you leave out, or delete from your copy, shows in English, so a partly translated file works fine.
-
-To see what a language still needs, compare your file with `en.json`: any line in `en.json` that is not in yours is still English. If you can run Python, `python3 tools/i18ncheck.py --missing sv` prints exactly those lines, ready to translate, and `python3 tools/i18ncheck.py` shows how much of each language is done.
-
-**To share it,** open a pull request adding your file. It ships in the next release for everyone who uses that language.
-
-**To try it on your own Home Assistant first,** put the file in `custom_components/hemma/translations/dashboard/`, reload the Hemma integration (Settings > Devices & services > Hemma > Reload), and clear your browser's cache. Hemma rebuilds its translations when it loads, so there is nothing to run. If a file has a mistake in it, Hemma skips that file and says which one in the Home Assistant log. Keep a copy somewhere else: an update from HACS replaces that folder, which is another reason to send it as a pull request.
-
----
-
-## Writing your own YAML
-
-Hemma builds ordinary Lovelace dashboards, so anything it writes you can also write or extend by hand. Custom templates, hand-built views and per-card overrides all keep working.
-
-See **[docs/ADVANCED.md](docs/ADVANCED.md)** for the folder layout, template variables, and the full card reference.
-
----
-
-### :trophy: Credits
-
-- Original Homio concept and base implementation: [iamtherufus/Homio](https://github.com/iamtherufus/Homio)
-- Hemma customization and ongoing tweaks: [@willsanderson](https://github.com/willsanderson)
-- Bug hunting and feature ideas: [@SH1FT-W](https://github.com/SH1FT-W), who has
-  found and written up more of Hemma's rough edges than anyone, often with a
-  working fix attached. Hemma is noticeably better for it.
-
-#### Enjoying Hemma? Buy me a coffee :v::smiley:
+#### Enjoying Hemma?
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V31RK6FB)

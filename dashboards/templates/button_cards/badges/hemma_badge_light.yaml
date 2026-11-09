@@ -24,11 +24,9 @@ hemma_badge_light:
 
   hold_action:
     action: call-service
-    service: script.turn_on
+    service: hemma.light_smart_toggle
     service_data:
-      entity_id: script.hemma_light_smart_toggle
-      variables:
-        light_entity: '[[[ return entity?.entity_id ]]]'
+      light_entity: '[[[ return entity?.entity_id ]]]'
 
   double_tap_action:
     action: none

@@ -169,7 +169,7 @@ hemma_network:
             ].filter(v => v != null);
             const max  = vals.length > 0 ? Math.max(...vals) : 0;
             const idle = Number(variables.idle_threshold ?? 1);
-            return max >= idle
+            return 'var(--hv-icon-off, ' + (max >= idle
               ? 'var(--hemma-popup-primary-color, #00c3d0)'
-              : 'var(--hemma-icon-inactive-fallback-color, rgba(255,255,255,0.95))';
+              : 'var(--hemma-icon-inactive-fallback-color, rgba(255,255,255,0.95))') + ')';
           ]]]

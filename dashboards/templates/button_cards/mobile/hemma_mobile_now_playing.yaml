@@ -220,6 +220,30 @@ hemma_mobile_now_playing:
       const ov = shown ? 'visible' : 'hidden';
       this.setAttribute('data-hemma-np', '');
       this.toggleAttribute('data-hemma-np-empty', !shown);
+      const bindTitle = () => {
+        const t = this.shadowRoot && this.shadowRoot.getElementById('np_title');
+        if (!t) return false;
+        if (t.__npLink) return true;
+        t.__npLink = true;
+        let sx = 0, sy = 0, last = 0;
+        const go = () => {
+          if (!this._npTitleLink || Date.now() - last < 600) return;
+          last = Date.now();
+          this.dispatchEvent(new CustomEvent('ll-custom', { detail: { hemma_filter: 'media' }, bubbles: true, composed: true }));
+        };
+        t.addEventListener('touchstart', (ev) => {
+          const p = ev.touches && ev.touches[0];
+          if (p) { sx = p.clientX; sy = p.clientY; }
+        }, { passive: true });
+        t.addEventListener('touchend', (ev) => {
+          const p = ev.changedTouches && ev.changedTouches[0];
+          if (p && (Math.abs(p.clientX - sx) > 10 || Math.abs(p.clientY - sy) > 10)) return;
+          go();
+        });
+        t.addEventListener('click', go);
+        return true;
+      };
+      if (!bindTitle()) requestAnimationFrame(() => requestAnimationFrame(bindTitle));
 
       return staticCSS + npCSS +
         // An even ease in and out for the row, since the page below moves with it; --np-reveal fades the tiles with their glass intact, where opacity here would drop their blur.
@@ -256,9 +280,9 @@ hemma_mobile_now_playing:
               return plan.some(Boolean) ? 'block' : 'none';
             ]]]
         - opacity: 'var(--np-reveal, 1)'
-        - font-size: 18px
+        - font-size: "var(--hv-m-h2, 18px)"
         - font-weight: 700
-        - color: "#ffffff"
+        - color: "var(--hv-ink, #ffffff)"
         - text-align: left
         - letter-spacing: "-0.3px"
         - line-height: "1.3"
@@ -327,7 +351,15 @@ hemma_mobile_now_playing:
 
   custom_fields:
 
-    np_title: Now Playing
+    np_title: |
+      [[[
+        const filter = states["input_select.hemma_mobile_filter"]?.state ?? "all";
+        const n = (typeof window._hemmaNPView === "function") ? window._hemmaNPView(states, variables.cfg).length : 0;
+        const link = filter === "all" && n > 1;
+        this._npTitleLink = link;
+        if (!link) return "Now Playing";
+        return `<span style="display:inline-flex;align-items:center;cursor:pointer">Now Playing<svg viewBox="0 0 9 15" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--hv-caret, rgba(255,255,255,0.5));width:9.5px;height:16px;display:block;margin:1px 0 0 8px"><path d="M1.5 1.5 7.5 7.5 1.5 13.5"/></svg></span>`;
+      ]]]
 
     # ── MEDIA ROW ──────────
     media_row:
@@ -415,7 +447,6 @@ hemma_mobile_now_playing:
             if (!allGone) for (const e of (planState.exits || [])) {
               if (planPos[e.key] !== undefined) exitSlots[planPos[e.key]] = true;
             }
-            /* Declared here, above the probe that reads it - not down beside the CSS that uses it. */
             /* First occupied wrapper - the tile the Media view keeps in the row. */
             const headIdx = plan.findIndex((p) => !!p);
 
@@ -455,7 +486,11 @@ hemma_mobile_now_playing:
             const snapOn = planState.snapGen !== planGen;
             planState.snapGen = planGen;
             const slotSnapped = snapOn ? (planState.changed || {}) : {};
-            const usesPeek = !useColumn && (allGone ? plan.filter(Boolean).length : liveN) > 1;
+            const hvOne = !useColumn && filter === 'all';
+            const topKey = liveList[0] ? liveList[0].key : null;
+            const topIdx = topKey ? plan.findIndex((p) => p && p.key === topKey) : -1;
+            const oneIdx = hvOne ? (topIdx >= 0 ? topIdx : headIdx) : -1;
+            const usesPeek = !hvOne && !useColumn && (allGone ? plan.filter(Boolean).length : liveN) > 1;
             /* --hemma-measured-safe-left is measured for the LEFT only (smart-row.js), and the
                right gutter was a flat 11px — so in landscape, where the notch/inset sits on the
                right, the tile ran underneath it and got clipped. env() covers the right directly;
@@ -490,10 +525,7 @@ hemma_mobile_now_playing:
               && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 
-            /* Publish the row card for the plan's release timer, which has no element of its own
-               and must still fire with the probe silenced. Deliberately OUTSIDE the debug block —
-               it used to live inside it, which would have made exits stop clearing the moment the
-               instrumentation was turned off. */
+            /* Publish the row card for the plan's release timer, which has no element of its own. */
             if (!this.__npRoot || !this.__npRoot.getElementById
                 || !this.__npRoot.getElementById('media1')) {
               const dig0 = (root, depth) => {
@@ -513,7 +545,7 @@ hemma_mobile_now_playing:
             }
             if (this.__npRoot && this.__npRoot.host) window._hemmaNPRowCard = this.__npRoot.host;
 
-            /* Apple's rule for a partially visible card: the first tap brings it into view, you act
+            /* Rule for a partially visible card: the first tap brings it into view, you act
                on it with the second. Without this, a thumb landing on the 26px peek edge opens
                more-info for a source you can barely see.
                Capture phase on the scroller, because button-card binds its action to touchend/click
@@ -591,181 +623,6 @@ hemma_mobile_now_playing:
               scroller.addEventListener('click', intercept, true);
             }
 
-            /* ── NP PROBE - opt-in. `window._hemmaNPDebug = true` in the console re-enables it. ── */
-            if (window._hemmaNPDebug === true) try {
-              const W = window;
-              W._hemmaNPProbe = W._hemmaNPProbe || { n: 0, last: 0, uid: 0 };
-              const P = W._hemmaNPProbe;
-              P.n += 1;
-              const now = Date.now();
-              const dt = P.last ? (now - P.last) : 0;
-              P.last = now;
-
-              /* Resolve the shadow root that actually owns #media1. `this` may be the PARENT
-                 shell rather than this card (see feedback_nested_card_templates_eval_in_parent),
-                 so walk down through shadow roots and report the path we actually took. */
-              const dig = (root, depth, path) => {
-                if (!root || depth > 5) return null;
-                if (root.getElementById && root.getElementById('media1')) return { root: root, path: path };
-                const kids = root.querySelectorAll ? root.querySelectorAll('*') : [];
-                for (const k of kids) {
-                  if (k.shadowRoot) {
-                    const r = dig(k.shadowRoot, depth + 1, path + ' > ' + k.tagName.toLowerCase());
-                    if (r) return r;
-                  }
-                }
-                return null;
-              };
-              /* Cached PER ELEMENT, never on the shared window store: if this row is mounted more
-                 than once, a global cache makes one instance measure another instance's slots —
-                 which reads as the emitted value and the applied value disagreeing. */
-              if (!this.__npInst) {
-                P.insts = (P.insts || 0) + 1;
-                this.__npInst = P.insts;
-              }
-              let found = this.__npRoot && this.__npRoot.getElementById
-                && this.__npRoot.getElementById('media1')
-                ? { root: this.__npRoot, path: this.__npPath } : null;
-              if (!found) {
-                found = this.shadowRoot ? dig(this.shadowRoot, 0, 'this.shadowRoot') : null;
-                if (found) { this.__npRoot = found.root; this.__npPath = found.path; }
-              }
-
-              /* Stable per-element identity: tells us whether a wrapper or the tile inside it
-                 is REUSED across a departure, or torn down and rebuilt. */
-              const idOf = (el) => {
-                if (!el) return '-';
-                if (!el.__npUid) { el.__npUid = 'e' + (++P.uid); el.__npBorn = P.n; }
-                return el.__npUid + (el.__npBorn === P.n ? '*NEW' : '');
-              };
-
-              const rows = [];
-              for (let i = 0; i < flipIds.length; i++) {
-                const id = flipIds[i];
-                const wrap = found ? found.root.getElementById(id) : null;
-                if (!wrap) continue;
-                const inner = wrap.firstElementChild;
-                const hold = W._hemmaNPSlotState && W._hemmaNPSlotState[id]
-                  && W._hemmaNPSlotState[id]._npHoldSrc
-                  ? W._hemmaNPSlotState[id]._npHoldSrc.key : null;
-                const slot = plan[i] ? plan[i].key : null;
-                const live = slot
-                  ? (liveList.findIndex((x) => x && x.key === slot) + 1 || '-')
-                  : null;
-                const disp = wrap.style.display || getComputedStyle(wrap).display;
-                if (!slot && !hold && disp === 'none') continue;
-                rows.push('    ' + id +
-                  '  slot=' + (slot || '-') +
-                  (exitSlots[i] ? '(EXITING)' : '') +
-                  (entering[i] ? '(OPENING)' : '') +
-                  (slotSnapped[id] ? '(SNAP)' : '') +
-                  '  rank=' + (live || '-') +
-                  '  hold=' + (hold || '-') +
-                  '  wrap=' + idOf(wrap) +
-                  '  tile=' + idOf(inner) +
-                  '  disp=' + disp +
-                  '  w=' + Math.round(wrap.getBoundingClientRect().width) +
-                  '  op=' + getComputedStyle(wrap).opacity);
-              }
-
-              console.log('%c[NP#' + P.n + ']',
-                'color:#0cf;font-weight:700',
-                '+' + dt + 'ms  ' + new Date(now).toISOString().substr(11, 12) +
-                '  inst=' + this.__npInst + '/' + P.insts +
-                '  conn=' + this.isConnected +
-                '  this=' + String(this.tagName || '?').toLowerCase() +
-                '  dom=' + (found ? found.path : 'MEDIA1-NOT-FOUND') +
-                '  peek=' + usesPeek +
-                '  plan=[' + plan.map((x) => (x && x.key) || '-').join(',') + ']' +
-                '  order=[' + (planState.order || []).map((k) => k + '@' + planPos[k]).join(',') + ']' +
-                '  exits=[' + (planState.exits || []).map((e) => e.key).join(',') + ']' +
-                '  pending=[' + Object.keys(planPending).join(',') + ']' +
-                '  live=[' + liveList.map((x) => (x && x.key) || '-').join(',') + ']' +
-                '  settled=[' + curKeys.map((k) => k || '-').join(',') + ']' +
-                '  prev=[' + prevKeys.map((k) => k || '-').join(',') + ']');
-              for (const r of rows) console.log(r);
-
-              /* Everything above is read BEFORE this render's stylesheet is applied, so it shows
-                 the previous render's geometry. This pass runs after style+layout have settled and
-                 reports what the browser actually resolved — the only way to tell an emitted-value
-                 bug (peek formula written when it shouldn't be) from an applied-value bug
-                 (--np-active-w correct but the width overridden or failing to resolve). */
-              /* FILTER-SWITCH SAMPLER. A shift-left-then-jump-back is not something a width
-                 transition can produce, so sample every frame across the switch and look at what
-                 actually moves: slot geometry, the scroller's scrollLeft, and its scrollWidth.
-                 Snap containers re-snap when content width changes, which would show up as
-                 scrollLeft moving on its own. */
-              /* Triggered on the GEOMETRY change (useColumn), not the filter change - those are
-                 now different renders, and sampling the filter render would only capture the
-                 deliberate hold before anything moves. */
-              const curFilter = useColumn ? 'media' : 'all';
-              if (found && this._npPrevFilter !== undefined && this._npPrevFilter !== curFilter) {
-                const root = found.root;
-                const scroller = this.shadowRoot ? this.shadowRoot.getElementById('media_row') : null;
-                const from = this._npPrevFilter;
-                const t0 = performance.now();
-                const frames = [];
-                let n = 0;
-                const sample = () => {
-                  const parts = [];
-                  for (const id of flipIds) {
-                    const w = root.getElementById(id);
-                    if (!w) continue;
-                    const c = getComputedStyle(w);
-                    if (c.display === 'none') continue;
-                    const r = w.getBoundingClientRect();
-                    /* rect vs computed distinguishes the two candidates: if computed width
-                       animates but the rect does not, something is clamping (min/max); if computed
-                       width jumps straight to target with a live duration, the transition never
-                       started — most likely because the previous value was `auto` for a frame,
-                       and transitions never run to or from auto. */
-                    parts.push(id +
-                      ' rect=' + r.width.toFixed(1) +
-                      ' w=' + c.width +
-                      ' min=' + c.minWidth +
-                      ' max=' + c.maxWidth +
-                      ' dur=' + c.transitionDuration.split(',')[0].trim());
-                  }
-                  frames.push('  f' + String(n).padStart(2) +
-                    ' +' + (performance.now() - t0).toFixed(0).padStart(4) + 'ms' +
-                    '  sL=' + (scroller ? scroller.scrollLeft.toFixed(1) : '?') +
-                    '  sW=' + (scroller ? scroller.scrollWidth.toFixed(0) : '?') +
-                    '  | ' + (parts.join('  ') || 'no visible slots'));
-                  if (++n < 24) requestAnimationFrame(sample);
-                  else {
-                    console.log('%c[NP filter ' + from + '->' + curFilter + ']',
-                      'color:#e91e63;font-weight:700', '\n' + frames.join('\n'));
-                  }
-                };
-                requestAnimationFrame(sample);
-              }
-              this._npPrevFilter = curFilter;
-
-              const hostEl = found ? found.root.host : null;
-              if (hostEl) {
-                const gen = P.n;
-                const inst = this.__npInst;
-                requestAnimationFrame(() => requestAnimationFrame(() => {
-                  try {
-                    const hs = getComputedStyle(hostEl);
-                    const out = ['[NP#' + gen + ' POST inst=' + inst + '] emitted=' + activeW +
-                      '  resolved --np-active-w=' + (hs.getPropertyValue('--np-active-w') || '').trim() +
-                      '  peek=' + usesPeek + '  gutters-probe=' + hs.width];
-                    for (const id of flipIds) {
-                      const w = found.root.getElementById(id);
-                      if (!w) continue;
-                      const c = getComputedStyle(w);
-                      if (c.display === 'none') continue;
-                      out.push('    ' + id + '  w=' + c.width + '  min=' + c.minWidth +
-                        '  max=' + c.maxWidth + '  dur=' + c.transitionDuration +
-                        '  op=' + c.opacity + '  tf=' + c.transform);
-                    }
-                    console.log('%c' + out.join('\n'), 'color:#f80');
-                  } catch (err) {}
-                }));
-              }
-            } catch (e) { console.warn('[NP] probe failed', e); }
-
             /* Per-slot exit. The wrapper is the only element that survives a departure (the tile
                inside it is rebuilt on nearly every render — probe: tile e2>e5>e7>e9), so all
                motion lives here.
@@ -818,6 +675,14 @@ hemma_mobile_now_playing:
                  glass would render unblurred for the whole reveal, popping in at the end — the
                  same trap as animating transform. Width 0 + overflow:hidden already clips the tile
                  completely, so the fade was only ever cosmetic. The reveal is pure width. */
+              else if (hvOne && i !== oneIdx) {
+                slotCSS += `#${id}{width:0!important;min-width:0!important;max-width:0!important;` +
+                  `margin-right:0!important;overflow:hidden;` +
+                  `border-radius:var(--np-inner-radius, 26px);` +
+                  `scroll-snap-align:none;pointer-events:none;}` +
+                  `#${id} > *{width:${fullW}!important;min-width:${fullW}!important;` +
+                  `max-width:${fullW}!important;}`;
+              }
               else if (entering[i]) {
                 slotCSS += `#${id}{width:0!important;min-width:0!important;max-width:0!important;` +
                   `margin-right:0!important;overflow:hidden;` +
@@ -870,7 +735,7 @@ hemma_mobile_now_playing:
 
               /* Was computed and thrown away. Honor it: every motion in this row is a width
                  transition, so suppressing them here removes all of it at once. */
-              if (reduceMotion) slotCSS += `#${id}{transition:none!important;}`;
+              if (reduceMotion || hvOne) slotCSS += `#${id}{transition:none!important;}`;
             }
 
             return staticCSS + `

@@ -1,0 +1,69 @@
+# Hemma's helpers, created as UI helpers on setup when they are missing.
+input_boolean:
+  hemma_dashboard_redirect:
+    name: Hemma Dashboard Redirect
+    initial: on
+
+  hemma_now_playing_minimized:
+    name: Hemma Now Playing Minimized
+    initial: off
+
+  hemma_mobile_navigation:
+    name: Mobile Navigation
+    initial: off
+
+  hemma_motion_badges:
+    name: Motion Badges
+    initial: on
+
+  hemma_restart_confirm_1:
+    name: Network Restart Confirm 1
+    initial: off
+
+  hemma_restart_confirm_2:
+    name: Network Restart Confirm 2
+    initial: off
+
+  hemma_restart_done_1:
+    name: Network Restart Done 1
+    initial: off
+
+  hemma_restart_done_2:
+    name: Network Restart Done 2
+    initial: off
+
+input_text:
+  # Which Now Playing source is pinned to the primary slot
+  hemma_now_playing_pinned:
+    name: "Hemma Now Playing - Pinned"
+    initial: ""
+    max: 32
+
+input_datetime:
+  hemma_notifications_read:
+    name: "Hemma Notifications - Last Read"
+    has_date: true
+    has_time: true
+
+# Mobile badge filters
+input_select:
+  hemma_mobile_filter:
+    name: Mobile Dashboard Filter
+    options:
+      - all
+      - climate
+      - lights
+      - presence
+      - media
+      - security
+      - energy
+      - room_scenes
+    initial: all
+
+  # Thermostat mode
+  hemma_thermostat_mode:
+    name: Thermostat Mode
+    options:
+      - cool
+      - heat
+    initial: cool

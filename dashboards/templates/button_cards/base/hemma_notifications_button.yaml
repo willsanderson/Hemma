@@ -92,7 +92,7 @@ hemma_notifications_button:
       overflow: visible !important;
       width: var(--hemma-chrome-btn-size, 34px) !important;
       height: var(--hemma-chrome-btn-size, 34px) !important;
-      color: #fff !important;
+      color: var(--hemma-chrome-ink, #fff) !important;
       pointer-events: auto !important;
     }
 
@@ -152,27 +152,27 @@ hemma_notifications_button:
       position: absolute !important;
       top: var(--hemma-bell-count-top, -3px) !important;
       right: var(--hemma-bell-count-right, -3px) !important;
-      min-width: 16px !important;
-      height: 16px !important;
-      padding: 0 4px !important;
+      min-width: var(--hemma-bell-count-size, 16px) !important;
+      height: var(--hemma-bell-count-size, 16px) !important;
+      padding: 0 var(--hemma-bell-count-pad, 4px) !important;
       box-sizing: border-box !important;
       border-radius: 999px !important;
       background-color: var(--hemma-bell-badge, #ff4245) !important;
       background-image: none !important;
-      color: #fff !important;
+      color: var(--hemma-bell-badge-ink, #fff) !important;
       /* Above the capsule's glass rim on the phone, which is a positioned
          ::after and would otherwise paint over the badge and wash it out. */
       z-index: 3 !important;
       opacity: 1 !important;
       isolation: isolate !important;
       font-family: var(--primary-font-family, system-ui) !important;
-      font-size: 10.5px !important;
+      font-size: var(--hemma-bell-count-font, 10.5px) !important;
       font-weight: 600 !important;
       line-height: 1 !important;
       letter-spacing: -0.01em !important;
       place-items: center !important;
       pointer-events: none !important;
-      /* No ring. Apple's app badges carry no stroke, and a dark one read as a
+      /* No ring. App badges carry no stroke, and a dark one read as a
          hole punched through the button rather than a badge sitting on it. */
       box-shadow: none !important;
     }

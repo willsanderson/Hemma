@@ -76,7 +76,7 @@ hemma_shared:
          into the room name as the weather scales. 48px at the 10px floor. */
       --hero-weather-hero-height: calc(var(--hemma-u-weather, 10px) * 4.8);
       --hero-header-gap-current: var(--hero-header-gap-desktop, 6px);
-      --hero-img-blur-current: var(--hero-img-blur, 4px) !important;
+      --hero-img-blur-current: var(--hemma-hv-blur, var(--hero-img-blur, 4px)) !important;
       --hero-img-scale-current: var(--hero-img-scale, 1.08);
       --hero-img-filter: blur(var(--hero-img-blur-current))
         saturate(var(--hero-img-saturate, 1.02))
@@ -136,7 +136,7 @@ hemma_shared:
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
       background-size: 180px 180px;
       mix-blend-mode: overlay;
-      opacity: var(--hemma-bg-grain, 0.16);
+      opacity: var(--hemma-bg-grain, 0.06);
     }
 
     /* Background image */
@@ -147,15 +147,17 @@ hemma_shared:
       border-radius:inherit;
       pointer-events:none;
       z-index:-10;
-      background-image:
+      background-image: var(--hemma-ov-photo,
         linear-gradient(var(--hero-tint, rgba(55,55,55,0.50)), var(--hero-tint, rgba(55,55,55,0.50))),
-        var(--hero-img);
+        var(--hero-img));
       background-position: 0 0, var(--hero-img-pos, center center), var(--hero-img-pos, center center);
       background-size: 100% 100%, cover, cover;
       background-repeat: no-repeat;
       filter: var(--hero-img-filter);
       transform: scale(var(--hero-img-scale-current, 1.08));
       transform-origin: center;
+      /* Its own layer: WebKit drops a large decoded photo under memory pressure and repaints it blank for a few frames when anything nearby redraws. */
+      will-change: transform;
       transition: filter .45s ease, transform .5s ease;
       animation: hemmaRoomParallax var(--hemma-hero-anim-dur, 0.5s)
         var(--hemma-hero-anim-delay, 0.05s) cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
@@ -167,21 +169,16 @@ hemma_shared:
     }
 
     #name{
-      animation: heroNameFade var(--hemma-hero-anim-dur, .4s) ease both;
-    }
-
-    @keyframes heroNameFade{
-      from{ opacity:0; }
-      to{   opacity:0.9; }
+      opacity: 0.9;
     }
 
     /* Mobile */
     @media (max-width: 767px), (max-height: 500px){
       :host{
-        --hero-img-blur-current: var(--hero-img-blur-mobile, 1px) !important;
+        --hero-img-blur-current: var(--hemma-hv-blur, var(--hero-img-blur-mobile, 1px)) !important;
         --hero-img-saturate: var(--hero-img-saturate-mobile, 1.02);
         --hero-img-brightness: var(--hero-img-brightness-mobile, .99);
-        --hero-img-scale-current: var(--hero-img-scale-mobile, 1.04) !important;
+        --hero-img-scale-current: var(--hemma-hv-scale-m, var(--hero-img-scale-mobile, 1.04)) !important;
         --hero-tint: var(--hero-tint-mobile, rgba(56,56,56,0.08));
         --hero-top: calc(var(--header-top-mobile, clamp(80px, 12svh, 120px)) - var(--header-top-mobile-nudge, 0px));
         --hero-temp-font-size: var(--hero-temp-font-size-mobile, 13px);

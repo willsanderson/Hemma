@@ -19,22 +19,46 @@ hemma_mobile_bg:
     # --hemma-mobile-hero-img-day/-night win, which is how this shipped.
     image: null
     image_night: null
+    hemma_style: null
+    hemma_hv_color: null
+    hemma_hv_rest: null
+    hemma_hv_text: null
+    hemma_hv_backdrop: null
+    hemma_hv_backdrop_phone: null
+    hemma_hv_text_phone: null
 
   custom_fields:
     bg_init: >
       [[[
+        const isDark = typeof hass?.themes?.darkMode === 'boolean' ? hass.themes.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const bd = variables.hemma_hv_backdrop_phone === 'photo' ? '' : (variables.hemma_hv_backdrop_phone || variables.hemma_hv_backdrop);
+        const tx = variables.hemma_hv_text_phone === 'dark' ? '' : (variables.hemma_hv_text_phone || variables.hemma_hv_text);
+        if (!window._hemmaHV) window._hemmaHVPending = [variables.hemma_style, isDark, variables.hemma_hv_color, variables.hemma_hv_rest, tx, bd];
+        if (variables.hemma_style === 'homeview' && !window._hemmaHV) { document.documentElement.classList.add('hemma-hv'); document.documentElement.classList.toggle('hv-light', !isDark); }
+        if (variables.hemma_style === 'homeview' && !window._hemmaHV && !document.getElementById('hemma-hv-cover')) {
+          let bg = ''; try { bg = localStorage.getItem('hemma_hv_bg') || ''; } catch (e) {}
+          const cov = document.createElement('style');
+          cov.id = 'hemma-hv-cover';
+          cov.textContent = 'html,body{background:' + (/^[#\w(),.%\s]+$/.test(bg) ? bg : 'var(--primary-background-color)') + ' !important}home-assistant{visibility:hidden !important}';
+          document.head.appendChild(cov);
+          setTimeout(() => cov.remove(), 6000);
+        }
+        if (window._hemmaHV) window._hemmaHV.set(variables.hemma_style, isDark, variables.hemma_hv_color, variables.hemma_hv_rest, tx, bd);
         const ID = 'hemma-mobile-hero-src';
         let el = document.getElementById(ID);
+        const hvm = variables.hemma_style === 'homeview';
         const base = variables.image;
         if (!base) {
           if (el) el.remove();
           return '';
         }
         const night = variables.image_night || (base + '-night');
-        const dir = '/hemma_assets/rooms/';
+        const dir = hvm ? '/hemma_assets/rooms-soft/' : '/hemma_assets/rooms/';
+        const v = hvm ? '--hv-m-photo' : '--hemma-mobile-hero-img';
+        const q = hvm ? '?v=3' : '';
         const css = ':root{'
-          + '--hemma-mobile-hero-img-day:url("' + dir + base + '.jpg") !important;'
-          + '--hemma-mobile-hero-img-night:url("' + dir + night + '.jpg") !important;'
+          + v + '-day:url("' + dir + base + '.jpg' + q + '") !important;'
+          + v + '-night:url("' + dir + night + '.jpg' + q + '") !important;'
           + '}';
         if (!el) {
           el = document.createElement('style');
@@ -57,30 +81,25 @@ hemma_mobile_bg:
       - "--hemma-hero-overscan": "var(--hemma-mobile-hero-overscan, calc(3 * var(--hemma-mobile-hero-blur, 2px)))"
       - background-color: "var(--hemma-mobile-hero-floor, #524f4d) !important"
       - background-image: "none !important"
+      - "--hg-m-w0": "[[[ return variables.hemma_style === 'homeview' ? 'transparent' : ((typeof hass?.themes?.darkMode === 'boolean' ? hass.themes.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'rgba(0,0,0,0.34)' : 'rgba(18,16,14,0.22)'); ]]]"
+      - "--hg-m-w1": "[[[ return variables.hemma_style === 'homeview' ? 'transparent' : ((typeof hass?.themes?.darkMode === 'boolean' ? hass.themes.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'rgba(0,0,0,0.22)' : 'rgba(18,16,14,0.10)'); ]]]"
+      - "--hg-m-w2": "[[[ return variables.hemma_style === 'homeview' ? 'transparent' : ((typeof hass?.themes?.darkMode === 'boolean' ? hass.themes.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'color-mix(in oklab, var(--hemma-mobile-hero-c-mid, #42444a) 48%, transparent)' : 'color-mix(in oklab, var(--hemma-mobile-hero-c-mid, #706a64) 34%, transparent)'); ]]]"
+      - "--hg-m-w3": "[[[ return variables.hemma_style === 'homeview' ? 'transparent' : ((typeof hass?.themes?.darkMode === 'boolean' ? hass.themes.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'color-mix(in oklab, var(--hemma-mobile-hero-c-base, #2b2c2e) 74%, transparent)' : 'color-mix(in oklab, var(--hemma-mobile-hero-c-base, #524f4d) 62%, transparent)'); ]]]"
+      - "--hg-m-bright": "[[[ return (typeof hass?.themes?.darkMode === 'boolean' ? hass.themes.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches) ? '0.9' : '0.96'; ]]]"
 
   extra_styles: |
-    /* LAYER 2 - the photo, uniformly blurred */
+    /* LAYER 2 - the photo, full screen and blurred */
     :host ha-card::after {
       content: "" !important;
-      inset:
-        calc(-1 * var(--hemma-hero-overscan))
-        calc(-1 * var(--hemma-hero-overscan))
-        var(--hemma-hero-overscan) !important;
+      inset: -40px !important;
       z-index: -10 !important;
       pointer-events: none !important;
       background-color: transparent !important;
       background-image: var(--hemma-mobile-hero-img) !important;
-      background-size:
-        auto calc(var(--hemma-mobile-hero-height, 28%) + var(--hemma-safe-top)
-                  + var(--hemma-hero-overscan)) !important;
-      background-position:
-        var(--hemma-mobile-hero-x, 50%) var(--hemma-mobile-hero-y, 0%) !important;
+      background-size: cover !important;
+      background-position: center center !important;
       background-repeat: no-repeat !important;
-      filter:
-        blur(var(--hemma-mobile-hero-blur, 2px))
-        contrast(var(--hemma-mobile-hero-photo-contrast, 0.90))
-        saturate(var(--hemma-mobile-hero-photo-saturate, 0.94))
-        brightness(var(--hemma-mobile-hero-photo-brightness, 1.05)) !important;
+      filter: blur(14px) saturate(1.05) brightness(var(--hg-m-bright, 0.96)) !important;
       transform: none !important;
       animation: none !important;
       -webkit-mask-image: none !important;
@@ -89,9 +108,6 @@ hemma_mobile_bg:
 
     /* LANDSCAPE */
     @media (orientation: landscape) and (max-height: 500px) {
-      :host ha-card::after {
-        background-size: 100% auto !important;
-      }
       :host ha-card {
         --hemma-mobile-hero-fade-start:
           var(--hemma-mobile-hero-fade-start-landscape, 76%);
@@ -114,7 +130,7 @@ hemma_mobile_bg:
       }
     }
 
-    /* LAYER 3 - wash, mesh and the color gradient */
+    /* LAYER 3 - the wash that keeps text readable */
     :host ha-card::before {
       content: "";
       position: absolute;
@@ -126,50 +142,8 @@ hemma_mobile_bg:
       mix-blend-mode: normal !important;
       opacity: 1 !important;
       border-radius: 0 !important;
-      background-image:
-        /* Wash */
-        linear-gradient(
-          to bottom,
-          var(--hemma-mobile-hero-tint-top, rgba(28,24,20,0.34)) 0%,
-          var(--hemma-mobile-hero-tint-bot, rgba(28,24,20,0.12))
-            calc(var(--hemma-mobile-hero-wash-mid, 27%) + var(--hemma-safe-top)),
-          transparent
-            calc(var(--hemma-mobile-hero-wash-end, 70%) + var(--hemma-safe-top))),
-        /* Mesh - derived from the photo by hemma-core.js */
-        radial-gradient(
-          var(--hemma-mobile-hero-mesh-a-size, 120% 46%) at
-            var(--hemma-mobile-hero-mesh-a-pos, 18% 58%),
-          var(--hemma-mobile-hero-mesh-a, transparent) 0%,
-          transparent 72%),
-        radial-gradient(
-          var(--hemma-mobile-hero-mesh-b-size, 130% 50%) at
-            var(--hemma-mobile-hero-mesh-b-pos, 88% 92%),
-          var(--hemma-mobile-hero-mesh-b, transparent) 0%,
-          transparent 70%),
-        /* The dissolve the photo hands over to. */
-        linear-gradient(
-          var(--hemma-mobile-hero-angle, 180deg),
-          transparent
-            calc(var(--hemma-mobile-hero-fade-start, 12%) + var(--hemma-safe-top)),
-          var(--hemma-mobile-hero-c-handoff, #90857b)
-            calc(var(--hemma-mobile-hero-p-handoff, 30%) + var(--hemma-safe-top)),
-          var(--hemma-mobile-hero-c-upper, #807870)
-            calc(var(--hemma-mobile-hero-p-upper, 55%) + var(--hemma-safe-top)),
-          var(--hemma-mobile-hero-c-mid, #706a64)
-            calc(var(--hemma-mobile-hero-p-mid, 67%) + var(--hemma-safe-top)),
-          var(--hemma-mobile-hero-c-lower, #615d59)
-            calc(var(--hemma-mobile-hero-p-lower, 80%) + var(--hemma-safe-top)),
-          var(--hemma-mobile-hero-c-base, #524f4d)
-            calc(var(--hemma-mobile-hero-p-base, 100%) + var(--hemma-safe-top)));
-      background-size:
-        100% 100%,
-        100% 100%,
-        100% 100%,
-        100% 100%;
-      background-position:
-        0 0,
-        0 0,
-        0 0,
-        0 0;
+      background-image: linear-gradient(to bottom, var(--hg-m-w0, transparent) 0%, var(--hg-m-w1, transparent) 28%, var(--hg-m-w2, transparent) 62%, var(--hg-m-w3, transparent) 100%);
+      background-size: 100% 100%;
+      background-position: 0 0;
       background-repeat: no-repeat;
     }

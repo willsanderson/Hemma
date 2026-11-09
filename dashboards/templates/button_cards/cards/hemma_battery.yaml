@@ -66,4 +66,4 @@ hemma_battery:
 
   styles:
     card:
-      - --hemma-icon-inactive-color: "var(--hemma-color-green, #30D158)"
+      - --hemma-icon-inactive-color: "var(--hv-icon-off, var(--hemma-color-green, #30D158))"

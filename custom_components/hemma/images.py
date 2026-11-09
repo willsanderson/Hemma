@@ -16,6 +16,8 @@ _LOGGER = logging.getLogger(__name__)
 ROOMS_DIR = "www/hemma/rooms"
 ICONS_DIR = "www/hemma/icons"
 PUBLIC_BASE = "/local/hemma/rooms"
+SHIPPED_BASE = "/hemma_assets/rooms"
+SHIPPED_ROOMS = os.path.join(os.path.dirname(__file__), "assets", "rooms")
 
 EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")
 NIGHT_SUFFIX = "-night"
@@ -27,24 +29,27 @@ def _rooms_dir(hass: HomeAssistant) -> str:
     return hass.config.path(ROOMS_DIR)
 
 
-def _scan(path: str) -> list[dict[str, Any]]:
-    if not os.path.isdir(path):
-        return []
+def _scan(path: str, shipped: str | None = None) -> list[dict[str, Any]]:
+    from .assets import _is_retired
 
     found: dict[str, dict[str, str]] = {}
-    for entry in sorted(os.listdir(path)):
-        full = os.path.join(path, entry)
-        if not os.path.isfile(full):
+    for folder, public in ((shipped, SHIPPED_BASE), (path, PUBLIC_BASE)):
+        if not folder or not os.path.isdir(folder):
             continue
-        stem, ext = os.path.splitext(entry)
-        if ext.lower() not in EXTENSIONS:
-            continue
-
-        night = stem.endswith(NIGHT_SUFFIX)
-        base = stem[: -len(NIGHT_SUFFIX)] if night else stem
-        slot = found.setdefault(base, {})
-        slot["night" if night else "day"] = f"{PUBLIC_BASE}/{entry}"
-
+        for entry in sorted(os.listdir(folder)):
+            full = os.path.join(folder, entry)
+            if not os.path.isfile(full):
+                continue
+            stem, ext = os.path.splitext(entry)
+            if ext.lower() not in EXTENSIONS:
+                continue
+            # An older install's copy of a demo photo Hemma has since replaced.
+            if folder == path and _is_retired(full):
+                continue
+            night = stem.endswith(NIGHT_SUFFIX)
+            base = stem[: -len(NIGHT_SUFFIX)] if night else stem
+            slot = found.setdefault(base, {})
+            slot["night" if night else "day"] = f"{public}/{entry}"
     return [
         {"name": name, "day": urls.get("day"), "night": urls.get("night")}
         for name, urls in sorted(found.items())
@@ -88,7 +93,7 @@ class HemmaImagesView(HomeAssistantView):
 
     async def get(self, request: web.Request) -> web.Response:
         hass: HomeAssistant = request.app["hass"]
-        images = await hass.async_add_executor_job(_scan, _rooms_dir(hass))
+        images = await hass.async_add_executor_job(_scan, _rooms_dir(hass), SHIPPED_ROOMS)
         return self.json({"images": images, "directory": ROOMS_DIR})
 
     async def post(self, request: web.Request) -> web.Response:
@@ -158,5 +163,5 @@ class HemmaImagesView(HomeAssistantView):
             return self.json_message(f"could not write file: {err}", 500)
 
         _LOGGER.debug("Hemma wrote %s (%d bytes)", target, len(payload))
-        images = await hass.async_add_executor_job(_scan, directory)
+        images = await hass.async_add_executor_job(_scan, directory, SHIPPED_ROOMS)
         return self.json({"name": name, "variant": variant, "images": images})

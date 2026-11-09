@@ -4,7 +4,7 @@ hemma_updates:
     - hemma_popup_updates
 
   variables:
-    icon: updates
+    icon: '[[[ return document.documentElement.classList.contains("hemma-hv") ? "update-fill" : "updates"; ]]]'
     show_when: active
     idle: |
       [[[

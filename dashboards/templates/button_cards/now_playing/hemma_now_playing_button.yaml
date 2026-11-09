@@ -6,7 +6,7 @@ hemma_now_playing_button:
     service: media_play_pause
     shown: false
     primary: false
-    # Ink height of the glyph. Per-shape ratios keep Apple's own relative sizing (skip glyphs are shorter than play/pause).
+    # Ink height of the glyph. Per-shape ratios keep the glyph set's own relative sizing (skip glyphs are shorter than play/pause).
     glyph_h: null
 
   show_icon: false

@@ -52,7 +52,7 @@ hemma_badge_base:
       - hemma-badge
   styles:
     card:
-      - background: var(--badge-background, rgba(10,12,14,0.65))
+      - background: var(--hemma-badge-bg, var(--badge-background, rgba(10,12,14,0.65)))
       - backdrop-filter: blur(var(--badge-blur, 14px))
       - -webkit-backdrop-filter: blur(var(--badge-blur, 14px))
       - box-shadow: none
@@ -265,8 +265,10 @@ hemma_badge_base:
 
     ha-card:not(#hemma-badge-shadow-suppress):hover {
       box-shadow: var(--hemma-badge-glass-rim, none) !important;
-      opacity: 0.99 !important;
+      opacity: var(--hemma-badge-hover-opacity, 0.99) !important;
     }
+    ha-card:not(#hemma-badge-shadow-suppress):active { opacity: var(--hemma-badge-press-opacity, 1) !important; }
+    ha-card#card, ha-card#card ha-ripple { --ha-ripple-hover-opacity: var(--hemma-badge-ripple-hover, 0.04) !important; --ha-ripple-pressed-opacity: var(--hemma-badge-ripple-press, 0.12) !important; --md-ripple-hover-opacity: var(--hemma-badge-ripple-hover, 0.04) !important; }
 
     @media (max-width: 767px), (max-height: 600px) {
       ha-card { --hemma-badge-glass-rim: none; }
@@ -329,7 +331,7 @@ hemma_badge_base:
 
     .badge-title{
       font-size: var(--badge-font-size-current, 13px);
-      /* Apple Home's semibold: 700 read as heavier than its badges. */
+      /* Semibold: 700 read as heavier than its badges. */
       font-weight: 600;
       line-height: 1.2;
       color: var(--badge-title-color, var(--secondary-text-color));

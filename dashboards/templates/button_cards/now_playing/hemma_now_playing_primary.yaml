@@ -305,6 +305,7 @@ hemma_now_playing_primary:
               // Transient null between polls - hold the last good art, but only for this track.
               u = (prev && prev.id === id) ? prev.url : null;
             }
+            if (window.hemmaArtXfade) window.hemmaArtXfade(el, u, id);
 
             return u ? `url("${u}")` : 'none';
           ]]]
@@ -511,22 +512,23 @@ hemma_now_playing_primary:
           ]]]
       # --np-reveal (0 to 1, registered by hemma-core) fades every layer of the glass in or out without touching opacity, which would drop the blur.
       - background: >
-          color-mix(in srgb,
+          var(--hv-np-bg, color-mix(in srgb,
             color-mix(in srgb,
               rgba(0,0,0,calc(var(--hemma-badge-body-tint, 0.25) + (var(--np-inner-glass, 1) * 0.05)))
                 calc(var(--np-has-art, 0) * 100%),
               var(--badge-background, rgba(10,12,14,0.65)))
               calc(var(--np-reveal, 1) * 100%),
-            transparent) !important
+            transparent)) !important
       - -webkit-backdrop-filter: >
-          var(--hemma-perf-none, blur(calc(var(--np-inner-glass, 1) * var(--np-reveal, 1) * 22px))
-          saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1))))) !important
+          var(--hv-np-backdrop, var(--hemma-perf-none, blur(calc(var(--np-inner-glass, 1) * var(--np-reveal, 1) * 22px))
+          saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1)))))) !important
       - backdrop-filter: >
-          var(--hemma-perf-none, blur(calc(var(--np-inner-glass, 1) * var(--np-reveal, 1) * 22px))
-          saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1))))) !important
+          var(--hv-np-backdrop, var(--hemma-perf-none, blur(calc(var(--np-inner-glass, 1) * var(--np-reveal, 1) * 22px))
+          saturate(calc(1 + (0.2 * var(--np-has-art, 0) * var(--np-inner-glass, 1)))))) !important
       - border-radius: var(--np-inner-radius, calc(var(--hemma-u-np, 10px) * 2.6))
       # ── ARTWORK CORNER RADIUS - tune this value ── Strictly concentric with the card (--np-inner-radius - --np-pad-v) is 10px but reads too square; 15px is deliberately rounder. Range ~10-20px.
       - --np-art-radius: calc(var(--hemma-u-np, 10px) * 1.5)
+      - --np-glyph-color: var(--hv-np-glyph, rgba(255,255,255,0.96))
       - border: none !important
       - padding: var(--np-pad-tb, var(--np-pad-v, 12px)) calc(var(--hemma-u-np, 10px) * 1.6) var(--np-pad-tb, var(--np-pad-v, 12px)) var(--np-pad-v, 12px) !important
       # Forces the artwork (not the text column) to set tile height, or a tall text column grows the card and the centered art floats off-inset.
@@ -545,7 +547,7 @@ hemma_now_playing_primary:
       # VALUE only, no !important: button-card's styles.card applies via style.setProperty(), which silently drops any value containing "!important" - real enforcement lives in extra_styles as genuine CSS (see ha-card max-width below).
       - --np-max-w: >
           [[[
-            return variables.entry_direction === 'horizontal' ? '100%' : 'calc(var(--hemma-u-np, 10px) * 40)';
+            return variables.entry_direction === 'horizontal' ? '100%' : 'var(--hv-np-max, calc(var(--hemma-u-np, 10px) * 40))';
           ]]]
       - justify-self: stretch !important
       - isolation: isolate
@@ -787,7 +789,7 @@ hemma_now_playing_primary:
       background-size: cover;
       background-position: center;
       filter: blur(52px) saturate(150%);
-      opacity: calc(var(--np-has-art, 0) * var(--np-bloom-strength, 0.30) * var(--np-reveal, 1));
+      opacity: calc(var(--np-has-art, 0) * var(--np-bloom-strength, 0.30) * var(--np-reveal, 1) * var(--hv-np-bloom, 1));
       transform: translateZ(0);
       pointer-events: none;
       transition: opacity .45s ease;
@@ -803,7 +805,7 @@ hemma_now_playing_primary:
         rgba(0,0,0,calc(var(--np-has-art, 0) * 0.42 * var(--np-scrim-mult, 1))) 0%,
         rgba(0,0,0,calc(var(--np-has-art, 0) * 0.16 * var(--np-scrim-mult, 1))) 62%,
         rgba(0,0,0,calc(var(--np-has-art, 0) * 0.30 * var(--np-scrim-mult, 1))) 100%);
-      opacity: var(--np-reveal, 1);
+      opacity: calc(var(--np-reveal, 1) * var(--hv-np-scrim, 1));
       pointer-events: none;
     }
 
@@ -833,7 +835,7 @@ hemma_now_playing_primary:
          HOST, outside the card, so the card fading out left the rim and its
          drop shadow still painting. One tile per panel never showed it; a stack
          of seven with six empty drew six empty rectangles. */
-      opacity: calc(var(--np-glass, 1) * var(--np-enter-t, 1) * var(--np-has-src, 1) * var(--np-reveal, 1));
+      opacity: calc(var(--np-glass, 1) * var(--np-enter-t, 1) * var(--np-has-src, 1) * var(--np-reveal, 1) * var(--hv-np-glass, 1));
     }
 
     /* Specular ring + inner hairline - ONE pseudo-element. These used to be two separate #container::before
@@ -872,7 +874,7 @@ hemma_now_playing_primary:
         linear-gradient(#000 0 0);
       -webkit-mask-composite: source-in, xor;
               mask-composite: intersect, exclude;
-      opacity: calc(var(--np-glass, 1) * var(--np-reveal, 1));
+      opacity: calc(var(--np-glass, 1) * var(--np-reveal, 1) * var(--hv-np-glass, 1));
       transform: translateZ(0);
       backface-visibility: hidden;
     }
@@ -918,7 +920,7 @@ hemma_now_playing_primary:
       font-weight: 600;
       letter-spacing: -0.2px;
       line-height: 1.15;
-      color: var(--primary-text-color, #fff);
+      color: var(--hv-np-ink, var(--primary-text-color, #fff));
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -932,7 +934,7 @@ hemma_now_playing_primary:
       font-weight: 400;
       letter-spacing: -0.1px;
       line-height: 1.18;
-      color: rgba(255,255,255,0.62);
+      color: var(--hv-np-sub2, var(--hemma-np-sub, rgba(255,255,255,0.62)));
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -944,7 +946,7 @@ hemma_now_playing_primary:
       margin-top: var(--np-track-gap, 12px);
       height: calc(var(--hemma-u-np, 10px) * 0.4);
       border-radius: 999px;
-      background: rgba(255,255,255,0.16);
+      background: var(--hv-np-track2, var(--hemma-np-track, rgba(255,255,255,0.16)));
       overflow: hidden;
     }
 
@@ -952,14 +954,14 @@ hemma_now_playing_primary:
       height: 100%;
       width: 100%;
       border-radius: 999px;
-      background: var(--np-accent, #67f5a0);
+      background: var(--hv-np-fill, var(--np-accent, #67f5a0));
       transform-origin: left center;
     }
 
     .np-line{
       overflow: hidden;
       min-width: 0;
-      /* Otherwise the card's font sets each line's height, opening the title to artist gap past Apple's. */
+      /* Otherwise the card's font sets each line's height, opening the title to artist gap too wide. */
       line-height: 0;
     }
 

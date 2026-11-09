@@ -32,8 +32,7 @@ hemma_popup_lock:
         doors: '[[[ return variables.door_sensors || {}; ]]]'
   icon_tap_action:
     haptic: light
-    action: |
-      [[[ return variables.show_toggle ? 'call-service' : 'more-info'; ]]]
+    action: call-service
     service: |
       [[[
         const s = (entity?.state || '').toLowerCase();

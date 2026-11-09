@@ -9,9 +9,10 @@ import os
 import re
 import time
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.storage import Store
+from homeassistant.util.yaml import load_yaml
 
 from .const import DOMAIN
 
@@ -23,6 +24,9 @@ SHIPPED = f"custom_components/{DOMAIN}/theme/shipped.json"
 TARGET = "themes/hemma/hemma.yaml"
 BACKUPS = "hemma_backups"
 STORE_KEY = f"{DOMAIN}.theme"
+# Home Assistant's own record of the default theme, and the hass.data keys it keeps it under.
+FRONTEND_STORE = "frontend_theme"
+DEFAULT_KEYS = ("frontend_default_theme", "frontend_default_dark_theme")
 
 _DECLARES = re.compile(rf"^{THEME_NAME}:\s*(#.*)?$", re.M)
 
@@ -88,7 +92,8 @@ async def async_setup_theme(hass: HomeAssistant) -> None:
         return
 
     if result.get("current") and data.get("sha") != result["sha"]:
-        await store.async_save({"sha": result["sha"]})
+        data = {**data, "sha": result["sha"]}
+        await store.async_save(data)
 
     if result.get("backup"):
         _LOGGER.warning(
@@ -121,15 +126,96 @@ async def async_setup_theme(hass: HomeAssistant) -> None:
             translation_key="theme_duplicate",
             translation_placeholders={"paths": ", ".join(others)},
         )
-        return
-    ir.async_delete_issue(hass, DOMAIN, "theme_duplicate")
-
-    loaded = hass.data.get("frontend_themes")
-    if isinstance(loaded, dict) and THEME_NAME not in loaded:
-        ir.async_create_issue(
-            hass, DOMAIN, "theme_not_loaded",
-            is_fixable=False, severity=ir.IssueSeverity.WARNING,
-            translation_key="theme_not_loaded",
-        )
     else:
-        ir.async_delete_issue(hass, DOMAIN, "theme_not_loaded")
+        ir.async_delete_issue(hass, DOMAIN, "theme_duplicate")
+
+    ir.async_delete_issue(hass, DOMAIN, "theme_not_loaded")
+    theme = await hass.async_add_executor_job(load_yaml, hass.config.path(BUNDLED))
+    hass.data[f"{DOMAIN}_theme"] = (theme or {}).get(THEME_NAME)
+    _inject(hass)
+    if not hass.data.get(f"{DOMAIN}_theme_listen"):
+        # Reloading themes rebuilds the list from configuration.yaml alone, so Hemma's goes straight back in.
+        @callback
+        def _again(_event) -> None:
+            _inject(hass)
+            hass.async_create_task(_restore_default(hass))
+
+        hass.bus.async_listen("themes_updated", _again)
+        hass.data[f"{DOMAIN}_theme_listen"] = True
+    await _restore_default(hass)
+    if not data.get("default_checked"):
+        try:
+            if await _pick_default(hass):
+                await store.async_save({**data, "default_checked": True})
+        except Exception:  # noqa: BLE001 - choosing a theme must never block setup
+            _LOGGER.exception("Hemma: could not make Hemma the default theme")
+
+
+async def _frontend_saved(hass: HomeAssistant) -> dict:
+    # The frontend's own Store also returns a save it is still holding back.
+    store = hass.data.get("frontend_themes_store")
+    if not isinstance(store, Store):
+        store = Store(hass, 1, FRONTEND_STORE)
+    try:
+        saved = await store.async_load()
+    except Exception:  # noqa: BLE001
+        return {}
+    return saved if isinstance(saved, dict) else {}
+
+
+async def _pick_default(hass: HomeAssistant) -> bool:
+    """Once: make Hemma the default theme unless another theme is already chosen. True when settled."""
+    themes = hass.data.get("frontend_themes")
+    if not isinstance(themes, dict) or THEME_NAME not in themes:
+        return False
+    saved = await _frontend_saved(hass)
+    chosen = [saved.get(k) for k in DEFAULT_KEYS if saved.get(k) not in (None, "", "default")]
+    if chosen:
+        return True
+    if not hass.services.has_service("frontend", "set_theme"):
+        return False
+    await hass.services.async_call("frontend", "set_theme", {"name": THEME_NAME}, blocking=True)
+    _LOGGER.info("Hemma: made Hemma the default theme")
+    return True
+
+
+async def _restore_default(hass: HomeAssistant) -> None:
+    """At startup HA drops a saved default theme it can't find yet, and Hemma's is only added later."""
+    themes = hass.data.get("frontend_themes")
+    if not isinstance(themes, dict) or THEME_NAME not in themes:
+        return
+    saved = await _frontend_saved(hass)
+    changed = False
+    for key in DEFAULT_KEYS:
+        if saved.get(key) == THEME_NAME and hass.data.get(key) != THEME_NAME:
+            hass.data[key] = THEME_NAME
+            changed = True
+    if changed:
+        hass.bus.async_fire("themes_updated")
+
+
+@callback
+def theme_offered(hass: HomeAssistant) -> bool:
+    themes = hass.data.get("frontend_themes")
+    return isinstance(themes, dict) and THEME_NAME in themes
+
+
+async def async_repair_theme(hass: HomeAssistant) -> bool:
+    """Put the Hemma theme back in the list and its saved default back in place."""
+    _inject(hass)
+    await _restore_default(hass)
+    return theme_offered(hass)
+
+
+@callback
+def _inject(hass: HomeAssistant) -> None:
+    """Offer the Hemma theme without a `frontend: themes:` line; a theme loaded from YAML is left as it is."""
+    themes = hass.data.get("frontend_themes")
+    theme = hass.data.get(f"{DOMAIN}_theme")
+    if not isinstance(themes, dict) or not theme:
+        return
+    cur = themes.get(THEME_NAME)
+    if cur is theme or (cur is not None and cur is not hass.data.get(f"{DOMAIN}_theme_put")):
+        return
+    themes[THEME_NAME] = hass.data[f"{DOMAIN}_theme_put"] = theme
+    hass.bus.async_fire("themes_updated")

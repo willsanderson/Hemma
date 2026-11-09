@@ -2,26 +2,126 @@
 
 ## 2.4.0
 
-- **Apple Home style popups.** Tapping a tile on desktop or tablet grows its popup out of the tile, and on phones it opens full screen and swipes down to close. Every kind of tile has its own popup built like Apple Home's: lights, climate, fans and air purifiers, humidifiers, locks, covers, vacuums, media, plants, energy, network, batteries, updates, cameras and Recently Added.
+Hemma's biggest update yet: setup without YAML, a second style, Minimal, alongside Glass, new popups for every tile, three screensavers for wall-mounted iPads, and a redrawn Energy page.
+
+**After updating, restart Home Assistant.** Your dashboards pick up the new templates on their own, so there's nothing to save. If a dashboard looks unchanged, clear your browser's cache (in the iOS app, clear the app cache).
+
+### Setup
+
+- **Set up without YAML.** Add the integration, open Hemma Studio and follow the setup assistant. Hemma creates its own helpers, registers its dashboard resources and selects its theme, unless you already use a theme of your own. Nothing is written to `configuration.yaml`.
+- **A setup assistant.** It checks that uix and button-card are ready, then asks for a layout, a style and your rooms. Your Home Assistant areas are the starting point, and each area's devices are placed in its room for you, likeliest first. A preview shows every tile before anything is created, and you can leave out any tile you don't want.
+- **Weather is found for you**, so the greeting shows the forecast without a setting.
+- **Setup picks up where you left off** after a reload, and Run setup again in Hemma Studio starts it over.
+- **Repair.** If a helper Hemma needs goes missing, Studio says so and creates it again with one tap. If Save is blocked because the dashboard holds something the editor can't keep, Repair puts back Studio's version.
+- **Updates reach your dashboards on their own.** After you update Hemma and restart, every Hemma dashboard picks up the new templates, with no need to open Studio or press Save.
+- **Coming from 2.3.** Hemma takes over the helpers from `packages/hemma_helpers.yaml`, so you can remove that file, its `packages:` line and the `frontend: themes:` line whenever you like.
+- **Export and import.** Export dashboard in Hemma Studio saves your dashboard to a file, and Import from file brings it back, on the same Home Assistant or another one. Export uses the saved version, so unsaved changes aren't included.
+
+### Minimal
+
+- **Minimal, a new style.** Choose Glass or Minimal under Appearance > Style in Hemma Studio. Minimal is a clean, flat look on a solid background in Gray, Sand, Sage, Blue or Rose, and each color has its own darker shade at night. Glass keeps your room photos. Popups, menus, notifications, the screensaver and Studio's preview all follow the style you pick.
+- **Match Now Playing.** In Minimal, turn on Match Now Playing under Background and the dashboard takes its color from whatever is playing, going back to your Background color when nothing is.
+- **Artwork Color.** With Match Now Playing on, the background blends your Background color with the artwork's, so the room keeps a hint of your color instead of jumping to the cover's.
+- **Minimal's accent is a soft ink** instead of Home Assistant's blue, so switches, sliders and selections in Home Assistant's own dialogs match the dashboard.
+- **The selected badge turns white** and its icon takes the category's color, teal for Climate, yellow for Lights, and so on.
+- **Badges line up with the sidebar.** On a Mac they're the same height as the sidebar's Home pill, and every badge icon is the same size, with nothing clipped.
+- **At night the toolbar, buttons and Now Playing sit a shade darker** than the background, recessed rather than lit, and the iPad's tab bar follows.
+- **The media popup in Minimal takes one muted color from the artwork**, so each song or show tints it a little differently.
+- **Badge text is a point smaller on Mac and iPad**, so the badges no longer outweigh the tiles.
+- **Home Assistant's own screens follow Minimal.** Its sidebar is solid in your color, its header and Settings pages use dark text in light mode, and its notices, like a new frontend version, turn light.
+- **No glass glow on taps in Minimal.** The iPad's tab bar answers by moving its selection, and the top right buttons dim for a moment; Glass keeps its glow.
+- **Opening a dashboard on a new device starts in Minimal**, without a flash of Glass first.
+- **Backdrop.** Minimal sits on your room photo with a soft blur, a gradient, or a flat color, and Light mode text chooses dark or white text by day.
+- **Separate phone choices.** Phone backdrop and Phone light mode text let the phone use its own backdrop and text color, while Mac and iPad keep theirs.
+- **At night the toolbar, tab bar and back buttons are a dark pill**, and off tiles, popups and notification cards are tuned for each text color so everything stays easy to read.
+- **Minimal fixes:** the Energy tile's icon stays neutral until it's active, popup buttons are flat in light and dark, light-mode popups use dark icons, battery percentages are easier to read, and the tab bar and buttons on iPad no longer have a hairline edge.
+
+### Dashboard
+
+- **Glass in light mode can use dark text.** Set Light mode text to Dark in Hemma Studio and Glass lays a light wash over the photo with dark text, buttons and icons by day; at night it goes back to white.
+- **Glass badges follow the text color.** With dark text they're a light pill with deeper icon colors that hold up on white; with white text, and at night, they're a translucent gray pill with softer colors.
+- **Glass photos are sharper**, blurred just enough to keep text and tiles readable, so the rooms are easier to see. At night a soft lift keeps dark photos from turning black, and the grain over the photo is lighter.
+- **Glass on phones fills the screen with the room photo.**
+- **More room on Mac and iPad.** The side margins in Focus are narrower, so the greeting, badges and tiles sit closer to the left edge and the top right buttons closer to the right.
+- **Category pages sit higher** when the sidebar is open, level with the toolbar.
+- **The top right pill's edges match the tab bar's.**
+- **The ... menu dims Now Playing** behind it, as Notifications do, so the two never stack.
+- **Pages open at their final width with icons already drawn**, instead of resizing or filling in after they appear.
+- **Badges no longer slide up and snap back** when a page's badge row rebuilds.
+
+- **Glass badges on a Mac match Minimal's height**, 44 points like the sidebar's Home pill, with their text a point larger.
+- **A new header on Mac and iPad.** The greeting sits beside a large weather reading with the condition and the day's high and low, and the badge row lines up on every page. On a Mac the date sits above the clock in the sidebar, with the greeting on the clock's line and the badges level with Home; the iPad leaves the date to its status bar.
+- **A cleaner phone header.** In Minimal the date is gone, since your phone already shows it, the weather sits beside the bell, and everything below moves up. Long names shrink to fit one line.
+- **Now Playing shows one tile on Home.** When more than one thing is playing, the Now Playing title gets an arrow that opens the Media page with everything. It works the same on every device, in both styles.
+- **The Energy page is redrawn like Screen Time:** the day's total, stacked bars by device with an average line, Day, Week and Month, and a device list with each device's share. Tap a device to see it alone, tap a bar to read its hour, and long press a device for its details.
+- **The Energy page on phones** puts the chart and its device list together in one Devices card, with a capsule Day, Week and Month control and All Devices at the right end of its row.
+- **Notifications on phones blur the whole screen behind them**, like iPhone Notification Center, and the header stays in place.
+- **Opening Notifications no longer hides the weather.**
+- **Moving between categories on Mac and iPad is instant.** Only leaving Home slides the category page up.
+- **On phones in Minimal, the badge row fades into the header** as you scroll, like everything else.
+- **Tiles no longer slide in.** The dashboard appears at once, on first load and when you come back to it.
+- **Now Playing's artwork crossfades** between tracks.
+- **The iPad's status bar battery is dark in light mode**, like the time beside it.
+- **Coming back to the Home Assistant app shows the dashboard as you left it**, with no blank screen, even when iOS has reloaded the app in the background.
+- **The phone's weather condition is a little dimmer**, so the temperature leads.
+
+### Screensavers
+
+- **Three screensavers for wall-mounted iPads**, set up in Hemma Studio's Screensaver section, and colors that match your dashboard by day and at night.
+- **Today** shows the date, a clock and the weather, plus a widget of your choice: your calendars, Home at a glance (locks, lights, inside temperature and notifications) or nothing. Whatever's playing takes the widget's place, with Play and Pause. Tap the weather for the week's forecast, or the notifications for the list; tapping a notification wakes the dashboard with it open.
+- **Up Next.** With nothing left on today's calendar, the calendar on Today shows what's coming up instead, each event with its day.
+- **Clock** fills the screen with one of two faces: Numerals, huge numbers in your Background color with the date in the corner, or Classic, with ticks out to the screen's rounded corners. Both take your Background colors, or the artwork's color while something plays, and have a smoothly sweeping second hand, a dark version at night, and a Now Playing pill that pops in while music plays.
+- **Recently Added** shows your newest Plex posters over their backdrop, the current one centered with its title, then the episode (like S01E04 · Vibes Are Rancid) or the genre and year, then its runtime and when it was added.
+- **Background** follows your dashboard's color, any of Hemma's colors, black, or the artwork of whatever's playing.
+- **The screensavers follow light and dark mode.** When the dashboard switches, the screensaver eases into its day or night colors over a couple of seconds.
+- **Slide or fade.** A new Transition setting slides each screensaver in from the right instead of fading when they take turns.
+- **The screensaver comes back after a reload**, instead of leaving the iPad on the dashboard until it times out again.
+
+### Popups
+
+- **Popups for every tile.** Tapping a tile on desktop or tablet grows its popup out of the tile, and on phones it opens full screen and swipes down to close. Every kind of tile has its own popup: lights, climate, fans and air purifiers, humidifiers, locks, covers, vacuums, media, plants, energy, network, batteries, updates, cameras and Recently Added.
 - **Lights.** A brightness capsule, your favorite colors and a color or white picker. A light group's list button opens every light in it, each with its own dimmer.
 - **Climate.** A dial for the temperature, and Mode, Preset, Fan and Swing as labeled tiles. A climate group lists its rooms, and tapping a room's circle turns it on or off as the dashboard tile does.
 - **Fans and air purifiers** have a speed control and labeled tiles for Power, Mode, Oscillation and Direction, so nothing changes on a single tap.
-- **Humidifiers** have a level control and Apple Home's state and mode menus.
+- **Humidifiers** have a level control and state and mode menus.
 - **Covers.** A group's list button opens each cover with its own position bar.
 - **Locks** list every lock in a group, and a lock reached through two integrations shows once.
-- **Vacuums** read Ready, as Apple Home does, on both the tile and the popup, and Send to Dock lines up with the corner buttons.
+- **Vacuums** read Ready on both the tile and the popup, and Send to Dock lines up with the corner buttons.
 - **Media.** Artwork fills the popup, with 10-second skips for video and volume buttons for players without a volume level. Games from Steam and PlayStation show the game's own art.
 - **Recently Added** swipes through your newest posters over a wash of their colors. Tapping a poster opens its details over the title's backdrop, and tapping it again goes back.
 - **Cameras.** A Cameras section on Home, in each room and on the Security page, and a full-screen camera view with a timeline of today's motion and doorbell events. On phones the camera shrinks back onto its tile when you close it, and the tile keeps the last frame you watched.
-- **Energy, network, battery and update popups** with Apple Home style charts. Energy costs show cents at full size, and network rows color by direction.
-- **Menus in popups match Apple Home's.** On phones and tablets a menu grows out of its selector as glass and shrinks back into it; on desktop it appears at once and fades away. Menus stay centered on their selector and never cover the popup's main control.
+- **Energy, network, battery and update popups** with clean, flat charts. Energy costs show cents at full size, and network rows color by direction.
+- **New menus in popups.** On phones and tablets a menu grows out of its selector as glass and shrinks back into it; on desktop it appears at once and fades away. Menus stay centered on their selector and never cover the popup's main control.
 - **Popup titles stay put when you scroll**, behind the same frosted veil on every popup.
 - **Glass buttons in popups light up where you touch them**, like the dashboard's.
+- **A full-screen player.** The expand button in a media popup opens the player full screen over the artwork's colors. Games show who's playing and how long the session has run, Plex shows who's watching, the device, the stream and the connection, and closing it shrinks the artwork back into its tile.
+- **The Plex popup fits without scrolling** on every device.
+- **The Updates popup on phones** matches the Mac and iPad, with Update All at the bottom.
+- **Phone popups are sized like iPhone controls**: tall rounded sliders, the title and status in the same place on every popup, and smaller phones shrink the slider so nothing overlaps.
+- **Plants.** A compact popup with the plant's readings, and an Assessment card that checks the last week of readings against the plant's needs using Home Assistant's AI Task and says what to do. Choose the AI under AI for assessments in Hemma Studio; without one, the card stays hidden.
+- **The Now Playing tile's shadow stays put** when its waveform turns on or off.
+- **The full-screen player slides up cleanly in Safari**, without a half-drawn band at the bottom.
+
+### Hemma Studio
+
+- **Hemma Studio's Appearance settings are simpler.** Background picks the color and shows its light and dark shades side by side, Match Now Playing sits right under it, and Wallpaper (your room photos) only appears when the style uses photos. Studio's preview matches the dashboard in Minimal, including the one-tile Now Playing.
+- **The screensaver's Preview button uses your settings**, so you can try each Background color from Studio.
+- **Hemma Studio:** the line above the greeting can show the date and weather together, and on phones each Background color in the dropdown shows its day and night shades.
+- **Studio's preview matches the dashboard** in both styles: the back button beside a category's title, Climate's temperature, humidity and air quality row, the selected badge's color, and badges that keep their fill on hover.
+
+### Everything else
+
+- **Hide your own arrivals and departures.** Turn off My arrivals and departures under Notifications > Advanced in Hemma Studio and each person stops seeing notifications about themselves, including from a second account under the same name; everyone else's still show.
+- **The phone follows your notification settings.** Studio's Notifications switches used to apply only on Mac and iPad; after a Save, the phone uses them too.
+- **Battery icons match iOS 27's**, and a charging device shows the green battery with its bolt instead of a dimmed row.
+- **The Media page on phones keeps Now Playing** when you switch to it from another category.
+- **The notification count stays inside the iPad's button pill**, instead of being cut off at its top edge.
+- **The Network popup's Reboot confirmation** reaches the bottom of the card on phones.
 - **The Security badge counts the devices in its "One badge each" slots**, reading "1 Unlocked", "2 Open" or "3 Alerts". Hemma Studio adds Door or Window and Garage or Gate to the slot menu, and its preview words each device by its kind. On phones, the home-wide Security badge also counts door and window sensors that belong to a room. Reported by [@Eunanibus](https://github.com/Eunanibus) in [#92](https://github.com/willsanderson/Hemma/issues/92).
 - **Hemma Studio checks button-card's version.** An older button-card loads but lays tiles out wrongly, so Studio now asks you to update it in HACS when it's older than 7.0.0. Reported by [@awildeone](https://github.com/awildeone) in [#93](https://github.com/willsanderson/Hemma/issues/93).
 - **Status badges.** Show any device's state as a badge, like a robot vacuum that's Cleaning or a washer with 12 min left, on Home and on the rooms you choose. Each state gets its own color, icon and optional text, or hides the badge, and the wording comes from Home Assistant so it's already in your language. Set them up under Badges > Status in Hemma Studio. They're stored by the integration, so once your dashboard has been saved in Hemma after updating, a badge you add shows on every dashboard and device right away. Suggested by [@krazylenni](https://github.com/krazylenni) in [#88](https://github.com/willsanderson/Hemma/discussions/88).
 - **Material Design Icons for Status badges.** When Hemma's icons don't have what you need, search the full Material Design set that Home Assistant already includes. They take the badge's color and size like Hemma's own icons.
-- **Choose what a tap does on each tile.** A new Tap setting in each tile's settings in Hemma Studio: Normal, Ask First, which asks before a tap turns something on or off, locks or unlocks, or changes the temperature, or View Only, which shows the tile's state and ignores taps and holds. On desktop and tablet, Ask First's question grows out of the tile you tapped, like Apple Home's panels. Once you press Save it applies on every dashboard and device, so a phone or tablet you hand to someone else can't change things by accident. Suggested by [@aussielabber](https://github.com/aussielabber) in [#84](https://github.com/willsanderson/Hemma/issues/84).
+- **Choose what a tap does on each tile.** A new Tap setting in each tile's settings in Hemma Studio: Normal, Ask First, which asks before a tap turns something on or off, locks or unlocks, or changes the temperature, or View Only, which shows the tile's state and ignores taps and holds. On desktop and tablet, Ask First's question grows out of the tile you tapped. Once you press Save it applies on every dashboard and device, so a phone or tablet you hand to someone else can't change things by accident. Suggested by [@aussielabber](https://github.com/aussielabber) in [#84](https://github.com/willsanderson/Hemma/issues/84).
 - **Your own icons work as room icons.** Icons you add to `/config/www/hemma/icons/` now show in the dashboard's sidebar and in Hemma Studio, and Studio's room icon menu lists them under Your Icons. You can remove any workaround script you added for this. Reported by [@Eunanibus](https://github.com/Eunanibus) in [#91](https://github.com/willsanderson/Hemma/issues/91).
 - **New icons:** washer, dryer, dishwasher, garage open and closed, status, and dining, which a room named Dining Room picks automatically.
 - **The Security badge watches your locks** when you haven't chosen any, and a lock added through two integrations counts once.
@@ -35,6 +135,15 @@
 - **Hemma Studio opens your Hemma dashboard in a new browser.** With nothing remembered, it picked the first dashboard in the list, such as Map, and said "This dashboard has no pages", and Save there would have written over it. Studio now reads each dashboard to find the one Hemma made, whatever it's called, and shows the welcome screen when there isn't one. Reported by [@Eunanibus](https://github.com/Eunanibus) in [#90](https://github.com/willsanderson/Hemma/issues/90).
 - **Saving no longer silently overwrites changes made elsewhere.** If the dashboard was saved from another tab, another browser or Home Assistant's own editor after you opened it in Studio, Save now asks first: Replace those changes with yours, Reload to pick them up, or Cancel. Suggested by [@Eunanibus](https://github.com/Eunanibus) in [#89](https://github.com/willsanderson/Hemma/issues/89).
 - **Studio remembers your dashboard across browsers.** The last dashboard you edited is kept with your Home Assistant user, so a new browser or device opens it too, not just the one you last used.
+- **A remote for your TV in the media popup.** Players with a remote in Home Assistant get a remote button left of the controls: a touch area to swipe and tap like the Siri Remote (press and hold included), Play/Pause, Back, Home, power and volume. On an iPad it opens full screen, and on a Mac the touch area becomes a clickpad ring you click. The room pill switches between your TVs, each with its icon. It works with Apple TV, Roku, Android TV and Google TV, Samsung, Philips and Sony Bravia.
+- **Apps and Speakers next to the media controls.** An Apple TV or TV lists its apps to open; Sonos speakers that can group show a speaker picker with a volume bar for each.
+- **Long titles scroll** in the media popup, as they do on the Now Playing tile, and the 10-second buttons show "10" when the app skips ten seconds (YouTube) and plain arrows otherwise.
+- **Menus fit the screen.** A long menu, like an Apple TV's apps, stays on screen and scrolls, and menus near the bottom of a popup open upward.
+- **A lock tile reads "Door Open"** while a door sensor set for it is open, and its popup says so too.
+- **Tapping a Status badge opens that device's popup**, sliding up, for lights, fans, purifiers, covers, locks, media, thermostats and vacuums.
+- **Vacuums use orange**.
+- **The room photo no longer loses its right side** when you come back to the Home Assistant app on an iPad.
+- **Template names from 2.3 still work.** `hemma_popup_light`, `hemma_popup_energy`, `hemma_popup_network`, `hemma_popup_recently_added` and `hemma_climate_popup` were replaced by new popups; a dashboard that lists one directly now opens the new popup.
 
 ## 2.3.4
 
@@ -66,14 +175,14 @@
 - **New on Plex shows up in Notifications.** Movies and episodes added in the last three days appear with their poster, and tapping one opens Recently Added. Several stack into one Plex group. Turn it off with Recently Added in Hemma's notification settings.
 - **Notification settings are in alphabetical order** in every language, and the Recently Added and Plants switches take Plex's orange and the plant tiles' green.
 - **Notifications close once you clear the last one**, instead of leaving "No recent notifications" over the dashboard. That line now only appears when you open Notifications with nothing new.
-- **Opening a notification clears it**, as Apple's do.
+- **Opening a notification clears it**.
 - **With nothing new, the phone's title stays put.** Only the weather steps aside for the "No recent notifications" line; the title waits until there are notifications to show.
-- **Swiping a notification reveals a glass Clear button**, styled like the notifications themselves, as Apple's is. It grows out of the card's edge as you swipe, so the two never pass through each other, and it replaces the red button, whose color bled into the card beside it.
+- **Swiping a notification reveals a glass Clear button**, styled like the notifications themselves. It grows out of the card's edge as you swipe, so the two never pass through each other, and it replaces the red button, whose color bled into the card beside it.
 - **Custom cards work in the tile row.** A card added with Custom card showed [object Object] and ignored taps; it now draws and responds like it does on any dashboard. Reported by [@aussielabber](https://github.com/aussielabber) in [#84](https://github.com/willsanderson/Hemma/issues/84).
 - **Motion and Occupancy show when they last saw someone**, like "11 hours ago", instead of Not Detected. The time comes from Home Assistant's history, so a restart doesn't reset it. On cameras it also reads the device's last-activity sensor, since Ring's motion event can stop updating.
 - **Now Playing tiles on Overview share one height.** A source without playback controls matches the tiles that have them, even when the row wraps.
 - **Now Playing slides in and out on Overview.** When something starts playing, the section opens and eases the rest of the page down, and it closes the same way when playback stops, instead of popping in and out.
-- **Now Playing's title and artist sit closer together**, spaced like Apple's lock screen player instead of drifting apart.
+- **Now Playing's title and artist sit closer together**, spaced like a lock screen player instead of drifting apart.
 - **Discord games keep their artwork.** When the Discord integration briefly drops a game's image, the tile keeps showing the last one it had instead of going blank.
 - **Now Playing is the same tile on every device.** Tablets use the desktop and phone tile instead of a smaller copy, and the space above and below the artwork now matches the space beside it.
 - **Opening Notifications no longer dims the pill above it** on tablets.
@@ -107,7 +216,7 @@ A quick update with fixes for 2.3.0, and a refreshed Notification Center on phon
 
 **After updating, restart Home Assistant, then clear your browser's cache if Hemma looks unchanged.** On the iOS app that means clearing the app cache; in a desktop browser a hard reload usually does it. The new options and template changes also need one Save in Hemma Studio.
 
-This release brings an Apple Home-inspired design to tablets and desktop: a sidebar, a page for each category, and a second layout, Overview. The tablet also picks up the phone's design, with the same badges, tiles and filter pages.
+This release brings a new design to tablets and desktop: a sidebar, a page for each category, and a second layout, Overview. The tablet also picks up the phone's design, with the same badges, tiles and filter pages.
 
 ### Two layouts
 
@@ -297,11 +406,11 @@ does it. Template fixes also need one Save in Hemma Studio, as in 2.1.1.
   you automate against it keeps working, and the other phones simply ignore it.
   Reported in [#76](https://github.com/willsanderson/Hemma/issues/76).
 
-- **The skip buttons use Apple's glyphs.** Previous and next were the triangle
-  and bar from Material. Apple Music, the iOS now playing sheet and Control
+- **The skip buttons use rounded glyphs.** Previous and next were the triangle
+  and bar from Material. Music players, the iOS now playing sheet and Control
   Center all use two rounded triangles with no bar, and Hemma's play and pause
   already came from that set, so the two of them stood out. They sit slightly
-  smaller than play and pause, as they do in Apple Music, and are nudged off
+  smaller than play and pause and are nudged off
   center because a triangle looks heavy on its flat side. The faint ring that
   sat behind them at rest has gone with it: those two buttons carried a halo
   three times stronger than play's, which on a flat card read as an outline

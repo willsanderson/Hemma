@@ -1,3 +1,7 @@
+# For the hand-written YAML setup in docs/ADVANCED.md only. The Hemma integration
+# creates these helpers itself; if you install it, you can delete this file.
+# Keep it while your own cards or automations still call script.hemma_light_smart_toggle,
+# which the integration replaces with the hemma.light_smart_toggle action.
 
 input_boolean:
   hemma_dashboard_redirect:

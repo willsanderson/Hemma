@@ -1,0 +1,7 @@
+light_smart_toggle:
+  fields:
+    light_entity:
+      required: true
+      selector:
+        entity:
+          domain: light

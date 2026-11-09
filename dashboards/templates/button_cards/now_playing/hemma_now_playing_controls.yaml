@@ -17,8 +17,8 @@ hemma_now_playing_controls:
     gap_size: null
     ring: false
     only_toggle: false
-    # ── GLYPH SIZE - tune this ── Ink height of the Apple glyphs. Defaults below are ~47% of the
-    # button box (16px in 34px desktop, 18px in 44px compact), matching Apple's transport proportions.
+    # ── GLYPH SIZE - tune this ── Ink height of the glyphs. Defaults below are ~47% of the
+    # button box (16px in 34px desktop, 18px in 44px compact), matching standard transport proportions.
     glyph_size: null
     glyph_size_primary: null
 

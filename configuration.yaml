@@ -1,9 +1,9 @@
 # Hemma - configuration.yaml reference
 # ============================================================================
-# If you installed the Hemma integration, you need only the `packages:` and
-# `frontend: themes:` lines below. Hemma builds the dashboard itself and
-# registers its own resources, so the `lovelace:` block at the end is not for
-# you: it belongs to the hand-written YAML setup in docs/ADVANCED.md.
+# If you installed the Hemma integration, you need nothing from this file: Hemma
+# adds its theme, creates its helpers, builds the dashboard and registers its
+# resources itself. It is the reference for the hand-written YAML setup in
+# docs/ADVANCED.md.
 # ============================================================================
 
 homeassistant:

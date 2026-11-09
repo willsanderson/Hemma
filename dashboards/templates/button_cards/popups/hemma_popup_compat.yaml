@@ -1,0 +1,11 @@
+# Names from Hemma 2.3 and earlier, so a dashboard that lists one directly still opens today's popup.
+hemma_climate_popup:
+  template: hemma_climate_panel
+hemma_popup_energy:
+  template: hemma_popup_energy_panel
+hemma_popup_light:
+  template: hemma_popup_light_panel
+hemma_popup_network:
+  template: hemma_popup_network_panel
+hemma_popup_recently_added:
+  template: hemma_popup_recent_panel

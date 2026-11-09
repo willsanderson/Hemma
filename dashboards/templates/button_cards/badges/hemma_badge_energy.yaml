@@ -12,7 +12,7 @@ hemma_badge_energy:
     unit: auto
     cost_entity: null
 
-  # tap_action is inherited from hemma_popup_energy.
+  # tap_action is inherited from hemma_popup_energy_panel.
   hold_action:
     action: more-info
   double_tap_action:

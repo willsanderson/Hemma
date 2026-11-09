@@ -97,37 +97,6 @@ hemma_entity:
       #battery{ opacity: 0; }
     }
 
-    /* ── Page load animation ── */
-    /* No filter here on purpose: one non-compositable property forces the whole
-       animation onto the main thread, where the cold-load template compile
-       stalls it. transform+opacity only keeps it on the compositor. */
-    @keyframes hemmaFadeIn {
-      from { opacity: 0; transform: translateY(100px) scale(0.95); }
-      to   { opacity: 1; transform: translateY(0)     scale(1);    }
-    }
-
-    @keyframes hemmaFadeInRight {
-      from { opacity: 0; transform: translateX(80px); }
-      to   { opacity: 1; transform: translateX(0);    }
-    }
-
-    /* Desktop + tablet: slide in from right */
-    ha-card {
-      animation: var(--hemma-anim-name, hemmaFadeInRight) var(--hemma-anim-duration, 0.4s) cubic-bezier(0.16, 1, 0.3, 1) both;
-      animation-delay: var(--hemma-anim-delay, var(--delay-d, 0s));
-      animation-play-state: var(--hemma-init-play, running);
-      will-change: opacity, transform;
-    }
-
-    /* Mobile portrait: slide up from bottom */
-    @media (max-width: 767px) and (orientation: portrait) {
-      ha-card {
-        animation: var(--hemma-anim-name, hemmaFadeIn) var(--hemma-anim-duration, 0.45s) cubic-bezier(0.16, 1, 0.3, 1) both;
-        animation-delay: var(--hemma-anim-delay, var(--delay, 0s));
-        animation-play-state: var(--hemma-init-play, running);
-      }
-    }
-
     /* Progress */
     #progress {
       background: none !important;
@@ -230,7 +199,7 @@ hemma_entity:
     /* 100cqi for the auto-fitting state text = the card's content box. */
     ha-card { container-type: inline-size; }
 
-    /* Apple's rhythm on wide screens: name to state is one 1.15 line, nothing added or pulled. */
+    /* Rhythm on wide screens: name to state is one 1.15 line, nothing added or pulled. */
     @media (min-width: 768px) and (min-height: 501px) {
       ha-card {
         --hemma-tile-gap-mq: 0 0;
@@ -776,7 +745,7 @@ hemma_entity:
                   fan:          'var(--hemma-color-teal, #00C3D0)',
                   humidifier:   'var(--hemma-color-teal, #00C3D0)',
                   climate:      'var(--hemma-color-teal, #00C3D0)',
-                  vacuum:       'var(--hemma-color-teal, #00C3D0)',
+                  vacuum:       'var(--hemma-badge-vacuum-color, var(--hemma-color-orange, #FF9230))',
                   cover:        'var(--hemma-color-teal, #00c3d0)',
                   media_player: 'var(--hemma-color-teal, #00c3d0)',
                   lock:         entity?.state === 'unlocking' ? 'var(--hemma-color-yellow, #FFCC00)' : 'var(--hemma-color-teal, #00c3d0)',
@@ -842,7 +811,7 @@ hemma_entity:
           [[[
             if (!window._hemmaAnimSetup) {
               window._hemmaAnimSetup = true;
-              window._hemmaFromBg = false;
+              try { const at = Number(sessionStorage.getItem('hemma_bg_at') || 0); window._hemmaFromBg = !!at && Date.now() - at < 864e5; } catch (_) { window._hemmaFromBg = false; }
               window._hemmaLastPath = window.location.pathname;
               document.addEventListener('visibilitychange', () => {
                 if (document.hidden) window._hemmaFromBg = true;
@@ -864,15 +833,17 @@ hemma_entity:
           [[[
             const icon   = variables.icon || '';
             const domain = (entity?.entity_id || '').split('.')[0];
-            if (domain === 'media_player') return 'var(--hemma-icon-inactive-fallback-color, rgba(255,255,255,0.95))';
+            if (domain === 'media_player') return 'var(--hv-icon-off, var(--hemma-icon-inactive-fallback-color, rgba(255,255,255,0.95)))';
             if (icon === 'energy' || icon === 'power') {
               const pid = variables.entity_power || entity?.entity_id;
               const w = parseFloat(states[pid]?.state);
-              if (!Number.isFinite(w)) return 'var(--hemma-badge-energy-color, #30D158)';
-              if (w >= Number(variables.extreme_threshold ?? 3000)) return 'var(--hemma-badge-energy-very-high-color, #FF4245)';
-              if (w >= Number(variables.heavy_threshold   ?? 1000)) return 'var(--hemma-badge-energy-high-color, #FF9230)';
-              if (w >= Number(variables.normal_threshold  ?? 200))  return 'var(--hemma-badge-energy-medium-color, #FFD600)';
-              return 'var(--hemma-badge-energy-low-color, #30D158)';
+              if (!Number.isFinite(w)) return 'var(--hv-icon-off, var(--hemma-badge-energy-color, #30D158))';
+              const hi = Number(variables.high_threshold ?? 500), act = w >= (this._hemmaEnergyActive === true ? Number(variables.release_threshold ?? hi * 0.8) : hi);
+              const off = (c) => act ? c : 'var(--hv-icon-off, ' + c + ')';
+              if (w >= Number(variables.extreme_threshold ?? 3000)) return off('var(--hemma-badge-energy-very-high-color, #FF4245)');
+              if (w >= Number(variables.heavy_threshold   ?? 1000)) return off('var(--hemma-badge-energy-high-color, #FF9230)');
+              if (w >= Number(variables.normal_threshold  ?? 200))  return off('var(--hemma-badge-energy-medium-color, #FFD600)');
+              return 'var(--hv-icon-off, var(--hemma-badge-energy-low-color, #30D158))';
             }
             const byIcon = {
               plant:    'var(--hemma-color-green, #30D158)',
@@ -880,16 +851,16 @@ hemma_entity:
               doorbell: 'var(--hemma-color-teal, #00c3d0)',
             };
             const byDomain = {
-              light:        'var(--hemma-color-yellow, #FFCC00)',
+              light:        'var(--hv-icon-off-light, var(--hemma-color-yellow, #FFCC00))',
               fan:          'var(--hemma-color-teal, #00C3D0)',
               humidifier:   'var(--hemma-color-teal, #00C3D0)',
               climate:      'var(--hemma-color-teal, #00C3D0)',
-              vacuum:       'var(--hemma-color-teal, #00C3D0)',
+              vacuum:       'var(--hemma-badge-vacuum-color, var(--hemma-color-orange, #FF9230))',
               cover:        'var(--hemma-color-teal, #00c3d0)',
               lock:         'var(--hemma-color-teal, #00c3d0)',
               plant:        'var(--hemma-color-green, #30D158)',
             };
-            return byIcon[icon] || byDomain[domain] || 'var(--hemma-icon-inactive-fallback-color, rgba(255,255,255,0.95))';
+            return 'var(--hv-icon-off, ' + (byIcon[icon] || byDomain[domain] || 'var(--hemma-icon-inactive-fallback-color, rgba(255,255,255,0.95))') + ')';
           ]]]
       - --hemma-icon-mask-image: |
           [[[

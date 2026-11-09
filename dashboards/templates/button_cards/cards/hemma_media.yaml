@@ -48,7 +48,7 @@ hemma_media:
         if (!pic) return '';
         return pic.startsWith('/') ? window.location.origin + pic : pic;
       ]]]
-    icon_never_masked: '[[[ return variables.icon === "ps5"; ]]]'
+    icon_never_masked: '[[[ return variables.icon === "ps5" && !document.documentElement.classList.contains("hemma-hv"); ]]]'
 
   show_last_changed: false
   show_entity_picture: true
@@ -59,6 +59,7 @@ hemma_media:
       if (variables.has_artwork && variables.art_url) return variables.art_url;
       const icon = variables?.icon;
       if (icon === 'ps5') {
+        if (document.documentElement.classList.contains('hemma-hv')) return window.hemmaIconUrl('playstation');
         if (variables.is_active) {
           return `${window.hemmaIconUrl('ps5')}#s=${encodeURIComponent(entity.last_changed || '')}`;
         }
@@ -189,14 +190,14 @@ hemma_media:
       - --hemma-icon-mask-image: |
           [[[
             const icon = variables.icon;
-            if (icon === 'ps5') return `url('${window.hemmaIconUrl(variables.is_active ? 'ps5' : 'ps5_off')}')`;
+            if (icon === 'ps5') return `url('${window.hemmaIconUrl(document.documentElement.classList.contains('hemma-hv') ? 'playstation' : variables.is_active ? 'ps5' : 'ps5_off')}')`;
             return `url('${window.hemmaIconUrl(icon || 'speaker')}')`;
           ]]]
       - --hemma-media-icon-bg: |
           [[[
             if (variables.has_artwork) return 'rgba(255,255,255,0.10)';
             if (!variables.is_active) return 'var(--hemma-icon-circle-bg, rgba(0,0,0,0.20))';
-            if (variables.icon === 'ps5') return 'rgba(10,10,10,0.85)';
+            if (variables.icon === 'ps5' && !document.documentElement.classList.contains('hemma-hv')) return 'rgba(10,10,10,0.85)';
             return 'var(--hemma-icon-color-current)';
           ]]]
       - --hemma-icon-circle-shadow: |

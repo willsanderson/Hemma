@@ -63,7 +63,9 @@ def studio_errors(en):
         if t not in studio:
             errors.append("hemma-panel.js:%d  _sx text not in en.json: %r" % (line(m.start()), t))
     a = src.index("const GROUPS = [")
-    b = src.index("const MOBILE_TILE_FIELDS")
+    b = src.find("const MOBILE_TILE_FIELDS")
+    if b < 0:
+        b = src.index("\n];", a)
     for rx in (SCHEMA_PROP, SCHEMA_ARG):
         for m in rx.finditer(src, a, b):
             if src[m.end(1):m.end(1) + 8].lstrip().startswith("+"):

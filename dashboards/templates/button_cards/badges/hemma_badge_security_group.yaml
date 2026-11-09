@@ -38,7 +38,7 @@ hemma_badge_security_group:
           [[[
             return entity?.state === 'security'
               ? 'var(--badge-active-color, rgba(255,255,255,0.85))'
-              : 'var(--badge-background, rgba(10,12,14,0.65))';
+              : 'var(--hemma-badge-bg, var(--badge-background, rgba(10,12,14,0.65)))';
           ]]]
       - display: >
           [[[
@@ -51,11 +51,11 @@ hemma_badge_security_group:
           ]]]
       - --badge-title-color: >
           [[[
-            return entity?.state === 'security' ? 'rgba(0,0,0,0.85)' : 'var(--primary-text-color)';
+            return entity?.state === 'security' ? 'rgba(0,0,0,0.85)' : 'var(--hemma-badge-title-color, var(--primary-text-color))';
           ]]]
       - --badge-sub-color: >
           [[[
-            return entity?.state === 'security' ? 'rgba(0,0,0,0.6)' : 'var(--secondary-text-color)';
+            return entity?.state === 'security' ? 'rgba(0,0,0,0.6)' : 'var(--hemma-badge-sub-color, var(--secondary-text-color))';
           ]]]
       - --hemma-badge-icon-color: var(--hemma-badge-security-color, #00c3d0)
       - --icon-primary-color: var(--hemma-badge-icon-color)

@@ -58,7 +58,7 @@ hemma_mobile_header:
   custom_fields:
     arrow: >
       [[[
-        return `<ha-icon icon="mdi:chevron-right" style="--mdc-icon-size:24px;color:rgba(255,255,255,0.42);display:flex;align-items:center;"></ha-icon>`
+        return `<svg viewBox="0 0 9 15" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--hv-caret, rgba(255,255,255,0.5));width:9.5px;height:16px;display:block;margin:1px 0 0 4px"><path d="M1.5 1.5 7.5 7.5 1.5 13.5"/></svg>`
       ]]]
     presence: >
       [[[
@@ -100,9 +100,9 @@ hemma_mobile_header:
       - height: "24px"
       - overflow: visible
     name:
-      - font-size: "18px"
+      - font-size: "var(--hv-m-h2, 18px)"
       - font-weight: "700"
-      - color: "#ffffff"
+      - color: "var(--hv-ink, #ffffff)"
       - text-align: left
       - letter-spacing: "-0.3px"
       - align-self: center

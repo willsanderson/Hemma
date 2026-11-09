@@ -16,7 +16,7 @@
   "issues": {
     "theme_not_loaded": {
       "title": "Hemma-temat laddas inte",
-      "description": "Hemma lägger sitt tema i `themes/hemma/`, men Home Assistant läser inte den mappen. Lägg till det här i `configuration.yaml` och starta om Home Assistant:\n\n```yaml\nfrontend:\n  themes: !include_dir_merge_named themes\n```\n\nOm du redan har en `frontend:`-sektion lägger du bara till raden `themes:` i den."
+      "description": "Hemma lägger själv till sitt tema i Home Assistant, men det finns inte i temalistan just nu. Öppna Hemma i sidomenyn och välj Kör installationen igen i ⋯-menyn. Saknas temat fortfarande laddar du om Hemma-integrationen under Inställningar > Enheter och tjänster."
     },
     "theme_replaced": {
       "title": "Hemma-temat har uppdaterats",
@@ -25,6 +25,22 @@
     "theme_duplicate": {
       "title": "Det finns en andra kopia av Hemma-temat",
       "description": "Hemma lägger sitt tema i `themes/hemma/hemma.yaml` och uppdaterar det åt dig, men den här filen definierar också ett tema som heter Hemma: `{paths}`.\n\nTa bort den kopian, eller ge dess tema ett nytt namn, så att Hemma kan hålla temat uppdaterat."
+    },
+    "helpers_missing": {
+      "title": "Några Hemma-hjälpare kunde inte skapas",
+      "description": "Hemma skapar sina hjälpare under Inställningar > Hjälpare själv, men dessa kunde inte läggas till: {helpers}. Öppna Hemma i sidomenyn och tryck på Reparera, eller välj Kör installationen igen i ⋯-menyn. Finns det redan en entitet med något av dessa namn som inte är en hjälpare byter du namn på den eller tar bort den först."
+    }
+  },
+  "services": {
+    "light_smart_toggle": {
+      "name": "Smart ljusväxling",
+      "description": "Släcker en lampa eller lampgrupp och minns vilka lampor som var tända, och tänder sedan exakt dem igen.",
+      "fields": {
+        "light_entity": {
+          "name": "Lampa",
+          "description": "Lampan eller lampgruppen."
+        }
+      }
     }
   }
 }

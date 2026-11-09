@@ -67,7 +67,7 @@ hemma_assist_button:
       position: relative !important;
       width: var(--hemma-chrome-btn-size, 34px) !important;
       height: var(--hemma-chrome-btn-size, 34px) !important;
-      color: #fff !important;
+      color: var(--hemma-chrome-ink, #fff) !important;
       pointer-events: auto !important;
     }
     :host ha-card{
@@ -97,6 +97,7 @@ hemma_assist_button:
       width: auto !important;
       display: block !important;
       pointer-events: none !important;
+      filter: var(--hemma-assist-filter, none) !important;
     }
     @media (hover: hover) and (pointer: fine){
       :host ha-card:hover{

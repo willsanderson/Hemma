@@ -42,26 +42,23 @@ Example layout:
 │           ├── hemma_mobile_layout.yaml
 │           ├── hemma_navbar_tablet.yaml
 │           └── hemma_navigation.yaml
-├── themes/
-│   └── hemma/
-│       └── hemma.yaml                  # Hemma theme
-├── packages/
-│   └── hemma_helpers.yaml              # Helpers required by the dashboards
-└── www/
-    └── hemma/
-        ├── fonts/                      # UI fonts
-        ├── icons/                      # UI icons
-        ├── rooms/                      # Room/background images (*-demo.jpg variants included)
-        ├── weather/                    # Weather icons
-        └── scripts/                    # JavaScript resources
-            ├── layout-card-modified.js # Modified Layout Card build
-            ├── layout-offsets.js       # Navbar/hero offsets track sidebar visibility
-            ├── swipe-card-patch.js     # Plex Recently Added carousel
-            ├── smart-row.js            # Smart entity row with active-card sorting
-            ├── filter-overlay.js       # Mobile filter/room popups + collapsing header
-            ├── hemma-icons.js          # Inline icon map (load first)
-            ├── hemma-core.js           # Shared card helpers + Now Playing collector + mobile wallpaper
-            └── hemma-redirect.js       # Phone ↔ mobile dashboard routing (on by default)
+├── custom_components/
+│   └── hemma/                          # The integration (installed with HACS)
+│       ├── assets/                     # Fonts, icons, room photos and weather icons, served at /hemma_assets/
+│       ├── scripts/                    # JavaScript resources, served at /hemma_scripts/ and registered for you
+│       │   ├── hemma-i18n.js           # Translations (loads first)
+│       │   ├── hemma-icons.js          # Inline icon map
+│       │   ├── hemma-core.js           # Shared card helpers + Now Playing collector + mobile wallpaper
+│       │   ├── hemma-cards.js          # Popups, the screensavers and the Energy page
+│       │   ├── layout-card-modified.js # Modified Layout Card build
+│       │   ├── layout-offsets.js       # Navbar/hero offsets track sidebar visibility
+│       │   ├── smart-row.js            # Smart entity row with active-card sorting
+│       │   ├── filter-overlay.js       # Mobile filter/room popups + collapsing header
+│       │   ├── hemma-redirect.js       # Phone ↔ mobile dashboard routing (on by default)
+│       │   └── swipe-card-patch.js     # legacy, for swipe-card; unused by Hemma since 2.4.0
+│       └── theme/                      # Hemma theme, installed in /config/themes/hemma/ for you
+└── packages/
+    └── hemma_helpers.yaml              # Optional since 2.4.0: the integration creates its helpers
 ```
 
 ## :rocket: Installation
@@ -74,34 +71,12 @@ Copy these folders/files from this repo into your HA `/config`:
 
 - `dashboards/hemma/` → `/config/dashboards/hemma/`
 - `dashboards/templates/` → `/config/dashboards/templates/` (merge if you already have templates)
-- `packages/hemma_helpers.yaml` → `/config/packages/`
 
 Hemma's icons, fonts, room images and theme come with the integration, which serves them and installs the theme in `/config/themes/hemma/` for you. Since 2.3.4 the dashboard needs the integration for these.
 
-### 3) Add Lovelace resources
+### 3) Lovelace resources
 
-> **Skip this if you have the Hemma integration installed.** It registers these
-> for you, from `/hemma_scripts/` rather than `/local/`, and adding them by hand
-> as well would load every script twice. The list below is only for running the
-> dashboard with no integration at all.
-
-In Settings → Dashboards → Resources, add:
-
-Add these two first - the others read their icons and shared entity tables from them:
-
-- `/local/hemma/scripts/hemma-icons.js` (from this repo)
-- `/local/hemma/scripts/hemma-core.js` (from this repo, **required** - shared card helpers, the Now Playing collector, and the mobile wallpaper: it samples your home photos to derive the colors the mobile background fades into)
-
-Then the rest, in any order:
-
-- `/local/hemma/scripts/layout-card-modified.js` (from this repo)
-- `/local/hemma/scripts/layout-offsets.js` (from this repo)
-- `/local/hemma/scripts/swipe-card-patch.js` (from this repo, required for Plex Recently Added popup)
-- `/local/hemma/scripts/smart-row.js` (from this repo, required for Smart Row)
-- `/local/hemma/scripts/filter-overlay.js` (from this repo, required for the mobile dashboard)
-- `/local/hemma/scripts/hemma-redirect.js` (from this repo, recommended - routes phones to the mobile dashboard and back)
-- `/hemma_assets/fonts/hanken-grotesk.css` (type: stylesheet)
-- `/hacsfiles/button-card/button-card.js` (should already be present if installed via HACS)
+The integration registers Hemma's scripts and font for you, served from `/hemma_scripts/` and `/hemma_assets/`. Don't add them by hand as well, or every script loads twice. The only resource you add yourself is button-card, which HACS registers when you download it (`/hacsfiles/button-card/button-card.js`).
 
 ### 4) Register the Hemma dashboards
 Add (or verify) in your `configuration.yaml`:
@@ -190,7 +165,7 @@ Each view typically contains:
 
 The climate group badge aggregates temperature, HVAC activity, humidity, and air quality into a single tappable badge on the hero card. Tap it to open the Climate page, which shows sub-badges for temperature range, humidity, and air quality at the top.
 
-> **Dependency:** Every badge group (climate, lights, presence, media, energy, security) opens its category page. On tablet and desktop that needs nothing extra. On the phone the page is a filter driven by `input_select.hemma_mobile_filter`, defined in `packages/hemma_helpers.yaml` - make sure you have copied that file and reloaded HA (or restarted) so the entity exists. Without it, the phone's badges do nothing.
+> **Dependency:** Every badge group (climate, lights, presence, media, energy, security) opens its category page. On tablet and desktop that needs nothing extra. On the phone the page is a filter driven by `input_select.hemma_mobile_filter`, which the integration creates on setup. If it's missing, Hemma Studio offers to repair it. Without it, the phone's badges do nothing.
 
 > **Badges are enabled by their entities.** As of 2.0 there are no `show_*` switches for the badge rows - a badge appears as soon as you give it something to show and stays hidden otherwise. The climate badge appears when **any** of `climate_entity_1`, `temp_sensor_1`, `humidity_sensor`, or `quality_sensor` is set.
 
@@ -591,12 +566,12 @@ These are listed explicitly rather than inferred from `action_N_entity`, so a ca
 
 ### :film_strip: Plex Recently Added card
 
-`hemma_plex_recently_added` is a standard entity card that shows how many items Plex added in the last 7 days. It goes active (gold icon) when the count is above zero. Tapping opens the `hemma_popup_recently_added` swipe-card carousel with poster art, title, year, and release date for each recently added movie or episode.
+`hemma_plex_recently_added` is a standard entity card that shows how many items Plex added in the last 7 days. It goes active (gold icon) when the count is above zero. Tapping opens the Recently Added popup (`hemma_popup_recent_panel`): your newest posters to swipe through over a wash of their colors, and tapping a poster opens its details.
 
 **Requires:**
 - [`plex_recently_added`](https://github.com/NemesisRE/sensor.plex_recently_added) HACS integration - provides `sensor.recently_added_movies` and `sensor.recently_added_tv`
-- [`lovelace-swipe-card`](https://github.com/bramkragten/swipe-card) HACS card - powers the popup carousel
-- `swipe-card-patch.js` registered as a resource (included in this repo) - syncs pagination bullet color to content type
+
+Since 2.4.0 the popup is Hemma's own, so `lovelace-swipe-card` and `swipe-card-patch.js` are no longer needed for it. The old template name `hemma_popup_recently_added` still works.
 
 The `sensor.plex_recently_added_count` template sensor is defined in `packages/hemma_helpers.yaml`.
 
@@ -629,7 +604,7 @@ Section headers use the `hemma_mobile_header` template, and the large dashboard 
    - type: custom:hemma-filter-overlay
      room: Guest Room
    ```
-3. Make sure the room's **slug** is an option on `input_select.hemma_mobile_filter` in `packages/hemma_helpers.yaml`. The slug is the name lowercased with all non-alphanumerics stripped, `room_` prefixed - `Guest Room` → `room_guestroom`, `Kid's Room` → `room_kidsroom`.
+3. Make sure the room's **slug** is an option on `input_select.hemma_mobile_filter` (Settings > Devices & services > Helpers > Mobile Dashboard Filter). The slug is the name lowercased with all non-alphanumerics stripped, `room_` prefixed - `Guest Room` → `room_guestroom`, `Kid's Room` → `room_kidsroom`.
 
    `room_livingroom`, `room_kitchen`, `room_bedroom`, and `room_office` ship **pre-seeded**, so those four need no edit at all. Any other room name does - without its slug in the list the section header still renders, but tapping it won't open anything. Unused pre-seeded options are harmless; leave them in place.
 

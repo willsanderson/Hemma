@@ -1,5 +1,6 @@
 
 const PANEL_VERSION = "2.4.0";
+const SETUP_KEY = "hemma_panel_setup";
 const TEMPLATES_URL = "/api/hemma/templates";
 const TEMPLATES_URL_STATIC = "/hemma_panel/hemma-templates.json";
 
@@ -88,6 +89,43 @@ function _studioDate(hass, style) {
   if (!long) out = out.replace(/,/g, "");
   return out.replace(/\s+/g, " ").trim();
 }
+// hemma-core's HomeView TINT and NIGHT, value for value.
+const HV_TINT = { gray: "#97a9ae", sand: "#c8b9a2", sage: "#a3b29a", blue: "#93a7c2", rose: "#c6a9ad", lavender: "#afa9c9", sea: "#90b7b6", clay: "#cea796", plum: "#c0a0b4", honey: "#cab992" };
+const HV_NIGHT = "#49575c";
+const HV_NIGHTS = { gray: "#49575c", sand: "#5b564e", sage: "#4c5944", blue: "#44556d", rose: "#654d51", lavender: "#56506a", sea: "#395c5b", clay: "#684e42", plum: "#664b5c", honey: "#5c543f" };
+const HV_DEEP = { gray: "#5d6a6e", sand: "#6f6656", sage: "#606b59", blue: "#59697c", rose: "#776366", lavender: "#6a657c", sea: "#506d6d", clay: "#7e6255", plum: "#78616f", honey: "#72674a" };
+const hvInkW = (V, dark) => !dark && (V || {}).hemma_hv_text === "white";
+const hvColor = (V, dark) => (V || {}).hemma_style !== "homeview" ? ""
+  : dark ? (HV_NIGHTS[V.hemma_hv_color === "album" ? V.hemma_hv_rest : V.hemma_hv_color] || HV_NIGHT)
+  : ((hvInkW(V, dark) ? HV_DEEP : HV_TINT)[V.hemma_hv_color === "album" ? V.hemma_hv_rest : V.hemma_hv_color] || (hvInkW(V, dark) ? HV_DEEP : HV_TINT).gray);
+const hvDateLine = (hass, deg, src) => {
+  const full = _studioDate(hass, "short");
+  const day = _studioDate(hass, "long").split(/[\s,]/)[0];
+  const cut = full.search(/[\s,]/);
+  const el = document.createElement("div");
+  el.className = "hv-date";
+  el.innerHTML = '<span class="hvd"><b></b> <span></span></span>';
+  el.querySelector("b").textContent = (day || (cut > 0 ? full.slice(0, cut) : full)) + ",";
+  el.querySelector(".hvd > span").textContent = cut > 0 ? full.slice(cut).replace(/^[\s,]+/, "") : "";
+  if (deg != null) {
+    const w = document.createElement("span");
+    w.className = "hvw";
+    if (src) w.appendChild(Object.assign(document.createElement("img"), { alt: "", src }));
+    w.appendChild(Object.assign(document.createElement("b"), { textContent: Math.round(deg) + "°" }));
+    el.appendChild(w);
+  }
+  return el;
+};
+const hvRing = (el) => {
+  const g = el.querySelector(".pglyph, .ppic");
+  if (!g || g.parentNode.classList.contains("pbi")) return el;
+  const r = document.createElement("span");
+  r.className = "pbi";
+  g.replaceWith(r);
+  r.appendChild(g);
+  el.classList.add("ringed");
+  return el;
+};
 let _sxTable = null;
 let _sxAll = null;
 function _sx(en, v) {
@@ -471,6 +509,7 @@ const FILTER_CATEGORIES = {
   hemma_entity_actions: "by_entity",
 };
 
+const HV_CAT = { climate: "#00C3D0", lights: "#FFCC00", presence: "#0A84FF", people: "#0A84FF", media: "#ff4d70", security: "#00C8B3", energy: "#30D158" };
 const PV_CATS = [["climate", "fan", "Climate"], ["lights", "light", "Lights"], ["presence", "person", "People"],
   ["media", "media", "Media"], ["security", "lock-fill", "Security"], ["energy", "energy", "Energy"]];
 
@@ -659,7 +698,7 @@ function mobileFromRooms(mobile, templates, rooms) {
 }
 
 // A sibling is the same stem plus -mobile, never any other mobile dashboard.
-function markPhoneManaged(cfg, showBell, showAssist) {
+function markPhoneManaged(cfg, showBell, showAssist, notify) {
   (function walk(cards) {
     (cards || []).forEach((c) => {
       if (!c || typeof c !== "object") return;
@@ -669,11 +708,21 @@ function markPhoneManaged(cfg, showBell, showAssist) {
         else delete c.variables.show_notifications;
         if (showAssist === false) c.variables.show_assist = false;
         else delete c.variables.show_assist;
+        // The phone's Notification Center reads its switches from this card, so Studio's go with it.
+        if (notify) Object.keys(notify).forEach((k) => { if (notify[k] === undefined || notify[k] === null) delete c.variables[k]; else c.variables[k] = clone(notify[k]); });
       }
       walk(c.cards);
     });
   })((cfg.views || []).reduce((a, v) => a.concat(v.cards || []), []));
   return cfg;
+}
+
+function notifyFor(pair) {
+  const rooms = (((pair || {}).desktop || {}).compact || {}).rooms || [];
+  const V = ((rooms.find((r) => r.path === "home") || rooms[0] || {}).variables) || {};
+  const out = {};
+  Object.keys(V).forEach((k) => { if (/^(notify_|notification_)/.test(k)) out[k] = V[k]; });
+  return out;
 }
 
 function bellOnFor(pair) {
@@ -860,6 +909,8 @@ function pairConflicts(pair) {
     if (!link || link.section === null || !link.overview) return;
     keys.forEach((key) => {
       const dv = (room.variables || {})[key];
+      // Before 2.4 shipped, the phone shell briefly carried the phone backdrop under this key; it is not a desktop setting.
+      if (key === "hemma_hv_backdrop" && isSet((room.variables || {}).hemma_hv_backdrop_phone)) return;
       mobileHoldersOf(pair.mobile, key, pair.templates).forEach((h) => {
         const mv = holderValue(h);
         if (!isSet(dv) && !isSet(mv)) return;
@@ -1218,6 +1269,28 @@ function extractPair(desktopCfg, mobileCfg, templates, editable) {
   return pair;
 }
 
+// A shared setting set on only one layout is a gap, not a disagreement: the other layout takes the same value, and only real differences are asked about.
+function cfgDiffPaths(stored, rebuilt, limit) {
+  const out = [];
+  const walk = (x, y, path) => {
+    if (out.length >= limit || stable(x) === stable(y)) return;
+    if (x && y && typeof x === "object" && typeof y === "object" && Array.isArray(x) === Array.isArray(y)) {
+      new Set([...Object.keys(x), ...Object.keys(y)]).forEach((k) => walk(x[k], y[k], path.concat(k)));
+      return;
+    }
+    out.push(path.join(" \u203a "));
+  };
+  ((stored || {}).views || []).forEach((v, i) => walk(v, ((rebuilt || {}).views || [])[i], [v.path || v.title || "view " + i]));
+  return out;
+}
+
+function pairFillGaps(pair) {
+  const gaps = pair.conflicts.filter((c) => c.kind !== "differs");
+  if (!gaps.length) return;
+  gaps.forEach((c) => pairWrite(pair, c.room, c.key, c.kind === "onlyMobile" ? c.mobile : c.desktop));
+  pair.conflicts = pairConflicts(pair);
+}
+
 function expandPair(pair, parts) {
   const p = parts || {};
   return {
@@ -1232,6 +1305,8 @@ const E = (key, label, domains) => ({ key, label, domains });
 const T = (key, label) => ({ key, label, type: "text" });
 const LIST = (key, label, domains) => ({ key, label, type: "list", domains });
 const MAP = (key, label, over, domains) => ({ key, label, type: "map", over, domains });
+// A section set to all of a domain (an empty list) still offers each of them: every camera but a recording or snapshot twin.
+const allOf = (hass, domain) => Object.keys((hass && hass.states) || {}).filter((id) => id.startsWith(domain + ".") && !/record|snapshot/.test(id)).sort();
 
 const GROUPS = [
   { id: "rooms", label: "Room", lead: true, icon: "room",
@@ -1283,6 +1358,7 @@ const fieldFault = (f, val, hass) => {
   return (f.check && f.check(st, hass)) || "";
 };
 
+const SW_LIGHT = { "": "#97a9ae", sand: "#c8b9a2", sage: "#a3b29a", blue: "#93a7c2", rose: "#c6a9ad", lavender: "#afa9c9", sea: "#90b7b6", clay: "#cea796", plum: "#c0a0b4", honey: "#cab992" };
 const SECTIONS = [
   {
     label: "Appearance", icon: "home", iconColor: "var(--hemma-color-blue, #0088FF)", group: "rooms",
@@ -1290,9 +1366,38 @@ const SECTIONS = [
       { key: "__name", label: "Room name", type: "text", always: true },
       { key: "hero_title", label: "Title", type: "select", auto: true, homeOnly: true,
         options: ["", "greeting"], optionLabels: { "": "Room name", greeting: "Greeting" } },
-      { key: "__phone_name", label: "Name on phone", type: "text", always: true,
+      { key: "__phone_name", label: "Favorites title", type: "text", always: true,
         phoneName: true, placeholder: MOBILE_FAVORITES },
-      { key: "image", label: "Background image", type: "image", always: true },
+      { key: "hemma_style", label: "Style", type: "select", auto: true, scope: "dashboard", reveals: true,
+        options: ["", "homeview"], optionLabels: { "": "Glass", homeview: "Minimal" } },
+      { key: "__hv_bg", label: "Background", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => vars.hemma_style === "homeview",
+        options: ["", "sand", "sage", "blue", "rose", "lavender", "sea", "clay", "plum", "honey"], swatches: SW_LIGHT, darkSwatch: { "": "#49575c", sand: "#5b564e", sage: "#4c5944", blue: "#44556d", rose: "#654d51", lavender: "#56506a", sea: "#395c5b", clay: "#684e42", plum: "#664b5c", honey: "#5c543f" },
+        optionLabels: { "": "Gray", sand: "Sand", sage: "Sage", blue: "Blue", rose: "Rose", lavender: "Lavender", sea: "Sea", clay: "Clay", plum: "Plum", honey: "Honey" } },
+      { key: "__hv_match", label: "Match Now Playing", type: "bool", boolDefault: false, auto: true, scope: "dashboard", joined: true,
+        when: (vars) => vars.hemma_style === "homeview" },
+      { key: "hemma_hv_text", label: "Light mode text", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => vars.hemma_style === "homeview",
+        options: ["", "white"], optionLabels: { "": "Dark", white: "White" } },
+      { key: "hemma_hv_text_phone", label: "Phone light mode text", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => vars.hemma_style === "homeview",
+        options: ["", "dark", "white"], optionLabels: { "": "Same", dark: "Dark", white: "White" } },
+      { key: "hemma_glass_text", label: "Light mode text", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => vars.hemma_style !== "homeview",
+        options: ["", "dark"], optionLabels: { "": "White", dark: "Dark" } },
+      { key: "hemma_hv_backdrop", label: "Backdrop", type: "select", auto: true, scope: "dashboard", reveals: true,
+        when: (vars) => vars.hemma_style === "homeview",
+        options: ["", "gradient", "color"], optionLabels: { "": "Photo", gradient: "Gradient", color: "Color" } },
+      { key: "hemma_hv_backdrop_phone", label: "Phone backdrop", type: "select", auto: true, scope: "dashboard", reveals: true,
+        when: (vars) => vars.hemma_style === "homeview",
+        options: ["", "photo", "gradient", "color"], optionLabels: { "": "Same", photo: "Photo", gradient: "Gradient", color: "Color" } },
+      { key: "hemma_bg_color", label: "Background", type: "select", auto: true, scope: "dashboard", reveals: true,
+        when: () => false,
+        options: ["", "slate", "sand", "sage", "blue", "rose"],
+        swatches: { "": "conic-gradient(#6b8f6b, #c9a77c, #6f86a8, #6b8f6b)", slate: "#56656b", sand: "#7a6c58", sage: "#5c6b56", blue: "#4c5f7d", rose: "#7a5c62" },
+        optionLabels: { "": "Photo", slate: "Slate", sand: "Sand", sage: "Sage", blue: "Blue", rose: "Rose" } },
+      { key: "image", label: "Wallpaper", type: "image", always: true,
+        when: (vars) => vars.hemma_style !== "homeview" || !vars.hemma_hv_backdrop || vars.hemma_hv_backdrop_phone === "photo" },
       { ...E("motion_entity", "Motion sensor", ["binary_sensor"]),
         hint: "Pulses a dot beside this room in the navigation, and shows a motion icon on the phone." },
     ],
@@ -1326,6 +1431,8 @@ const SECTIONS = [
         boolDefault: true, auto: true, scope: "dashboard" },
       { key: "hemma_hide_header", sub: "chrome", label: "Hide the HA header", type: "bool",
         boolDefault: true, auto: true, scope: "dashboard" },
+      { key: "hemma_swipe_nav", sub: "chrome", label: "Swipe between rooms", type: "bool",
+        boolDefault: false, auto: true, scope: "dashboard" },
       { key: "hemma_idle_home", sub: "chrome", label: "Return to Home when idle",
         type: "select", auto: true, scope: "dashboard",
         options: ["", "1", "2", "5", "10"],
@@ -1333,20 +1440,20 @@ const SECTIONS = [
           "5": "After 5 minutes", "10": "After 10 minutes" } },
       { key: "hero_line", sub: "top", label: "Above room name", type: "select",
         auto: true, scope: "dashboard", reveals: true,
-        options: ["", "date"], optionLabels: { "": "Weather", date: "Date" } },
+        options: ["", "date", "both"], optionLabels: { "": "Weather", date: "Date", both: "Date and weather" } },
       { key: "conditions", sub: "top", label: "Conditions", type: "select",
         auto: true, scope: "dashboard", when: (vars) => vars.hero_line !== "date",
         options: ["none", "", "text"],
         optionLabels: { none: "None", "": "Icon", text: "Description" } },
       { key: "show_date", sub: "top", label: "Show date", type: "bool",
         boolDefault: false, auto: true, scope: "dashboard", reveals: true,
-        when: (vars) => vars.hero_line !== "date" },
+        when: (vars) => !vars.hero_line && vars.show_date === true },
       { key: "date_on", sub: "top", label: "Show on", type: "select", auto: true, scope: "dashboard",
-        when: (vars) => vars.hero_line !== "date" && vars.show_date === true,
+        when: (vars) => !vars.hero_line && vars.show_date === true,
         options: ["", "desktop", "tablet"],
         optionLabels: { "": "Desktop and tablet", desktop: "Desktop only", tablet: "Tablet only" } },
       { key: "date_style", sub: "top", label: "Date style", type: "select", auto: true, scope: "dashboard",
-        when: (vars) => vars.hero_line === "date" || vars.show_date === true,
+        when: (vars) => vars.hero_line === "date" || vars.hero_line === "both" || vars.show_date === true || vars.hemma_style === "homeview",
         options: ["", "short", "long"],
         optionLabels: { "": "Automatic", short: "Compact", long: "Full" } },
       { ...E("status_battery", "Tablet battery", ["sensor"]), sub: "status", classes: ["battery"], auto: true,
@@ -1374,13 +1481,67 @@ const SECTIONS = [
     ],
   },
   {
+    label: "Screensaver", icon: "desktop", iconColor: "var(--hemma-color-teal, #00C3D0)",
+    group: "rooms", scope: "dashboard",
+    fields: [
+      { key: "hemma_screensaver_style", label: "Style", type: "saverhero", auto: true, scope: "dashboard" },
+      { key: "hemma_screensaver_face", label: "Face", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => vars.hemma_screensaver_style === "face",
+        options: ["", "classic", "stacked"], optionLabels: { "": "Numerals", classic: "Classic", stacked: "Stacked" } },
+      { key: "__sv_bg", label: "Background", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => !vars.hemma_screensaver_style || vars.hemma_screensaver_style === "clock" || vars.hemma_screensaver_style === "face",
+        options: (vars) => vars.hemma_style === "homeview" ? ["", "gray", "sand", "sage", "blue", "rose", "lavender", "sea", "clay", "plum", "honey", "black"] : ["", "sand", "sage", "blue", "rose", "lavender", "sea", "clay", "plum", "honey", "black"],
+        // Match Dashboard shows the dashboard's own color, light and dark, as Appearance has it.
+        swatches: (vars) => { const k = (vars.hemma_hv_color === "album" ? vars.hemma_hv_rest : vars.hemma_hv_color) || ""; return { ...SW_LIGHT, "": vars.hemma_style === "homeview" ? (SW_LIGHT[k] || SW_LIGHT[""]) : SW_LIGHT[""], gray: SW_LIGHT[""], black: "#000" }; },
+        darkSwatch: (vars) => { const k = (vars.hemma_hv_color === "album" ? vars.hemma_hv_rest : vars.hemma_hv_color) || "", D = { "": "#49575c", gray: "#49575c", sand: "#5b564e", sage: "#4c5944", blue: "#44556d", rose: "#654d51", lavender: "#56506a", sea: "#395c5b", clay: "#684e42", plum: "#664b5c", honey: "#5c543f", black: "#000" }; return { ...D, "": vars.hemma_style === "homeview" ? (D[k] || D[""]) : D[""] }; },
+        optionLabels: (vars) => ({ "": vars.hemma_style === "homeview" ? "Match Dashboard" : "Gray", gray: "Gray", sand: "Sand", sage: "Sage", blue: "Blue", rose: "Rose", lavender: "Lavender", sea: "Sea", clay: "Clay", plum: "Plum", honey: "Honey", black: "Black" }) },
+      { key: "__sv_np", label: "Now Playing", type: "select", auto: true, scope: "dashboard", joined: true,
+        when: (vars) => !vars.hemma_screensaver_style || vars.hemma_screensaver_style === "clock" || vars.hemma_screensaver_style === "face",
+        options: (vars) => vars.hemma_screensaver_style === "face" ? ["", "album"] : ["", "artwork", "album"],
+        optionLabels: { "": "Off", artwork: "Color Clouds", album: "Artwork Color" } },
+      { key: "hemma_screensaver_ra_bg", label: "Background", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => vars.hemma_screensaver_style === "recent",
+        options: ["", "color"], optionLabels: { "": "Backdrop", color: "Poster color" } },
+      { key: "hemma_screensaver_idle", label: "Widget", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => saverIsClock(vars.hemma_screensaver_style),
+        options: ["", "glance", "none"],
+        optionLabels: { "": "Calendar", glance: "Home at a glance", none: "Nothing" } },
+      { key: "hemma_screensaver_np", label: "While music plays", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => saverIsClock(vars.hemma_screensaver_style),
+        options: ["", "keep"], optionLabels: { "": "Show Now Playing", keep: "Keep widget" } },
+      { key: "hemma_screensaver_calendars", label: "Calendars", type: "list", domains: ["calendar"], auto: true, scope: "dashboard", empty: "All calendars",
+        when: (vars) => saverIsClock(vars.hemma_screensaver_style) && !vars.hemma_screensaver_idle },
+      { key: "hemma_screensaver", label: "Start screensaver", type: "select", auto: true, scope: "dashboard", reveals: true,
+        options: ["", "0.5", "1", "2", "5", "10", "15"],
+        optionLabels: { "": "Off", "0.5": "After 30 seconds", "1": "After 1 minute", "2": "After 2 minutes", "5": "After 5 minutes", "10": "After 10 minutes", "15": "After 15 minutes" } },
+      { key: "hemma_screensaver_on", label: "Show on", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => !!vars.hemma_screensaver,
+        options: ["", "all"], optionLabels: { "": "Tablets", all: "Tablets and desktops" } },
+      { key: "hemma_screensaver_swipe", label: "Swipe between screensavers", type: "bool", boolDefault: false, auto: true, scope: "dashboard",
+        when: (vars) => !!vars.hemma_screensaver },
+      { key: "hemma_screensaver_rotate", label: "Rotate screensavers", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => !!vars.hemma_screensaver,
+        options: ["", "1", "2", "5", "15", "30", "60"],
+        optionLabels: { "": "Off", "1": "Every minute", "2": "Every 2 minutes", "5": "Every 5 minutes", "15": "Every 15 minutes", "30": "Every 30 minutes", "60": "Every hour" } },
+      { key: "hemma_screensaver_transition", label: "Transition", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => !!vars.hemma_screensaver && !!vars.hemma_screensaver_rotate,
+        options: ["", "slide"], optionLabels: { "": "Fade", slide: "Slide" } },
+      { key: "hemma_screensaver_every", label: "Next poster every", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => !!vars.hemma_screensaver && !saverIsClock(vars.hemma_screensaver_style) && vars.hemma_screensaver_style !== "face",
+        options: ["", "10", "15"], optionLabels: { "": "6 seconds", "10": "10 seconds", "15": "15 seconds" } },
+      { key: "hemma_screensaver_dark", label: "Turn dark after", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => !!vars.hemma_screensaver,
+        options: ["", "30", "120", "0"], optionLabels: { "": "1 hour", "30": "30 minutes", "120": "2 hours", "0": "Never" } },
+    ],
+  },
+  {
     label: "Weather", icon: "weather", iconColor: "var(--hemma-color-blue, #0088FF)", iconRaw: true, group: "rooms",
     scope: "dashboard",
     fields: [
-      E("weather_entity", "Weather", ["weather"]),
+      { ...E("weather_entity", "Weather", ["weather"]), always: true },
       { key: "show_temp_unit", label: "Show °F or °C", type: "bool", boolDefault: false, auto: true },
       { ...E("weather_temp_sensor", "Temperature override", ["sensor"]),
-        advanced: true, noAdd: true,
+        advanced: true,
         hint: "Leave empty to use the weather entity's temperature." },
     ],
   },
@@ -1425,6 +1586,9 @@ const SECTIONS = [
         always: true, ord: 0, abc: true },
       { key: "notify_plex", glyph: "plex", tone: "var(--hemma-popup-ui-warn, #FF9F0A)", label: "Recently Added", type: "bool", boolDefault: true,
         always: true, ord: 0, abc: true },
+
+      { key: "notify_people_mine", label: "My arrivals and departures", type: "bool", boolDefault: true,
+        always: true, advanced: true, ord: 11 },
 
       { ...LIST("notification_appliances", "Appliances to watch",
         ["sensor", "binary_sensor", "switch", "vacuum"]),
@@ -1479,7 +1643,8 @@ const SECTIONS = [
     fields: [
       { key: "cameras_list", label: "Cameras", type: "list", domains: ["camera"], always: true, ord: 1, empty: "All cameras" },
       { key: "cameras_on_security", label: "Security page", type: "bool", boolDefault: true, always: true, ord: 2 },
-      { ...T("cameras_refresh", "Refresh (seconds)"), always: true, ord: 3, placeholder: "10" },
+      { ...T("cameras_refresh", "Preview refresh (seconds)"), always: true, ord: 3, placeholder: "10" },
+      { ...MAP("cameras_preview_from", "Preview picture from", "cameras_list", ["camera"]), overAll: "camera", always: true, ord: 3.5 },
       { ...T("cameras_motion_minutes", "Motion dot (minutes)"), advanced: true, ord: 4, placeholder: "5" },
     ],
   },
@@ -1801,6 +1966,7 @@ function applyCameras(cfg, rooms) {
     cameras: Array.isArray(V.cameras_list) ? V.cameras_list.slice() : [],
     security: V.cameras_on_security !== false,
     refresh: num(V.cameras_refresh, 10),
+    preview: V.cameras_preview_from && typeof V.cameras_preview_from === "object" && !Array.isArray(V.cameras_preview_from) ? { ...V.cameras_preview_from } : {},
     motion: num(V.cameras_motion_minutes, 5),
   };
 }
@@ -1866,6 +2032,21 @@ function applyScenePick(cfg, rooms) {
   });
 }
 
+function applyStyle(cfg, rooms) {
+  const v = (((rooms || [])[0] || {}).variables) || {};
+  (function walk(cards) {
+    (cards || []).forEach((c) => {
+      if (!c || typeof c !== "object") return;
+      if (c.template === MOBILE_SHELL) {
+        const nv = { ...(c.variables || {}) };
+        ["hemma_style", "hemma_hv_color", "hemma_hv_rest", "hemma_hv_text", "hemma_hv_text_phone", "hemma_hv_backdrop", "hemma_hv_backdrop_phone", "hemma_glass_text"].forEach((k) => { if (v[k]) nv[k] = v[k]; else delete nv[k]; });
+        c.variables = nv;
+      }
+      walk(c.cards);
+    });
+  })((cfg.views || []).reduce((a, w) => a.concat(w.cards || []), []));
+}
+
 function applyKiosk(cfg, rooms) {
   const v = (((rooms || [])[0] || {}).variables) || {};
   const hide = v.hemma_hide_header !== false;
@@ -1889,6 +2070,7 @@ function applyKiosk(cfg, rooms) {
   });
   if (users.length) out.user_settings = users;
   cfg.kiosk_mode = out;
+  if (v.hemma_swipe_nav !== undefined || !cfg.swipe_nav) cfg.swipe_nav = { ...(cfg.swipe_nav || {}), enable: v.hemma_swipe_nav === true };
 }
 
 function seedKiosk(rooms, cfg) {
@@ -1983,8 +2165,99 @@ function refreshTemplates(current, bundleTemplates, priorPrints) {
     added, kept, removed, foreign, orphan };
 }
 
+// A new dashboard starts with each room's devices already in it: the registry decides the room, the domain the tile.
+const AUTO_TILES = ["light", "thermostat", "cover", "lock", "fan", "air_purifier", "humidifier", "media", "vacuum", "plant"];
+const AUTO_DOMAIN = { light: "light", climate: "thermostat", cover: "cover", lock: "lock", fan: "fan",
+  humidifier: "humidifier", media_player: "media", vacuum: "vacuum", plant: "plant" };
+
+// Rooms worth a page on their own: something in them can be switched or set. Technical spaces never are.
+const TECH_AREA = /server|n[\u00e4a]tverk|network|\brack\b|teknik|technical|\btech\b|data ?(cent|rum)|\bit\b|utility|boiler|electrical|elcentral|elsk[\u00e5a]p|undercentral|pannrum|fuse|apparatrum/i;
+
+function controlledAreas(reg) {
+  const states = reg.states || {};
+  const devArea = {};
+  (reg.devices || []).forEach((d) => { if (d && d.id) devArea[d.id] = d.area_id || null; });
+  const out = new Set();
+  (reg.entities || []).forEach((e) => {
+    if (!e || e.disabled_by || e.hidden_by || e.entity_category) return;
+    const dom = String(e.entity_id).split(".")[0];
+    if (!AUTO_DOMAIN[dom] || dom === "plant") return;
+    const st = states[e.entity_id];
+    if (!st || st.state === "unavailable") return;
+    const area = e.area_id || devArea[e.device_id];
+    if (area) out.add(area);
+  });
+  return out;
+}
+
+function autoFillRooms(rooms, reg) {
+  const states = reg.states || {};
+  const devArea = {};
+  (reg.devices || []).forEach((d) => { if (d && d.id) devArea[d.id] = d.area_id || null; });
+  const areaOf = {};
+  (reg.areas || []).forEach((a) => { areaOf[String(a.name || "").trim().toLowerCase()] = a.area_id; });
+  const byArea = {};
+  (reg.entities || []).forEach((e) => {
+    if (!e || e.disabled_by || e.hidden_by || e.entity_category) return;
+    const st = states[e.entity_id];
+    if (!st || st.state === "unavailable") return;
+    const area = e.area_id || devArea[e.device_id];
+    if (area) (byArea[area] = byArea[area] || []).push({ ...st, dev: e.device_id || null });
+  });
+  let n = 0;
+  rooms.forEach((room) => {
+    const list = byArea[areaOf[String(room.name || "").trim().toLowerCase()]] || [];
+    if (!list.length) return;
+    const dom = (st) => st.entity_id.split(".")[0];
+    const groups = list.filter((st) => dom(st) === "light" && Array.isArray((st.attributes || {}).entity_id));
+    const inGroup = new Set(groups.flatMap((g) => g.attributes.entity_id));
+    const short = (st) => {
+      const full = String((st.attributes || {}).friendly_name || st.entity_id);
+      const cut = full.replace(new RegExp("^" + String(room.name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s+", "i"), "");
+      return cut && cut.toLowerCase() !== String(room.name).toLowerCase() ? cut : "";
+    };
+    const tiles = [];
+    const seen = new Set();
+    // A purifier's or TV's own light is part of that device, not a lamp in the room.
+    const busy = new Set(list.filter((st) => st.dev && ["fan", "humidifier", "media_player", "climate", "vacuum"].includes(dom(st))).map((st) => st.dev));
+    list.forEach((st) => {
+      if (inGroup.has(st.entity_id) || (dom(st) === "light" && groups.length && !groups.includes(st))) return;
+      let id = AUTO_DOMAIN[dom(st)];
+      if (!id || (id === "light" && st.dev && busy.has(st.dev))) return;
+      // One tile per device: a lock or thermostat often comes as a cloud and a local entity.
+      if (st.dev) { const k = st.dev + "|" + dom(st); if (seen.has(k)) return; seen.add(k); }
+      if (id === "fan" && /purifier|air ?clean/i.test((st.attributes || {}).friendly_name || st.entity_id)) id = "air_purifier";
+      const type = TILE_TYPES.find((t) => t.id === id);
+      const name = short(st) || (id === "light" && groups.includes(st) ? _sx("Lights") : _sx(type ? type.label : ""));
+      // The same device through two integrations (a lock's cloud and local entity) shows up once.
+      if (!type || seen.has(id + "|" + name.toLowerCase())) return;
+      seen.add(id + "|" + name.toLowerCase());
+      tiles.push({ at: AUTO_TILES.indexOf(id) - (groups.includes(st) ? 0.5 : 0), tile: { ...newTile(type), entity: st.entity_id, name } });
+    });
+    tiles.sort((x, y) => x.at - y.at);
+    room.tiles = tiles.map((t) => t.tile);
+    n += room.tiles.length;
+    const v = room.variables;
+    const cls = (c) => list.find((st) => dom(st) === "sensor" && (st.attributes || {}).device_class === c && isFinite(parseFloat(st.state)));
+    const pick = (k, st) => { if (st && v[k] === undefined) v[k] = st.entity_id; };
+    pick("light_group_entity", groups[0]);
+    pick("temp_sensor_1", cls("temperature"));
+    pick("humidity_sensor", cls("humidity"));
+    pick("security_lock_entity", list.find((st) => dom(st) === "lock"));
+  });
+  return n;
+}
+
 const slug = (s) =>
   String(s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "room";
+
+const demoPhoto = (name) => {
+  const n = String(name || "").toLowerCase();
+  if (/bed|nursery|guest/.test(n)) return "bedroom-demo";
+  if (/kitchen|dining/.test(n)) return "kitchen-demo";
+  if (/living|lounge|family|den/.test(n)) return "livingroom-demo";
+  return "home-demo";
+};
 
 function blankRoom(name, path, image) {
   return {
@@ -2054,6 +2327,8 @@ const autoRoomGlyph = (name) =>
   ROOM_GLYPHS[String(name || "").toLowerCase().trim()] || "default";
 
 const MENU_ICONS = {
+  "export": "<path d=\"M12 14V4M8 7.5l4-3.5 4 3.5\"/><path d=\"M5 14.5v2.5a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-2.5\"/>",
+  "wrench": "<path d=\"M13.4 10.6 5.3 18.7a1.5 1.5 0 0 0 2.1 2.1l8.1-8.1a4.6 4.6 0 0 0 5.6-6l-2.6 2.6-2.2-.4-.4-2.2 2.6-2.6a4.6 4.6 0 0 0-6 5.6z\"/>",
   "plus": "<path d=\"M12 5v14M5 12h14\"/>",
   "pencil": "<path d=\"M5 19.5l1-4L16.5 5a2.1 2.1 0 0 1 3 3L9 18.5z\"/><path d=\"M14.5 7l3 3\"/>",
   "grid": "<rect x=\"4.5\" y=\"4.5\" width=\"6\" height=\"6\" rx=\"1.6\"/><rect x=\"13.5\" y=\"4.5\" width=\"6\" height=\"6\" rx=\"1.6\"/><rect x=\"4.5\" y=\"13.5\" width=\"6\" height=\"6\" rx=\"1.6\"/><rect x=\"13.5\" y=\"13.5\" width=\"6\" height=\"6\" rx=\"1.6\"/>",
@@ -2319,6 +2594,47 @@ const mdiList = () => {
   MDI.list = MDI.list || fetch("/static/mdi/iconList.json").then((r) => r.json()).catch(() => []);
   return MDI.list;
 };
+const SAVER_BG = { "": "#97a9ae", sand: "#c8b9a2", sage: "#a3b29a", blue: "#93a7c2", rose: "#c6a9ad", lavender: "#afa9c9", sea: "#90b7b6", clay: "#cea796", plum: "#c0a0b4", honey: "#cab992", black: "#000" };
+const saverIsClock = (k) => !k || k === "clock" || k === "clock_photo";
+const saverMock = (k0, tint, face, faceBg) => {
+  const k = !k0 ? "clock" : k0;
+  if (k === "face" && face === "stacked") {
+    const bg = SW_LIGHT[faceBg === "gray" ? "" : faceBg] || SW_LIGHT[""];
+    return `<svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%;font-family:-apple-system,system-ui,sans-serif"><rect width="320" height="200" fill="color-mix(in oklab, ${bg} 76%, #000)"/>`
+      + `<g fill="#fff" font-weight="700"><text x="18" y="30" font-size="13">THU 4</text><text x="18" y="182" font-size="13">72°</text></g>`
+      + `<g fill="#fff" stroke="#fff" stroke-width="5.9" stroke-linejoin="round" paint-order="stroke" font-weight="500" text-anchor="end" style="font-stretch:50%;letter-spacing:9px" font-size="104"><text x="311" y="94">10</text><text x="311" y="184">:44</text></g></svg>`;
+  }
+  if (k === "face") {
+    const cls = face === "classic", bg = SW_LIGHT[faceBg === "gray" ? "" : faceBg] || SW_LIGHT[""], cx = 160, cy = 100;
+    let t = "";
+    if (cls) for (let i = 0; i < 60; i++) { const a = i * Math.PI / 30, b = i % 5 === 0, dx = Math.sin(a), dy = -Math.cos(a), e = Math.min(148 / Math.abs(dx || 1e-9), 90 / Math.abs(dy || 1e-9)), L = b ? 14 : 5; t += `<line x1="${cx + dx * (e - L)}" y1="${cy + dy * (e - L)}" x2="${cx + dx * e}" y2="${cy + dy * e}" stroke="${b ? "#1c1c1e" : "rgba(28,28,30,.45)"}" stroke-width="${b ? 2 : 0.8}" stroke-linecap="round"/>`; }
+    const nums = cls ? `<g font-size="17" font-weight="600" fill="#1c1c1e" text-anchor="middle"><text x="160" y="40">12</text><text x="246" y="106">3</text><text x="160" y="172">6</text><text x="74" y="106">9</text></g>`
+      : `<g font-size="124" font-weight="400" fill="#0b0b0b" text-anchor="middle" style="letter-spacing:-0.04em"><text x="160" y="99">12</text><text x="160" y="198">6</text><text x="66" y="143">9</text><text x="254" y="143">3</text></g><text x="16" y="186" font-size="10" font-weight="700" fill="#0b0b0b">TUE 3</text>`;
+    const h = (deg, len) => `<g transform="rotate(${deg} ${cx} ${cy})"><rect x="${cx - 1}" y="${cy - 16}" width="2" height="16" rx="1" fill="#fff"/><rect x="${cx - 3}" y="${cy - len}" width="6" height="${len - 13}" rx="3" fill="#fff"/></g>`;
+    return `<svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%;font-family:-apple-system,system-ui,sans-serif"><rect width="320" height="200" fill="${bg}"/>${t}${nums}<g style="filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.3))">${h(-52, 50)}${h(58, 80)}<circle cx="${cx}" cy="${cy}" r="4" fill="#fff"/></g><rect x="${cx - 0.5}" y="${cy - 8}" width="1" height="96" fill="${cls ? "#1c1c1e" : "rgba(255,255,255,.75)"}" transform="rotate(180 ${cx} ${cy})"/></svg>`;
+  }
+  const art = "linear-gradient(160deg,#ff8a4c,#c2185b 55%,#2b0f2e)", art2 = "linear-gradient(160deg,#5ec4ff,#3a5bd9 60%,#141a3a)", art3 = "linear-gradient(160deg,#ffd36b,#4c8a3a 60%,#14261a)";
+  if (k === "clock" || k === "clock_photo") {
+    const lite = k === "clock" && tint !== "black";
+    const bg = k === "clock" ? (tint === "album" ? "linear-gradient(180deg, #e2b8bf, #c99aa3)" : tint === "artwork" ? "radial-gradient(60% 70% at 20% 25%, #8fb0e8, transparent), radial-gradient(55% 65% at 80% 70%, #e8c08f, transparent), radial-gradient(50% 60% at 75% 15%, #c39be0, transparent), #97a9ae" : (SAVER_BG[tint] || SAVER_BG[""])) : "linear-gradient(150deg,#6b7f6a,#3d4a52 55%,#232a30)", ink = lite ? "#111" : "#fff", sub = lite ? "#3d4a50" : "rgba(235,235,245,0.62)";
+    let ticks = "";
+    for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; ticks += `<line x1="${50 + Math.sin(a) * 40}" y1="${50 - Math.cos(a) * 40}" x2="${50 + Math.sin(a) * 46}" y2="${50 - Math.cos(a) * 46}" stroke="${ink}" stroke-width="${i % 3 ? 1.5 : 3}" stroke-linecap="round"/>`; }
+    return `<div style="position:absolute;inset:0;background:${bg};color:${ink};font-family:-apple-system,system-ui,sans-serif">`
+      + `<div style="position:absolute;left:34px;top:22px;text-align:center;width:96px"><div style="font-size:20px;font-weight:700"><span style="color:${k === "clock" ? "#fff" : "#fff"}">Thu</span> <span style="color:${sub}">Oct</span></div><div style="font-size:66px;font-weight:700;line-height:.9;letter-spacing:-.04em">29</div></div>`
+      + `<svg width="96" height="96" viewBox="0 0 100 100" style="position:absolute;left:192px;top:14px">${ticks}<line x1="50" y1="50" x2="68" y2="38" stroke="${ink}" stroke-width="4" stroke-linecap="round"/><line x1="50" y1="50" x2="62" y2="80" stroke="${ink}" stroke-width="3" stroke-linecap="round"/><line x1="50" y1="56" x2="34" y2="14" stroke="${lite ? "#fff" : "#FF9F0A"}" stroke-width="1.2"/></svg>`
+      + `<div style="position:absolute;left:44px;top:126px;width:50px;height:50px;border-radius:6px;background:${art}"></div>`
+      + `<div style="position:absolute;left:192px;top:124px;font-size:12px;font-weight:600;color:#fff">Home</div><div style="position:absolute;left:190px;top:138px;font-size:40px;font-weight:600;letter-spacing:-.04em">72°</div></div>`;
+  }
+  if (k === "cards") {
+    const card = (x, y, g, w) => `<div style="position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${w * 1.5}px;border-radius:8px;background:${g};box-shadow:0 10px 20px -8px rgba(0,0,0,.8)"></div>`;
+    return `<div style="position:absolute;inset:0;background:radial-gradient(80% 90% at 50% 40%,#3a2a24,#141110)">${card(36, 46, art2, 64)}${card(128, 34, art, 64)}${card(220, 46, art3, 64)}`
+      + `<div style="position:absolute;left:128px;top:138px;width:64px;height:5px;border-radius:3px;background:rgba(255,255,255,.85)"></div><div style="position:absolute;left:140px;top:150px;width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.4)"></div></div>`;
+  }
+  return `<div style="position:absolute;inset:0;background:radial-gradient(70% 80% at 50% 35%,#6b3a2c,#1d1412)">`
+    + `<div style="position:absolute;left:34px;top:46px;width:58px;height:87px;border-radius:7px;background:${art2};opacity:.45"></div><div style="position:absolute;left:228px;top:46px;width:58px;height:87px;border-radius:7px;background:${art3};opacity:.45"></div>`
+    + `<div style="position:absolute;left:118px;top:24px;width:84px;height:126px;border-radius:9px;background:${art};box-shadow:0 14px 26px -10px rgba(0,0,0,.85)"></div>`
+    + `<div style="position:absolute;left:120px;top:160px;width:80px;height:6px;border-radius:3px;background:rgba(255,255,255,.9)"></div><div style="position:absolute;left:132px;top:173px;width:56px;height:4px;border-radius:2px;background:rgba(255,255,255,.45)"></div></div>`;
+};
 const iconUrl = (name) => {
   const n = String(name || "").trim();
   if (n.indexOf("mdi:") === 0) {
@@ -2401,7 +2717,7 @@ const ICON_DATA = {
   "arrow-down": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2018.1172%2022.1367%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2222.1367%22%20opacity%3D%220%22%20width%3D%2218.1172%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M8.88281%2022.1367C9.17578%2022.1367%209.44531%2022.0195%209.66797%2021.7852L17.4492%2013.9922C17.6719%2013.7578%2017.7656%2013.5117%2017.7656%2013.2305C17.7656%2012.6562%2017.3438%2012.2109%2016.7578%2012.2109C16.4766%2012.2109%2016.207%2012.3047%2016.0195%2012.4922L13.3477%2015.1172L8.87109%2020.0156L4.41797%2015.1172L1.74609%2012.4922C1.57031%2012.3047%201.28906%2012.2109%201.00781%2012.2109C0.421875%2012.2109%200%2012.6562%200%2013.2305C0%2013.5117%200.105469%2013.7578%200.328125%2013.9922L8.09766%2021.7852C8.32031%2022.0195%208.58984%2022.1367%208.88281%2022.1367ZM8.88281%2020.8828C9.43359%2020.8828%209.80859%2020.5078%209.80859%2019.957L9.92578%2016.4648L9.92578%201.03125C9.92578%200.421875%209.49219%200%208.88281%200C8.27344%200%207.83984%200.421875%207.83984%201.03125L7.83984%2016.4648L7.95703%2019.957C7.95703%2020.5078%208.33203%2020.8828%208.88281%2020.8828Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
   "arrow-up": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2018.1172%2022.1367%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2222.1367%22%20opacity%3D%220%22%20width%3D%2218.1172%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M1.00781%209.92578C1.28906%209.92578%201.57031%209.83203%201.74609%209.64453L4.41797%207.01953L8.87109%202.12109L13.3477%207.01953L16.0195%209.64453C16.207%209.83203%2016.4766%209.92578%2016.7578%209.92578C17.3438%209.92578%2017.7656%209.48047%2017.7656%208.90625C17.7656%208.625%2017.6719%208.37891%2017.4492%208.14453L9.66797%200.351562C9.44531%200.117188%209.17578%200%208.88281%200C8.58984%200%208.32031%200.117188%208.09766%200.351562L0.328125%208.14453C0.105469%208.37891%200%208.625%200%208.90625C0%209.48047%200.421875%209.92578%201.00781%209.92578ZM8.88281%2022.1367C9.49219%2022.1367%209.92578%2021.7148%209.92578%2021.1055L9.92578%205.67188L9.80859%202.17969C9.80859%201.62891%209.43359%201.25391%208.88281%201.25391C8.33203%201.25391%207.95703%201.62891%207.95703%202.17969L7.83984%205.67188L7.83984%2021.1055C7.83984%2021.7148%208.27344%2022.1367%208.88281%2022.1367Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
   "backward": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2022.0312%2017.918%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2217.918%22%20opacity%3D%220%22%20width%3D%2222.0312%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M21.6797%2016.2773L21.6797%201.61719C21.6797%200.515625%2021.0352%200%2020.2852%200C19.9453%200%2019.6055%200.09375%2019.2656%200.292969L6.94922%207.46484C6.07031%207.98047%205.73047%208.36719%205.73047%208.95312C5.73047%209.53906%206.07031%209.92578%206.94922%2010.4414L19.2656%2017.6133C19.6055%2017.8008%2019.9453%2017.9062%2020.2852%2017.9062C21.0352%2017.9062%2021.6797%2017.3789%2021.6797%2016.2773ZM4.23047%2017.8359C5.25%2017.8359%205.78906%2017.2969%205.78906%2016.2656L5.78906%201.62891C5.78906%200.597656%205.25%200.0585938%204.23047%200.0585938L1.55859%200.0585938C0.539062%200.0585938%200%200.550781%200%201.62891L0%2016.2656C0%2017.2969%200.539062%2017.8359%201.55859%2017.8359Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
-  "battery": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21DOCTYPE%20svg%20PUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2035.0391%2018.234%22%3E%0A%20%3Cg%20transform%3D%22scale%281%2C%201.15%29%22%3E%0A%20%20%3Crect%20height%3D%2215.8555%22%20opacity%3D%220%22%20width%3D%2235.0391%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M6.24609%2015.8555L24.668%2015.8555C26.6719%2015.8555%2028.3594%2015.668%2029.5547%2014.4727C30.75%2013.2773%2030.9258%2011.6133%2030.9258%209.60938L30.9258%206.24609C30.9258%204.24219%2030.75%202.57812%2029.5547%201.38281C28.3594%200.1875%2026.6719%200%2024.668%200L6.22266%200C4.25391%200%202.56641%200.1875%201.37109%201.38281C0.175781%202.57812%200%204.25391%200%206.21094L0%209.60938C0%2011.6133%200.175781%2013.2773%201.37109%2014.4727C2.56641%2015.668%204.25391%2015.8555%206.24609%2015.8555ZM5.92969%2013.9688C4.72266%2013.9688%203.45703%2013.8047%202.74219%2013.1016C2.03906%2012.3867%201.88672%2011.1328%201.88672%209.92578L1.88672%205.95312C1.88672%204.72266%202.03906%203.46875%202.74219%202.75391C3.45703%202.03906%204.73438%201.88672%205.96484%201.88672L24.9961%201.88672C26.2031%201.88672%2027.4688%202.05078%2028.1719%202.75391C28.8867%203.46875%2029.0391%204.71094%2029.0391%205.91797L29.0391%209.92578C29.0391%2011.1328%2028.8867%2012.3867%2028.1719%2013.1016C27.4688%2013.8047%2026.2031%2013.9688%2024.9961%2013.9688ZM32.5195%2010.957C33.4453%2010.8984%2034.6875%209.71484%2034.6875%207.92188C34.6875%206.14062%2033.4453%204.95703%2032.5195%204.89844Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22/%3E%0A%20%20%3Cpath%20d%3D%22M5.30859%2012.6094L25.6172%2012.6094C26.4258%2012.6094%2026.8945%2012.4922%2027.2227%2012.1641C27.5391%2011.8359%2027.668%2011.3672%2027.668%2010.5586L27.668%205.29688C27.668%204.48828%2027.5391%204.01953%2027.2227%203.69141C26.8945%203.36328%2026.4141%203.24609%2025.6172%203.24609L5.34375%203.24609C4.5%203.24609%204.01953%203.36328%203.70312%203.69141C3.375%204.01953%203.25781%204.5%203.25781%205.32031L3.25781%2010.5586C3.25781%2011.3672%203.375%2011.8359%203.70312%2012.1641C4.03125%2012.4922%204.51172%2012.6094%205.30859%2012.6094Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
+  "battery": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%20-7.83%2028.66%2028.66%22%3E%3Crect%20width%3D%2225.6%22%20height%3D%2213%22%20rx%3D%223.8%22%20fill%3D%22white%22%2F%3E%3Cpath%20d%3D%22M26.8%204.05a1.86%202.45%200%200%201%200%204.9z%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E",
   "bedroom": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2030.0469%2019.793%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2219.793%22%20opacity%3D%220%22%20width%3D%2230.0469%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M0%2018.7734C0%2019.3828%200.386719%2019.7695%200.996094%2019.7695L1.69922%2019.7695C2.29688%2019.7695%202.69531%2019.3828%202.69531%2018.7734L2.69531%2017.0391C2.82422%2017.0742%203.21094%2017.0977%203.49219%2017.0977L26.2031%2017.0977C26.4844%2017.0977%2026.8711%2017.0742%2027%2017.0391L27%2018.7734C27%2019.3828%2027.3984%2019.7695%2027.9961%2019.7695L28.6992%2019.7695C29.3086%2019.7695%2029.6953%2019.3828%2029.6953%2018.7734L29.6953%2011.7891C29.6953%209.55078%2028.4531%208.32031%2026.2148%208.32031L3.48047%208.32031C1.24219%208.32031%200%209.55078%200%2011.7891Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%20%3Cpath%20d%3D%22M2.8125%206.64453L5.78906%206.64453L5.78906%204.95703C5.78906%203.86719%206.39844%203.26953%207.51172%203.26953L11.8828%203.26953C12.9844%203.26953%2013.5938%203.86719%2013.5938%204.95703L13.5938%206.64453L16.2539%206.64453L16.2539%204.95703C16.2539%203.86719%2016.8633%203.26953%2018.0352%203.26953L22.1367%203.26953C23.3086%203.26953%2023.918%203.86719%2023.918%204.95703L23.918%206.64453L26.9062%206.64453L26.9062%203.28125C26.9062%201.11328%2025.7344%200%2023.625%200L6.08203%200C3.97266%200%202.8125%201.11328%202.8125%203.28125Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
   "blinds-horizontal-closed": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20362--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2020.744%2019.953%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2219.953%22%20opacity%3D%220%22%20width%3D%2220.744%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M2.66635%203.31542L2.66635%205.56693C2.66635%205.98598%202.94853%206.2557%203.3718%206.2557L19.2511%206.2557C19.6971%206.2557%2019.9586%205.97563%2019.9586%205.55658L19.9586%203.30507C19.9586%202.88813%2019.6868%202.61841%2019.2511%202.61841L3.3718%202.61841C2.93818%202.61841%202.66635%202.89848%202.66635%203.31542ZM2.66635%207.86598L2.66635%2010.1382C2.66635%2010.5386%202.93818%2010.8063%203.3718%2010.8063L19.2614%2010.8063C19.6868%2010.8063%2019.9586%2010.5283%2019.9586%2010.1382L19.9586%207.85563C19.9586%207.45939%2019.6868%207.17932%2019.2614%207.17932L3.3718%207.17932C2.94853%207.17932%202.66635%207.45939%202.66635%207.86598ZM2.66635%2012.4186L2.66635%2014.6887C2.66635%2015.0995%202.93818%2015.3775%203.3718%2015.3775L19.2511%2015.3775C19.6971%2015.3775%2019.9586%2015.0995%2019.9586%2014.6887L19.9586%2012.4083C19.9586%2012.0203%2019.6971%2011.7402%2019.2511%2011.7402L3.3718%2011.7402C2.94853%2011.7402%202.66635%2012.0203%202.66635%2012.4186ZM2.66635%2016.9899L2.66635%2019.2393C2.66635%2019.6604%202.92783%2019.9302%203.36145%2019.9302L19.2407%2019.9302C19.6764%2019.9302%2019.9586%2019.6604%2019.9586%2019.2393L19.9586%2016.9899C19.9586%2016.5605%2019.6868%2016.3011%2019.2511%2016.3011L3.3718%2016.3011C2.92783%2016.3011%202.66635%2016.5708%202.66635%2016.9899Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%20%3Cpath%20d%3D%22M0.0232123%200.785347C0.0232123%201.21224%200.381668%201.57069%200.806449%201.57069L19.9586%201.57069C20.3937%201.57069%2020.744%201.21224%2020.744%200.785347C20.744%200.360566%2020.3937%200%2019.9586%200L0.806449%200C0.381668%200%200.0232123%200.360566%200.0232123%200.785347ZM0.806449%203.84511C1.17355%203.84511%201.48045%203.52997%201.48045%203.17323C1.48045%202.80613%201.17355%202.51169%200.806449%202.51169C0.441462%202.51169%200.14491%202.80613%200.14491%203.17323C0.14491%203.52997%200.441462%203.84511%200.806449%203.84511ZM0.806449%206.10074C1.17355%206.10074%201.48045%205.79595%201.48045%205.43921C1.48045%205.06176%201.17355%204.76732%200.806449%204.76732C0.441462%204.76732%200.14491%205.06176%200.14491%205.43921C0.14491%205.79595%200.441462%206.10074%200.806449%206.10074ZM0.806449%208.36059C1.17355%208.36059%201.48045%208.05369%201.48045%207.69695C1.48045%207.33196%201.17355%207.03541%200.806449%207.03541C0.441462%207.03541%200.14491%207.33196%200.14491%207.69695C0.14491%208.05369%200.441462%208.36059%200.806449%208.36059ZM0.806449%2010.6266C1.17355%2010.6266%201.48045%2010.3093%201.48045%209.95258C1.48045%209.58759%201.17355%209.29104%200.806449%209.29104C0.441462%209.29104%200.14491%209.58759%200.14491%209.95258C0.14491%2010.3093%200.441462%2010.6266%200.806449%2010.6266ZM0.806449%2012.8843C1.17355%2012.8843%201.48045%2012.5774%201.48045%2012.2207C1.48045%2011.8453%201.17355%2011.5488%200.806449%2011.5488C0.441462%2011.5488%200.14491%2011.8453%200.14491%2012.2207C0.14491%2012.5774%200.441462%2012.8843%200.806449%2012.8843ZM0.806449%2015.1399C1.17355%2015.1399%201.48045%2014.833%201.48045%2014.4784C1.48045%2014.1113%201.17355%2013.8148%200.806449%2013.8148C0.441462%2013.8148%200.14491%2014.1113%200.14491%2014.4784C0.14491%2014.833%200.441462%2015.1399%200.806449%2015.1399ZM0.806449%2019.9405C1.23123%2019.9405%201.5918%2019.58%201.5918%2019.1552L1.5918%2016.8578C1.5918%2016.4331%201.24369%2016.0725%200.806449%2016.0725C0.381668%2016.0725%200.0253225%2016.4331%200.0253225%2016.8578L0.0253225%2019.1552C0.0253225%2019.58%200.383778%2019.9405%200.806449%2019.9405Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
   "blinds-horizontal-open": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20362--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2020.744%2019.953%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2219.953%22%20opacity%3D%220%22%20width%3D%2220.744%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M3.0852%204.61809L17.9327%204.61809C18.4054%204.61809%2018.702%204.51228%2018.9592%204.2715L19.7989%203.43963C20.0644%203.17202%2019.9772%202.63298%2019.492%202.63298L4.65699%202.63298C4.18427%202.63298%203.88772%202.7388%203.63046%202.97958L2.79076%203.80933C2.52526%204.07694%202.61248%204.61809%203.0852%204.61809ZM3.0852%209.65904L17.9327%209.65904C18.4054%209.65904%2018.702%209.56358%2018.9592%209.31245L19.7989%208.48058C20.0644%208.22332%2019.9772%207.68429%2019.492%207.68429L4.65699%207.68429C4.18427%207.68429%203.88772%207.77975%203.63046%208.03088L2.79076%208.86275C2.52526%209.12824%202.61248%209.65904%203.0852%209.65904ZM3.0852%2014.6793L17.9327%2014.6793C18.4054%2014.6793%2018.702%2014.5631%2018.9592%2014.3223L19.7989%2013.4926C20.0644%2013.2353%2019.9772%2012.6942%2019.492%2012.6942L4.65699%2012.6942C4.18427%2012.6942%203.88772%2012.7897%203.63046%2013.0408L2.79076%2013.8726C2.52526%2014.1403%202.61248%2014.6793%203.0852%2014.6793ZM3.0852%2019.7224L17.9327%2019.7224C18.4054%2019.7224%2018.702%2019.6062%2018.9592%2019.3551L19.7989%2018.5335C20.0644%2018.2659%2019.9772%2017.7269%2019.492%2017.7269L4.65699%2017.7269C4.18427%2017.7269%203.88772%2017.8327%203.63046%2018.0838L2.79076%2018.9136C2.52526%2019.1709%202.61248%2019.7224%203.0852%2019.7224Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%20%3Cpath%20d%3D%22M0.0232123%200.785347C0.0232123%201.21224%200.381668%201.57069%200.806449%201.57069L19.9586%201.57069C20.3937%201.57069%2020.744%201.21224%2020.744%200.785347C20.744%200.360566%2020.3937%200%2019.9586%200L0.806449%200C0.381668%200%200.0232123%200.360566%200.0232123%200.785347ZM0.806449%203.84511C1.17355%203.84511%201.48045%203.52997%201.48045%203.17323C1.48045%202.80613%201.17355%202.51169%200.806449%202.51169C0.441462%202.51169%200.14491%202.80613%200.14491%203.17323C0.14491%203.52997%200.441462%203.84511%200.806449%203.84511ZM0.806449%206.10074C1.17355%206.10074%201.48045%205.79595%201.48045%205.43921C1.48045%205.06176%201.17355%204.76732%200.806449%204.76732C0.441462%204.76732%200.14491%205.06176%200.14491%205.43921C0.14491%205.79595%200.441462%206.10074%200.806449%206.10074ZM0.806449%208.36059C1.17355%208.36059%201.48045%208.05369%201.48045%207.69695C1.48045%207.33196%201.17355%207.03541%200.806449%207.03541C0.441462%207.03541%200.14491%207.33196%200.14491%207.69695C0.14491%208.05369%200.441462%208.36059%200.806449%208.36059ZM0.806449%2010.6266C1.17355%2010.6266%201.48045%2010.3093%201.48045%209.95258C1.48045%209.58759%201.17355%209.29104%200.806449%209.29104C0.441462%209.29104%200.14491%209.58759%200.14491%209.95258C0.14491%2010.3093%200.441462%2010.6266%200.806449%2010.6266ZM0.806449%2012.8843C1.17355%2012.8843%201.48045%2012.5774%201.48045%2012.2207C1.48045%2011.8453%201.17355%2011.5488%200.806449%2011.5488C0.441462%2011.5488%200.14491%2011.8453%200.14491%2012.2207C0.14491%2012.5774%200.441462%2012.8843%200.806449%2012.8843ZM0.806449%2015.1399C1.17355%2015.1399%201.48045%2014.833%201.48045%2014.4784C1.48045%2014.1113%201.17355%2013.8148%200.806449%2013.8148C0.441462%2013.8148%200.14491%2014.1113%200.14491%2014.4784C0.14491%2014.833%200.441462%2015.1399%200.806449%2015.1399ZM0.806449%2019.9405C1.23123%2019.9405%201.5918%2019.58%201.5918%2019.1552L1.5918%2016.8578C1.5918%2016.4331%201.24369%2016.0725%200.806449%2016.0725C0.381668%2016.0725%200.0253225%2016.4331%200.0253225%2016.8578L0.0253225%2019.1552C0.0253225%2019.58%200.383778%2019.9405%200.806449%2019.9405Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
@@ -2478,8 +2794,8 @@ const ICON_DATA = {
   "temp-low": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2017.8828%2026.0742%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2226.0742%22%20opacity%3D%220%22%20width%3D%2217.8828%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M14.6484%204.30078L17.1914%204.30078C17.6016%204.30078%2017.8828%203.98438%2017.8828%203.62109C17.8828%203.25781%2017.6016%202.94141%2017.1914%202.94141L14.6484%202.94141C14.2383%202.94141%2013.957%203.25781%2013.957%203.62109C13.957%203.98438%2014.2383%204.30078%2014.6484%204.30078ZM14.6484%207.59375L17.1914%207.59375C17.6016%207.59375%2017.8828%207.27734%2017.8828%206.91406C17.8828%206.55078%2017.6016%206.23438%2017.1914%206.23438L14.6484%206.23438C14.2383%206.23438%2013.957%206.55078%2013.957%206.91406C13.957%207.27734%2014.2383%207.59375%2014.6484%207.59375ZM14.6484%2010.8867L17.1914%2010.8867C17.6016%2010.8867%2017.8828%2010.5703%2017.8828%2010.207C17.8828%209.84375%2017.6016%209.51562%2017.1914%209.51562L14.6484%209.51562C14.2383%209.51562%2013.957%209.84375%2013.957%2010.207C13.957%2010.5703%2014.2383%2010.8867%2014.6484%2010.8867ZM14.6484%2014.1797L17.1914%2014.1797C17.6016%2014.1797%2017.8828%2013.8633%2017.8828%2013.5C17.8828%2013.125%2017.6016%2012.8086%2017.1914%2012.8086L14.6484%2012.8086C14.2383%2012.8086%2013.957%2013.125%2013.957%2013.5C13.957%2013.8633%2014.2383%2014.1797%2014.6484%2014.1797Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22/%3E%0A%20%20%3Cpath%20d%3D%22M8.77734%2026.0391C12.1523%2026.0391%2014.8828%2023.2969%2014.8828%2019.9219C14.8828%2018.1406%2014.1562%2016.582%2012.75%2015.3164C12.5039%2015.0938%2012.4453%2014.9531%2012.4453%2014.6016L12.4453%204.00781C12.4453%201.62891%2010.957%200%208.77734%200C6.57422%200%205.07422%201.62891%205.07422%204.00781L5.07422%2014.6016C5.07422%2014.9531%205.02734%2015.0938%204.76953%2015.3164C3.375%2016.582%202.63672%2018.1406%202.63672%2019.9219C2.63672%2023.2969%205.37891%2026.0391%208.77734%2026.0391ZM8.77734%2024.3398C6.32812%2024.3398%204.35938%2022.3477%204.35938%2019.9219C4.35938%2018.457%205.05078%2017.1328%206.29297%2016.3008C6.65625%2016.0547%206.79688%2015.832%206.79688%2015.3516L6.79688%204.07812C6.79688%202.67188%207.60547%201.72266%208.77734%201.72266C9.92578%201.72266%2010.7344%202.67188%2010.7344%204.07812L10.7344%2015.3516C10.7344%2015.832%2010.875%2016.0547%2011.2383%2016.3008C12.4805%2017.1328%2013.1719%2018.457%2013.1719%2019.9219C13.1719%2022.3477%2011.1914%2024.3398%208.77734%2024.3398Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.2125%22/%3E%0A%20%20%3Cpath%20d%3D%22M8.76562%2022.7578C10.3359%2022.7578%2011.6016%2021.4922%2011.6016%2019.9102C11.6016%2018.8086%2010.9805%2017.9062%2010.0781%2017.4141C9.70312%2017.2148%209.57422%2017.0742%209.57422%2016.5L9.57422%2014.332C9.57422%2013.7695%209.21094%2013.4062%208.76562%2013.4062C8.30859%2013.4062%207.95703%2013.7695%207.95703%2014.332L7.95703%2016.5C7.95703%2017.0742%207.82812%2017.2148%207.45312%2017.4141C6.55078%2017.9062%205.92969%2018.8086%205.92969%2019.9102C5.92969%2021.4922%207.19531%2022.7578%208.76562%2022.7578Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
   "temp-medium": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2017.8828%2026.0742%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2226.0742%22%20opacity%3D%220%22%20width%3D%2217.8828%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M14.6484%204.30078L17.1914%204.30078C17.6016%204.30078%2017.8828%203.98438%2017.8828%203.62109C17.8828%203.25781%2017.6016%202.94141%2017.1914%202.94141L14.6484%202.94141C14.2383%202.94141%2013.957%203.25781%2013.957%203.62109C13.957%203.98438%2014.2383%204.30078%2014.6484%204.30078ZM14.6484%207.59375L17.1914%207.59375C17.6016%207.59375%2017.8828%207.27734%2017.8828%206.91406C17.8828%206.55078%2017.6016%206.23438%2017.1914%206.23438L14.6484%206.23438C14.2383%206.23438%2013.957%206.55078%2013.957%206.91406C13.957%207.27734%2014.2383%207.59375%2014.6484%207.59375ZM14.6484%2010.8867L17.1914%2010.8867C17.6016%2010.8867%2017.8828%2010.5703%2017.8828%2010.207C17.8828%209.84375%2017.6016%209.51562%2017.1914%209.51562L14.6484%209.51562C14.2383%209.51562%2013.957%209.84375%2013.957%2010.207C13.957%2010.5703%2014.2383%2010.8867%2014.6484%2010.8867ZM14.6484%2014.1797L17.1914%2014.1797C17.6016%2014.1797%2017.8828%2013.8633%2017.8828%2013.5C17.8828%2013.125%2017.6016%2012.8086%2017.1914%2012.8086L14.6484%2012.8086C14.2383%2012.8086%2013.957%2013.125%2013.957%2013.5C13.957%2013.8633%2014.2383%2014.1797%2014.6484%2014.1797Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22/%3E%0A%20%20%3Cpath%20d%3D%22M8.77734%2026.0391C12.1523%2026.0391%2014.8828%2023.2969%2014.8828%2019.9219C14.8828%2018.1406%2014.1562%2016.582%2012.75%2015.3164C12.5039%2015.0938%2012.4453%2014.9531%2012.4453%2014.6016L12.4453%204.00781C12.4453%201.62891%2010.957%200%208.77734%200C6.57422%200%205.07422%201.62891%205.07422%204.00781L5.07422%2014.6016C5.07422%2014.9531%205.02734%2015.0938%204.76953%2015.3164C3.375%2016.582%202.63672%2018.1406%202.63672%2019.9219C2.63672%2023.2969%205.37891%2026.0391%208.77734%2026.0391ZM8.77734%2024.3398C6.32812%2024.3398%204.35938%2022.3477%204.35938%2019.9219C4.35938%2018.457%205.05078%2017.1328%206.29297%2016.3008C6.65625%2016.0547%206.79688%2015.832%206.79688%2015.3516L6.79688%204.07812C6.79688%202.67188%207.60547%201.72266%208.77734%201.72266C9.92578%201.72266%2010.7344%202.67188%2010.7344%204.07812L10.7344%2015.3516C10.7344%2015.832%2010.875%2016.0547%2011.2383%2016.3008C12.4805%2017.1328%2013.1719%2018.457%2013.1719%2019.9219C13.1719%2022.3477%2011.1914%2024.3398%208.77734%2024.3398Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.2125%22/%3E%0A%20%20%3Cpath%20d%3D%22M8.76562%2022.7578C10.3359%2022.7578%2011.6016%2021.4922%2011.6016%2019.9102C11.6016%2018.8086%2010.9805%2017.9062%2010.0781%2017.4141C9.70312%2017.2148%209.57422%2017.0742%209.57422%2016.5L9.57422%2010.2305C9.57422%209.66797%209.21094%209.30469%208.76562%209.30469C8.30859%209.30469%207.95703%209.66797%207.95703%2010.2305L7.95703%2016.5C7.95703%2017.0742%207.82812%2017.2148%207.45312%2017.4141C6.55078%2017.9062%205.92969%2018.8086%205.92969%2019.9102C5.92969%2021.4922%207.19531%2022.7578%208.76562%2022.7578Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
   "thermostat": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20height%3D%2224px%22%20viewBox%3D%220%20-960%20960%20960%22%20width%3D%2224px%22%20fill%3D%22%23FFFFFF%22%3E%3Cpath%20d%3D%22M520-520v-80h200v80H520Zm0-160v-80h320v80H520ZM320-120q-83%200-141.5-58.5T120-320q0-48%2021-89.5t59-70.5v-240q0-50%2035-85t85-35q50%200%2085%2035t35%2085v240q38%2029%2059%2070.5t21%2089.5q0%2083-58.5%20141.5T320-120ZM200-320h240q0-29-12.5-54T392-416l-32-24v-280q0-17-11.5-28.5T320-760q-17%200-28.5%2011.5T280-720v280l-32%2024q-23%2017-35.5%2042T200-320Z%22/%3E%3C/svg%3E",
-  "tv-play": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2029.6484%2023.4492%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2223.4492%22%20opacity%3D%220%22%20width%3D%2229.6484%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M3.01172%2019.4531L26.2852%2019.4531C28.2891%2019.4531%2029.2969%2018.4805%2029.2969%2016.4414L29.2969%203.01172C29.2969%200.972656%2028.2891%200%2026.2852%200L3.01172%200C1.01953%200%200%200.972656%200%203.01172L0%2016.4414C0%2018.4805%201.01953%2019.4531%203.01172%2019.4531ZM8.75391%2023.4258L20.543%2023.4258C21.0586%2023.4258%2021.4922%2023.0039%2021.4922%2022.4766C21.4922%2021.9492%2021.0586%2021.5273%2020.543%2021.5273L8.75391%2021.5273C8.23828%2021.5273%207.80469%2021.9492%207.80469%2022.4766C7.80469%2023.0039%208.23828%2023.4258%208.75391%2023.4258Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.2125%22/%3E%0A%20%20%3Cpath%20d%3D%22M10.7109%2014.6953L10.7109%204.76953C10.7109%204.13672%2011.3789%203.91406%2011.8828%204.20703L20.0039%208.98828C20.5781%209.32812%2020.6016%2010.125%2020.0156%2010.4648L11.8828%2015.2578C11.3789%2015.5508%2010.7109%2015.3281%2010.7109%2014.6953Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
-  "tv": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2029.6484%2023.4492%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2223.4492%22%20opacity%3D%220%22%20width%3D%2229.6484%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M3.04688%2017.5781C2.32031%2017.5781%201.88672%2017.1445%201.88672%2016.4297L1.88672%203.03516C1.88672%202.32031%202.32031%201.88672%203.04688%201.88672L26.25%201.88672C26.9766%201.88672%2027.4102%202.32031%2027.4102%203.03516L27.4102%2016.4297C27.4102%2017.1445%2026.9766%2017.5781%2026.25%2017.5781Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.18%22/%3E%0A%20%20%3Cpath%20d%3D%22M3.01172%2019.4648L26.2852%2019.4648C28.1602%2019.4648%2029.2969%2018.3164%2029.2969%2016.4531L29.2969%203.01172C29.2969%201.14844%2028.1602%200%2026.2852%200L3.01172%200C1.14844%200%200%201.14844%200%203.01172L0%2016.4531C0%2018.3164%201.14844%2019.4648%203.01172%2019.4648ZM3.04688%2017.5781C2.32031%2017.5781%201.88672%2017.1445%201.88672%2016.4297L1.88672%203.03516C1.88672%202.32031%202.32031%201.88672%203.04688%201.88672L26.25%201.88672C26.9766%201.88672%2027.4102%202.32031%2027.4102%203.03516L27.4102%2016.4297C27.4102%2017.1445%2026.9766%2017.5781%2026.25%2017.5781ZM8.75391%2023.4375L20.543%2023.4375C21.0586%2023.4375%2021.4922%2023.0156%2021.4922%2022.4883C21.4922%2021.9609%2021.0586%2021.5391%2020.543%2021.5391L8.75391%2021.5391C8.23828%2021.5391%207.80469%2021.9609%207.80469%2022.4883C7.80469%2023.0156%208.23828%2023.4375%208.75391%2023.4375Z%22%20fill%3D%22white%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
+  "tv-play": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%22-0.5%20-0.6%2030.6484%2024.6492%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2223.4492%22%20opacity%3D%220%22%20width%3D%2229.6484%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M3.01172%2019.4531L26.2852%2019.4531C28.2891%2019.4531%2029.2969%2018.4805%2029.2969%2016.4414L29.2969%203.01172C29.2969%200.972656%2028.2891%200%2026.2852%200L3.01172%200C1.01953%200%200%200.972656%200%203.01172L0%2016.4414C0%2018.4805%201.01953%2019.4531%203.01172%2019.4531ZM8.75391%2023.4258L20.543%2023.4258C21.0586%2023.4258%2021.4922%2023.0039%2021.4922%2022.4766C21.4922%2021.9492%2021.0586%2021.5273%2020.543%2021.5273L8.75391%2021.5273C8.23828%2021.5273%207.80469%2021.9492%207.80469%2022.4766C7.80469%2023.0039%208.23828%2023.4258%208.75391%2023.4258Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.2125%22/%3E%0A%20%20%3Cpath%20d%3D%22M10.7109%2014.6953L10.7109%204.76953C10.7109%204.13672%2011.3789%203.91406%2011.8828%204.20703L20.0039%208.98828C20.5781%209.32812%2020.6016%2010.125%2020.0156%2010.4648L11.8828%2015.2578C11.3789%2015.5508%2010.7109%2015.3281%2010.7109%2014.6953Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
+  "tv": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%22-0.5%20-0.6%2030.6484%2024.6492%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2223.4492%22%20opacity%3D%220%22%20width%3D%2229.6484%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M3.04688%2017.5781C2.32031%2017.5781%201.88672%2017.1445%201.88672%2016.4297L1.88672%203.03516C1.88672%202.32031%202.32031%201.88672%203.04688%201.88672L26.25%201.88672C26.9766%201.88672%2027.4102%202.32031%2027.4102%203.03516L27.4102%2016.4297C27.4102%2017.1445%2026.9766%2017.5781%2026.25%2017.5781Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.18%22/%3E%0A%20%20%3Cpath%20d%3D%22M3.01172%2019.4648L26.2852%2019.4648C28.1602%2019.4648%2029.2969%2018.3164%2029.2969%2016.4531L29.2969%203.01172C29.2969%201.14844%2028.1602%200%2026.2852%200L3.01172%200C1.14844%200%200%201.14844%200%203.01172L0%2016.4531C0%2018.3164%201.14844%2019.4648%203.01172%2019.4648ZM3.04688%2017.5781C2.32031%2017.5781%201.88672%2017.1445%201.88672%2016.4297L1.88672%203.03516C1.88672%202.32031%202.32031%201.88672%203.04688%201.88672L26.25%201.88672C26.9766%201.88672%2027.4102%202.32031%2027.4102%203.03516L27.4102%2016.4297C27.4102%2017.1445%2026.9766%2017.5781%2026.25%2017.5781ZM8.75391%2023.4375L20.543%2023.4375C21.0586%2023.4375%2021.4922%2023.0156%2021.4922%2022.4883C21.4922%2021.9609%2021.0586%2021.5391%2020.543%2021.5391L8.75391%2021.5391C8.23828%2021.5391%207.80469%2021.9609%207.80469%2022.4883C7.80469%2023.0156%208.23828%2023.4375%208.75391%2023.4375Z%22%20fill%3D%22white%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
   "unmute": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20height%3D%2224px%22%20viewBox%3D%220%20-960%20960%20960%22%20width%3D%2224px%22%20fill%3D%22%23FFFFFF%22%3E%3Cpath%20d%3D%22M340-436v-88h114l118-118v324L454-436H340Zm20-20h102l90%2090v-228l-90%2090H360v48Zm100-24Z%22/%3E%3C/svg%3E",
   "updates": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2021.1523%2026.0039%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2226.0039%22%20opacity%3D%220%22%20width%3D%2221.1523%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M20.8008%2011.1328L20.8008%2020.1562C20.8008%2023.3086%2019.043%2025.0547%2015.8906%2025.0547L4.89844%2025.0547C1.74609%2025.0547%200%2023.3086%200%2020.1562L0%2011.1328C0%207.99219%201.74609%206.23438%204.89844%206.23438L9.46875%206.23438L9.46875%2012.832L9.53906%2014.5781L8.88281%2013.8867L7.06641%2011.9531C6.90234%2011.7656%206.65625%2011.6719%206.42188%2011.6719C5.92969%2011.6719%205.57812%2012.0234%205.57812%2012.4922C5.57812%2012.75%205.68359%2012.9375%205.85938%2013.1133L9.72656%2016.8398C9.96094%2017.0742%2010.1602%2017.1562%2010.4062%2017.1562C10.6406%2017.1562%2010.8398%2017.0742%2011.0742%2016.8398L14.9414%2013.1133C15.1172%2012.9375%2015.2227%2012.75%2015.2227%2012.4922C15.2227%2012.0234%2014.8477%2011.6719%2014.3672%2011.6719C14.1328%2011.6719%2013.8984%2011.7656%2013.7344%2011.9531L11.918%2013.8867L11.2617%2014.5781L11.332%2012.832L11.332%206.23438L15.8906%206.23438C19.043%206.23438%2020.8008%207.99219%2020.8008%2011.1328Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.2125%22/%3E%0A%20%20%3Cpath%20d%3D%22M10.4062%200C10.9102%200%2011.332%200.410156%2011.332%200.902344L11.332%2012.832L11.2617%2014.5781L11.918%2013.8867L13.7344%2011.9531C13.8984%2011.7656%2014.1328%2011.6719%2014.3672%2011.6719C14.8477%2011.6719%2015.2227%2012.0234%2015.2227%2012.4922C15.2227%2012.75%2015.1172%2012.9375%2014.9414%2013.1133L11.0742%2016.8398C10.8398%2017.0742%2010.6406%2017.1562%2010.4062%2017.1562C10.1602%2017.1562%209.96094%2017.0742%209.72656%2016.8398L5.85938%2013.1133C5.68359%2012.9375%205.57812%2012.75%205.57812%2012.4922C5.57812%2012.0234%205.92969%2011.6719%206.42188%2011.6719C6.65625%2011.6719%206.90234%2011.7656%207.06641%2011.9531L8.88281%2013.8867L9.53906%2014.5781L9.46875%2012.832L9.46875%200.902344C9.46875%200.410156%209.90234%200%2010.4062%200Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
   "vacuum-charge": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2026.7422%2024.293%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2224.293%22%20opacity%3D%220%22%20width%3D%2226.7422%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M21.0469%2024.293C22.1484%2024.293%2023.0391%2023.4023%2023.0391%2022.2891C23.0391%2021.1875%2022.1484%2020.2969%2021.0469%2020.2969C19.9336%2020.2969%2019.043%2021.1875%2019.043%2022.2891C19.043%2023.4023%2019.9336%2024.293%2021.0469%2024.293Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22/%3E%0A%20%20%3Cpath%20d%3D%22M13.1953%2024.293C14.3086%2024.293%2015.1992%2023.4023%2015.1992%2022.2891C15.1992%2021.1875%2014.3086%2020.2969%2013.1953%2020.2969C12.0938%2020.2969%2011.2031%2021.1875%2011.2031%2022.2891C11.2031%2023.4023%2012.0938%2024.293%2013.1953%2024.293Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22/%3E%0A%20%20%3Cpath%20d%3D%22M5.35547%2024.293C6.48047%2024.293%207.37109%2023.4023%207.37109%2022.2891C7.37109%2021.1875%206.48047%2020.2969%205.35547%2020.2969C4.25391%2020.2969%203.36328%2021.1875%203.36328%2022.2891C3.36328%2023.4023%204.25391%2024.293%205.35547%2024.293Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22/%3E%0A%20%20%3Cpath%20d%3D%22M13.1953%2010.5703C19.3594%2010.5703%2026.2148%208.35547%2026.2148%205.74219C26.2148%203.16406%2020.3906%201.06641%2013.1953%201.06641C6%201.06641%200.175781%203.16406%200.175781%205.74219C0.175781%208.35547%207.04297%2010.5703%2013.1953%2010.5703ZM4.76953%2016.418C5.0625%2016.5117%205.25%2016.3594%205.25%2016.0664L5.25%2014.9648C5.25%2014.4727%205.64844%2014.2148%206.10547%2014.3438C8.50781%2015.0234%2011.2969%2015.2227%2013.2773%2015.2227C15.2812%2015.2227%2018.0586%2015.0234%2020.4609%2014.3438C20.918%2014.2148%2021.3164%2014.4727%2021.3164%2014.9648L21.3164%2016.0078C21.3164%2016.3125%2021.5039%2016.4531%2021.7969%2016.3594C24.5977%2015.3867%2026.3906%2013.8633%2026.3906%2011.9648L26.3906%208.12109C24.5859%2010.207%2019.1719%2011.9414%2013.1953%2011.9414C7.33594%2011.9414%201.80469%2010.207%200%208.12109L0%2011.9648C0%2013.9102%201.86328%2015.4453%204.76953%2016.418ZM13.1953%205.91797C10.8281%205.91797%209.50391%205.29688%209.50391%204.37109C9.50391%203.46875%2010.793%202.82422%2013.1953%202.82422C15.6094%202.82422%2016.8984%203.46875%2016.8984%204.37109C16.8984%205.29688%2015.5742%205.91797%2013.1953%205.91797ZM13.1953%204.99219C14.6953%204.99219%2015.4688%204.71094%2015.4688%204.37109C15.4688%204.03125%2014.7422%203.73828%2013.1953%203.73828C11.6484%203.73828%2010.9102%204.03125%2010.9102%204.37109C10.9102%204.71094%2011.6953%204.99219%2013.1953%204.99219ZM9.07031%208.42578C8.39062%208.42578%207.82812%208.15625%207.82812%207.81641C7.82812%207.48828%208.39062%207.21875%209.07031%207.21875C9.75%207.21875%2010.3125%207.48828%2010.3125%207.81641C10.3125%208.15625%209.75%208.42578%209.07031%208.42578ZM13.1953%208.90625C12.5273%208.90625%2011.9648%208.625%2011.9648%208.29688C11.9648%207.95703%2012.5273%207.67578%2013.1953%207.67578C13.875%207.67578%2014.4375%207.95703%2014.4375%208.29688C14.4375%208.625%2013.875%208.90625%2013.1953%208.90625ZM17.332%208.42578C16.6523%208.42578%2016.0898%208.15625%2016.0898%207.81641C16.0898%207.48828%2016.6523%207.21875%2017.332%207.21875C18.0117%207.21875%2018.5742%207.48828%2018.5742%207.81641C18.5742%208.15625%2018.0117%208.42578%2017.332%208.42578Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
@@ -2512,6 +2828,7 @@ const TILE_COLOR = {
   battery: "var(--hemma-color-green, #30D158)",
   plant: "var(--hemma-color-green, #30D158)",
   entity_actions: "var(--hemma-color-teal, #00C3D0)",
+  vacuum: "var(--hemma-badge-vacuum-color, var(--hemma-color-orange, #FF9230))",
 };
 const WEATHER_SVG = {
   "sunny": "clear-day",
@@ -2702,7 +3019,10 @@ const HEMMA_ACCENTS = [
   ["Neutral", "neutral", "#CDCDCF"],
 ].map(([label, key, hex]) => ({
   label, hex, id: "var(--hemma-color-" + key + ", " + hex + ")",
-}));
+})).concat([
+  { label: "Text color", hex: "linear-gradient(135deg, #fff 50%, #1c1c1e 50%)", id: "currentColor" },
+  { label: "Artwork Color", hex: "linear-gradient(135deg, #b2103a, #3a6fd0)", id: "var(--hv-album-accent, currentColor)" },
+]);
 // The states a domain can report, for entities that do not publish their own list.
 const STATUS_DOMAIN_STATES = {
   vacuum: ["cleaning", "returning", "paused", "error", "docked", "idle"],
@@ -3614,8 +3934,15 @@ const tileOnSurface = (t, phone) => {
 const tileHidesNow = (type, kind, ent, V, states) =>
   tileShowWhen(type, V) === "active" && !tileActive(kind, ent, V || {}, states);
 
+// hemma_lock's open_doors: the door sensors mapped to its locks that read open.
+const lockOpenDoors = (V, ent, states) => {
+  const m = (V && V.door_sensors) || {};
+  const ids = [...new Set([].concat((V && V.locks) || [], ent ? [ent.entity_id] : []).filter(Boolean))];
+  return [...new Set(ids.flatMap((id) => [].concat(m[id] || [])))].filter((x) => states && states[x] && states[x].state === "on").length;
+};
 const tileActive = (kind, ent, V, states) => {
   if (!ent) return false;
+  if ((kind === "lock" || kind === "lock_group") && lockOpenDoors(V, ent, states)) return true;
   const state = String(ent.state || "").toLowerCase();
   switch (kind) {
     // Templates that override hemma_entity's state: block with their own rule.
@@ -4028,6 +4355,10 @@ const tileStateWord = (kind, tile, ent, states, hass) => {
   const V = (tile && tile.variables) || {};
   if (!ent) return tile && tile.entity ? "—" : _sx("Not set");
   const cap = (x) => (x ? x.charAt(0).toUpperCase() + x.slice(1).replace(/_/g, " ") : "");
+  if (kind === "lock" || kind === "lock_group") {
+    const n = lockOpenDoors(V, ent, states);
+    if (n) return n > 1 ? _studioT("locks.n_doors_open", "{n} Doors Open", { n }) : _studioT("locks.door_open", "Door Open");
+  }
   switch (kind) {
     case "thermostat": {
       const mode = String(ent.state).toLowerCase();
@@ -4441,6 +4772,53 @@ class HemmaPanel extends HTMLElement {
   }
   _clearLog() { if (this.$("log")) this.$("log").innerHTML = ""; }
 
+  _statusRepair(msg, cfg, rebuilt) {
+    this._status(msg, "err");
+    const el = this.$("status");
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "statusfix";
+    b.textContent = _sx("Repair");
+    b.addEventListener("click", () => this._repair(cfg, rebuilt));
+    el.appendChild(b);
+  }
+
+  async _repair(cfg, rebuilt) {
+    const pair = this._pair;
+    const paths = [];
+    if (!(stable(rebuilt) === stable(cfg))) paths.push(...cfgDiffPaths(cfg, rebuilt, 8));
+    if (pair && pair.safe === false) {
+      const back = expandPair(pair);
+      paths.push(...cfgDiffPaths(pair.mobileRaw, back.mobile, 8).map((x) => _sx("phone") + " \u203a " + x));
+    }
+    const list = paths.slice(0, 8).join("\n") + (paths.length > 8 ? "\n\u2026" : "");
+    const yes = await this._ask({
+      title: _sx("Repair this dashboard?"),
+      wide: true, cls: "repair",
+      message: _sx("Studio can't keep these settings exactly as they are:") + "\n" + list + "\n\n"
+        + _sx("A backup of the dashboard downloads first. Nothing is written until you press Save."),
+      confirmLabel: _sx("Repair"),
+    });
+    if (!yes) return;
+    try {
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+      const data = JSON.stringify({ dashboard: this._stateUrl, desktop: this._raw, mobile: pair ? pair.mobileRaw : null }, null, 2);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+      a.download = "hemma-backup-" + (this._stateUrl || "dashboard") + "-" + stamp + ".json";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    } catch (e) {
+      return this._status(_sx("The backup could not be downloaded, so nothing was changed."), "err");
+    }
+    if (pair && pair.safe === false) { pair.safe = true; pairFillGaps(pair); }
+    this._log("repaired: saving now writes Studio's version", "warn");
+    this._saveBlocked = false;
+    this._markDirty();
+    this._status(_sx("Repaired. Press Save to keep Studio's version."), "ok");
+  }
+
   _status(msg, kind) {
     const el = this.$("status");
     el.textContent = msg || "";
@@ -4612,6 +4990,8 @@ class HemmaPanel extends HTMLElement {
           background:linear-gradient(to bottom, #15151c, #0f0f14);
         }
         :host(:not(.booting)) .curtain { display:none; }
+        :host(.hvbg) .bgwrap { background:var(--studio-hv); transition:background-color .9s cubic-bezier(.4,0,.2,1); }
+        :host(.hvbg) :is(.bgtint, .bgnoise, .bgnoise2) { opacity:0; }
 
         .bgwrap {
           position:fixed; inset:0; z-index:0; pointer-events:none;
@@ -4735,6 +5115,16 @@ class HemmaPanel extends HTMLElement {
         :host(.phone.is-light) .addrowbar .editbtn.on:hover { background:#3a3a3c; }
         :host(.phone.is-light) .combo-opt.active { background:rgba(118,118,128,0.14); }
         :host(.phone.is-light) .combo-opt.danger { color:#d70015; }
+        :host(.phone.hvbg) .bgwrap { background:var(--studio-hv); }
+        :host(.phone.hvbg) {
+          --hv-panel:color-mix(in oklab, var(--studio-hv) 86%, #fff);
+          --card-tint:var(--hv-panel); --pane:none; --g-blur:none; --g-rim:none;
+          --hemma-pill-fill:var(--hv-panel); --hemma-pill-backdrop:none; --hemma-pill-rim:none; --hemma-pill-edge:transparent; --hemma-pill-highlight:none;
+        }
+        :host(.phone.hvbg.is-light) { --hv-panel:color-mix(in oklab, var(--studio-hv) 40%, #fff); }
+        :host(.phone.hvbg.is-light.hvw) {
+          --ink:#ffffff; --ink-2:rgba(235,235,245,0.74); --ink-3:rgba(235,235,245,0.4); --hair:rgba(255,255,255,0.2); color-scheme:dark;
+        }
         :host(.phone) .bg {
           inset:auto; top:calc(var(--wp-over) * -1); left:calc(var(--wp-over) * -1);
           width:calc(100% + var(--wp-over) * 2);
@@ -4880,6 +5270,21 @@ class HemmaPanel extends HTMLElement {
         button.ok svg { width:19px; height:19px; display:block; }
 
         .combo > input { border-radius:13px; }
+        .svh { display:grid; gap:18px; padding:4px 0 18px; }
+        .svbig { position:relative; justify-self:center; width:min(100%, 360px); aspect-ratio:16 / 10; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px -12px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.12); }
+        .svmock { position:absolute; left:0; top:0; width:320px; height:200px; transform-origin:0 0; pointer-events:none; }
+        .svpv { position:absolute; inset:0; margin:auto; width:max-content; height:32px; transform:none !important; padding:0 16px; border:0; border-radius:16px; background:rgba(40,40,42,0.72);
+          -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; font:inherit; font-size:14px; font-weight:600; cursor:pointer; opacity:0; transition:opacity .18s ease; }
+        .svpv:focus-visible { opacity:1; }
+        @media (hover: hover) { .svbig:hover .svpv { opacity:1; } }
+        @media (hover: none) { .svpv { opacity:1; } }
+        .svgrid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px; }
+        .svopt { display:grid; gap:7px; justify-items:center; border:0; padding:0; background:none; color:inherit; font:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+        .svthumb { position:relative; width:100%; aspect-ratio:16 / 10; border-radius:8px; overflow:hidden; box-shadow:0 0 0 0.5px rgba(255,255,255,0.14); }
+        .svopt.on .svthumb { box-shadow:0 0 0 2px var(--hemma-color-teal, #00C3D0), 0 0 0 4px rgba(0,195,208,0.25); }
+        .svlab { font-size:12px; line-height:1.25; text-align:center; opacity:.8; }
+        .svopt.on .svlab { opacity:1; font-weight:600; }
+        @media (max-width: 520px) { .svgrid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
         .toprow > select, .toprow > button:not(.burger), .toprow > :where(.navpill) > button:not(.burger) {
           height:36px; box-sizing:border-box; display:inline-flex;
           align-items:center; justify-content:center; font-size:13.5px;
@@ -4904,9 +5309,9 @@ class HemmaPanel extends HTMLElement {
         .status:empty { display:none; }
         .status.ok { color:#30d158; } .status.err { color:#ff453a; } .status.warn { color:#ffd60a; }
         :host(.split:not(.flow)) .status:not(:empty) {
-          position:fixed; left:50%; bottom:26px; transform:translateX(-50%);
+          position:fixed; left:calc(var(--side-w, 0px) + var(--insp-w, 0px) + (100vw - var(--side-w, 0px) - var(--insp-w, 0px)) / 2); bottom:26px; transform:translateX(-50%);
           z-index:210; margin:0; min-height:0;
-          padding:11px 20px; border-radius:999px; max-width:min(540px, 76vw);
+          padding:11px 20px; border-radius:999px; max-width:min(540px, calc(100vw - var(--side-w, 0px) - var(--insp-w, 0px) - 48px));
           background:rgba(30,33,38,0.55);
           backdrop-filter:var(--g-blur); -webkit-backdrop-filter:var(--g-blur);
           box-shadow:inset 0 1px 0 rgba(255,255,255,0.22),
@@ -4916,6 +5321,8 @@ class HemmaPanel extends HTMLElement {
         }
         :host(.split:not(.flow)) .status.ok { color:var(--ink); }
         :host(.split:not(.flow)) .status.err { color:#ff6961; }
+        .status .statusfix { margin-left:10px; padding:4px 12px; border:0; border-radius:999px; background:rgba(255,255,255,0.16); color:var(--ink); font:inherit; font-weight:600; cursor:pointer; }
+        .status .statusfix:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
         @media (prefers-reduced-motion: no-preference) {
           :host(.split:not(.flow)) .status:not(:empty) {
             animation:statusin .24s var(--ease) backwards;
@@ -6036,6 +6443,11 @@ class HemmaPanel extends HTMLElement {
           opacity:0; transition:opacity 220ms ease-in-out;
         }
         :host(.phone.collapsed) .top::before { opacity:1; }
+        :host(.phone) .top::before { background:rgba(18,22,24,0.42); box-shadow:0 0.5px 0 rgba(255,255,255,0.10);
+          backdrop-filter:blur(30px) saturate(1.2); -webkit-backdrop-filter:blur(30px) saturate(1.2); }
+        :host(.phone.is-light) .top::before { background:rgba(248,248,250,0.72); box-shadow:0 0.5px 0 rgba(0,0,0,0.10); }
+        :host(.phone.collapsed) .navpill::before { background-color:rgba(255,255,255,0.18); }
+        :host(.phone.is-light.collapsed) .navpill::before { background-color:rgba(255,255,255,0.72); }
         :host(.phone) .toprow { flex-wrap:nowrap; gap:6px; min-height:44px; }
 
         :host(.phone) .toprow > button.ghost, :host(.phone) .toprow > :where(.navpill) > button.ghost {
@@ -6532,7 +6944,7 @@ class HemmaPanel extends HTMLElement {
           clip-path:inset(0 round var(--r-xl));
         }
         .miniphone .mp-photo {
-          position:absolute; top:calc(var(--ph-overscan) * -1); height:calc(64% + var(--ph-overscan));
+          position:absolute; top:calc(var(--ph-overscan) * -1); height:calc(64% + var(--ph-safe, 0px) + var(--ph-overscan));
           left:calc(var(--ph-overscan) * -1); right:calc(var(--ph-overscan) * -1);
           width:calc(100% + var(--ph-overscan) * 2);
           object-fit:cover; display:block;
@@ -6544,12 +6956,11 @@ class HemmaPanel extends HTMLElement {
         .miniphone.nophoto .mp-photo { display:none; }
         .miniphone .mp-wash {
           position:absolute; inset:0;
-          background:linear-gradient(to bottom,
-            rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.04) 16%,
-            color-mix(in srgb, var(--hemma-mobile-hero-floor, #524f4d) 50%, transparent) 44%,
-            var(--hemma-mobile-hero-floor, #524f4d) 72%,
-            var(--hemma-mobile-hero-floor, #524f4d) 100%);
+          background:linear-gradient(to bottom, var(--mph-w0) 0%, var(--mph-w1) 28%, var(--mph-w2) 62%, var(--mph-w3) 100%);
         }
+        .miniphone { --mph-w0:rgba(18,16,14,0.22); --mph-w1:rgba(18,16,14,0.10); --mph-w2:color-mix(in oklab, #706a64 34%, transparent); --mph-w3:color-mix(in oklab, #524f4d 62%, transparent); --mph-bright:0.96; }
+        .miniphone.pnight { --mph-w0:rgba(0,0,0,0.34); --mph-w1:rgba(0,0,0,0.22); --mph-w2:color-mix(in oklab, #42444a 48%, transparent); --mph-w3:color-mix(in oklab, #2b2c2e 74%, transparent); --mph-bright:0.9; --hemma-mobile-hero-floor:#2b2c2e; }
+        .miniphone:not(.hv):not(.filtered) .mp-photo { top:-29px; left:-29px; right:-29px; width:calc(100% + 58px); height:calc(100% + 58px); object-position:center; filter:blur(10px) saturate(1.05) brightness(var(--mph-bright)); }
         .miniphone .mp-body > * { flex:0 0 auto; }
         .miniphone .mp-body {
           position:absolute; inset:0; z-index:2; display:flex; flex-direction:column;
@@ -6698,9 +7109,10 @@ class HemmaPanel extends HTMLElement {
           white-space:nowrap;
         }
         .mini-catpage .mc-cams { display:flex; gap:5.9px; overflow:hidden; }
-        .mini-catpage .mc-cams .pv-cam { width:var(--cam-w, 200px); }
+        .mini-catpage .mc-cams .pv-cam { width:var(--cam-w, 200px); height:var(--cam-h, auto); aspect-ratio:var(--cam-ar, 2 / 1); }
         .miniphone .mp-cams { display:flex; gap:var(--ph-gap); overflow:hidden; margin:0 calc(var(--pad-x) * -1); padding:0 var(--pad-x); }
-        .miniphone .mp-cams .pv-cam { width:calc(100% - 18px); }
+        .miniphone .mp-cams .pv-cam { width:100%; height:140px; aspect-ratio:auto; }
+        .miniphone .mp-cams:has(.pv-cam + .pv-cam) .pv-cam { width:calc(100% - 26px); }
         .pv-cam { position:relative; flex:none; aspect-ratio:2 / 1; border-radius:calc(22px * var(--pv-k, 0.593)); overflow:hidden; background:rgba(28,28,30,0.72); }
         .miniphone .pv-cam { border-radius:16px; }
         .pv-cam img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
@@ -6727,7 +7139,7 @@ class HemmaPanel extends HTMLElement {
           grid-template-columns:max-content minmax(0, 1fr);
           grid-template-rows:max-content max-content;
           column-gap:14px; row-gap:7px; align-items:center;
-          min-height:136px; padding:14px 16px; border-radius:26px;
+          min-height:140px; padding:14px 16px; border-radius:26px;
           background:rgba(0,0,0,0.30);
           backdrop-filter:blur(22px) saturate(1.2);
           -webkit-backdrop-filter:blur(22px) saturate(1.2);
@@ -6816,11 +7228,13 @@ class HemmaPanel extends HTMLElement {
         .miniphone .mp-head {
           display:flex; align-items:center; gap:4px; height:24px;
           color:#fff; font-size:var(--ph-head); font-weight:700;
-          letter-spacing:-0.3px; margin-top:12px;
+          letter-spacing:-0.3px; margin:18px 0 4px;
         }
+        /* As the dashboard: 18 between the badges and the first heading, 18 from a heading to its tiles, 32 between sections. */
+        .miniphone .mp-badges + .mp-head { margin-top:4px; }
         .miniphone .mp-chev {
-          display:grid; place-items:center; color:rgba(255,255,255,0.55);
-          width:calc(var(--u) * 1.1); height:calc(var(--u) * 1.1);
+          display:grid; place-items:center; color:rgba(255,255,255,0.5);
+          width:0.53em; height:0.88em; flex:none; margin:0.06em 0 0 0.12em;
         }
         .miniphone .mp-chev svg { width:100%; height:100%; display:block; }
 
@@ -6976,6 +7390,8 @@ class HemmaPanel extends HTMLElement {
             rgba(0,0,0,0.16) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0.20) 74%, rgba(0,0,0,0.40) 100%);
         }
         .miniroom.nophoto .mini-photo { display:none; }
+        .miniroom.flat .mini-photo, .miniroom.flat .mini-grain, .miniroom.flat .mini-scrim { display:none; }
+        .miniroom.flat .mini-tint { background:var(--flat); }
         .miniroom.nophoto .mini-tint { background:linear-gradient(140deg, #6f8bb5, #c99a6f); }
         .mini-body {
           position:relative; height:100%; box-sizing:border-box;
@@ -7078,10 +7494,11 @@ class HemmaPanel extends HTMLElement {
         .size-desktop .mini-catpage { padding-top:34px; }
         .mini-catpage .mc-title { font-size:20.2px; font-weight:700; letter-spacing:0.01em; line-height:24px; }
         .mini-catpage .mc-badges { display:flex; flex-wrap:wrap; gap:var(--bgap, 5px); margin:8px 0 2px; }
-        /* Overview, from the dashboard's own numbers: badges 19 under the title, the first heading 41 under them,
-           20px headings on a 24px line with 36 above and 12 below, 62px scene tiles; square glyph cells but Media's. */
+        /* Overview, from the dashboard's own numbers: badges 19 under the title, the first heading 31 under them,
+           20px headings on a 24px line with 36 above and 12 below, 62px scene tiles, 140px Now Playing and camera tiles; square glyph cells but Media's. */
         .mini-catpage.ov .mc-badges { margin:calc(19px * var(--pv-k, 0.593)) 0 0; }
-        .mini-catpage.ov .mc-badges + .mc-h, .mini-catpage.ov .mc-chips + .mc-h { margin-top:calc(56px * var(--pv-k, 0.593)); }
+        .mini-catpage.ov .mc-chips + .mc-h { margin-top:calc(56px * var(--pv-k, 0.593)); }
+        .mini-catpage.ov .mc-badges + .mc-h { margin-top:calc(31px * var(--pv-k, 0.593)); }
         .mini-catpage.ov .mc-h { margin:calc(36px * var(--pv-k, 0.593)) 0 calc(12px * var(--pv-k, 0.593)); line-height:calc(24px * var(--pv-k, 0.593)); }
         .mini-catpage.ov .mc-h + .mc-scenes { padding-top:calc(2px * var(--pv-k, 0.593)); }
         .mini-catpage.ov .mc-scenes.mc-strip .mc-scene { height:calc(62px * var(--pv-k, 0.593)); }
@@ -7105,15 +7522,21 @@ class HemmaPanel extends HTMLElement {
         .size-desktop .mini-catpage.ov .mc-title { font-size:calc(34px * var(--pv-k, 0.667)); line-height:calc(41px * var(--pv-k, 0.667)); }
         .size-desktop .mini-catpage.ov .mc-h { font-size:calc(17px * var(--pv-k, 0.667)); line-height:calc(21px * var(--pv-k, 0.667)); }
         .mini-catpage .mc-badges + .mc-h, .mini-catpage .mc-chips + .mc-h { margin-top:calc(22px * var(--pv-k, 0.593)); }
-        .mini-catpage .mc-chips { display:flex; gap:calc(30px * var(--pv-k, 0.593)); align-items:center; margin:calc(14px * var(--pv-k, 0.593)) 0 0 calc(11px * var(--pv-k, 0.593)); overflow:hidden; }
-        .mini-catpage .mc-chips .mp-chip { flex:0 0 auto; display:flex; align-items:center; gap:calc(4px * var(--pv-k, 0.593)); }
+        .mini-catpage .mc-chips { display:flex; gap:calc(31px * var(--pv-k, 0.593)); align-items:center; margin:calc(18px * var(--pv-k, 0.593)) 0 0 0; overflow:hidden; }
+        .mini-catpage .mc-title.backed { display:flex; align-items:center; gap:calc(14px * var(--pv-k, 0.593)); }
+        .mini-catpage .mc-title .mc-back { position:relative; flex:none; width:calc(44px * var(--pv-k, 0.593)); height:calc(44px * var(--pv-k, 0.593)); border-radius:50%;
+          display:grid; place-items:center; color:#fff;
+          background-color:rgba(255,255,255,0.07); background-image:radial-gradient(140% 90% at 50% -20%, rgba(255,255,255,0.14), rgba(255,255,255,0.04) 45%, transparent 62%);
+          box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.3), 0 0 0 0.5px rgba(0,0,0,0.3); }
+        .mini-catpage .mc-title .mc-back svg { width:calc(12px * var(--pv-k, 0.593)); height:calc(20px * var(--pv-k, 0.593)); margin-right:calc(3px * var(--pv-k, 0.593)); display:block; }
+        .mini-catpage .mc-chips .mp-chip { flex:0 0 auto; display:flex; align-items:center; gap:calc(10px * var(--pv-k, 0.593)); }
         .mini-catpage .mc-chips .mp-ring { position:relative; flex:none; width:calc(34px * var(--pv-k, 0.593)); height:calc(34px * var(--pv-k, 0.593)); display:grid; place-items:center; }
         .mini-catpage .mc-chips .mp-ring svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
         .mini-catpage .mc-chips .mp-cglyph { width:54%; height:54%; background-color:#fff; -webkit-mask:var(--i) center / contain no-repeat; mask:var(--i) center / contain no-repeat; }
         .mini-catpage .mc-chips .mp-ring.bare .mp-cglyph { width:100%; height:var(--gh, 90%); background-color:var(--gc, #fff); }
         .mini-catpage .mc-chips .mp-ctext { display:flex; flex-direction:column; line-height:1.16; }
-        .mini-catpage .mc-chips .mp-clabel { color:#fff; font-size:calc(13px * var(--pv-k, 0.593)); font-weight:700; white-space:nowrap; }
-        .mini-catpage .mc-chips .mp-cvalue { color:rgba(255,255,255,0.9); font-size:calc(12px * var(--pv-k, 0.593)); font-weight:500; white-space:nowrap; }
+        .mini-catpage .mc-chips .mp-clabel { color:#fff; font-size:calc(16px * var(--pv-k, 0.593)); font-weight:600; white-space:nowrap; }
+        .mini-catpage .mc-chips .mp-cvalue { color:rgba(255,255,255,0.9); font-size:calc(15px * var(--pv-k, 0.593)); font-weight:500; white-space:nowrap; }
         .mini-catpage .mc-grid {
           display:grid; grid-template-columns:repeat(auto-fill, minmax(112px, 1fr)); grid-auto-rows:42.7px; gap:5.9px; grid-auto-flow:row dense;
           --tc:24.9px;
@@ -7136,6 +7559,8 @@ class HemmaPanel extends HTMLElement {
         .size-desktop .miniroom.ov .mini-side .ms-h svg { width:calc(14px * var(--pv-k, 0.667)); height:calc(14px * var(--pv-k, 0.667)); }
         .mini-catpage .mc-scenes { display:grid; grid-template-columns:repeat(auto-fill, minmax(112px, 1fr)); gap:5.9px; margin-top:10px; }
         .mini-catpage .mc-h + .mc-scenes { margin-top:0; }
+        .mini-catpage .mc-h.lnk { display:flex; align-items:center; gap:0.41em; }
+        .mini-catpage .mc-chev { width:0.53em; height:0.88em; flex:none; opacity:.5; margin-top:0.06em; }
         .mini-catpage .mc-scene {
           display:flex; align-items:center; gap:6px; min-height:32.7px; padding:0 7px; box-sizing:border-box;
           border-radius:11.7px; background:rgba(0,0,0,0.40); font-size:8.9px; font-weight:500;
@@ -7285,7 +7710,7 @@ class HemmaPanel extends HTMLElement {
           height:calc(var(--chrome-font) * 1.2); display:flex; align-items:center;
           opacity:var(--hemma-nav-label-inactive-opacity, 0.84);
         }
-        .mini-battery svg { height:calc(var(--chrome-font) * 1.02); width:auto; display:block; }
+        .mini-battery svg { height:calc(var(--chrome-font) * 0.963); width:auto; display:block; }
         .mini-capsule.sep::before {
           content:""; position:absolute; top:50%; width:1px; height:calc(var(--chrome-btn) * 18 / 34);
           right:calc(var(--cap-pad, calc(var(--chrome-btn) * 6 / 34)) + var(--chrome-btn) + var(--chrome-btn-gap) / 2);
@@ -7607,6 +8032,255 @@ class HemmaPanel extends HTMLElement {
         .mtile.on .mname { color:#1d1d1f; }
         .mtile.on .mstate { color:rgba(0,0,0,0.55); }
 
+        .card.map .hv {
+          --hv-ink:#fff; --hv-sub:rgba(235,235,245,0.6); --hv-off:color-mix(in oklab, color-mix(in oklab, var(--flat) 50%, rgb(24 24 27)) 70%, transparent); --hv-chrome:color-mix(in oklab, color-mix(in oklab, var(--flat) 16%, #fff) 82%, transparent); --pv-cap:rgba(28,28,30,0.68); --pv-rim:rgba(255,255,255,0.05);
+          --pv-c:color-mix(in oklab, var(--flat) 55%, rgb(20 20 22)); --pv-w:color-mix(in oklab, var(--flat) 10%, #fff); --pv-l:color-mix(in oklab, var(--flat) 12%, #fbf8f2);
+          --pv-wash:radial-gradient(38% 24% at 0% 0%, color-mix(in oklab, var(--pv-c) 26%, transparent) 0%, color-mix(in oklab, var(--pv-c) 10%, transparent) 50%, color-mix(in oklab, var(--pv-c) 0%, transparent) 100%), radial-gradient(60% 45% at 0% 58%, color-mix(in oklab, var(--pv-c) 30%, transparent) 0%, color-mix(in oklab, var(--pv-c) 10%, transparent) 55%, color-mix(in oklab, var(--pv-c) 0%, transparent) 85%), linear-gradient(to top, color-mix(in oklab, var(--pv-w) 22%, transparent) 0%, color-mix(in oklab, var(--pv-w) 8%, transparent) 50%, color-mix(in oklab, var(--pv-w) 0%, transparent) 80%), linear-gradient(color-mix(in oklab, var(--pv-w) 34%, transparent), color-mix(in oklab, var(--pv-w) 34%, transparent)); --pv-top:none; --pv-grad:radial-gradient(90% 60% at 8% 0%, color-mix(in oklab, var(--flat) 58%, #fff) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 58%, #fff) 0%, transparent) 72%), radial-gradient(70% 55% at 100% 38%, color-mix(in oklab, var(--flat) 78%, #f2dccb) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 78%, #f2dccb) 0%, transparent) 70%), radial-gradient(110% 70% at 50% 100%, color-mix(in oklab, var(--flat) 84%, #000) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 84%, #000) 0%, transparent) 75%), linear-gradient(var(--flat), var(--flat)); --pv-pgrad:linear-gradient(to bottom, color-mix(in oklab, var(--flat) 60%, #fff) 0%, var(--flat) 45%, color-mix(in oklab, var(--flat) 66%, #000) 100%);
+          --hv-bi-bg:color-mix(in oklab, color-mix(in oklab, var(--flat) 55%, rgb(20 20 22)) 58%, transparent); --hv-bi-ink:#fff; --hv-bi-sel:#fff; --hv-bi-sel-ink:#1c1c1e; --hv-bi-sel-sub:rgba(60,60,67,0.6); --hv-np:color-mix(in oklab, var(--flat) 88%, #000); --hv-wx:brightness(0) invert(1);
+          --hv-side:rgba(255,255,255,0.05); --hv-side-on:rgba(255,255,255,0.14);
+          --hv-name:#fff; --hv-state:rgba(255,255,255,0.62); --hv-scene-icon:#fff;
+          --hemma-pill-fill:color-mix(in oklab, color-mix(in oklab, var(--flat) 16%, #fff) 82%, transparent); --hemma-pill-backdrop:none; --hemma-pill-highlight:none;
+          --hemma-pill-rim:0 0 0 0 transparent; --hemma-pill-edge:transparent; --hemma-nav-active-fill:color-mix(in oklab, var(--flat) 34%, transparent); --hemma-pill-divider:rgba(0,0,0,0.16);
+          background:var(--flat);
+        }
+        .card.map .hv.hvl {
+          --hv-ink:#111; --hv-sub:rgba(0,0,0,0.55); --hv-off:rgba(255,255,255,0.48); --hv-chrome:rgba(255,255,255,0.8); --pv-cap:#111; --pv-rim:rgba(0,0,0,0.04);
+          --hv-bi-bg:rgba(255,255,255,0.88); --hv-bi-ink:#1c1c1e; --hv-bi-sel:#fff; --hv-bi-sel-ink:#1c1c1e; --hv-bi-sel-sub:rgba(60,60,67,0.6); --hv-np:rgba(255,255,255,0.5); --hv-wx:brightness(0);
+          --hv-side:rgba(255,255,255,0.16); --hv-side-on:rgba(255,255,255,0.6);
+          --hv-name:rgba(0,0,0,0.85); --hv-state:rgba(0,0,0,0.55); --hv-scene-icon:rgba(0,0,0,0.85);
+          --hemma-nav-active-fill:color-mix(in oklab, var(--flat) 40%, transparent); --hemma-pill-divider:rgba(0,0,0,0.16); --hemma-pill-fill:var(--hv-chrome);
+          --pv-wash:linear-gradient(to bottom, color-mix(in oklab, var(--pv-l) 60%, transparent) 0%, color-mix(in oklab, var(--pv-l) 50%, transparent) 40%, color-mix(in oklab, var(--pv-l) 64%, transparent) 75%, color-mix(in oklab, var(--pv-l) 79%, transparent) 100%); --pv-grad:radial-gradient(90% 60% at 8% 0%, color-mix(in oklab, var(--flat) 40%, #fbf8f3) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 40%, #fbf8f3) 0%, transparent) 72%), radial-gradient(110% 70% at 50% 100%, color-mix(in oklab, var(--flat) 90%, #3a3530) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 90%, #3a3530) 0%, transparent) 75%), linear-gradient(color-mix(in oklab, var(--flat) 82%, #f7f4ef), color-mix(in oklab, var(--flat) 82%, #f7f4ef)); --pv-pgrad:linear-gradient(to bottom, color-mix(in oklab, var(--flat) 42%, #fbf9f5) 0%, color-mix(in oklab, var(--flat) 82%, #f7f4ef) 45%, color-mix(in oklab, var(--flat) 92%, #2a2724) 100%);
+        }
+        .card.map .hv.hvd { --pv-wash:radial-gradient(60% 45% at 0% 58%, color-mix(in oklab, var(--pv-c) 40%, transparent) 0%, color-mix(in oklab, var(--pv-c) 14%, transparent) 55%, color-mix(in oklab, var(--pv-c) 0%, transparent) 85%), linear-gradient(to top, color-mix(in oklab, var(--pv-w) 12%, transparent) 0%, color-mix(in oklab, var(--pv-w) 4%, transparent) 50%, color-mix(in oklab, var(--pv-w) 0%, transparent) 80%), linear-gradient(color-mix(in oklab, var(--pv-w) 16%, transparent), color-mix(in oklab, var(--pv-w) 16%, transparent)); --pv-grad:radial-gradient(90% 60% at 8% 0%, color-mix(in oklab, var(--flat) 78%, #fff) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 78%, #fff) 0%, transparent) 72%), radial-gradient(70% 55% at 100% 38%, color-mix(in oklab, var(--flat) 86%, #e9c9a8) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 86%, #e9c9a8) 0%, transparent) 70%), radial-gradient(110% 70% at 50% 100%, color-mix(in oklab, var(--flat) 80%, #000) 0%, color-mix(in oklab, color-mix(in oklab, var(--flat) 80%, #000) 0%, transparent) 75%), linear-gradient(var(--flat), var(--flat)); --pv-pgrad:linear-gradient(to bottom, color-mix(in oklab, var(--flat) 76%, #fff) 0%, var(--flat) 45%, color-mix(in oklab, var(--flat) 62%, #000) 100%); }
+        .card.map .miniroom.hv.ov.bd-photo:not(.hvl) { --hv-side:color-mix(in oklab, color-mix(in oklab, var(--flat) 40%, rgb(22 22 24)) 84%, transparent); }
+        .card.map .hv .mini-catpage .mc-bw.d2 { gap:calc(10px * var(--k)); letter-spacing:0; }
+        .card.map .hv .mini-catpage .mc-bw.d2 .s { display:grid; justify-items:end; white-space:nowrap; }
+        .card.map .hv .mini-catpage .mc-bw.d2 .s b { font-size:calc(24px * var(--k)); font-weight:600; letter-spacing:-0.01em; line-height:1.05; color:var(--hv-ink); }
+        .card.map .hv .mini-catpage .mc-bw.d2 .s i { font-style:normal; font-size:calc(14px * var(--k)); font-weight:600; line-height:1.15; color:var(--hv-sub); }
+        .card.map .hv .mini-catpage .mc-bw.d2 img { height:calc(34px * var(--k)); width:auto; opacity:1; }
+        .card.map .miniroom.hv.ov:not(.hvl) { --pv-top:linear-gradient(to bottom, color-mix(in oklab, var(--pv-c) 34%, transparent) 0%, color-mix(in oklab, var(--pv-c) 20%, transparent) 22%, color-mix(in oklab, var(--pv-c) 0%, transparent) 42%); }
+        .card.map .miniroom.hv.bd-photo .mini-photo { display:block; filter:none; transform:none; }
+        .card.map .miniroom.hv.bd-photo .mini-tint { background:var(--pv-top), var(--pv-wash); }
+        .card.map .miniroom.hv.bd-gradient .mini-tint { background:var(--pv-grad); }
+        .card.map .miniphone.hv.bd-photo .mp-photo { display:block; top:0; left:0; right:0; width:100%; height:100%; filter:none; object-fit:cover; object-position:center top; }
+        .card.map .miniphone.hv.bd-photo .mp-wash { display:block; background:var(--pv-wash); }
+        .card.map .miniphone.hv.bd-gradient { background:var(--pv-pgrad); }
+        .card.map .miniphone.hv.bd-gradient:not(.hvl) { --hv-off:rgba(255,255,255,0.09); --pv-rim:rgba(255,255,255,0.06); }
+        .card.map .hv :is(.mini-tabs, .mini-tab) { color:#111; }
+        .card.map .hv :is(.mini-photo, .mini-grain, .mini-scrim, .mp-photo, .mp-wash, .mp-barveil, .mp-baredge, .mc-wx, .mz .mini-weather) { display:none; }
+        .card.map .hv :is(.mc-badges, .mp-badges, .mini-badges) .pglyph { --sc:var(--hv-bi-ink) !important; }
+        .card.map .hv :is(.mc-badges .pbadge.mc-on, .mp-badges .pbadge.open) .pglyph { --sc:var(--hv-bi-cat, var(--hv-bi-sel-ink)) !important; background-color:var(--hv-bi-cat, var(--hv-bi-sel-ink)); }
+        .card.map .hv :is(.mc-chips, .mp-chips) .mp-ring svg { filter:grayscale(1) brightness(1.7); }
+        .card.map .hv :is(.mc-chips, .mp-chips) .mp-cglyph { background-color:var(--hv-ink) !important; }
+        .card.map .hv :is(.mc-chips, .mp-chips) .mp-clabel { color:var(--hv-ink); }
+        .card.map .hv :is(.mc-chips, .mp-chips) .mp-cvalue { color:var(--hv-sub); }
+        .card.map .hv .mp-chips .pglyph { --sc:var(--hv-ink) !important; }
+        .card.map .hv.hvl :is(.mc-chips, .mp-chips) .mp-ring svg { filter:grayscale(1) brightness(0.5); }
+        .card.map .hv .mini-bell .dot { background:var(--hv-ink) !important; }
+        .card.map .hv .mp-pbell circle[fill="#ff4245"] { fill:var(--hv-ink); }
+        .card.map .hv .mini-tint { background:var(--flat); }
+        .card.map .hv .mp-veil { background:transparent; }
+        .card.map .hv .mp-bar, .card.map .hv .mini-catpage {
+          background:var(--flat); -webkit-backdrop-filter:none; backdrop-filter:none;
+        }
+        .card.map .hv .mini-catpage.home { background:none; }
+        .card.map .hv :is(.mini-nav, .mini-tab, .mini-time, .mini-name, .mini-catpage, .mc-title, .mc-h, .mp-name, .mp-head,
+          .mp-bartitle, .mini-side, .mc-back, .ms-close, .mp-clabel) { color:var(--hv-ink); text-shadow:none; }
+        .card.map .hv :is(.mp-chev, .mp-cvalue, .ms-h) { color:var(--hv-sub); }
+        .card.map .hv:not(.hvl) .mini-tab { color:#1c1c1e; }
+        .card.map .hv.hvw { --hv-off:color-mix(in oklab, color-mix(in oklab, var(--flat) 55%, rgb(64 64 68)) 56%, transparent); }
+        .card.map .hv .mini-badges .pbadge { --hv-ic:var(--bgl, 15px); }
+        .card.map .hv .mini-badges .pbadge.ringed { padding-left:calc(var(--bgl, 15px) * 0.4); }
+        .card.map .hv .mini-badges .pbi .pglyph { width:calc(var(--bgl, 15px) * 0.78); height:calc(var(--bgl, 15px) * 0.78); flex-basis:auto; }
+        .card.map.size-desktop .hvl .mini-tab.on { box-shadow:inset 0 -1.5px 0 #fff; }
+        .card.map .miniroom.gsoft .mini-photo { filter:none; transform:none; }
+        .card.map.size-desktop .miniroom:not(.hv) { --hemma-pill-fill:rgba(108,108,108,0.26); --hemma-nav-active-fill:rgba(0,0,0,0.26); }
+        .card.map.size-desktop .miniroom.gink { --hemma-pill-fill:rgba(255,255,255,0.55); --hemma-nav-active-fill:rgba(255,255,255,0.88); }
+        .card.map.size-desktop .miniroom:not(.ov) { --nm:36.2px; --wx:16px; }
+        .card.map.size-desktop .miniroom:not(.sidebar):not(.hv) .mini-tabs { flex:0 0 auto; margin:0 auto; padding:0.3em 0.34em; gap:0.12em; border-radius:9999px; background:var(--hemma-pill-fill); align-items:center; -webkit-backdrop-filter:blur(8px) saturate(1.3); backdrop-filter:blur(8px) saturate(1.3); }
+        .card.map.size-desktop .miniroom:not(.sidebar):not(.hv) .mini-tab { padding:0.36em 0.9em; border-radius:9999px; box-shadow:none; font-weight:500; color:#fff; }
+        .card.map.size-desktop .miniroom:not(.sidebar):not(.hv) .mini-tab.on { background:var(--hemma-nav-active-fill); box-shadow:none; font-weight:500; }
+        .card.map.size-desktop .miniroom.gink:not(.sidebar) .mini-tab { color:#111; }
+        .card.map.size-desktop .miniroom.hv:not(.sidebar) .mini-tabs { flex:0 0 auto; margin:0 auto; padding:0.3em 0.34em; gap:0.12em; border-radius:9999px; background:var(--hemma-pill-fill); align-items:center; }
+        .card.map.size-desktop .miniroom.hv:not(.sidebar) .mini-tab { padding:0.36em 0.9em; border-radius:9999px; box-shadow:none; font-weight:500; }
+        .card.map.size-desktop .miniroom.hv:not(.sidebar) .mini-tab.on { background:var(--hemma-nav-active-fill); box-shadow:none; font-weight:500; }
+        .card.map .hv.hvd { --hv-chrome:color-mix(in oklab, color-mix(in oklab, var(--flat) 40%, rgb(22 22 24)) 78%, transparent); --hemma-pill-fill:color-mix(in oklab, color-mix(in oklab, var(--flat) 40%, rgb(22 22 24)) 78%, transparent); --pv-cap:rgba(255,255,255,0.88); --hemma-nav-active-fill:rgba(255,255,255,0.16); --hemma-pill-divider:rgba(255,255,255,0.22); }
+        .card.map .hv.hvd :is(.mini-tabs, .mini-tab) { color:#fff; }
+        .card.map.size-desktop .miniroom.hv:not(.ov) { --nm:36.2px; }
+        .card.map.size-desktop .miniroom.hv:not(.ov) { --np-max:284px; --np-pt:10px; --np-pr:11.4px; --np-pl:11.4px; --np-cg:7.2px; --np-r:18.4px; --np-art:66.8px; --np-ar:10.6px; --np-ti:10.6px; --np-sb:9.2px; --np-tg:5.6px; --np-rg:7.2px; --np-stack-max:229px; }
+        .card.map .hv .mz .hv-date.fwx { text-transform:none; letter-spacing:0; gap:0.3em; color:var(--hv-ink); font-size:calc(var(--nm) * 0.4); }
+        .card.map .hv .mz .hv-date.fwx span { color:var(--hv-ink); }
+        .card.map .miniphone.hv.hvw.bd-photo { --pv-wash:linear-gradient(to bottom, color-mix(in oklab, var(--pv-c) 36%, transparent) 0%, color-mix(in oklab, var(--pv-c) 24%, transparent) 45%, color-mix(in oklab, var(--pv-c) 30%, transparent) 100%); }
+        .card.map .hv :is(.mini-bell, .mini-settings, .mini-assist, .mini-wave) { background:var(--hv-chrome); }
+        .card.map.size-tablet .hv:not(.hvl) { --hemma-pill-fill:var(--hv-chrome); }
+        .card.map .hv.capsule :is(.mini-bell, .mini-settings, .mini-assist, .mini-wave) { background:transparent; }
+        .card.map .hv :is(.mini-capsule, .mini-tabs, .mp-pill)::after { display:none; }
+        .card.map .hv :is(.mc-back, .mp-back, .ms-close, .pv-glass) {
+          background:var(--hv-chrome); -webkit-backdrop-filter:none; backdrop-filter:none; box-shadow:none;
+        }
+        .card.map .hv :is(.mc-back, .mp-back, .ms-close, .pv-glass)::before,
+        .card.map .hv :is(.mc-back, .mp-back, .ms-close, .pv-glass)::after { display:none; }
+        .card.map .hv :is(.mini-bell, .mini-assist, .mp-passist) svg, .card.map .hv .mp-pbell path { fill:var(--pv-cap); }
+        .card.map .hv :is(.mp-back, .mc-back) path { stroke:var(--pv-cap); }
+        .card.map .hv :is(.mini-settings i, .mp-pdots i, .mini-wave i) { background:var(--pv-cap) !important; }
+        .card.map .miniroom.gink { --hemma-pill-fill:rgba(255,255,255,0.55); --hemma-nav-active-fill:rgba(255,255,255,0.88); --hemma-pill-divider:rgba(0,0,0,0.16); }
+        .card.map .miniroom.gink .mini-tint { background:linear-gradient(to bottom, rgba(250,248,244,0.34) 0%, rgba(250,248,244,0.16) 45%, rgba(250,248,244,0.26) 100%); }
+        .card.map .miniroom.gink .mini-scrim { display:none; }
+        .card.map .miniroom.gink :is(.mini-nav, .mini-tab, .mini-tabs, .mini-time, .mini-name, .mini-weather, .pbadge .plabel, .mc-title, .mc-h) { color:#111; text-shadow:none; }
+        .card.map .miniroom.gink .pbadge .ptext { color:rgba(0,0,0,0.55); }
+        .card.map .miniroom.gink .pbadge:not(.ghost) { background:rgba(255,255,255,0.55); }
+        .card.map .miniroom.gink .mini-badges .pbadge:not(.ghost) { background:rgba(255,255,255,0.72); --hemma-color-teal:#0096B4; --hemma-color-ice:#0096B4; --hemma-color-yellow:#D99A00; --hemma-color-green:#1E9E45; --hemma-color-orange:#E07400; --hemma-color-red:#E0353A; --hemma-badge-climate-color:#0096B4; --hemma-badge-light-color:#D99A00; }
+        .card.map .miniroom.gink .mini-badges .pbadge[data-mk="b:security"] { --hemma-color-teal:#00969F; }
+        .card.map .miniroom.gink .mini-badges .pbadge:not(.ghost) .pglyph:is(.neutral, .wide) { --sc:rgba(0,0,0,0.62) !important; background-color:rgba(0,0,0,0.62); }
+        .card.map .miniroom:not(.gink):not(.hv) .mini-badges .pbadge:not(.ghost):not(.open) { background:rgba(0,0,0,0.30); --hemma-color-teal:#6DD0F9; --hemma-color-ice:#6DD0F9; --hemma-color-yellow:#F8D849; --hemma-color-green:#65DB7C; --hemma-color-orange:#FFA552; --hemma-color-red:#FF6961; --hemma-badge-climate-color:#6DD0F9; --hemma-badge-light-color:#F8D849; }
+        .card.map .miniroom:not(.gink):not(.hv) .mini-badges .pbadge[data-mk="b:security"]:not(.ghost):not(.open) { --hemma-color-teal:#63D7C3; }
+        .card.map .miniroom.gink .mtile:not(.on):not(.ghost) { background:rgba(255,255,255,0.42); }
+        .card.map .miniroom.gink .mtile:not(.on) .mname { color:rgba(0,0,0,0.85); }
+        .card.map .miniroom.gink .mtile:not(.on) .mstate { color:rgba(0,0,0,0.55); }
+        .card.map .miniroom.gink .mtile:not(.on) .mcircle:not(.art) { background-color:rgba(0,0,0,0.08); }
+        .card.map .miniroom.gink .mtile:not(.on) .mglyph { background-color:rgba(0,0,0,0.62); }
+        .card.map .miniroom.gink :is(.mini-bell, .mini-assist) svg { fill:rgba(28,28,30,0.82); }
+        .card.map .miniroom.gink .mini-settings i { background:rgba(28,28,30,0.82) !important; }
+        .card.map .hv .mini-side { background:var(--hv-side); -webkit-backdrop-filter:none; backdrop-filter:none; }
+        .card.map .hv .mini-side .ms-item.on { background:var(--hv-side-on); }
+
+        .hv-date {
+          display:flex; align-items:center; white-space:nowrap; text-transform:uppercase;
+          font-weight:600; letter-spacing:0.02em; color:var(--hv-sub);
+        }
+        .hv-date b { font-weight:600; color:var(--hv-ink); }
+        .hv-date .hvw { display:flex; align-items:center; gap:0.27em; }
+        .hv-date .hvw::before { content:"\\00b7"; margin:0 0.15em 0 0.35em; color:var(--hv-sub); }
+        .hv-date .hvw img { height:1.04em; width:auto; display:block; opacity:.6; filter:var(--hv-wx); }
+        .card.map .hv .mini-catpage .hv-date {
+          font-size:calc(20px * var(--pv-k, 0.593)); line-height:calc(26px * var(--pv-k, 0.593));
+          margin-bottom:calc(8px * var(--pv-k, 0.593));
+        }
+        .card.map .hv .mini-catpage .mc-title {
+          font-size:calc(40px * var(--pv-k, 0.593)); line-height:calc(46px * var(--pv-k, 0.593));
+          font-weight:700; letter-spacing:0.01em;
+        }
+        .card.map .hv .mini-catpage .mc-title { position:relative; }
+        .card.map .hv .mini-catpage .mc-bw { position:absolute; right:0; top:0; bottom:0; display:flex; align-items:center; gap:0.22em; font-weight:300; letter-spacing:-0.02em; white-space:nowrap; }
+        .card.map .hv .mini-catpage .mc-bw img { height:0.8em; width:auto; display:block; filter:var(--hv-wx); }
+        .card.map .hv .mini-catpage .mc-bw .mc-bd { font-size:0.4em; font-weight:600; letter-spacing:0; margin-right:0.5em; display:grid; justify-items:end; line-height:1.2; }
+        .card.map .hv .mini-catpage .mc-bw .mc-bd b { font-weight:600; }
+        .card.map .miniphone.hv :is(.mp-wtemp, .mp-wcond) { color:var(--hv-ink); text-shadow:none; }
+        .card.map .miniphone.hv .mp-wglyph { filter:var(--hv-wx); }
+        .card.map .hv .mini-catpage .mc-bw .mc-bd small { font-size:0.88em; font-weight:600; color:var(--hv-sub); }
+        .card.map .hv .mini-catpage .hv-date.wxonly .hvw::before { content:none; }
+        .card.map .hv .mini-catpage .hv-date .hvc { color:var(--hv-sub); margin-left:0.2em; text-transform:none; letter-spacing:0; }
+        .card.map .hv .mini-time > .hvdt { margin-left:0.55em; font-size:0.65em; font-weight:600; color:var(--hv-sub); }
+        .card.map.size-tablet .hv .mini-time, .card.map.size-tablet .hv .mini-time > .mini-date { color:#fff; }
+        .card.map .hv .mz .hv-date { font-size:calc(var(--nm) * 0.464); margin-bottom:calc(var(--nm) * 0.2); }
+        .card.map .hv .mini-name { font-weight:700; }
+        .card.map .miniphone.hv .mp-hvwx { position:absolute; z-index:9; top:calc(var(--ph-safe) + 4px); left:var(--pad-x); height:44px; display:flex; align-items:center; font-size:22px; font-weight:600; color:var(--hv-ink); }
+        .card.map .miniphone.hv .mp-hvwx .hvw { display:flex; align-items:center; gap:7px; }
+        .card.map .miniphone.hv .mp-hvwx .hvw::before { content:none; }
+        .card.map .miniphone.hv .mp-hvwx .hvw img { height:22px; width:auto; opacity:.6; filter:var(--hv-wx); }
+        .card.map .miniphone.hv .hv-date { font-size:18px; line-height:22px; justify-content:space-between; position:relative; z-index:1; }
+        .card.map .miniphone.hv .hv-date .hvw { gap:6px; letter-spacing:0; }
+        .card.map .miniphone.hv .hv-date .hvw::before { content:none; }
+        .card.map .miniphone.hv .hv-date .hvw img { height:22px; }
+        .card.map .miniphone.hv .mp-name { font-size:34px; letter-spacing:-0.01em; }
+        .card.map .miniphone.hv .mp-head { font-size:22px; height:28px; letter-spacing:0; }
+
+        .card.map .hv .pbadge:not(.ghost) { background:transparent; box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }
+        @media (hover: hover) { .card.map .hv .pbadge:not(.sub):not(.ghost):hover:not(:disabled) { background:transparent; } .card.map .hv :is(.mc-badges, .mp-badges) .pbadge:not(.sub):not(.ghost):not(.mc-on):not(.open):hover:not(:disabled) { background:var(--hv-bi-bg); } }
+        .card.map .hv .pbadge .plabel { color:var(--hv-ink); }
+        .card.map .hv .pbadge .ptext { color:var(--hv-sub); }
+        .card.map .hvl .pglyph.neutral { background-color:rgba(0,0,0,0.72); }
+        .card.map .hv .pbadge.ringed { padding-left:0; }
+        .card.map .hv .pbi {
+          flex:none; width:var(--hv-ic, 23px); height:var(--hv-ic, 23px);
+          background:transparent; display:grid; place-items:center;
+        }
+        .card.map .hv :is(.mc-badges, .mp-badges, .mini-badges) .pbadge:not(.ghost) { background:var(--hv-bi-bg); border-radius:999px; }
+        .card.map .hv .mp-badges .pbadge.ringed { padding-left:12px; }
+        .card.map .hv .mp-badges .pbadge { --bmh:42px; --bpt:0px; --bpb:0px; --bpl:12px; --bpr:16px; --bcg:7px; --hv-ic:23px; }
+        .card.map .hv .pbi .pglyph {
+          width:88%; height:88%; flex:none; background-color:var(--hv-bi-ink);
+          -webkit-mask-size:contain; mask-size:contain;
+        }
+        .card.map .hv .pbi .ppic { width:100%; height:100%; }
+        .card.map .hv :is(.mc-badges .pbadge.mc-on, .mp-badges .pbadge.open) { background:var(--hv-bi-sel); box-shadow:none; }
+        @media (hover: hover) { .card.map .hv :is(.mc-badges .pbadge.mc-on, .mp-badges .pbadge.open):hover:not(:disabled) { background:var(--hv-bi-sel); } }
+        .card.map .hv :is(.mc-badges .pbadge.mc-on, .mp-badges .pbadge.open) .plabel { color:var(--hv-bi-sel-ink); }
+        .card.map .hv :is(.mc-badges .pbadge.mc-on, .mp-badges .pbadge.open) .ptext { color:var(--hv-bi-sel-sub); }
+
+        .card.map .hv .mtile:not(.ghost), .card.map .hv :is(.mc-scene, .mp-scene) {
+          background:var(--hv-off); -webkit-backdrop-filter:none; backdrop-filter:none; box-shadow:inset 0 0 0 0.5px var(--pv-rim, transparent);
+        }
+        .card.map .hv :is(.mtile.on, .mc-scene.on, .mp-scene.on) { background:#fff; box-shadow:0 0.5px 1.5px rgba(0,0,0,0.08); }
+        .card.map .hv .mtile.mdrag { box-shadow:0 10px 26px rgba(0,0,0,0.42); }
+        .card.map .hv .mtile:not(.on) .mname, .card.map .hv :is(.mc-scene, .mp-scene):not(.on) { color:var(--hv-name); }
+        .card.map .hv .mtile:not(.on) .mstate { color:var(--hv-state); }
+        .card.map .hv :is(.mc-scene, .mp-scene).on { color:rgba(0,0,0,0.88); }
+        .card.map .hv :is(.mc-scene, .mp-scene):not(.on) ha-icon { color:var(--hv-scene-icon) !important; }
+        .card.map .hv :is(.mc-scene, .mp-scene):not(.on) .scglyph { background-color:var(--hv-scene-icon) !important; }
+        .card.map .hvl .mtile:not(.on) .mcircle:not(.art) { background-color:rgba(0,0,0,0.16); }
+        .card.map .hvl .mtile:not(.on) .mglyph { background-color:#fff; }
+
+        .card.map .hv :is(.mini-nptile, .mp-np) { background:var(--hv-np); -webkit-backdrop-filter:none; backdrop-filter:none; box-shadow:none; }
+        .card.map .hvl :is(.mini-nptitle, .mp-nptitle) { color:#1c1c1e; }
+        .card.map .hvl :is(.mini-npsub, .mp-npsub) { color:rgba(60,60,67,0.6); }
+        .card.map .hv :is(.mini-npbar, .mp-npbar) > span { background:#fff; }
+        .card.map .hvl :is(.mini-npbar, .mp-npbar) { background:rgba(0,0,0,0.12); }
+        .card.map .hvl :is(.mini-npbar, .mp-npbar) > span { background:#1c1c1e; }
+        .card.map .hvl :is(.mini-npctl, .mp-npbtn) path { fill:#1c1c1e; }
+        .card.map .hv .mtile:not(.on) .mglyph { background-color:#fff; }
+
+        .card.map .hv .mini-side .ms-close + .ms-item { margin-top:var(--hv-side-dy, 0px); }
+        .card.map .hv .mini-side .ms-item {
+          height:calc(48px * 0.593); gap:calc(15px * 0.593); padding:0 calc(12px * 0.593); border-radius:calc(24px * 0.593);
+          font-size:calc(18px * 0.593); font-weight:600;
+        }
+        .card.map .hv .mini-side .ms-item + .ms-item { margin-top:calc(4px * 0.593); }
+        .card.map .hv .mini-side .ms-g { width:calc(26px * 0.593); height:calc(26px * 0.593); }
+        .card.map .hv .mini-side .ms-h { font-size:calc(15px * 0.593); padding:calc(18px * 0.593) calc(12px * 0.593) calc(6px * 0.593); }
+        .card.map .hv .mini-side .ms-h svg { width:calc(17px * 0.593); height:calc(17px * 0.593); }
+        .card.map.size-desktop .hv .mini-side .ms-item {
+          height:calc(44px * 0.667); gap:calc(13px * 0.667); padding:0 calc(12px * 0.667); border-radius:calc(22px * 0.667);
+          font-size:calc(16px * 0.667);
+        }
+        .card.map.size-desktop .hv .mini-side .ms-item + .ms-item { margin-top:calc(4px * 0.667); }
+        .card.map.size-desktop .hv .mini-side .ms-g { width:calc(24px * 0.667); height:calc(24px * 0.667); }
+        .card.map.size-desktop .hv .mini-side .ms-h { font-size:calc(14px * 0.667); padding:calc(16px * 0.667) calc(12px * 0.667) calc(6px * 0.667); }
+        .card.map.size-desktop .hv .mini-side .ms-h svg { width:calc(14px * 0.667); height:calc(14px * 0.667); }
+        .card.map.size-desktop .hv.sidebar .mini-time {
+          font-size:calc(26px * 0.667); line-height:calc(32px * 0.667); font-weight:600; letter-spacing:-0.01em;
+        }
+        .card.map.size-desktop .hv.sidebar .mini-time > .mini-date { display:none; }
+
+        .card.map .hv .mini-catpage { --k:var(--pv-k, 0.593); }
+        .card.map .hv .mini-catpage .mc-h {
+          font-size:calc(26px * var(--k)); line-height:calc(31px * var(--k)); font-weight:700;
+          margin:calc(46px * var(--k)) 0 calc(16px * var(--k));
+        }
+        .card.map .hv .mini-catpage .mc-badges + :is(.mc-h, .mc-duo) { margin-top:calc(31px * var(--k)); }
+        .card.map .hv .mini-catpage .mc-chips + .mc-h { margin-top:calc(56px * var(--k)); }
+        .card.map .mini-catpage .mc-chips.cat + .mc-h { margin-top:calc(22px * var(--pv-k, 0.593)); }
+        .card.map .hv .mini-catpage .mc-duo { display:grid; align-items:start; margin-top:calc(46px * var(--k)); }
+        .card.map .hv .mini-catpage .mc-duo > * { min-width:0; }
+        .card.map .hv .mini-catpage .mc-duo .mc-h { margin-top:0; }
+        .card.map .hv .mini-catpage .mc-badges { --bl:calc(14px * var(--k)); --bv:calc(13px * var(--k)); --bcg:calc(8px * var(--k)); --bmh:calc(46px * var(--k)); }
+        .card.map .hv .mini-catpage .mc-badges .pbadge { padding-top:0; padding-bottom:0; padding-left:calc(12px * var(--k)); padding-right:calc(16px * var(--k)); --hv-ic:calc(25px * var(--k)); }
+        .card.map.size-desktop .hv .mini-catpage .mc-badges { --bl:calc(14px * var(--k)); --bv:calc(13px * var(--k)); }
+        .card.map .hv .mini-catpage .mc-np > * {
+          --np-art:calc(110px * var(--k)); --np-pt:calc(15px * var(--k)); --np-pl:calc(15px * var(--k)); --np-pr:calc(16px * var(--k));
+          --np-cg:calc(16px * var(--k)); --np-ti:calc(16px * var(--k)); --np-sb:calc(14px * var(--k));
+          --np-rg:calc(7px * var(--k)); --np-tg:calc(9px * var(--k)); height:calc(140px * var(--k)); box-sizing:border-box;
+        }
+        .card.map .hv .mini-catpage .mc-scene { gap:calc(10px * var(--k)); padding:0 calc(14px * var(--k)); font-size:calc(17px * var(--k)); font-weight:600; }
+        .card.map .hv .mini-catpage .mc-scene ha-icon { --mdc-icon-size:calc(24px * var(--k)); }
+        .card.map .hv .mini-catpage .mc-grid {
+          grid-auto-rows:calc(76px * var(--k)); gap:calc(10px * var(--k));
+          --tn:calc(15px * var(--k)); --ts:calc(15px * var(--k)); --tc:calc(44px * var(--k));
+        }
+        .card.map .hv .mini-catpage .mc-grid .mtile:not(.big) { padding:0 calc(14px * var(--k)); gap:calc(12px * var(--k)); border-radius:calc(22px * var(--k)); }
+        .card.map.size-desktop .hv .mini-catpage .mc-grid { grid-auto-rows:calc(66px * var(--k)); --tc:calc(40px * var(--k)); }
+        .card.map.size-desktop .hv .mini-catpage .mc-grid .mtile:not(.big) { padding:0 calc(12px * var(--k)); }
+
         .card {
           width:100%; box-sizing:border-box;
           background-color:transparent;
@@ -7893,6 +8567,7 @@ class HemmaPanel extends HTMLElement {
         .row:hover .drop { opacity:1; }
         .row .drop:hover { background:#ff453a; color:#fff; opacity:1; filter:none; }
         .row:first-of-type { border-top:0; }
+        .row.joined { border-top-color:transparent; padding-top:2px; }
         :host(:not(.narrow)) .inspector .row:not(:has(> .sw)) {
           grid-template-columns:minmax(0,1fr) 22px;
           column-gap:10px; row-gap:5px; align-items:center;
@@ -8275,6 +8950,14 @@ class HemmaPanel extends HTMLElement {
         .row + .row:has(> label.haslead)::before {
           content:""; position:absolute; top:-1px; right:0; left:0; height:1px; background:var(--hair);
         }
+        .cdot { flex:none; width:16px; height:16px; border-radius:50%; box-shadow:inset 0 0 0 0.5px rgba(255,255,255,0.28), 0 0 0 0.5px rgba(0,0,0,0.25); }
+        .combo-opt .cdot { margin-right:10px; }
+        .combo-opt .cdot.pair { margin-right:-10px; }
+        .combo.hasdot > .cdot.lead { position:absolute; left:14px; top:50%; transform:translateY(-50%); pointer-events:none; }
+        .combo.hasdot > input { padding-left:42px !important; }
+        .combo.hasdot > .cdot.lead.dk { left:34px; }
+        .combo.hasdot2 > input { padding-left:60px !important; }
+        .combo.hasdot > .cdot.lead { z-index:1; }
         .combo.hasent > .entglyph {
           position:absolute; left:12px; top:50%; transform:translateY(-50%);
           width:20px; height:20px; display:grid; place-items:center; pointer-events:none;
@@ -8434,6 +9117,7 @@ class HemmaPanel extends HTMLElement {
         .askcard p {
           margin:8px 0 0; font-size:14.5px; line-height:1.45; color:var(--ink-2); text-wrap:pretty;
         }
+        .askstack.repair .askcard p { white-space:pre-line; text-align:left; }
         .askcard .flist { margin:20px 0 0; text-align:left; }
         .askstack.statussheet .askcard { max-height:calc(100dvh - 48px); overflow-y:auto; overscroll-behavior:contain; }
         .askacts {
@@ -8998,6 +9682,9 @@ class HemmaPanel extends HTMLElement {
         { id: "create", label: _sx("Create dashboard\u2026"), icon: "plus", group: _sx("Dashboard"), quiet: true },
         ...(this._yamlCandidates().length
           ? [{ id: "import", label: _sx("Import from YAML\u2026"), icon: "import", group: _sx("Dashboard"), quiet: true }] : []),
+        { id: "importfile", label: _sx("Import from file\u2026"), icon: "import", group: _sx("Dashboard"), quiet: true },
+        ...(this._dashUrl && !this._flowMode
+          ? [{ id: "export", label: _sx("Export dashboard"), icon: "export", group: _sx("Dashboard"), quiet: true }] : []),
         ...(this._dashUrl && !this._flowMode
           ? [{ id: "renamedash", label: _sx("Rename dashboard\u2026"), icon: "pencil", group: _sx("Dashboard"), quiet: true },
              { id: "icondash", label: _sx("Dashboard icon\u2026"), icon: "grid", group: _sx("Dashboard"), quiet: true },
@@ -9006,10 +9693,14 @@ class HemmaPanel extends HTMLElement {
           ? [{ id: "addmobile", label: _sx("Add phone layout"), icon: "phone", group: _sx("Dashboard"), quiet: true }] : []),
         { id: "hints", label: this._hints === false ? _sx("Show hints") : _sx("Hide hints"), icon: "hints",
           checked: this._hints !== false, group: _sx("View"), quiet: true },
+        { id: "setup", label: _sx("Run setup again"), icon: "wrench", group: "setup", quiet: true },
       ], (id) => {
         if (id === "undo") return this._undo();
-        if (id === "create") return this._createForm();
+        if (id === "create") { this._setupClear(); return this._createForm(); }
         if (id === "import") return this._importForm();
+        if (id === "importfile") return this._importFile();
+        if (id === "export") return this._exportDash();
+        if (id === "setup") return this._runSetup();
         if (id.indexOf("dash:") === 0) {
           const p = id.slice(5);
           if (p === this._dashUrl) return;
@@ -9172,8 +9863,26 @@ class HemmaPanel extends HTMLElement {
       const heroSel = this._miniSize === "phone" ? ".mp-photo" : ".mini-photo";
       const before = mount.querySelector(heroSel);
       const prevSrc = before && before.src;
+      // Minimal has no photo to dissolve, so the whole preview fades from the old mode to the new one.
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const oldCard = !still && mount.querySelector(".hv") && mount.firstElementChild;
+      let flat = null;
+      if (oldCard) {
+        const mr = mount.getBoundingClientRect(), cr = oldCard.getBoundingClientRect(), k = mount.offsetWidth ? mr.width / mount.offsetWidth : 1;
+        flat = oldCard.cloneNode(true);
+        Object.assign(flat.style, { position: "absolute", left: (cr.left - mr.left) / k + "px", top: (cr.top - mr.top) / k + "px", width: oldCard.offsetWidth + "px", height: oldCard.offsetHeight + "px", margin: "0", pointerEvents: "none", zIndex: "20" });
+      }
       this._swapMap(mount, room);
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      if (flat) {
+        if (getComputedStyle(mount).position === "static") mount.style.position = "relative";
+        mount.appendChild(flat);
+        const seqF = (this._modeSwapF = (this._modeSwapF || 0) + 1);
+        flat.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 900, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" })
+          .finished.then(() => flat.remove(), () => flat.remove());
+        if (seqF > 1) [...mount.children].filter((n) => n !== flat && n.style.zIndex === "20").forEach((n) => n.remove());
+        return;
+      }
+      if (still) return;
 
       const photo = mount.querySelector(heroSel);
       if (!photo || !prevSrc || photo.src === prevSrc) return;
@@ -9953,6 +10662,7 @@ class HemmaPanel extends HTMLElement {
   }
 
   _flowBack() {
+    this._setupClear();
     if (this._flowMode === "sheet") return this._exitFlow(true);
     if (this._dashUrl) return this._load();
     this._refreshDashboards();
@@ -10206,7 +10916,38 @@ class HemmaPanel extends HTMLElement {
     return this._freePath(!s ? fallback : s.includes("-") ? s : s + "-" + suffix);
   }
 
+  _setupSave(step, o) {
+    try {
+      localStorage.setItem(SETUP_KEY, JSON.stringify({ at: Date.now(), step, plan: o.plan, title: o.title,
+        picked: o.picked, skip: o.skip }));
+    } catch (e) { /* private mode */ }
+  }
+
+  _setupClear() {
+    try { localStorage.removeItem(SETUP_KEY); } catch (e) { /* private mode */ }
+  }
+
+  // A reload in the middle of the assistant picks up at the same step, once per visit and for a day.
+  _resumeSetup(back) {
+    if (this._setupResumed || this._flowMode) return false;
+    this._setupResumed = true;
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem(SETUP_KEY) || "null"); } catch (e) { s = null; }
+    if (!s || !s.plan || Date.now() - (s.at || 0) > 864e5 || !["look", "rooms", "preview"].includes(s.step)) {
+      this._setupClear();
+      return false;
+    }
+    const look = { plan: s.plan, back };
+    const o = { plan: s.plan, title: s.title, picked: s.picked || [], skip: s.skip || [],
+      back: () => this._createForm(look) };
+    if (s.step === "look") this._createForm(look);
+    else if (s.step === "rooms") this._createRooms(o);
+    else this._createPreview(o);
+    return true;
+  }
+
   async _firstRun() {
+    if (this._resumeSetup(() => this._firstRun())) return;
     const s = this._flowScreen({
       full: true, icon: "home",
       title: _sx("Welcome to Hemma"),
@@ -10265,15 +11006,64 @@ class HemmaPanel extends HTMLElement {
 
   // ── create ────────────────────────────────────────────────────────────────
 
-  async _createForm(o) {
+  // Step one of a new dashboard: the look, so the preview and the result already wear it.
+  _createForm(o) {
+    o = o || {};
+    const plan = o.plan || { style: "", color: "", fill: true, layout: "overview" };
+    const keep = () => this._setupSave("look", { ...o, plan });
+    keep();
+    const s = this._flowScreen({
+      icon: "dashboard",
+      title: _sx("Choose a Look"),
+      lede: _sx("You can change this at any time under Appearance."),
+      back: o.back,
+    });
+    const layouts = this._flowGroup(s.body, { header: _sx("Layout") });
+    const styles = this._flowGroup(s.body, { header: _sx("Style") });
+    const colors = this._flowGroup(s.body, { header: _sx("Color") });
+    const pickOne = (group, row) => {
+      group.querySelectorAll("[aria-checked]").forEach((r) => r.setAttribute("aria-checked", r === row ? "true" : "false"));
+    };
+    const showColors = () => { colors.parentNode.hidden = plan.style !== "homeview"; };
+    [["overview", _sx("Overview"), _sx("Every room on one page, with a sidebar to move between them")],
+      ["", _sx("Focus"), _sx("One room at a time, with its photo filling the screen")]].forEach(([id, title, sub]) => {
+      const r = this._flowRow(layouts, {
+        icon: id ? "rooms" : "dashboard", tint: FLOW_TINT.teal, title, sub, check: plan.layout === id,
+        onTap: () => { plan.layout = id; pickOne(layouts, r.row); keep(); },
+      });
+    });
+    [["", _sx("Glass"), _sx("Frosted glass over your room photos")],
+      ["homeview", _sx("Minimal"), _sx("Flat color and clean, simple tiles")]].forEach(([id, title, sub]) => {
+      const r = this._flowRow(styles, {
+        icon: id ? "dashboard" : "rooms", tint: id ? FLOW_TINT.gray : FLOW_TINT.teal, title, sub, check: plan.style === id,
+        onTap: () => { plan.style = id; pickOne(styles, r.row); showColors(); keep(); },
+      });
+    });
+    const dot = (c) => "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5"/></svg>');
+    const NAMES = { "": _sx("Gray"), sand: _sx("Sand"), sage: _sx("Sage"), blue: _sx("Blue"), rose: _sx("Rose"),
+      lavender: _sx("Lavender"), sea: _sx("Sea"), clay: _sx("Clay"), plum: _sx("Plum"), honey: _sx("Honey") };
+    Object.keys(NAMES).forEach((k) => {
+      const r = this._flowRow(colors, {
+        mask: dot(), tint: SW_LIGHT[k], title: NAMES[k], check: plan.color === k,
+        onTap: () => { plan.color = k; pickOne(colors, r.row); keep(); },
+      });
+    });
+    showColors();
+    this._flowCancel(s.acts);
+    this._flowButton(s.acts, _sx("Continue"), () => this._createRooms({ ...o, plan, back: () => this._createForm({ ...o, plan }) }));
+  }
+
+  async _createRooms(o) {
     o = o || {};
     let areas = [];
     let failed = null;
-    try {
-      areas = (await this._hass.callWS({ type: "config/area_registry/list" })) || [];
-    } catch (e) {
-      failed = e;
-    }
+    const [ar, dv, en] = await Promise.all(["area", "device", "entity"].map((k) => Promise.resolve()
+      .then(() => this._hass.callWS({ type: "config/" + k + "_registry/list" })).then((v) => ({ v }), (e) => ({ e }))));
+    if (ar.e) failed = ar.e;
+    else areas = ar.v || [];
+    const live = dv.e || en.e ? null
+      : controlledAreas({ devices: dv.v, entities: en.v, states: this._hass.states });
+    const anyLive = !!live && areas.some((a) => live.has(a.area_id));
 
     const s = this._flowScreen({
       icon: "rooms",
@@ -10305,34 +11095,128 @@ class HemmaPanel extends HTMLElement {
           r.row.getAttribute("aria-checked") === "true" ? "false" : "true"),
       });
       r.row.dataset.name = name;
+      shown.add(name);
+      r.row.addEventListener("click", () => keep());
       return r;
     };
-    areas.forEach((a) => addRoom(a.name, true));
-    if (!areas.length) [_sx("Living Room"), _sx("Kitchen"), _sx("Bedroom")].forEach((n) => addRoom(n, false));
+    const shown = new Set();
+    const was = o.picked ? new Set(o.picked) : null;
+    areas.forEach((a) => addRoom(a.name, was ? was.has(a.name)
+      : !TECH_AREA.test(a.name || "") && (!anyLive || live.has(a.area_id))));
+    if (!areas.length) [_sx("Living Room"), _sx("Kitchen"), _sx("Bedroom")].forEach((n) => addRoom(n, !!was && was.has(n)));
+    if (was) [...was].filter((n) => !shown.has(n)).forEach((n) => addRoom(n, true));
+    const pickedNow = () => [...list.querySelectorAll('[aria-checked="true"]')].map((r) => r.dataset.name);
 
     const commit = () => {
       const name = adder.input.value.trim();
       if (!name) return;
       adder.input.value = "";
       addRoom(name, true);
+      keep();
     };
     adder.input.onkeydown = (ev) => { if (ev.key === "Enter") { ev.preventDefault(); commit(); } };
     adder.input.onblur = commit;
 
+    const plan = o.plan || { style: "", color: "", fill: true };
+    const fillG = this._flowGroup(s.body, { footer: _sx("Uses the areas you've given your devices in Home Assistant.") });
+    const fillR = this._flowRow(fillG, {
+      icon: "rooms", tint: FLOW_TINT.teal, title: _sx("Add Devices to Their Rooms"), check: plan.fill !== false,
+      onTap: () => fillR.row.setAttribute("aria-checked", fillR.row.getAttribute("aria-checked") === "true" ? "false" : "true"),
+    });
+
     const dash = this._flowGroup(s.body, { header: _sx("New Dashboard") });
-    const titleIn = this._flowRow(dash, { title: _sx("Name"), input: "Hemma" }).input;
+    const titleIn = this._flowRow(dash, { title: _sx("Name"), input: o.title || "Hemma" }).input;
+    const keep = () => {
+      plan.fill = fillR.row.getAttribute("aria-checked") === "true";
+      this._setupSave("rooms", { ...o, plan, picked: pickedNow(), title: (titleIn.value || "").trim() || "Hemma" });
+    };
+    fillR.row.addEventListener("click", () => keep());
+    titleIn.addEventListener("input", () => keep());
+    keep();
 
     this._flowCancel(s.acts);
-    this._flowButton(s.acts, _sx("Create Dashboard"), () => {
+    this._flowButton(s.acts, _sx("Continue"), () => {
       const title = (titleIn.value || "").trim() || "Hemma";
-      const url_path = this._flowPath(title, "hemma-dashboard", "dashboard");
-      const picked = [...list.querySelectorAll('[aria-checked="true"]')]
-        .map((r) => r.dataset.name);
-      this._create(url_path, title, picked);
+      const picked = pickedNow();
+      plan.fill = fillR.row.getAttribute("aria-checked") === "true";
+      this._createPreview({ ...o, plan, title, picked });
     });
   }
 
-  async _create(url_path, title, picked) {
+  // What goes where, before anything is written.
+  async _createPreview(o) {
+    const { plan, title, picked } = o;
+    const rooms = [blankRoom(_sx("Home"), "home", "home-demo")];
+    picked.forEach((name) => rooms.push(blankRoom(name, slug(name), demoPhoto(name))));
+    let n = 0, failed = null;
+    if (plan.fill) {
+      try {
+        const [areas, devices, entities] = await Promise.all([
+          this._hass.callWS({ type: "config/area_registry/list" }),
+          this._hass.callWS({ type: "config/device_registry/list" }),
+          this._hass.callWS({ type: "config/entity_registry/list" }),
+        ]);
+        n = autoFillRooms(rooms.slice(1), { areas, devices, entities, states: this._hass.states });
+      } catch (e) {
+        failed = e;
+      }
+    }
+    const s = this._flowScreen({
+      icon: "rooms",
+      title: _sx("Here's Your Dashboard"),
+      lede: plan.fill && !failed
+        ? (n === 1 ? _sx("1 device found its room. You can move or remove anything later.")
+          : _sx("{n} devices found their rooms. You can move or remove anything later.", { n }))
+        : _sx("Your rooms start empty, ready for you to fill."),
+      back: () => this._createRooms(o),
+    });
+    if (failed) this._flowError(_sx("Couldn't read your devices ({error}), so the rooms start empty.", { error: failed.message }));
+    const list = this._flowGroup(s.body, { header: title });
+    this._flowRow(list, { mask: iconUrl(roomGlyph("Home")), tint: FLOW_TINT.teal, title: _sx("Home"), sub: _sx("An overview of every room") });
+    const skip = new Set(o.skip || []);
+    const keyOf = (r, t) => r.path + "|" + t.template + "|" + t.entity;
+    const total = rooms.slice(1).reduce((k, r) => k + (r.tiles || []).length, 0);
+    const label = () => {
+      const on = rooms.slice(1).reduce((k, r) => k + (r.tiles || []).filter((t) => !skip.has(keyOf(r, t))).length, 0);
+      if (!total) return _sx("Create Dashboard");
+      return on === 1 ? _sx("Create with 1 tile") : _sx("Create with {n} tiles", { n: on });
+    };
+    const keep = () => { o.skip = [...skip]; this._setupSave("preview", { ...o, skip: o.skip }); };
+    keep();
+    let go = null;
+    rooms.slice(1).forEach((r) => {
+      const tiles = r.tiles || [];
+      const g = this._flowGroup(s.body, { header: r.name });
+      if (!tiles.length) {
+        this._flowRow(g, { mask: iconUrl(roomGlyph(r.name)), tint: FLOW_TINT.gray, title: _sx("Empty for now"), dim: true });
+        return;
+      }
+      tiles.forEach((t) => {
+        const k = keyOf(r, t);
+        const kind = (TILE_TYPES.find((x) => x.template === t.template) || {}).id;
+        const st = this._hass.states[t.entity];
+        const full = (st && st.attributes && st.attributes.friendly_name) || t.entity;
+        const row = this._flowRow(g, {
+          mask: iconUrl(TILE_ICON[kind] || (kind === "lock" ? "lock-fill" : "default")), tint: FLOW_TINT.teal,
+          title: t.name || full, sub: full !== t.name ? full : null, check: !skip.has(k),
+          onTap: () => {
+            if (skip.has(k)) skip.delete(k); else skip.add(k);
+            row.row.setAttribute("aria-checked", skip.has(k) ? "false" : "true");
+            if (go) go.textContent = label();
+            keep();
+          },
+        });
+      });
+    });
+    this._flowCancel(s.acts);
+    go = this._flowButton(s.acts, label(), () => {
+      rooms.slice(1).forEach((r) => { r.tiles = (r.tiles || []).filter((t) => !skip.has(keyOf(r, t))); });
+      const url_path = this._flowPath(title, "hemma-dashboard", "dashboard");
+      this._create(url_path, title, picked, { plan, rooms });
+    });
+  }
+
+  async _create(url_path, title, picked, prep) {
     const s = this._flowScreen({
       icon: "rooms",
       title: _sx("Creating Your Dashboard"),
@@ -10352,8 +11236,29 @@ class HemmaPanel extends HTMLElement {
       this._log(`templates bundle: ${Object.keys(bundle.templates).length} templates`);
       prog.at(1);
 
-      const rooms = [blankRoom(_sx("Home"), "home", "home-demo")];
-      picked.forEach((name) => rooms.push(blankRoom(name, slug(name), "home-demo")));
+      const rooms = (prep && prep.rooms) || [blankRoom(_sx("Home"), "home", "home-demo")];
+      if (!prep) picked.forEach((name) => rooms.push(blankRoom(name, slug(name), demoPhoto(name))));
+      const look = (prep && prep.plan) || {};
+      const wx = Object.keys(this._hass.states).filter((e) => e.indexOf("weather.") === 0).sort()
+        .find((e) => this._hass.states[e].state !== "unavailable");
+      rooms.forEach((r) => {
+        if (wx && !r.variables.weather_entity) r.variables.weather_entity = wx;
+        if (look.style === "homeview") { r.variables.hemma_style = "homeview"; if (look.color) r.variables.hemma_hv_color = look.color; }
+        if (look.layout) r.variables.home_layout = look.layout;
+        r.variables.hemma_ui_managed = true;
+        if (this._hass.states["sensor.time"] && r.variables.time_entity === undefined) r.variables.time_entity = "sensor.time";
+      });
+      if (!prep) try {
+        const [areas, devices, entities] = await Promise.all([
+          this._hass.callWS({ type: "config/area_registry/list" }),
+          this._hass.callWS({ type: "config/device_registry/list" }),
+          this._hass.callWS({ type: "config/entity_registry/list" }),
+        ]);
+        const n = autoFillRooms(rooms.slice(1), { areas, devices, entities, states: this._hass.states });
+        this._log(`placed ${n} device(s) in their rooms`, "ok");
+      } catch (e) {
+        this._log("rooms left empty, the device list could not be read: " + e.message, "warn");
+      }
 
       const images = rooms.map((r) => r.variables.image);
       rooms.forEach((r) => { r.variables.preload_rooms = images.slice(); });
@@ -10365,6 +11270,10 @@ class HemmaPanel extends HTMLElement {
       // Applied to the whole config so the copy inside hemma_room is caught too.
       const fixed = retargetRoutes(built, url_path, rooms);   // keep the bundle's own extras
       const config = fixed.config;
+      // What a Save in Studio would add, so a new dashboard opens finished: HA's header hidden, scenes and cameras in place.
+      applyScenePick(config, rooms);
+      applyCameras(config, rooms);
+      applyKiosk(config, rooms);
       this._log(`rewrote ${fixed.rewritten} navigation route list(s)`);
       if (!fixed.rewritten) this._log("no routes list found - nav links may point elsewhere", "warn");
       prog.at(2);
@@ -10383,8 +11292,10 @@ class HemmaPanel extends HTMLElement {
       this._log(`wrote config  ${JSON.stringify(config).length.toLocaleString()} bytes`, "ok");
       prog.at(3);
 
-      const paired = await this._createMobileSibling(url_path, title, picked, bundle);
+      const paired = await this._createMobileSibling(url_path, title, picked, bundle, rooms);
+      await this._syncFilterOptions(rooms.filter((r) => r.path !== "home"), true);
       prog.at(4);
+      this._setupClear();
 
       await this._flowRelist();
       this._flowDone({ url_path, title, rooms, paired });
@@ -10444,7 +11355,8 @@ class HemmaPanel extends HTMLElement {
       const extras = { ...clone(bundle.mobile.extras || {}) };
       extras[FINGERPRINT_KEY] = fingerprintOf(bundle.templates);
       const cfg = expandAny(st, { extras, templates: bundle.templates });
-      if (rooms) applyScenePick(cfg, rooms);
+      if (rooms) { applyScenePick(cfg, rooms); applyKiosk(cfg, rooms); applyStyle(cfg, rooms); }
+      markPhoneManaged(cfg);
 
       await this._hass.callWS({
         type: "lovelace/dashboards/create",
@@ -10477,10 +11389,12 @@ class HemmaPanel extends HTMLElement {
     try {
       const names = [MOBILE_FAVORITES].concat(picked);
       const st = blankMobileState(bundle.mobile, names);
+      if (rooms) rooms.slice(1).forEach((r, i) => { const sec = st.compact.rooms[i + 1]; if (sec) sec.tiles = clone(r.tiles) || []; });
       const extras = { ...clone(bundle.mobile.extras || {}) };
       extras[FINGERPRINT_KEY] = fingerprintOf(bundle.templates);
       const cfg = expandAny(st, { extras, templates: bundle.templates });
-      if (rooms) applyScenePick(cfg, rooms);
+      if (rooms) { applyScenePick(cfg, rooms); applyKiosk(cfg, rooms); applyStyle(cfg, rooms); }
+      markPhoneManaged(cfg);
 
       await this._hass.callWS({
         type: "lovelace/dashboards/create",
@@ -10914,6 +11828,7 @@ class HemmaPanel extends HTMLElement {
         paired = await this._createMobileSibling(url_path, title,
           rooms.filter((r) => r.path !== "home").map((r) => r.name || r.path), bundle, rooms);
       }
+      await this._syncFilterOptions(rooms.filter((r) => r.path !== "home"), true);
       prog.at(4);
 
       await this._flowRelist();
@@ -11027,6 +11942,21 @@ class HemmaPanel extends HTMLElement {
       this._remember(opts.url_path);
       this._refreshDashboards(opts.url_path);
     }));
+    // The dashboard everyone lands on; it is set for this user as well, since a personal default outranks the shared one.
+    const def = this._flowButton(s.acts, _sx("Make Default Dashboard"), async () => {
+      def.disabled = true;
+      try {
+        for (const [get, set] of [["frontend/get_system_data", "frontend/set_system_data"], ["frontend/get_user_data", "frontend/set_user_data"]]) {
+          const cur = ((await this._hass.callWS({ type: get, key: "core" })) || {}).value || {};
+          await this._hass.callWS({ type: set, key: "core", value: { ...cur, default_panel: opts.url_path } });
+        }
+        def.textContent = _sx("Default Dashboard");
+        this._log(`"${opts.url_path}" is now the default dashboard`, "ok");
+      } catch (e) {
+        def.disabled = false;
+        this._log("could not make it the default dashboard: " + e.message, "err");
+      }
+    }, true);
   }
 
   // ── load / save ───────────────────────────────────────────────────────────
@@ -11246,13 +12176,13 @@ class HemmaPanel extends HTMLElement {
       if (this._pair && this._pair.safe === false) {
         this._saveBlocked = true;
         this._markDirty();
-        this._status(_sx("The phone layout has content the editor would not preserve. Saving is disabled."), "err");
+        this._statusRepair(_sx("The phone layout has content the editor would not preserve. Saving is disabled."), cfg, rebuilt);
         this._log("the phone half did not round trip - saving is off for both", "err");
       }
       if (!safe) {
         this._saveBlocked = true;
         this._markDirty();
-        this._status(_sx("This dashboard has content the editor would not preserve. Saving is disabled."), "err");
+        this._statusRepair(_sx("This dashboard has content the editor would not preserve. Saving is disabled."), cfg, rebuilt);
         (cfg.views || []).forEach((v, i) => {
           if (stable(v) !== stable((rebuilt.views || [])[i])) this._log(`  view[${i}] "${v.path}" differs`, "err");
         });
@@ -11277,6 +12207,7 @@ class HemmaPanel extends HTMLElement {
       this._renderTabs();
       this._renderForm();
       requestAnimationFrame(() => this._playEntrance());
+      if (!this._resumeSetup()) this._checkSetup([cfg, this._pair && this._pair.mobileRaw]);
     } catch (e) {
       this._exitFlow();
       this._state = null;
@@ -11322,6 +12253,7 @@ class HemmaPanel extends HTMLElement {
     this._log(`paired with "${mpath}"  round trip ${pair.safe ? "identical" : "DIFFERS"}`,
       pair.safe ? "ok" : "err");
     if (!pair.safe) return pair;
+    pairFillGaps(pair);
 
     pair.link.orphanRooms.forEach((o) =>
       this._log(`room "${o.name}" has no section on the phone layout`, "warn"));
@@ -11502,11 +12434,23 @@ class HemmaPanel extends HTMLElement {
       pv.className = "pv-cam";
       const pic = s && s.attributes.entity_picture;
       if (pic && !["unavailable", "unknown"].includes(s.state)) {
-        const im = document.createElement("img");
-        im.alt = "";
-        im.onerror = () => im.remove();
-        im.src = pic.startsWith("/") && H.hassUrl ? H.hassUrl(pic) : pic;
-        pv.appendChild(im);
+        // One image per camera, reused across redraws; a new frame replaces it only once it has loaded, so the tile never blanks.
+        const url = pic.startsWith("/") && H.hassUrl ? H.hassUrl(pic) : pic;
+        const cache = this._pvCamImg || (this._pvCamImg = {});
+        let c = cache[id];
+        if (!c) {
+          const im = document.createElement("img");
+          im.alt = "";
+          c = cache[id] = { im, url: "" };
+        }
+        if (c.url !== url && !c.loading) {
+          c.loading = true;
+          const next = new Image();
+          next.onload = () => { c.im.src = next.src; c.url = url; c.loading = false; };
+          next.onerror = () => { c.loading = false; if (!c.url) c.url = url; };
+          next.src = url;
+        }
+        pv.appendChild(c.im);
       }
       const lb = document.createElement("span");
       lb.className = "pv-camname";
@@ -11696,11 +12640,20 @@ class HemmaPanel extends HTMLElement {
         const mextras = { ...clone(mbase) };
         mextras[FINGERPRINT_KEY] = extras[FINGERPRINT_KEY];
         mcfg = markPhoneManaged(
-          expandAny(pair.mobile, { extras: mextras, templates }), bellOnFor(pair), assistOnFor(pair));
+          expandAny(pair.mobile, { extras: mextras, templates }), bellOnFor(pair), assistOnFor(pair), notifyFor(pair));
         applyScenePick(mcfg, s.compact.rooms);
         applyCameras(mcfg, s.compact.rooms);
         applyMotion(mcfg, s.compact.rooms);
         applyKiosk(mcfg, s.compact.rooms);
+        applyStyle(mcfg, s.compact.rooms);
+        // The phone's print is of what the phone stores, not the desktop's copy, or its own templates read as edited.
+        if (mcfg[FINGERPRINT_KEY] && mcfg.button_card_templates) {
+          mcfg[FINGERPRINT_KEY] = { ...mcfg[FINGERPRINT_KEY] };
+          adopted.forEach((k) => {
+            const t = mcfg.button_card_templates[k];
+            if (t !== undefined) mcfg[FINGERPRINT_KEY][k] = hashStr(stable(t));
+          });
+        }
       } catch (e) {
         this._status(_sx("phone layout could not be rebuilt: {error}", { error: e.message }), "err");
         this._log("phone layout not saved: " + e.message, "err");
@@ -11757,22 +12710,22 @@ class HemmaPanel extends HTMLElement {
   }
 
   // filter-overlay.js derives this key from the room name, so Hemma owns the list.
-  async _syncFilterOptions() {
+  // A new dashboard only adds its rooms: another dashboard may still use the ones already there.
+  async _syncFilterOptions(rooms, add) {
     const ent = "input_select.hemma_mobile_filter";
     const cur = ((this._hass || {}).states || {})[ent];
     if (!cur) return;
     const have = (cur.attributes || {}).options || [];
-    const keys = (((this._state || {}).compact || {}).rooms || [])
+    const keys = (rooms || ((this._state || {}).compact || {}).rooms || [])
       .filter((r) => r && r.name && !isFav(r))
       .map((r) => r.name)
       .map(roomKeyOf);
     // room_scenes is a category that happens to share the prefix, never a room.
-    const kept = have.filter((o) => o === "room_scenes" || !/^room_/.test(o));
+    const kept = add ? have.slice() : have.filter((o) => o === "room_scenes" || !/^room_/.test(o));
     const next = kept.concat(keys.filter((k) => kept.indexOf(k) < 0));
     if (next.length === have.length && next.every((o, i) => o === have[i])) return;
     try {
-      await this._hass.callService("input_select", "set_options",
-        { entity_id: ent, options: next });
+      await this._hass.callWS({ type: "hemma/helpers/select_options", entity_id: ent, options: next });
       this._log(`phone filter: ${keys.length} room(s)`, "ok");
     } catch (e) {
       this._log("phone filter options not updated: " + e.message, "err");
@@ -11781,6 +12734,108 @@ class HemmaPanel extends HTMLElement {
 
   _isDirty() {
     return !!this._clean && this._print() !== this._clean;
+  }
+
+  _statusAction(msg, label, onTap) {
+    this._status(msg, "err");
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "statusfix";
+    b.textContent = label;
+    b.addEventListener("click", onTap);
+    this.$("status").appendChild(b);
+  }
+
+  async _checkSetup(cfgs) {
+    let res = null;
+    try { res = await this._hass.callWS({ type: "hemma/setup/check" }); } catch (e) { res = null; }
+    if (this._saveBlocked || this._flowMode || (this.$("status").textContent || "")) return;
+    const missing = (res && res.missing) || [];
+    if (missing.length) {
+      this._log("missing helpers: " + missing.join(", "), "err");
+      return this._statusAction(missing.length === 1 ? _sx("A helper Hemma needs is missing.")
+        : _sx("{n} helpers Hemma needs are missing.", { n: missing.length }), _sx("Repair"), () => this._runSetup());
+    }
+    const old = "script.hemma_light_smart_toggle";
+    const st = this._hass.states[old];
+    if ((!st || st.state === "unavailable") && (cfgs || []).some((c) => c && JSON.stringify(c).indexOf(old) >= 0)) {
+      this._log(old + " is gone but this dashboard still calls it; hemma.light_smart_toggle replaces it", "warn");
+      this._status(_sx("This dashboard still uses the old smart light script, which is gone. Use the action hemma.light_smart_toggle instead."), "err");
+    }
+  }
+
+  async _runSetup() {
+    this._status(_sx("Running setup again\u2026"));
+    let res;
+    try {
+      res = await this._hass.callWS({ type: "hemma/setup/repair" });
+    } catch (e) {
+      const stale = /unknown/i.test(String((e && (e.code || e.message)) || ""));
+      this._log("setup repair failed: " + ((e && e.message) || e), "err");
+      return this._status(stale ? _sx("Restart Home Assistant to finish updating Hemma, then try again.")
+        : _sx("Setup couldn't run: {error}", { error: (e && e.message) || String(e) }), "err");
+    }
+    const made = res.created || [], left = res.missing || [];
+    if (made.length) this._log("created " + made.join(", "), "ok");
+    if ((res.updated || []).length) this._log("added new options to " + res.updated.join(", "), "ok");
+    if (res.theme === false) this._log("the Hemma theme is not in the theme list", "warn");
+    if (left.length) {
+      return this._status(_sx("Couldn't create {names}. See Settings > Repairs.", { names: left.join(", ") }), "err");
+    }
+    this._status(made.length === 1 ? _sx("Created 1 missing helper.")
+      : made.length ? _sx("Created {n} missing helpers.", { n: made.length }) : _sx("Everything is set up."), "ok");
+  }
+
+  async _exportDash() {
+    const url = this._dashUrl;
+    if (!url) return;
+    const entry = (this._dashList || []).find((d) => d.url_path === url) || {};
+    const name = entry.title || url;
+    try {
+      const desktop = await this._ws({ type: "lovelace/config", url_path: url });
+      const mpath = mobilePathOf(url);
+      const mobile = (this._dashList || []).some((d) => d.url_path === mpath)
+        ? await this._ws({ type: "lovelace/config", url_path: mpath }) : null;
+      const data = JSON.stringify({ hemma_export: 1, version: PANEL_VERSION, dashboard: url, title: name,
+        desktop, mobile: isMobileConfig(mobile || {}) ? mobile : null }, null, 2);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+      a.download = "hemma-" + url + "-" + new Date().toISOString().slice(0, 10) + ".json";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      this._log(`exported "${url}"` + (mobile ? ` with "${mpath}"` : ""), "ok");
+      this._status(this._isDirty() ? _sx("Exported the saved version. Unsaved changes aren't included.")
+        : _sx("Exported {name}.", { name }), "ok");
+    } catch (e) {
+      this._status(_sx("Couldn't export this dashboard: {error}", { error: (e && e.message) || String(e) }), "err");
+    }
+  }
+
+  // Reads an Export (or a Repair backup) and hands it to the same review as a YAML dashboard.
+  _importFile() {
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = ".json,application/json";
+    inp.hidden = true;
+    this.shadowRoot.appendChild(inp);
+    inp.onchange = async () => {
+      const f = inp.files && inp.files[0];
+      inp.remove();
+      if (!f) return;
+      let data = null;
+      try { data = JSON.parse(await f.text()); } catch (e) { data = null; }
+      const cfg = data && (data.desktop || (Array.isArray(data.views) ? data : null));
+      if (!cfg || !Array.isArray(cfg.views) || isMobileConfig(cfg)) {
+        return this._status(_sx("That file isn't a Hemma dashboard export."), "err");
+      }
+      const stem = String(data.dashboard || "imported").replace(/[-_]mobile$/i, "");
+      const src = { url_path: stem, title: data.title || f.name.replace(/\.json$/i, ""), kind: "wide", cfg };
+      const mob = data.mobile && Array.isArray(data.mobile.views) && isMobileConfig(data.mobile)
+        ? [{ url_path: stem + "-mobile", title: "", kind: "mobile", cfg: data.mobile }] : [];
+      this._importReview(src, [src], [src].concat(mob), {});
+    };
+    inp.click();
   }
 
   async _done() {
@@ -12124,7 +13179,7 @@ class HemmaPanel extends HTMLElement {
     if (rooms.some((r) => r.path === path)) {
       return this._status(_sx("a room with path \"{path}\" already exists", { path }), "err");
     }
-    rooms.push(blankRoom(name.trim(), path, "home-demo"));
+    rooms.push(blankRoom(name.trim(), path, demoPhoto(name)));
     const fresh = rooms[rooms.length - 1];
     if (picked.icon) {
       fresh.variables = fresh.variables || {};
@@ -12657,6 +13712,9 @@ class HemmaPanel extends HTMLElement {
     const isSet = (f) => {
       const v = f.key === "__name" ? room.name
         : f.key === "__phone_name" ? (this._favSection(room) || {}).name
+        : f.key === "__hv_bg" ? ((room.variables || {}).hemma_hv_color === "album" ? (room.variables || {}).hemma_hv_rest : (room.variables || {}).hemma_hv_color)
+        : f.key === "__hv_match" ? ((room.variables || {}).hemma_hv_color === "album" || undefined)
+        : f.key === "__sv_bg" || f.key === "__sv_np" ? ((room.variables || {}).hemma_screensaver_bg || undefined)
         : room.variables[f.key];
       return v !== undefined && v !== "" && !(Array.isArray(v) && !v.length);
     };
@@ -13032,7 +14090,7 @@ class HemmaPanel extends HTMLElement {
         }
       }
 
-      if (!visible.length && units.length) {
+      if (!visible.length && units.length && offered.length) {
         const n = document.createElement("div");
         n.className = "empty-note";
         n.textContent = _sx("Nothing set. Use + to add.");
@@ -13054,6 +14112,24 @@ class HemmaPanel extends HTMLElement {
       };
       const ENERGY_SLOT = /^energy_(entity|label|unit|cost)_[1-6]$/;
       const setVar = (key, value, f) => {
+        if (key === "__sv_bg" || key === "__sv_np") {
+          const v0 = ((targets(f)[0] || {}).variables) || {}, np = /^(artwork|album)$/.test(v0.hemma_screensaver_bg || "") ? v0.hemma_screensaver_bg : "";
+          const bg = (np ? v0.hemma_screensaver_bg_rest : v0.hemma_screensaver_bg) || "";
+          const put = (k, val) => setVar(k, val, { ...f, key: k });
+          if (key === "__sv_bg") put(np ? "hemma_screensaver_bg_rest" : "hemma_screensaver_bg", value);
+          else if (value) { put("hemma_screensaver_bg_rest", bg); put("hemma_screensaver_bg", value); }
+          else { put("hemma_screensaver_bg", bg); put("hemma_screensaver_bg_rest", undefined); }
+          return;
+        }
+        if (key === "__hv_bg" || key === "__hv_match") {
+          const v0 = ((targets(f)[0] || {}).variables) || {}, match = v0.hemma_hv_color === "album";
+          const bg = (match ? v0.hemma_hv_rest : v0.hemma_hv_color) || "";
+          const put = (k, val) => setVar(k, val, { ...f, key: k });
+          if (key === "__hv_bg") put(match ? "hemma_hv_rest" : "hemma_hv_color", value);
+          else if (value) { put("hemma_hv_rest", bg); put("hemma_hv_color", "album"); }
+          else { put("hemma_hv_color", bg); put("hemma_hv_rest", undefined); }
+          return;
+        }
         const rooms = targets(f);
         rooms.forEach((r) => {
           if (ENERGY_SLOT.test(key)) r.variables.energy_subs_auto = false;
@@ -13102,7 +14178,7 @@ class HemmaPanel extends HTMLElement {
 
       const renderField = (f, fs) => {
         const row = document.createElement("div");
-        row.className = "row";
+        row.className = "row" + (f.joined ? " joined" : "");
         const lab = document.createElement("label");
         lab.textContent = kindLabel(f) || _sx(f.label);
         if (f.glyph) {
@@ -13115,8 +14191,13 @@ class HemmaPanel extends HTMLElement {
         }
         row.appendChild(lab);
 
+        const hvv = room.variables || {};
         const cur = f.key === "__name" ? (room.name ?? "")
           : f.key === "__phone_name" ? ((this._favSection(room) || {}).name ?? "")
+          : f.key === "__hv_bg" ? ((hvv.hemma_hv_color === "album" ? hvv.hemma_hv_rest : hvv.hemma_hv_color) || "")
+          : f.key === "__hv_match" ? hvv.hemma_hv_color === "album"
+          : f.key === "__sv_bg" ? ((/^(artwork|album)$/.test(hvv.hemma_screensaver_bg || "") ? hvv.hemma_screensaver_bg_rest : hvv.hemma_screensaver_bg) || "")
+          : f.key === "__sv_np" ? (/^(artwork|album)$/.test(hvv.hemma_screensaver_bg || "") ? hvv.hemma_screensaver_bg : "")
           : (room.variables[f.key] ?? anyRoom(f) ?? "");
         let input;
         // Every branch has to call this.
@@ -13165,7 +14246,8 @@ class HemmaPanel extends HTMLElement {
         }
 
         if (f.type === "map") {
-          const over = (room.variables[f.over] || []).filter(Boolean);
+          let over = (room.variables[f.over] || []).filter(Boolean);
+          if (!over.length && f.overAll) over = allOf(this._hass, f.overAll);
           const raw = room.variables[f.key];
           const map = (raw && typeof raw === "object" && !Array.isArray(raw)) ? raw : {};
           const many = over.length > 1;
@@ -13196,6 +14278,7 @@ class HemmaPanel extends HTMLElement {
               over.forEach((k) => { if (map[k]) next[k] = map[k]; });
               if (v) next[id] = v; else delete next[id];
               setVar(f.key, Object.keys(next).length ? next : undefined, f);
+              this._syncPreview();
             };
             const c = f.kind === "icon"
               ? this._combo(map[id] || "", [ICON_DEFAULT].concat(HEMMA_ICONS),
@@ -13213,10 +14296,37 @@ class HemmaPanel extends HTMLElement {
           return;
         }
 
+        if (f.type === "saverhero") {
+          row.remove();
+          const styles = [["", "Today"], ["face", "Clock"], ["recent", "Recently Added"]];
+          const box = document.createElement("div");
+          box.className = "svh";
+          const svEsc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+          let paint = () => {
+            const raw = String(room.variables[f.key] || ""), sel = raw === "clock" ? "" : raw, tint = String(room.variables.hemma_screensaver_bg || "");
+            const V0 = room.variables || {}, fbg = (/^(album|artwork)$/.test(tint) ? V0.hemma_screensaver_bg_rest : tint) || (V0.hemma_style === "homeview" ? ((V0.hemma_hv_color === "album" ? V0.hemma_hv_rest : V0.hemma_hv_color) || "") : "");
+            box.innerHTML = `<div class="svbig"><div class="svmock">${saverMock(sel, tint, room.variables.hemma_screensaver_face, fbg)}</div><button type="button" class="svpv">${svEsc(_sx("Preview"))}</button></div>`
+              + `<div class="svgrid">${styles.map(([k, l]) => `<button type="button" class="svopt${k === sel ? " on" : ""}" data-k="${k}"><span class="svthumb"><span class="svmock">${saverMock(k, tint, room.variables.hemma_screensaver_face, fbg)}</span></span><span class="svlab">${svEsc(_sx(l))}</span></button>`).join("")}</div>`;
+            const pv = box.querySelector(".svpv");
+            if (pv) pv.onclick = () => { const V = room.variables || {}, dash = V.hemma_style === "homeview" ? ((V.hemma_hv_color === "album" ? V.hemma_hv_rest : V.hemma_hv_color) || "gray") : ""; this._saverPreview({ style: sel || "clock", face: V.hemma_screensaver_face || "", bg: tint || dash, idle: V.hemma_screensaver_idle || "", np: V.hemma_screensaver_np || "", cals: V.hemma_screensaver_calendars || [], rabg: V.hemma_screensaver_ra_bg || "", rest: V.hemma_screensaver_bg_rest || dash, every: parseFloat(room.variables.hemma_screensaver_every) || 6, dark: 0 }); };
+            box.querySelectorAll(".svopt").forEach((b) => { b.onclick = () => { setVar(f.key, b.dataset.k, f); this._syncPreview(); paint(); syncWhen(); }; });
+          };
+          const fit = () => box.querySelectorAll(".svmock").forEach((m) => { const w = m.parentNode.clientWidth; if (w) m.style.transform = "scale(" + (w / 320) + ")"; });
+          const paint0 = paint;
+          paint = () => { paint0(); fit(); };
+          box._paint = paint;
+          paint();
+          fs.appendChild(box);
+          if (window.ResizeObserver) new ResizeObserver(fit).observe(box);
+          requestAnimationFrame(fit);
+          return;
+        }
+
         if (f.type === "bool") {
           row.appendChild(this._boolSwitch(cur, f.boolDefault, (v) => {
             setVar(f.key, v, f);
             this._syncPreview();
+            this._setBackdrop();
             if (f.reveals) syncWhen();
           }, f.label));
           addDrop(row, f);
@@ -13264,9 +14374,10 @@ class HemmaPanel extends HTMLElement {
         }
 
         if (f.type === "select") {
-          const c = this._combo(String(cur), f.options, "",
-            (v) => { setVar(f.key, v, f); this._syncPreview(); if (f.reveals) syncWhen(); },
-            { fixed: true, labels: { "": _sx("Default"), ...(f.optionLabels || {}) } });
+          const fv = room.variables || {};
+          const c = this._combo(String(cur), typeof f.options === "function" ? f.options(fv) : f.options, "",
+            (v) => { const go = () => { setVar(f.key, v, f); this._syncPreview(); }; if (/^(hemma_hv_text|hemma_hv_text_phone|hemma_glass_text|hemma_hv_backdrop|hemma_hv_backdrop_phone|__hv_bg|__hv_match)$/.test(f.key)) this._fadePreview(go); else go(); if (f.reveals) syncWhen(); this._setBackdrop(); if (/^(hemma_screensaver_bg|hemma_screensaver_face|__sv_bg|__sv_np)$/.test(f.key)) { const h = fs.querySelector(".svh"); if (h && h._paint) h._paint(); } },
+            { fixed: true, labels: { "": _sx("Default"), ...((typeof f.optionLabels === "function" ? f.optionLabels(fv) : f.optionLabels) || {}) }, swatches: (typeof f.swatches === "function" ? f.swatches(fv) : f.swatches) || null, darkSwatch: (typeof f.darkSwatch === "function" ? f.darkSwatch(fv) : f.darkSwatch) || null });
           row.appendChild(c.wrap);
           addDrop(row, f);
           fs.appendChild(row);
@@ -13335,12 +14446,13 @@ class HemmaPanel extends HTMLElement {
         const row = [...parent.children].find((n) => !had.has(n) && n.classList.contains("row"));
         if (!row) return;
         whenRows.push({ f, row });
-        if (!f.when(room.variables || {})) row.style.display = "none";
+        if (!f.when(room.variables || {})) { row.style.display = "none"; (row._extra || []).forEach((e) => { e.style.display = "none"; }); }
       };
       const syncWhen = () => {
         const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         whenRows.forEach(({ f, row }) => {
           const want = f.when(room.variables || {});
+          (row._extra || []).forEach((e) => { e.style.display = want ? "" : "none"; });
           const shown = row.style.display !== "none" && !row._leaving;
           if (want === shown) return;
           row.getAnimations().forEach((a) => a.cancel());
@@ -13853,7 +14965,7 @@ class HemmaPanel extends HTMLElement {
 
       if (item.group !== lastGroup && item.group) {
         if (lastGroup !== undefined) menu.appendChild(Object.assign(document.createElement("div"), { className: "combo-sep" }));
-        // Apple's menus divide groups with a rule and title one only when the items cannot say it.
+        // Menus divide groups with a rule and title one only when the items cannot say it.
         if (!item.quiet) {
           const h = document.createElement("div");
           h.className = "combo-head";
@@ -13878,6 +14990,12 @@ class HemmaPanel extends HTMLElement {
         sw.style.background = item.swatch;
         d.appendChild(sw);
       }
+      (item.dots || []).forEach((c, i, all) => {
+        const sw = document.createElement("span");
+        sw.className = "cdot" + (i < all.length - 1 ? " pair" : "");
+        sw.style.background = c;
+        d.appendChild(sw);
+      });
       if (item.glyph) {
         const g = document.createElement("span");
         g.className = "roomglyph menuglyph" + (item.plainGlyph ? " plain" : "");
@@ -14780,7 +15898,7 @@ class HemmaPanel extends HTMLElement {
       const scrim = document.createElement("div");
       scrim.className = "fscrim";
       const stack = document.createElement("div");
-      stack.className = "askstack" + (opts.wide ? " wide" : "");
+      stack.className = "askstack" + (opts.wide ? " wide" : "") + (opts.cls ? " " + opts.cls : "");
       const frost = document.createElement("div");
       frost.className = "fglass";
       const box = document.createElement("div");
@@ -15001,6 +16119,27 @@ class HemmaPanel extends HTMLElement {
       return drop;
     };
 
+    const swatches = (opts && opts.swatches) || null;
+    if (swatches) {
+      const dot = document.createElement("span");
+      dot.className = "cdot lead";
+      wrap.classList.add("hasdot");
+      wrap.insertBefore(dot, input);
+      wrap._paintDot = () => { dot.style.background = swatches[current] || swatches[""] || "transparent"; };
+      wrap._paintDot();
+      if (opts.darkSwatch) {
+        const dk = document.createElement("span");
+        dk.className = "cdot lead dk";
+        dk.title = _sx("Dark mode");
+        const paintDk = () => { dk.style.background = typeof opts.darkSwatch === "string" ? opts.darkSwatch : (opts.darkSwatch[current] || opts.darkSwatch[""]); };
+        paintDk();
+        const pd0 = wrap._paintDot;
+        wrap._paintDot = () => { pd0(); paintDk(); };
+        wrap.classList.add("hasdot2");
+        wrap.insertBefore(dk, input);
+      }
+    }
+
     if (entityish) {
       const lead = document.createElement("span");
       lead.className = "entglyph";
@@ -15021,6 +16160,7 @@ class HemmaPanel extends HTMLElement {
       onChange(v === ICON_DEFAULT ? "" : v);
       if (wrap._paintLead) wrap._paintLead();
       if (wrap._paintEnt) wrap._paintEnt();
+      if (wrap._paintDot) wrap._paintDot();
       close();
     };
 
@@ -15077,6 +16217,20 @@ class HemmaPanel extends HTMLElement {
           g.style.setProperty("--i",
             "url('" + iconUrl(isDefault && iconFallback ? iconFallback : o) + "')");
           d.appendChild(g);
+        }
+        if (swatches && swatches[o]) {
+          const c = document.createElement("span");
+          c.className = "cdot";
+          c.style.background = swatches[o];
+          d.appendChild(c);
+          if (opts.darkSwatch) {
+            c.classList.add("pair");
+            const k = document.createElement("span");
+            k.className = "cdot";
+            k.title = _sx("Dark mode");
+            k.style.background = typeof opts.darkSwatch === "string" ? opts.darkSwatch : (opts.darkSwatch[o] || opts.darkSwatch[""]);
+            d.appendChild(k);
+          }
         }
         const label = document.createElement("span");
         label.className = "lbl";
@@ -15138,7 +16292,9 @@ class HemmaPanel extends HTMLElement {
       input.onfocus = () => { if (isPhone(this)) input.blur(); else open(); };
       input.onclick = () => {
         if (!isPhone(this)) { open(); return; }
-        this._menuAt(wrap, list.map((o) => ({ id: o, label: show(o), checked: o === current })), (v) => commit(v));
+        const dk = (o) => opts && opts.darkSwatch && (typeof opts.darkSwatch === "string" ? opts.darkSwatch : (opts.darkSwatch[o] || opts.darkSwatch[""]));
+        this._menuAt(wrap, list.map((o) => ({ id: o, label: show(o), checked: o === current,
+          dots: swatches && swatches[o] ? [swatches[o], dk(o)].filter(Boolean) : null })), (v) => commit(v));
       };
       input.onblur = () => { if (!isPhone(this)) setTimeout(close, 120); };
     } else {
@@ -15231,8 +16387,13 @@ class HemmaPanel extends HTMLElement {
     if (!bg) return;
     const rooms = (this._state && this._state.compact.rooms) || [];
     const home = rooms.find((r) => r.path === "home") || rooms[0];
-    const found = (this._imgs || []).find((i) => i.name === (home && home.variables.image));
+    const hvv = (home && home.variables) || {};
+    const found = hvv.hemma_style !== "homeview" && (this._imgs || []).find((i) => i.name === hvv.image);
     const dark = !this.classList.contains("is-light");
+    const hvk = (hvv.hemma_hv_color === "album" ? hvv.hemma_hv_rest : hvv.hemma_hv_color) || "gray";
+    this.classList.toggle("hvbg", hvv.hemma_style === "homeview");
+    this.classList.toggle("hvw", hvv.hemma_style === "homeview" && !dark && hvInkW(hvv, dark));
+    if (hvv.hemma_style === "homeview") this.style.setProperty("--studio-hv", dark ? (HV_NIGHTS[hvk] || HV_NIGHT) : ((hvInkW(hvv, dark) ? HV_DEEP : HV_TINT)[hvk] || HV_TINT.gray));
     const url = found && ((dark && found.night) || found.day);
     if (!url) { bg.classList.remove("on"); return; }
     if (bg.dataset.src === url) { bg.classList.add("on"); return; }
@@ -15528,6 +16689,7 @@ class HemmaPanel extends HTMLElement {
     hint.className = "shothint";
     hint.textContent = _sx("Choose a photo, or drop one onto a slot.");
     fs.appendChild(hint);
+    row._extra = [shots, hint];
 
     const preview = () => {
       const chosen = (this._imgs || []).find((i) => i.name === room.variables.image);
@@ -15577,9 +16739,11 @@ class HemmaPanel extends HTMLElement {
 
       sel.innerHTML = "";
       sel.appendChild(this._combo(cur, names, "", (v) => {
-        room.variables.image = v;
+        if (v) room.variables.image = v; else delete room.variables.image;
+        this._mirrorToPair("image", v || undefined, [room]);
         preview();
         this._setBackdrop();
+        this._syncPreview();
       }, { fixed: true, labels }).wrap);
       preview();
     };
@@ -15631,6 +16795,8 @@ class HemmaPanel extends HTMLElement {
         this._log(`uploaded ${name} ${variantValue}`, "ok");
         fill();
         this._setBackdrop();
+        this._mirrorToPair("image", name, [room]);
+        this._syncPreview();
       } catch (e) {
         this._status(_sx("upload failed: {error}", { error: e.message }), "err");
         this._log("upload failed: " + e.message, "err");
@@ -16520,6 +17686,27 @@ class HemmaPanel extends HTMLElement {
     return this._npMin;
   }
 
+  // A change that recolors the whole preview (Background, Match Now Playing, Light mode text) fades from the old look to the new one, as the Day/Night switch does.
+  _fadePreview(apply) {
+    const mount = this.$("mapmount");
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const oldCard = !still && mount && mount.querySelector(".hv") && mount.firstElementChild;
+    let flat = null;
+    if (oldCard) {
+      const mr = mount.getBoundingClientRect(), cr = oldCard.getBoundingClientRect(), k = mount.offsetWidth ? mr.width / mount.offsetWidth : 1;
+      flat = oldCard.cloneNode(true);
+      Object.assign(flat.style, { position: "absolute", left: (cr.left - mr.left) / k + "px", top: (cr.top - mr.top) / k + "px", width: oldCard.offsetWidth + "px", height: oldCard.offsetHeight + "px", margin: "0", pointerEvents: "none", zIndex: "20" });
+    }
+    apply();
+    if (!flat) return;
+    if (getComputedStyle(mount).position === "static") mount.style.position = "relative";
+    mount.appendChild(flat);
+    const seqF = (this._modeSwapF = (this._modeSwapF || 0) + 1);
+    flat.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 900, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" })
+      .finished.then(() => flat.remove(), () => flat.remove());
+    if (seqF > 1) [...mount.children].filter((n) => n !== flat && n.style.zIndex === "20").forEach((n) => n.remove());
+  }
+
   _swapMap(mount, room) {
     const old = mount.firstElementChild;
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -16672,7 +17859,7 @@ class HemmaPanel extends HTMLElement {
   _phoneMap(card) {
     const st = this._phoneState();
     const screen = document.createElement("div");
-    screen.className = "miniphone";
+    screen.className = "miniphone" + (this._miniDark ? " pnight" : "");
     if (!st) {
       screen.classList.add("nophone");
       card.appendChild(screen);
@@ -16700,7 +17887,16 @@ class HemmaPanel extends HTMLElement {
     const home = wide.find((r) => r.path === "home") || wide[0];
     const name = sv.image || (home && (home.variables || {}).image);
     const found = (this._imgs || []).find((i) => i.name === name);
-    const url = found && ((this._miniDark && found.night) || found.day);
+    const hv0 = home ? (home.variables || {}) : sv;
+    const hvV = hv0.hemma_hv_text_phone ? { ...hv0, hemma_hv_text: hv0.hemma_hv_text_phone === "dark" ? "" : hv0.hemma_hv_text_phone } : hv0;
+    const hv = hvColor(hvV, this._miniDark);
+    const pbd = hvV.hemma_hv_backdrop_phone === "photo" ? "" : (hvV.hemma_hv_backdrop_phone || hvV.hemma_hv_backdrop || "");
+    const psoft = hv && !pbd && name ? "/hemma_assets/rooms-soft/" + (this._miniDark ? ((sv.image_night || (home && (home.variables || {}).image_night)) || name + "-night") : name) + ".jpg?v=3" : "";
+    if (hv) {
+      screen.classList.add("hv", this._miniDark ? "hvd" : hvInkW(hvV, this._miniDark) ? "hvw" : "hvl", "bd-" + (psoft ? "photo" : pbd === "gradient" ? "gradient" : "color"));
+      screen.style.setProperty("--flat", hv);
+    }
+    const url = psoft || (!hv && found && ((this._miniDark && found.night) || found.day));
     if (url) img.src = url; else screen.classList.add("nophoto");
     screen.appendChild(img);
     const wash = document.createElement("div");
@@ -16790,7 +17986,7 @@ class HemmaPanel extends HTMLElement {
     const h1 = document.createElement("span");
     h1.className = "mp-name";
     h1.textContent = (this._pair && ((this._pair.desktop.compact.rooms
-      .find((r) => r.path === "home") || {}).name)) || _sx("Home");
+        .find((r) => r.path === "home") || {}).name)) || _sx("Home");
     trow.appendChild(h1);
 
     const wtemp = went && this._hass.states[wv.weather_temp_sensor];
@@ -16813,7 +18009,7 @@ class HemmaPanel extends HTMLElement {
       const wg = document.createElement("img");
       wg.className = "mp-wglyph";
       wg.alt = "";
-      wg.src = file ? "/local/hemma/weather/" + file + ".svg" : iconUrl("weather");
+      wg.src = file ? "/hemma_assets/weather/" + file + "-fill.svg?v=2" : iconUrl("weather");
       const wwrap = document.createElement("span");
       wwrap.className = "mp-wx";
       wwrap.appendChild(w);
@@ -16842,6 +18038,9 @@ class HemmaPanel extends HTMLElement {
     model.forEach((b) => {
       const el = this._paintBadge(b, false);
       el.classList.toggle("open", this._phoneFilter === b.id);
+      const cat = HV_CAT[b.id === "people" ? "presence" : b.id];
+      if (this._phoneFilter === b.id && cat) el.style.setProperty("--hv-bi-cat", cat); else el.style.removeProperty("--hv-bi-cat");
+      if (hv && !this._phoneFilter) hvRing(el);
       el.title = _sx("Filter the dashboard to {name}", { name: b.label || b.id });
       el.onclick = (ev) => {
         ev.stopPropagation();
@@ -16927,6 +18126,12 @@ class HemmaPanel extends HTMLElement {
         const nt = document.createElement("span");
         nt.textContent = _studioT("now_playing.title", "Now Playing");
         nphead.appendChild(nt);
+        if (npall.length > 1) {
+          const nchev = document.createElement("span");
+          nchev.className = "mp-chev";
+          nchev.innerHTML = '<svg viewBox="0 0 9 15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 7.5 1.5 13.5"/></svg>';
+          nphead.appendChild(nchev);
+        }
         body.appendChild(nphead);
 
         const nprow = document.createElement("div");
@@ -16934,7 +18139,7 @@ class HemmaPanel extends HTMLElement {
         nprow.dataset.jump = "Now Playing";
         body.appendChild(nprow);
 
-        npall.slice(0, NP_STACK_SLOTS).forEach((nps) => {
+        npall.slice(0, 1).forEach((nps) => {
         const ctl = nps.controls;
         const hasCtl = ctl.toggle || ctl.next || ctl.prev;
 
@@ -17001,6 +18206,10 @@ class HemmaPanel extends HTMLElement {
         const ct = document.createElement("span");
         ct.textContent = _studioT("cameras.title", "Cameras");
         ch.appendChild(ct);
+        const cchev = document.createElement("span");
+        cchev.className = "mp-chev";
+        cchev.innerHTML = '<svg viewBox="0 0 9 15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 7.5 1.5 13.5"/></svg>';
+        ch.appendChild(cchev);
         body.appendChild(ch);
         body.appendChild(this._camRow(ids, "mp-cams"));
       }
@@ -17024,7 +18233,7 @@ class HemmaPanel extends HTMLElement {
         shead.appendChild(st2);
         const chev = document.createElement("span");
         chev.className = "mp-chev";
-        chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
+        chev.innerHTML = '<svg viewBox="0 0 9 15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 7.5 1.5 13.5"/></svg>';
         shead.appendChild(chev);
         const sgroup = document.createElement("div");
         sgroup.className = "mp-scenegroup";
@@ -17202,7 +18411,7 @@ class HemmaPanel extends HTMLElement {
         if (!this._phoneFilter) {
           const chev = document.createElement("span");
           chev.className = "mp-chev";
-          chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
+          chev.innerHTML = '<svg viewBox="0 0 9 15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 7.5 1.5 13.5"/></svg>';
           head.appendChild(chev);
         }
         head.classList.add("tappable");
@@ -17612,7 +18821,7 @@ class HemmaPanel extends HTMLElement {
       fan: "var(--hemma-color-teal, #00C3D0)",
       humidifier: "var(--hemma-color-teal, #00C3D0)",
       climate: "var(--hemma-color-teal, #00C3D0)",
-      vacuum: "var(--hemma-color-teal, #00C3D0)",
+      vacuum: "var(--hemma-badge-vacuum-color, var(--hemma-color-orange, #FF9230))",
       cover: "var(--hemma-color-teal, #00c3d0)",
       lock: "var(--hemma-color-teal, #00c3d0)",
       plant: "var(--hemma-color-green, #30D158)",
@@ -17632,6 +18841,29 @@ class HemmaPanel extends HTMLElement {
     return null;
   }
 
+  // The desktop preview is drawn at this screen's own width, so it packs its tiles as the dashboard does here.
+  // Today's high and low from the daily forecast, which HA only hands out by subscription.
+  _pvHiLo(id, st) {
+    if (!id || !this._hass || !this._hass.connection) return "";
+    if (this._pvFcId !== id) {
+      this._pvFcId = id; this._pvFc = null;
+      if (this._pvFcUnsub) { try { this._pvFcUnsub.then((u) => u && u()); } catch (_) {} }
+      this._pvFcUnsub = this._hass.connection.subscribeMessage((m) => {
+        const had = !!this._pvFc;
+        this._pvFc = (m && m.forecast) || [];
+        if (!had && this._pvFc.length) this._rebuildPreview();
+      }, { type: "weather/subscribe_forecast", forecast_type: "daily", entity_id: id }).catch(() => null);
+    }
+    const d = this._pvFc && this._pvFc[0];
+    if (!d || d.temperature == null || d.templow == null) return "";
+    return "H:" + Math.round(d.temperature) + "° L:" + Math.round(d.templow) + "°";
+  }
+
+  _pvDeskW() {
+    const w = (window.screen && window.screen.width) || 0;
+    return w >= 1280 ? Math.min(1920, w) : 1440;
+  }
+
   // The sidebar's category page, drawn from the phone layout's tiles the way the dashboard builds it.
   _paintCatPage(host, k, rooms, here) {
     if (!host) return;
@@ -17641,10 +18873,56 @@ class HemmaPanel extends HTMLElement {
     page.addEventListener("click", (ev) => ev.stopPropagation());
     const en = (PV_CATS.find((c) => c[0] === k) || [k, "", k])[2];
     const home = k === "home";
+    const hv = host.classList.contains("hv");
     if (home) { page.classList.add("home"); host.classList.add("pvbase"); }
     page.appendChild(Object.assign(document.createElement("div"), { className: "mc-title",
       textContent: home ? ((host.querySelector(".mini-name") || {}).textContent || "")
         : k === "scenes" ? _studioT("nav.scenes", "Scenes") : _studioT("filter." + k, en) }));
+    const hd = home && hv && host.querySelector(".mz .hv-date");
+    if (hd) {
+      const dc = page.insertBefore(hd.cloneNode(true), page.firstChild), hw = dc.querySelector(".hvw");
+      const side = this._miniSize === "desktop" && host.classList.contains("sidebar");
+      const VH = ((rooms[0] || {}).variables) || {};
+      const ovv = this._ovOn(VH);
+      if (side) dc.style.display = "none";
+      else if (ovv) dc.style.visibility = "hidden";
+      // Focus: the line above the greeting, as "Above room name" sets it; Overview puts the forecast by the buttons instead.
+      if (!side && !ovv) {
+        const mode = VH.hero_line || "";
+        const dd = dc.querySelector(".hvd");
+        if (mode === "both" && VH.date_style !== "long" && dd) {
+          const sh = _studioDate(this._hass, "short"), cut = sh.search(/[\s,]/);
+          if (cut > 0) { dd.querySelector("b").textContent = sh.slice(0, cut); dd.querySelector(":scope > span").textContent = sh.slice(cut).replace(/^[\s,]+/, ""); }
+        }
+        if (mode === "date" && hw) hw.remove();
+        if (!mode && dd) { dd.remove(); dc.classList.add("wxonly"); }
+        if (hw && mode !== "date") {
+          const img = hw.querySelector("img");
+          if (img && VH.conditions) img.remove();
+          const V0 = VH, we0 = V0.weather_entity && this._hass.states[V0.weather_entity], c0 = we0 ? String(we0.state).toLowerCase() : "";
+          if (VH.conditions === "text" && c0 && !/unknown|unavailable/.test(c0)) {
+            hw.appendChild(Object.assign(document.createElement("span"), { className: "hvc",
+              textContent: _studioL("component.weather.entity_component._.state." + c0, c0.replace(/[-_]/g, " ").replace(/\b\w/g, (x) => x.toUpperCase())) }));
+          }
+        }
+      }
+      if (hw && (side || ovv)) {
+        const V0 = ((rooms[0] || {}).variables) || {}, we = V0.weather_entity && this._hass.states[V0.weather_entity];
+        let cond = "";
+        try { cond = we ? (this._hass.formatEntityState ? this._hass.formatEntityState(we) : we.state) : ""; } catch (_) { cond = we ? we.state : ""; }
+        const bw = Object.assign(document.createElement("span"), { className: "mc-bw" });
+        if (cond && !/unknown|unavailable/i.test(cond)) {
+          const bd = Object.assign(document.createElement("span"), { className: "mc-bd" });
+          bd.appendChild(Object.assign(document.createElement("b"), { textContent: cond }));
+          const hl = this._pvHiLo(V0.weather_entity, we);
+          if (hl) bd.appendChild(Object.assign(document.createElement("small"), { textContent: hl }));
+          bw.appendChild(bd);
+        }
+        [...hw.childNodes].forEach((n) => bw.appendChild(n.cloneNode(true)));
+        page.querySelector(".mc-title").appendChild(bw);
+        hw.remove();
+      }
+    }
     const wx = home && host.querySelector(".mz .mini-weather");
     let w = null;
     if (wx && wx.childNodes.length) {
@@ -17662,20 +18940,26 @@ class HemmaPanel extends HTMLElement {
       w.querySelector(".mc-wt span").textContent = !c0 || ["unknown", "unavailable"].includes(c0) ? ""
         : WORD[c0] || c0.replace(/[-_]/g, " ").replace(/\b\w/g, (x) => x.toUpperCase());
       if (c0) w.appendChild(Object.assign(document.createElement("img"), { className: "mini-wglyph", alt: "",
-        src: WEATHER_SVG[c0] ? "/local/hemma/weather/" + WEATHER_SVG[c0] + ".svg" : iconUrl("weather") }));
+        src: WEATHER_SVG[c0] ? "/hemma_assets/weather/" + WEATHER_SVG[c0] + "-fill.svg?v=2" : iconUrl("weather") }));
       page.appendChild(w);
     }
     // Set as the page is built: measured a frame later, every live update drew it in the wrong place first.
     const shown = this.shadowRoot.querySelector(".miniroom");
     const hostW = (shown && shown.offsetWidth) || this._pvRoomW || 0;
     if (hostW) this._pvRoomW = hostW;
-    const scale = hostW ? hostW / (this._miniSize === "desktop" ? 1440 : 1180) : 0.6;
+    const scale = hostW ? hostW / (this._miniSize === "desktop" ? this._pvDeskW() : 1180) : 0.6;
     const titleTop = this._miniSize === "desktop" ? 87 : 88;
     page.style.setProperty("--pv-k", scale.toFixed(4));
     page.style.paddingTop = Math.round(titleTop * scale) + "px";
+    if (hv && this._miniSize === "tablet" && host.classList.contains("sidebar")) page.style.paddingTop = Math.round((54.5 - 16) * scale) + "px";
+    else if (hv && this._miniSize === "tablet") page.style.paddingTop = Math.round((titleTop - (this._ovOn(((rooms[0] || {}).variables) || {}) ? 7 : 28)) * scale) + "px";
+    const hvRealW = (this._miniSize === "desktop" ? this._pvDeskW() : 1180) - (host.classList.contains("sidebar") ? 264 + (this._miniSize === "desktop" ? 15 : 20) : 22) - 22;
+    const hvCols = Math.max(1, Math.floor((hvRealW + 10) / 230));
+    const hvTwoW = Math.min(2 * (hvRealW - 10 * (hvCols - 1)) / hvCols + 10, 400) * scale;
+    let npH = null, npRow = null, camH = null, camRow = null;
     if (w) w.style.top = Math.round((titleTop + 20.5) * scale) + "px";
     // Desktop Overview: the title in the toolbar row, the forecast beside the buttons (hemma-core .cat.compact).
-    if (this._miniSize === "desktop" && this._ovOn(((rooms[0] || {}).variables) || {}) && shown) {
+    if (!hv && this._miniSize === "desktop" && this._ovOn(((rooms[0] || {}).variables) || {}) && shown) {
       const cs = getComputedStyle(shown);
       const rowC = (parseFloat(cs.getPropertyValue("--chrome-top-btn")) || 26.1) + (parseFloat(cs.getPropertyValue("--chrome-btn")) || 18.9) / 2;
       page.style.paddingTop = (rowC - 20.5 * scale).toFixed(2) + "px";
@@ -17685,8 +18969,24 @@ class HemmaPanel extends HTMLElement {
         if (btns.length) w.style.right = "calc(var(--chrome-pad, var(--pad-x)) + " + btns.length + " * (var(--chrome-btn) + var(--chrome-btn-gap)) - var(--chrome-btn-gap) + " + (26 * scale).toFixed(2) + "px)";
       }
     }
+    // Minimal on a desktop Overview: the greeting on the toolbar row beside the clock, as hemma-core lays it out.
+    if (hv && this._miniSize === "desktop" && this._ovOn(((rooms[0] || {}).variables) || {}) && shown) {
+      const cs = getComputedStyle(shown);
+      const rowC = (parseFloat(cs.getPropertyValue("--chrome-top-btn")) || 26.1) + (parseFloat(cs.getPropertyValue("--chrome-btn")) || 18.9) / 2;
+      page.style.paddingTop = Math.max(0, rowC - 23 * scale).toFixed(2) + "px";
+    }
     // On a desktop Overview the title moves over for it (hemma-core .cat.compact:not(.home) h1).
-    if (!home && shown) {
+    const hvT = hv && !home && shown && page.querySelector(".mc-title");
+    if (hvT) {
+      hvT.classList.add("backed");
+      const bk = document.createElement("button");
+      bk.type = "button";
+      bk.className = "mc-back";
+      bk.setAttribute("aria-label", _studioT("nav.back", "Back"));
+      bk.innerHTML = '<svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.4 1.6 1.8 10l8.6 8.4"/></svg>';
+      bk.onclick = (ev) => { ev.stopPropagation(); this._pvCat = null; this._rebuildPreview(); };
+      hvT.prepend(bk);
+    } else if (!home && shown) {
       const cs = getComputedStyle(shown);
       const rowC = (parseFloat(cs.getPropertyValue("--chrome-top-btn")) || 26.1) + (parseFloat(cs.getPropertyValue("--chrome-btn")) || 18.9) / 2;
       const size = 44 * scale;
@@ -17719,16 +19019,55 @@ class HemmaPanel extends HTMLElement {
     if (this._ovOn(((rooms[0] || {}).variables) || {})) { brow.style.gap = (11 * scale).toFixed(2) + "px"; page.classList.add("ov"); }
     this._miniModel(rooms[0] || {}).forEach((b) => {
       const id = b.id === "people" ? "presence" : String(b.id).split(":")[0];
-      if (id === "status") { brow.appendChild(this._paintBadge(b)); return; }
+      if (id === "status") { brow.appendChild(home && hv ? hvRing(this._paintBadge(b)) : this._paintBadge(b)); return; }
       if (!PV_CATS.some((c) => c[0] === id)) return;
-      const el = this._paintBadge(b);
+      const el = home && hv ? hvRing(this._paintBadge(b)) : this._paintBadge(b);
       el.classList.toggle("mc-on", id === k);
+      if (id === k && HV_CAT[id]) el.style.setProperty("--hv-bi-cat", HV_CAT[id]); else el.style.removeProperty("--hv-bi-cat");
       el.onclick = (ev) => { ev.stopPropagation(); this._pvCat = id === k ? null : id; this._rebuildPreview(); };
       brow.appendChild(el);
     });
+    if (hv && home && shown && this._miniSize === "desktop" && this._ovOn(((rooms[0] || {}).variables) || {})) {
+      const bw = page.querySelector(".mc-title .mc-bw");
+      const nb = [...host.querySelectorAll(".mini-bell, .mini-assist, .mini-settings")].filter((b) => b.offsetWidth).length || 2;
+      const tt = page.querySelector(".mc-title");
+      if (bw && tt) {
+        const cs = getComputedStyle(shown), rowC = (parseFloat(cs.getPropertyValue("--chrome-top-btn")) || 26.1) + (parseFloat(cs.getPropertyValue("--chrome-btn")) || 18.9) / 2;
+        const tmp = bw.querySelector(".hvw > b, :scope > b"), glyph = bw.querySelector("img"), cnd = bw.querySelector(".mc-bd > b");
+        const st = Object.assign(document.createElement("span"), { className: "s" });
+        st.appendChild(Object.assign(document.createElement("b"), { textContent: tmp ? tmp.textContent : "" }));
+        if (cnd) st.appendChild(Object.assign(document.createElement("i"), { textContent: cnd.textContent }));
+        bw.textContent = "";
+        bw.classList.add("d2");
+        bw.appendChild(st);
+        if (glyph) bw.appendChild(glyph);
+        Object.assign(bw.style, { position: "absolute", top: rowC.toFixed(2) + "px", bottom: "auto", height: "auto", transform: "translateY(-50%)" });
+        bw.style.right = "calc(var(--chrome-pad, var(--pad-x)) + " + nb + " * (var(--chrome-btn) + var(--chrome-btn-gap)) - var(--chrome-btn-gap) + 2 * var(--cap-pad, calc(var(--chrome-btn) * 6 / 34)) + " + (18 * scale).toFixed(2) + "px)";
+        page.appendChild(bw);
+      }
+    }
     // As the dashboard: a room has the phone's chip row for that room where Home has its badges.
     const roomName = home && here && rooms[0] !== here ? String(here.name || "") : "";
+    // A room opened from Home has the dashboard's glass back button beside its name.
+    const ttl = roomName && page.querySelector(".mc-title");
+    if (hv && roomName) page.querySelectorAll(".mc-bw, .mc-wx").forEach((n) => n.remove());
+    if (ttl) {
+      ttl.classList.add("backed");
+      const bk = document.createElement("span");
+      bk.className = "mc-back";
+      bk.innerHTML = '<svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.4 1.6 1.8 10l8.6 8.4"/></svg>';
+      ttl.prepend(bk);
+    }
     if (k !== "scenes" && !roomName) page.appendChild(brow);
+    if (k === "climate" && !roomName) {
+      const clim = this._miniModel(rooms[0] || {}, { phone: true }).find((b) => b.id === "climate");
+      if (clim && (clim.subs || []).length) {
+        const crow = document.createElement("div");
+        crow.className = "mc-chips cat";
+        clim.subs.forEach((sb) => crow.appendChild(this._paintChip(sb)));
+        page.appendChild(crow);
+      }
+    }
     if (roomName) { const crow = this._ovRoomChips(roomName); if (crow) page.appendChild(crow); }
     // The dashboard's scene chips: 176px apart by 8 on a tablet, 150px on the compact desktop.
     const chipW = (this._miniSize === "desktop" ? 150 : 176) * scale, chipGap = 8 * scale;
@@ -17774,35 +19113,69 @@ class HemmaPanel extends HTMLElement {
       const tiles = [...host.querySelectorAll(".mz-np .mini-nptile")]
         .filter((t) => (t.querySelector(".mini-nptitle") || {}).textContent !== _sx("Nothing playing"));
       if (tiles.length) {
-        page.appendChild(Object.assign(document.createElement("div"), { className: "mc-h", textContent: _studioT("now_playing.title", "Now Playing") }));
+        if (tiles.length > 1) {
+          npH = page.appendChild(Object.assign(document.createElement("div"), { className: "mc-h lnk" }));
+          npH.appendChild(Object.assign(document.createElement("span"), { textContent: _studioT("now_playing.title", "Now Playing") }));
+          npH.insertAdjacentHTML("beforeend", '<svg class="mc-chev" viewBox="0 0 9 15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 7.5 1.5 13.5"/></svg>');
+          tiles.splice(1);
+        } else npH = page.appendChild(Object.assign(document.createElement("div"), { className: "mc-h", textContent: _studioT("now_playing.title", "Now Playing") }));
         // The dashboard's width: two scene chips and their gap, or on the compact desktop two tile columns (_packGrid).
         let npW = 2 * chipW + chipGap;
         if (this._miniSize === "desktop" && page.classList.contains("ov")) {
-          const realW = 1440 - (host.classList.contains("sidebar") ? 264 + 15 : 22) - 22;
+          const realW = this._pvDeskW() - (host.classList.contains("sidebar") ? 264 + 15 : 22) - 22;
           const cols = Math.max(1, Math.floor((realW + 10) / 175));
           npW = 2 * (realW * scale - 5.9 * (cols - 1)) / cols + 5.9;
         }
+        if (page.classList.contains("ov")) npW = Math.min(npW, (this._miniSize === "desktop" ? 332 : 352) * scale);
+        if (hv) npW = hvTwoW;
         tiles.forEach((t) => { t.style.width = t.style.minWidth = t.style.maxWidth = npW + "px"; });
         const row = document.createElement("div");
         row.className = "mc-np";
         tiles.forEach((t) => row.appendChild(t.cloneNode(true)));
-        page.appendChild(row);
+        npRow = page.appendChild(row);
       }
     }
+    // Home's headers lead somewhere, as on the dashboard: a caret after every one but Favorites.
+    const linkH = (text) => {
+      const h = Object.assign(document.createElement("div"), { className: "mc-h lnk" });
+      h.appendChild(Object.assign(document.createElement("span"), { textContent: text }));
+      h.insertAdjacentHTML("beforeend", '<svg class="mc-chev" viewBox="0 0 9 15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 7.5 1.5 13.5"/></svg>');
+      return h;
+    };
     const camIds = home ? this._camIds(scope ? { area: scope } : null) : (k === "security" ? this._camIds({ security: true }) : []);
     if (camIds.length) {
-      const ch = Object.assign(document.createElement("div"), { className: "mc-h mc-camh", textContent: _studioT("cameras.title", "Cameras") });
+      const ch = home ? linkH(_studioT("cameras.title", "Cameras")) : Object.assign(document.createElement("div"), { className: "mc-h", textContent: _studioT("cameras.title", "Cameras") });
+      ch.classList.add("mc-camh");
       ch.dataset.jump = "Cameras";
       page.appendChild(ch);
       let cw = 2 * chipW + chipGap;
       if (this._miniSize === "desktop" && page.classList.contains("ov")) {
-        const realW = 1440 - (host.classList.contains("sidebar") ? 264 + 15 : 22) - 22;
+        const realW = this._pvDeskW() - (host.classList.contains("sidebar") ? 264 + 15 : 22) - 22;
         const cols = Math.max(1, Math.floor((realW + 10) / 175));
         cw = 2 * (realW * scale - 5.9 * (cols - 1)) / cols + 5.9;
       }
+      if (page.classList.contains("ov")) {
+        cw = Math.min(cw, (this._miniSize === "desktop" ? 332 : 352) * scale);
+      }
+      if (hv) cw = home && !scope ? hvTwoW : 440 * scale;
       const row = this._camRow(camIds, "mc-cams");
       row.style.setProperty("--cam-w", cw + "px");
+      if (page.classList.contains("ov")) { row.style.setProperty("--cam-h", (hv && !(home && !scope) ? 200 : 140) * scale + "px"); row.style.setProperty("--cam-ar", "auto"); }
       page.appendChild(row);
+      camH = ch; camRow = row;
+    }
+    if (hv && home && !scope && (npRow || camRow)) {
+      const duo = document.createElement("div");
+      duo.className = "mc-duo";
+      duo.style.gridTemplateColumns = "repeat(2, " + hvTwoW.toFixed(2) + "px)";
+      duo.style.columnGap = (10 * scale).toFixed(2) + "px";
+      [[npH, npRow], [camH, camRow]].forEach(([h, r]) => {
+        if (!r) return;
+        const col = document.createElement("div");
+        col.append(h, r);
+        duo.appendChild(col);
+      });
+      page.appendChild(duo);
     }
     if (!home && k !== "scenes" && this._scenesOn()) {
       const catScenes = this._sceneListForCategory(k);
@@ -17833,7 +19206,7 @@ class HemmaPanel extends HTMLElement {
     const scenesHere = () => {
       if (!scenesDue) return;
       scenesDue = false;
-      page.appendChild(Object.assign(document.createElement("div"), { className: "mc-h", textContent: _studioT("nav.scenes", "Scenes") }));
+      page.appendChild(linkH(_studioT("nav.scenes", "Scenes")));
       paintScenes();
     };
     scenesHere();
@@ -17860,7 +19233,7 @@ class HemmaPanel extends HTMLElement {
         });
       }
       if (!tiles.length) return;
-      if (!scope || sec._bucket) page.appendChild(Object.assign(document.createElement("div"), { className: "mc-h", textContent: sec.name || "" }));
+      if (!scope || sec._bucket) page.appendChild(home && !scope && !isFav(sec) && sec.name ? linkH(sec.name) : Object.assign(document.createElement("div"), { className: "mc-h", textContent: sec.name || "" }));
       const grid = document.createElement("div");
       grid.className = "mc-grid";
       const els = [];
@@ -17873,10 +19246,10 @@ class HemmaPanel extends HTMLElement {
       // As the dashboard lays it out (hemma-core _packGrid): Smart Sort, then two-row bands with no hole before a later tile.
       const order = home ? els.filter((e) => e.classList.contains("on")).concat(els.filter((e) => !e.classList.contains("on"))) : els;
       const side = host.classList.contains("sidebar");
-      const realW = (this._miniSize === "desktop" ? 1440 : 1180) - (side ? 264 + (this._miniSize === "desktop" ? 15 : 20) : 22) - 22;
+      const realW = (this._miniSize === "desktop" ? this._pvDeskW() : 1180) - (side ? 264 + (this._miniSize === "desktop" ? 15 : 20) : 22) - 22;
       // Overview on a desktop runs compact, as on the dashboard (hemma-core _compact).
       const compact = this._miniSize === "desktop" && page.classList.contains("ov");
-      const cols = Math.max(1, Math.floor((realW + 10) / (compact ? 175 : 200)));
+      const cols = Math.max(1, Math.floor((realW + 10) / (hv ? 230 : compact ? 175 : 200)));
       grid.style.gridTemplateColumns = "repeat(" + cols + ", minmax(0, 1fr))";
       const big = (el) => el.classList.contains("big");
       const left = order.slice();
@@ -17893,7 +19266,7 @@ class HemmaPanel extends HTMLElement {
           row += Math.ceil(band.length / cols);
           continue;
         }
-        // A band that fits one row stays one row, large tiles first as Apple Home does; a wider one pairs smalls under each other.
+        // A band that fits one row stays one row, large tiles first; a wider one pairs smalls under each other.
         const fits = band.length <= cols;
         let top = (fits ? band.length : Math.min(cols, bigs + Math.ceil((band.length - bigs) / 2))) - bigs;
         const row1 = [], row2 = [];
@@ -17907,6 +19280,45 @@ class HemmaPanel extends HTMLElement {
       page.appendChild(grid);
     });
     this._mountCatPage(host, page);
+    if (hv) this._hvAlign(host, page, home && !roomName);
+  }
+
+  _hvAlign(host, page, homeRow) {
+    requestAnimationFrame(() => {
+      if (!page.isConnected) return;
+      const k2 = page.getBoundingClientRect().height / (page.offsetHeight || 1) || 1;
+      const dl = page.querySelector(".hv-date");
+      const clock = host.querySelector(".mini-time");
+      const t = page.querySelector(".mc-title");
+      const ovDesk = this._miniSize === "desktop" && host.classList.contains("sidebar") && host.classList.contains("ov");
+      const lhOf = (el) => (parseFloat(getComputedStyle(el).lineHeight) || el.offsetHeight) * k2;
+      if (this._miniSize === "desktop" && host.classList.contains("sidebar") && clock && clock.style.position === "absolute") {
+        const a = clock.getBoundingClientRect();
+        if (ovDesk && t) {
+          const c = t.getBoundingClientRect().top + lhOf(t) / 2;
+          clock.style.top = ((parseFloat(clock.style.top) || 0) + (c - (a.top + a.height / 2)) / k2).toFixed(2) + "px";
+        } else if (dl && dl.offsetHeight) {
+          const b = dl.getBoundingClientRect();
+          clock.style.top = ((parseFloat(clock.style.top) || 0) + (b.bottom - a.bottom) / k2).toFixed(2) + "px";
+        }
+      }
+      const side = host.querySelector(".mini-side");
+      const it = side && side.querySelector(".ms-close + .ms-item");
+      if (!side || !it || !t) return;
+      const brow = ovDesk && page.querySelector(".mc-badges");
+      this._pvSideDy = this._pvSideDy || {};
+      if (homeRow || this._pvSideDy[this._miniSize] == null) {
+        const lh = lhOf(t);
+        const r = it.getBoundingClientRect(), b = t.getBoundingClientRect();
+        const cur = parseFloat(side.style.getPropertyValue("--hv-side-dy")) || 0;
+        const want = brow ? brow.getBoundingClientRect().top + brow.getBoundingClientRect().height / 2 : b.bottom - lh / 2;
+        const raw = cur + (want - (r.top + r.height / 2)) / k2;
+        const d = brow ? raw : Math.max(0, raw);
+        this._pvSideDy[this._miniSize] = d;
+      }
+      const d = this._pvSideDy[this._miniSize];
+      if (d != null) side.style.setProperty("--hv-side-dy", d.toFixed(2) + "px");
+    });
   }
 
   // No map key: the live redraw would count every one as leaving and collapse it out, over and over.
@@ -17989,7 +19401,7 @@ class HemmaPanel extends HTMLElement {
           const picked = (kind === "cover" || kind === "cover_group")
             ? (isOpen ? (tv.icon_open || "curtain-open") : (tv.icon_closed || "curtain-closed"))
             : (kind === "lock" || kind === "lock_group")
-              ? (isUnlocked ? (tv.icon_unlocked || "lock-open-fill") : (tv.icon_locked || "lock-fill"))
+              ? (lockOpenDoors(tv, ent, this._hass.states) ? "door-open" : isUnlocked ? (tv.icon_unlocked || "lock-open-fill") : (tv.icon_locked || "lock-fill"))
               : (tv.icon || tile.icon);
           const derived = type && type.glyphFromEntity
             ? type.glyphFromEntity[String(tile.entity || "").split(".")[0]]
@@ -18208,8 +19620,18 @@ class HemmaPanel extends HTMLElement {
     const found = (this._imgs || []).find((i) => i.name === V.image);
     const dark = !!this._miniDark;
     const url = found && ((dark && found.night) || found.day);
-    if (url) q(".mini-photo").src = url;
+    const hv = hvColor(V, dark);
+    const hvBd = !hv ? "" : (V.hemma_hv_backdrop || "photo");
+    const soft = hvBd === "photo" && V.image ? "/hemma_assets/" + (this._ovOn(V) ? "rooms-even/" : "rooms-soft/") + (dark ? (V.image_night || V.image + "-night") : V.image) + ".jpg?v=3" : "";
+    const flat = hv && !soft ? hv : "";
+    if (hv) q(".miniroom").classList.add("hv", dark ? "hvd" : hvInkW(V, dark) ? "hvw" : "hvl", "bd-" + (soft ? hvBd : hvBd === "gradient" ? "gradient" : "color"));
+    if (hv) q(".miniroom").style.setProperty("--flat", hv);
+    if (flat) q(".miniroom").classList.add("flat");
+    else if (soft) q(".mini-photo").src = soft;
+    else if (!hv && V.image && this._miniSize !== "phone") { q(".mini-photo").src = "/hemma_assets/rooms-glass/" + (dark ? (V.image_night || V.image + "-night") : V.image) + ".jpg?v=5"; q(".miniroom").classList.add("gsoft"); }
+    else if (url) q(".mini-photo").src = url;
     else q(".miniroom").classList.add("nophoto");
+    if (!hv && !dark && V.hemma_glass_text === "dark" && this._miniSize !== "phone") q(".miniroom").classList.add("gink");
     if (found) { warmPhoto(found.day); warmPhoto(found.night); }
 
     // Navigation, so the room's place in the tab order reads too.
@@ -18234,7 +19656,7 @@ class HemmaPanel extends HTMLElement {
     const glyph = (cls) => {
       const file = WEATHER_SVG[cond];
       return Object.assign(document.createElement("img"), { className: cls, alt: "",
-        src: file ? "/local/hemma/weather/" + file + ".svg" : iconUrl("weather") });
+        src: file ? "/hemma_assets/weather/" + file + "-fill.svg?v=2" : iconUrl("weather") });
     };
     const tu = V.show_temp_unit === true
       ? String((we && we.attributes.unit_of_measurement) || (wc && wc.attributes.temperature_unit)
@@ -18308,6 +19730,8 @@ class HemmaPanel extends HTMLElement {
     if (sideOn) {
       const side = document.createElement("div");
       side.className = "mini-side";
+      const sdy = hv && this._pvSideDy && this._pvSideDy[this._miniSize];
+      if (typeof sdy === "number") side.style.setProperty("--hv-side-dy", sdy.toFixed(2) + "px");
       if (V.sidebar_icon_color) side.style.setProperty("--hemma-sidebar-icon", V.sidebar_icon_color);
       const glyph = (name, color) => {
         const g = document.createElement("i");
@@ -18386,18 +19810,20 @@ class HemmaPanel extends HTMLElement {
       const b = document.createElement("span");
       b.className = "mini-battery";
       b.dataset.sec = "General|status";
-      b.innerHTML = '<svg viewBox="0 0 ' + (chg ? 34 : 27.3) + ' 13" aria-hidden="true"><defs><clipPath id="mbc"><rect width="24.5" height="13" rx="4.2"/></clipPath>'
-        + '<mask id="mbm"><rect width="34" height="13" fill="#fff"/><text x="12.25" y="10.6" text-anchor="middle" font-size="11.4"'
-        + ' font-weight="700" letter-spacing="-0.3" font-family="-apple-system, system-ui, sans-serif" fill="#000">' + pct + '</text></mask></defs>'
-        + '<g mask="url(#mbm)" clip-path="url(#mbc)"><rect width="24.5" height="13" fill="rgba(255,255,255,0.36)"/>'
-        + '<rect width="' + (24.5 * pct / 100).toFixed(2) + '" height="13" fill="' + fill + '"/></g>'
-        + '<rect x="25.4" y="4.3" width="1.9" height="4.4" rx="0.95" fill="rgba(255,255,255,0.4)"/>'
-        + (chg ? '<path d="M31.6 1.2 28 7.2h2.5l-1 5.4 3.8-6.2h-2.5z" fill="#fff"/>' : '') + '</svg>';
+      const tx = chg ? (pct >= 100 ? 10 : 10.8) : 12.6, fs = chg && pct >= 100 ? 9.4 : 11.4;
+      b.innerHTML = '<svg viewBox="0 0 28.66 13" aria-hidden="true"><defs><clipPath id="mbc"><rect width="25.6" height="13" rx="3.8"/></clipPath>'
+        + '<mask id="mbm"><rect width="36" height="13" fill="#fff"/><text x="' + tx + '" y="10.6" text-anchor="middle" font-size="' + fs + '"'
+        + ' font-weight="700" letter-spacing="-0.3" font-family="-apple-system, system-ui, sans-serif" fill="#000">' + pct + '</text>'
+        + (chg ? '<path d="M22.1 2.4 18.8 7.3h2.2l-.8 3.9 3.3-5.1h-2.2z" fill="#000"/>' : '') + '</mask></defs>'
+        + '<g mask="url(#mbm)" clip-path="url(#mbc)"><rect width="25.6" height="13" fill="rgba(255,255,255,0.5)"/>'
+        + '<rect width="' + (25.6 * pct / 100).toFixed(2) + '" height="13" fill="' + fill + '"/></g>'
+        + '<path d="M26.8 4.05a1.86 2.45 0 0 1 0 4.9z" fill="rgba(255,255,255,0.5)"/></svg>';
       chromeRow.appendChild(b);
     }
     const nBtn = (dotsOn ? 1 : 0) + (assistOn ? 1 : 0) + (bellOn ? 1 : 0);
-    const capsule = this._miniSize === "tablet" && nBtn > 0;
-    const waveIn = capsule && !this._ovOn(V) && V.show_media !== false && !!V.show_now_playing;
+    const capsule = (this._miniSize === "tablet" || this._miniSize === "desktop") && nBtn > 0;
+    const npIdle = this._miniSize !== "phone" && !this._npList(V).length;
+    const waveIn = capsule && !npIdle && !this._ovOn(V) && V.show_media !== false && !!V.show_now_playing;
     q(".miniroom").classList.toggle("capsule", capsule);
     if (capsule) {
       const cap = document.createElement("div");
@@ -18413,7 +19839,7 @@ class HemmaPanel extends HTMLElement {
     q(".miniroom").style.setProperty("--mini-np-inset",
       "calc(" + nBtn + " * (var(--chrome-btn) + var(--chrome-btn-gap)))");
 
-    const npOn = V.show_media !== false && !!V.show_now_playing;
+    const npOn = V.show_media !== false && !!V.show_now_playing && !npIdle;
     if (!npOn) q(".mz-np").remove();
     else {
       const head = q(".mini-nphead");
@@ -18450,6 +19876,17 @@ class HemmaPanel extends HTMLElement {
     q(".mini-name").textContent = this._room === 0 && V.hero_title === "greeting"
       ? _studioGreeting(this._hass) : (room.name || room.path || _sx("Room"));
     wx.classList.toggle("wxline", !dateUp);
+    if (hv && this._miniSize === "desktop" && !this._ovOn(V)) {
+      const fw = Object.assign(document.createElement("div"), { className: "hv-date fwx" });
+      if (deg != null) fw.appendChild(Object.assign(document.createElement("b"), { textContent: Math.round(deg) + "°" }));
+      let fc = "";
+      try { fc = wc ? (this._hass.formatEntityState ? this._hass.formatEntityState(wc) : wc.state) : ""; } catch (_) { fc = wc ? wc.state : ""; }
+      if (fc && !/unknown|unavailable/i.test(fc)) fw.appendChild(Object.assign(document.createElement("span"), { textContent: fc }));
+      q(".mini-name").before(fw);
+    } else if (hv) {
+      const file = WEATHER_SVG[cond];
+      q(".mini-name").before(hvDateLine(this._hass, deg, deg == null ? "" : file ? "/hemma_assets/weather/" + file + "-fill.svg?v=2" : iconUrl("weather")));
+    }
 
     // Badges open their category page, as they do on the dashboard.
     const model = this._miniModel(room);
@@ -18490,7 +19927,7 @@ class HemmaPanel extends HTMLElement {
         this._pvCatAnim = true;
         this._rebuildPreview();
       };
-      badges.appendChild(el);
+      badges.appendChild(hv && this._room === 0 ? hvRing(el) : el);
     });
 
     // Tiles, in the order they sit along the bottom of the room.
@@ -18904,6 +20341,20 @@ class HemmaPanel extends HTMLElement {
     card.appendChild(wrap);
   }
 
+  // The real screensaver, over Studio: the dashboard's own scripts are loaded the first time it is asked for.
+  async _saverPreview(opts) {
+    if (!window.hemmaSaver) {
+      let res = [];
+      try { res = await this._hass.callWS({ type: "lovelace/resources" }); } catch (_) {}
+      const pick = (n) => ((res || []).find((r) => String(r.url || "").split("?")[0].endsWith("/" + n)) || {}).url;
+      for (const n of ["hemma-i18n.js", "hemma-icons.js", "hemma-cards.js"]) {
+        const u = pick(n);
+        if (u) { try { await import(u); } catch (_) {} }
+      }
+    }
+    if (window.hemmaSaver) window.hemmaSaver.start(opts);
+  }
+
   async _newScene() {
     const path = "/config/scene/edit/new";
     const app = !!(window.externalApp || (window.webkit && window.webkit.messageHandlers
@@ -19152,7 +20603,7 @@ class HemmaPanel extends HTMLElement {
       n.innerHTML = d;
       return n;
     };
-    // Its own placeholder, a few pixels clear of the caret, as Apple's search fields draw it.
+    // Its own placeholder, a few pixels clear of the caret.
     const searchField = (value) => {
       const search = el("label", "ssh-search");
       search.appendChild(svg(SEARCH, "s"));
@@ -20408,6 +21859,15 @@ class HemmaPanel extends HTMLElement {
           this._tapEdits = next;
           this._markDirty();
         }, { fixed: true, labels: { normal: _sx("Normal"), confirm: _sx("Ask First"), view: _sx("View Only") } }).wrap);
+        const ais = type && type.id === "plant" ? Object.keys(this._hass.states).filter((k) => k.startsWith("ai_task.")).sort() : [];
+        if (ais.length) {
+          const labels = { "": "Home Assistant default" };
+          ais.forEach((k) => { labels[k] = this._hass.states[k].attributes.friendly_name || k; });
+          addRow(_sx("AI for assessments"), this._combo(this._homeData.ai_entity || "", [""].concat(ais), "", (v) => {
+            this._hass.callWS({ type: "hemma/home/set_ai_entity", entity_id: v || "" })
+              .catch((e) => this._status(this._plainError(e, _sx("Hemma couldn't save the AI setting.")), "err"));
+          }, { fixed: true, labels }).wrap);
+        }
       }
     }
 
@@ -20584,7 +22044,8 @@ class HemmaPanel extends HTMLElement {
       }
 
       if (f.type === "map") {
-        const over = ((tile.variables || {})[f.over] || []).filter(Boolean);
+        let over = ((tile.variables || {})[f.over] || []).filter(Boolean);
+        if (!over.length && f.overAll) over = allOf(this._hass, f.overAll);
         const raw = (tile.variables || {})[f.key];
         const map = (raw && typeof raw === "object" && !Array.isArray(raw)) ? raw : {};
         if (!over.length) {

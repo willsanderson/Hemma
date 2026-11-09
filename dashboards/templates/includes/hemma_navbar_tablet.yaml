@@ -6,9 +6,9 @@ cards:
     conditions:
       - condition: state
         entity: input_boolean.hemma_mobile_navigation
-        state: "off"
+        state_not: "on"
       - condition: screen
-        media_query: "(orientation: portrait) and (min-width: 768px) and (max-width: 1600px) and (hover: none) and (pointer: coarse)"
+        media_query: "(orientation: portrait) and (min-width: 768px) and (max-width: 1600px) and (pointer: coarse), (orientation: portrait) and (min-width: 768px) and (max-width: 1600px) and (hover: none)"
 
     card:
       type: custom:hemma-nav
@@ -55,9 +55,9 @@ cards:
     conditions:
       - condition: state
         entity: input_boolean.hemma_mobile_navigation
-        state: "off"
+        state_not: "on"
       - condition: screen
-        media_query: "(orientation: landscape) and (min-width: 600px) and (max-width: 1600px) and (pointer: coarse) and (hover: none)"
+        media_query: "(orientation: landscape) and (min-width: 600px) and (max-width: 1600px) and (pointer: coarse), (orientation: landscape) and (min-width: 600px) and (max-width: 1600px) and (hover: none)"
 
     card:
       type: custom:hemma-nav

@@ -373,6 +373,7 @@ Hemma:
   # Security
   hemma-security-accent: var(--hemma-color-teal)
   hemma-badge-alert-color: var(--hemma-color-orange)
+  hemma-badge-vacuum-color: var(--hemma-color-orange)
   hemma-badge-security-color: var(--hemma-security-accent)
 
   # Network
@@ -524,7 +525,7 @@ Hemma:
   # The top corner capsule, shared by the phone dashboard and the panel. Measured off iOS's own.
   hemma-pill-fill: rgba(255,255,255,0.10)
   hemma-pill-backdrop: blur(12px) saturate(1.4)
-  # Apple's edge light brightens what is behind it rather than adding white, so it keeps the color.
+  # The edge light brightens what is behind it rather than adding white, so it keeps the color.
   hemma-pill-highlight: brightness(1.38)
   hemma-pill-rim: >-
     inset 0 0.5px 0 rgba(255,255,255,0.10),
@@ -717,8 +718,8 @@ Hemma:
   # ----------------------------------------------------------------------------
 
   # Page gutters
-  page-gutter-desktop: 6vw
-  page-gutter-tablet: 3vw
+  page-gutter-desktop: 4.5vw
+  page-gutter-tablet: 2.25vw
   page-gutter-mobile: 16px
 
   # Scene tiles
@@ -831,8 +832,8 @@ Hemma:
   hemma-entity-col-width-tablet-landscape: calc((100vw - var(--hemma-rail-left, 3vw) - var(--hemma-tile-peek-tablet, 60px) - 40px) / 5)
   hemma-entity-col-width-tablet-landscape-sm: calc((100vw - var(--hemma-rail-left, 3vw) - var(--hemma-tile-peek-tablet, 60px) - 32px) / 4)
   hemma-entity-col-width-tablet-standard: calc((100vw - var(--hemma-rail-left, 3vw) - 40px) / 4.65)
-  hemma-entity-row-pad-end: var(--page-gutter-desktop, 6vw)
-  hemma-entity-row-pad-end-tablet: 3vw
+  hemma-entity-row-pad-end: var(--page-gutter-desktop, 4.5vw)
+  hemma-entity-row-pad-end-tablet: 2.25vw
 
   hemma-entity-row-pad-bottom: 40px
   hemma-entity-row-pad-bottom-tablet: var(--hemma-entity-row-pad-bottom, 40px)
@@ -936,7 +937,7 @@ Hemma:
   hemma-nav-indicator-lead: 0.07s
   hemma-nav-indicator-ease: cubic-bezier(0.32, 0.72, 0, 1)
 
-  # Apple Home's row: a 44px pill 32.5px from the top (measured at 2x, 2026-10-06); pages sit 9px higher to keep its 22px clearance.
+  # The row: a 44px pill 32.5px from the top (measured at 2x, 2026-10-06); pages sit 9px higher to keep its 22px clearance.
   hemma-chrome-row-top-tablet: 37px
   hemma-chrome-row-top-tablet-portrait: 37px
   hemma-chrome-row-center-tablet: 54.5px

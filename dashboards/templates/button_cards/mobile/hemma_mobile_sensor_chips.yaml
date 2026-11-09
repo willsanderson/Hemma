@@ -56,11 +56,12 @@ hemma_mobile_sensor_chips:
             ]]]
         - --badge-background: transparent
         - --badge-blur: 0px
+        - --hemma-badge-glass-rim: none
         - --hemma-badge-icon-scale: 54%
         - --hemma-badge-icon-override: var(--hemma-gauge-size, 34px)
-        - --hemma-badge-icon-fg: "#ffffff"
-        - --hemma-badge-title-color: "#ffffff"
-        - --hemma-badge-sub-color: "#ffffff"
+        - --hemma-badge-icon-fg: "var(--hv-ink, #ffffff)"
+        - --hemma-badge-title-color: "var(--hv-ink, #ffffff)"
+        - --hemma-badge-sub-color: "var(--hv-sub, #ffffff)"
         - --hemma-badge-sub-opacity: 0.9
         - overflow-x: auto
         - overflow-y: hidden
@@ -82,13 +83,14 @@ hemma_mobile_sensor_chips:
         # Every chip bare, like the gauges: Lights and Motion are plain badges and would keep their pill.
         - --badge-background: transparent
         - --badge-blur: 0px
+        - --hemma-badge-glass-rim: none
         - --ha-ripple-hover-opacity: 0
         - --ha-ripple-pressed-opacity: 0
         - --hemma-badge-icon-scale: 54%
         - --hemma-badge-icon-override: var(--hemma-gauge-size, 34px)
-        - --hemma-badge-icon-fg: "#ffffff"
-        - --hemma-badge-title-color: "#ffffff"
-        - --hemma-badge-sub-color: "#ffffff"
+        - --hemma-badge-icon-fg: "var(--hv-ink, #ffffff)"
+        - --hemma-badge-title-color: "var(--hv-ink, #ffffff)"
+        - --hemma-badge-sub-color: "var(--hv-sub, #ffffff)"
         - --hemma-badge-sub-opacity: 0.9
         - overflow-x: auto
         - overflow-y: hidden
@@ -239,11 +241,9 @@ hemma_mobile_sensor_chips:
             tap_action:
               haptic: light
               action: call-service
-              service: script.turn_on
+              service: hemma.light_smart_toggle
               service_data:
-                entity_id: script.hemma_light_smart_toggle
-                variables:
-                  light_entity: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.lights_entity || null; ]]]'
+                light_entity: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.lights_entity || null; ]]]'
             hold_action:
               haptic: medium
               action: '[[[ return window.hemmaPopupAction ? window.hemmaPopupAction() : "more-info"; ]]]'

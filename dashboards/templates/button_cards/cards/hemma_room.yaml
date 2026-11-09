@@ -11,6 +11,15 @@ hemma_room:
     image:
     image_night:
     image_position:
+    hemma_bg_color:
+    hemma_style:
+    hemma_hv_color:
+    hemma_hv_rest:
+    hemma_hv_text:
+    hemma_hv_backdrop:
+    hemma_hv_backdrop_phone:
+    hemma_hv_text_phone:
+    hemma_glass_text:
 
     # Dashboard-wide typeface. Unset leaves the theme's primary-font-family
     # alone; 'inter', 'hanken' or 'system' override it for the whole document.
@@ -245,8 +254,10 @@ hemma_room:
   styles:
     card:
       - "--hemma-chrome-dots-step": "var(--hemma-chrome-step, 46px)"
-      - "--hemma-chrome-fill": "rgba(0,0,0,0.40)"
-      - "--hemma-chrome-fill-hover": "rgba(0,0,0,0.55)"
+      - "--hemma-chrome-fill": "[[[ return variables.hemma_style === 'homeview' ? 'var(--hv-chrome-solid, rgba(0,0,0,0.40))' : 'rgba(0,0,0,0.40)'; ]]]"
+      - "--hemma-chrome-fill-hover": "[[[ return variables.hemma_style === 'homeview' ? 'var(--hv-chrome-solid-hover, rgba(0,0,0,0.55))' : 'rgba(0,0,0,0.55)'; ]]]"
+      - "--primary-text-color": "[[[ const d = typeof hass?.themes?.darkMode === 'boolean' ? hass.themes.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches; return variables.hemma_style !== 'homeview' && !d && variables.hemma_glass_text === 'dark' ? '#111' : 'unset'; ]]]"
+      - "--secondary-text-color": "[[[ const d = typeof hass?.themes?.darkMode === 'boolean' ? hass.themes.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches; return variables.hemma_style !== 'homeview' && !d && variables.hemma_glass_text === 'dark' ? 'rgba(0,0,0,0.55)' : 'unset'; ]]]"
       - "--hemma-chrome-capsule": "0"
       - "--hemma-bell-fill": "initial"
       - "--hemma-settings-fill": "initial"
@@ -375,10 +386,31 @@ hemma_room:
                 ? hass.themes.darkMode
                 : window.matchMedia('(prefers-color-scheme: dark)').matches;
 
+            const hv = variables.hemma_style === 'homeview';
+            if (!window.hemmaSaver && !document.getElementById('hemma-saver-cover')) { let sv = null; try { sv = JSON.parse(localStorage.getItem('hemma_saver_on') || 'null'); } catch (e) {} if (sv && sv.at === (location.pathname.split('/')[1] || '')) { const sc = document.createElement('div'); sc.id = 'hemma-saver-cover'; sc.style.cssText = 'position:fixed;inset:0;z-index:2147483646;background:#000;pointer-events:none;'; document.documentElement.appendChild(sc); setTimeout(() => sc.remove(), 8000); } }
+            if (!window._hemmaHV) window._hemmaHVPending = [variables.hemma_style, isDark, variables.hemma_hv_color, variables.hemma_hv_rest, variables.hemma_hv_text, variables.hemma_hv_backdrop, variables.hemma_glass_text];
+            if (variables.hemma_style === 'homeview' && !window._hemmaHV) { document.documentElement.classList.add('hemma-hv'); document.documentElement.classList.toggle('hv-light', !isDark); }
+            if (variables.hemma_style === 'homeview' && !window._hemmaHV && !document.getElementById('hemma-hv-cover')) {
+              let bg = ''; try { bg = localStorage.getItem('hemma_hv_bg') || ''; } catch (e) {}
+              const cov = document.createElement('style');
+              cov.id = 'hemma-hv-cover';
+              cov.textContent = 'html,body{background:' + (/^[#\w(),.%\s]+$/.test(bg) ? bg : 'var(--primary-background-color)') + ' !important}home-assistant{visibility:hidden !important}';
+              document.head.appendChild(cov);
+              setTimeout(() => cov.remove(), 6000);
+            }
+            if (window._hemmaHV) window._hemmaHV.set(variables.hemma_style, isDark, variables.hemma_hv_color, variables.hemma_hv_rest, variables.hemma_hv_text, variables.hemma_hv_backdrop, variables.hemma_glass_text);
+            document.documentElement.classList.toggle('hg-ink-d', !hv && !isDark && variables.hemma_glass_text === 'dark');
             const base = variables.image || 'default';
             const picked = isDark ? (variables.image_night || `${base}-night`) : base;
-            return `url("/hemma_assets/rooms/${picked}.jpg")`;
+            if (!hv) return (window.innerWidth >= 768 && window.innerHeight > 500)
+              ? `var(--hemma-glass-wash-${isDark ? 'night' : 'day'}, none), url("/hemma_assets/rooms-glass/${picked}.jpg?v=5")`
+              : `url("/hemma_assets/rooms/${picked}.jpg")`;
+            const photo = `url("/hemma_assets/rooms-soft/${picked}.jpg?v=3")`;
+            return `var(--hv-photo-top, none), var(--hv-photo-wash), ${photo}`;
           ]]]
+      - --hero-tint: "[[[ return variables.hemma_style === 'homeview' ? 'transparent' : 'inherit'; ]]]"
+      - --hemma-bg-grain: "[[[ return variables.hemma_style === 'homeview' ? '0' : 'inherit'; ]]]"
+      - background: "[[[ return variables.hemma_style === 'homeview' ? 'transparent' : ''; ]]]"
       - --hero-img-pos: >
           [[[
             return variables.image_position || 'center center';
@@ -419,7 +451,7 @@ hemma_room:
               const h = window?.innerHeight || 800;
               const isMobileSize = w <= 767 || h <= 500;
               const wx = window.hemmaWx ? window.hemmaWx(variables, 'entity') : (variables.weather_entity || '');
-              return (!isMobileSize && (!!wx || variables.hero_line === 'date')) ? 'block' : 'none';
+              return (!isMobileSize && (!!wx || variables.hero_line === 'date' || variables.hero_line === 'both')) ? 'block' : 'none';
             ]]]
         - --hero-date-lift: "[[[ return variables.hero_line === 'date' ? '-14px' : '0px'; ]]]"
         - --hero-greet-drop: "[[[ return variables.hero_line === 'date' ? 'calc(var(--hemma-u-weather, 10px) * -0.25)' : 'calc(var(--hemma-u-weather, 10px) * 1.79)'; ]]]"
@@ -605,7 +637,7 @@ hemma_room:
         - background: var(--hemma-pill-fill, rgba(255,255,255,0.10))
         - backdrop-filter: var(--hemma-pill-backdrop, blur(12px) saturate(1.4))
         - -webkit-backdrop-filter: var(--hemma-pill-backdrop, blur(12px) saturate(1.4))
-        - box-shadow: "var(--hemma-pill-rim, inset 0 0.5px 0 rgba(255,255,255,0.10), inset 0 -0.5px 0 rgba(255,255,255,0.10)), inset 1px 0 0 var(--hemma-pill-edge, rgba(0,0,0,0.50)), inset -1px 0 0 var(--hemma-pill-edge, rgba(0,0,0,0.50))"
+        - box-shadow: "var(--hemma-pill-rim, inset 0 0.5px 0 rgba(255,255,255,0.10), inset 0 -0.5px 0 rgba(255,255,255,0.10)), inset 1px 0 0 var(--hemma-room-pill-edge, var(--hemma-pill-edge, rgba(0,0,0,0.50))), inset -1px 0 0 var(--hemma-room-pill-edge, var(--hemma-pill-edge, rgba(0,0,0,0.50)))"
 
       settings:
         - display: block
@@ -805,7 +837,7 @@ hemma_room:
           time_entity: '[[[ return variables.time_entity || "sensor.time" ]]]'
           use_12h: '[[[ return variables.use_12h !== false ]]]'
           time_suffix: '[[[ return variables.time_suffix || "" ]]]'
-          show_date: '[[[ return variables.hero_line !== "date" && variables.show_date === true && variables.date_on !== "tablet" ]]]'
+          show_date: '[[[ return !variables.hero_line && variables.show_date === true && variables.date_on !== "tablet" ]]]'
           show_weather: '[[[ return variables.hero_line === "date" ]]]'
           show_temp_unit: '[[[ return variables.show_temp_unit === true ]]]'
           date_style: '[[[ return variables.date_style || "" ]]]'
@@ -1057,8 +1089,15 @@ hemma_room:
     /* The clock's display is stamped inline, so the sidebar's copy stands it down by visibility. */
     #time {
       visibility: var(--hemma-side-time, var(--hemma-boot-ov, visible));
+      translate: var(--hv-time-dy, none);
     }
     /* The Overview layout's page draws these in the same place. */
+    #chrome_pill::after {
+      content: ""; position: absolute; inset: -0.5px; border-radius: inherit; pointer-events: none;
+      box-shadow: var(--hemma-room-pill-ring, none);
+      -webkit-mask: linear-gradient(to bottom, transparent 8%, rgba(0,0,0,.6) 20%, #000 32%, #000 68%, rgba(0,0,0,.6) 80%, transparent 92%);
+      mask: linear-gradient(to bottom, transparent 8%, rgba(0,0,0,.6) 20%, #000 32%, #000 68%, rgba(0,0,0,.6) 80%, transparent 92%);
+    }
     #chrome_pill, #settings, #assist, #notifications, #battery {
       visibility: var(--hemma-page-chrome, var(--hemma-boot-ov, visible));
     }
@@ -1124,7 +1163,7 @@ hemma_room:
         display: var(--hemma-time-nav-open, block);
         top: calc(env(safe-area-inset-top, 0px) + var(--hemma-chrome-row-center-desktop, 56px)
           - (var(--hemma-chrome-font-size, 18px) / 2));
-        left: var(--hemma-time-left, calc(var(--hero-gutter) + var(--hero-room-name-margin-left-current, 0px)));
+        left: var(--hemma-time-left, calc(var(--hemma-content-left, 0px) + var(--hero-gutter) + var(--hero-room-name-margin-left-current, 0px)));
       }
     }
 
@@ -1167,6 +1206,8 @@ hemma_room:
       #chrome_pill { display: block !important; --cap-n: var(--cap-n-portrait) !important; --cap-np: 0; }
       ha-card {
         --hemma-chrome-capsule: 1 !important;
+        --hemma-bell-count-top: var(--hemma-hv-bell-top, 0px);
+        --hemma-bell-count-right: var(--hemma-hv-bell-right, 1px);
         --hemma-chrome-fill: transparent !important;
         --hemma-chrome-fill-hover: rgba(255,255,255,0.10) !important;
         --hemma-bell-fill: transparent !important;
@@ -1242,8 +1283,25 @@ hemma_room:
       #now_playing { --hemma-np-head-inset: 0px !important; }
     }
 
+    /* The Mac shares the iPad's capsule, with Assist kept in it. */
+    @media (min-width: 769px) and (min-height: 501px) and (hover: hover) and (pointer: fine) {
+      #chrome_pill { display: block !important; --cap-n: var(--cap-n-desktop); }
+      ha-card {
+        --hemma-chrome-capsule: 1 !important;
+        --hemma-bell-count-top: var(--hemma-hv-bell-top, 0px);
+        --hemma-bell-count-right: var(--hemma-hv-bell-right, 1px);
+        --hemma-capsule-np-extra: var(--hero-room-name-margin-left-current, 0px) !important;
+        --hemma-chrome-fill: transparent !important;
+        --hemma-chrome-fill-hover: rgba(255,255,255,0.10) !important;
+        --hemma-bell-fill: transparent !important;
+        --hemma-settings-fill: transparent !important;
+        --hemma-assist-fill: transparent !important;
+        --hemma-np-invert: 0 !important;
+      }
+    }
+
     #battery { display: none; }
-    /* Tablets only: the capsule and battery sit 16pt from the edge, as in Apple Home. */
+    /* Tablets only: the capsule and battery sit 16pt from the edge. */
     @media (min-width: 768px) and (max-width: 1600px) and (min-height: 501px) and (pointer: coarse),
            (min-width: 768px) and (max-width: 1600px) and (min-height: 501px) and (hover: none) {
       #battery { display: flex; }
@@ -1252,6 +1310,8 @@ hemma_room:
       #chrome_pill { display: block !important; }
       ha-card {
         --hemma-chrome-capsule: 1 !important;
+        --hemma-bell-count-top: var(--hemma-hv-bell-top, 0px);
+        --hemma-bell-count-right: var(--hemma-hv-bell-right, 1px);
         --hemma-capsule-np-extra: 6px !important;
         --hemma-chrome-fill: transparent !important;
         --hemma-chrome-fill-hover: rgba(255,255,255,0.10) !important;

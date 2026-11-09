@@ -67,7 +67,7 @@ hemma_thermostat:
         const nextMode = ['cool','heat'].includes(entity?.state) ? 'off' : onMode;
         const smartToggle = `${stop};document.querySelector('home-assistant').hass.callService('climate','set_hvac_mode',{entity_id:'${eid2}',hvac_mode:'${nextMode}'})`;
 
-        return `<div class="hemma-icon-circle" onpointerdown="${stop}" ontouchstart="${stop}" ontouchend="${smartToggle}" onclick="${smartToggle}" style="${circleBg}cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;color:rgba(255,255,255,0.9);font-weight:var(--hemma-puck-font-weight, 800);font-size:calc(var(--hemma-u, 10px) * 1.7);font-family:system-ui,-apple-system,sans-serif;">${n}</div>`;
+        return `<div class="hemma-icon-circle" onpointerdown="${stop}" ontouchstart="${stop}" ontouchend="${smartToggle}" onclick="${smartToggle}" style="${circleBg}cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;color:${circleBg ? 'rgba(255,255,255,0.9)' : 'var(--hemma-puck-num-off, rgba(255,255,255,0.9))'};font-weight:var(--hemma-puck-font-weight, 800);font-size:calc(var(--hemma-u, 10px) * 1.7);font-family:system-ui,-apple-system,sans-serif;">${n}</div>`;
       ]]]
   extra_styles: |
     /* Optical sizing: 800 is right at 17px, too heavy once the puck scales up.

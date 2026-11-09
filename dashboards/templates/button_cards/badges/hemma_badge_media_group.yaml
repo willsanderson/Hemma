@@ -126,7 +126,7 @@ hemma_badge_media_group:
           [[[
             return entity?.state === 'media'
               ? 'var(--badge-active-color, rgba(255,255,255,0.85))'
-              : 'var(--badge-background, rgba(10,12,14,0.65))';
+              : 'var(--hemma-badge-bg, var(--badge-background, rgba(10,12,14,0.65)))';
           ]]]
       - transition: >
           [[[
@@ -186,11 +186,11 @@ hemma_badge_media_group:
           ]]]
       - --badge-title-color: >
           [[[
-            return entity?.state === 'media' ? 'rgba(0,0,0,0.85)' : 'var(--primary-text-color)';
+            return entity?.state === 'media' ? 'rgba(0,0,0,0.85)' : 'var(--hemma-badge-title-color, var(--primary-text-color))';
           ]]]
       - --badge-sub-color: >
           [[[
-            return entity?.state === 'media' ? 'rgba(0,0,0,0.6)' : 'var(--secondary-text-color)';
+            return entity?.state === 'media' ? 'rgba(0,0,0,0.6)' : 'var(--hemma-badge-sub-color, var(--secondary-text-color))';
           ]]]
       - --hemma-icon-color: >
           [[[

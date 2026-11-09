@@ -46,7 +46,7 @@ ENTITY_OPTIONS_SCHEMA = vol.Schema({vol.Optional("tap"): vol.In(["normal", "conf
 class HomeStore:
     def __init__(self, hass: HomeAssistant) -> None:
         self._store: Store[dict[str, Any]] = Store(hass, 1, STORE_KEY)
-        self.data: dict[str, Any] = {"status_badges": [], "entities": {}}
+        self.data: dict[str, Any] = {"status_badges": [], "entities": {}, "ai_entity": ""}
         self._subs: set = set()
 
     async def async_load(self) -> None:
@@ -65,7 +65,9 @@ class HomeStore:
                 continue
             if clean and re.match(ENTITY_ID, eid):
                 entities[eid] = clean
-        self.data = {"status_badges": badges, "entities": entities}
+        ai = data.get("ai_entity") or ""
+        self.data = {"status_badges": badges, "entities": entities,
+                     "ai_entity": ai if isinstance(ai, str) and re.match(ENTITY_ID, ai) else ""}
 
     def snapshot(self) -> dict[str, Any]:
         return copy.deepcopy(self.data)
@@ -95,6 +97,10 @@ class HomeStore:
         else:
             entities.pop(entity_id, None)
         self.data["entities"] = entities
+        self._changed()
+
+    def set_ai_entity(self, entity_id: str) -> None:
+        self.data["ai_entity"] = entity_id
         self._changed()
 
     @callback
@@ -157,11 +163,24 @@ def ws_set_entity(hass: HomeAssistant, connection, msg: dict) -> None:
     connection.send_result(msg["id"])
 
 
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "hemma/home/set_ai_entity",
+        vol.Required("entity_id"): vol.Any("", vol.All(str, vol.Match(r"^ai_task\.[a-z0-9_]+$"))),
+    }
+)
+@callback
+def ws_set_ai_entity(hass: HomeAssistant, connection, msg: dict) -> None:
+    hass.data[DATA_KEY].set_ai_entity(msg["entity_id"])
+    connection.send_result(msg["id"])
+
+
 async def async_setup_home(hass: HomeAssistant) -> None:
     if DATA_KEY in hass.data:
         return
     store = HomeStore(hass)
     await store.async_load()
     hass.data[DATA_KEY] = store
-    for cmd in (ws_subscribe, ws_set_badge, ws_remove_badge, ws_set_entity):
+    for cmd in (ws_subscribe, ws_set_badge, ws_remove_badge, ws_set_entity, ws_set_ai_entity):
         websocket_api.async_register_command(hass, cmd)

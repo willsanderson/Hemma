@@ -1,3 +1,32 @@
+// Background: Color draws the room photo layers with a one-color image, so every path that expects a photo url keeps working.
+// Minimal's chart colors: each one set to a single brightness (lighter at night) at one saturation, the same on every background color.
+window.hemmaHarmonize = function (hex) {
+  var h = document.documentElement;
+  if (!h.classList.contains('hemma-hv')) return hex;
+  var dark = !h.classList.contains('hv-light');
+  var toLin = function (c) { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  var toOk = function (x) {
+    var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(x).trim());
+    var rgb = m ? [m[1], m[2], m[3]].map(function (v) { return parseInt(v, 16); }) : (String(x).match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+    if (rgb.length < 3) return null;
+    var r = toLin(rgb[0]), g = toLin(rgb[1]), b = toLin(rgb[2]);
+    var l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b), mm = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b), s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    return [0.2104542553 * l + 0.7936177850 * mm - 0.0040720468 * s, 1.9779984951 * l - 2.4285922050 * mm + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * mm - 0.8086757660 * s];
+  };
+  var c = toOk(hex);
+  if (!c) return hex;
+  var hue = Math.atan2(c[2], c[1]), deg = (hue * 180 / Math.PI + 360) % 360;
+  var adj = deg > 60 && deg < 110 ? 0.06 : deg > 180 && deg < 230 ? -0.02 : deg > 230 && deg < 300 ? -0.04 : 0;
+  var L = (dark ? 0.78 : 0.64) + adj, C = dark ? 0.14 : 0.15;
+  var o = [L, C * Math.cos(hue), C * Math.sin(hue)];
+  var l2 = Math.pow(o[0] + 0.3963377774 * o[1] + 0.2158037573 * o[2], 3), m2 = Math.pow(o[0] - 0.1055613458 * o[1] - 0.0638541728 * o[2], 3), s2 = Math.pow(o[0] - 0.0894841775 * o[1] - 1.2914855480 * o[2], 3);
+  var lin = [4.0767416621 * l2 - 3.3077115913 * m2 + 0.2309699292 * s2, -1.2684380046 * l2 + 2.6097574011 * m2 - 0.3413193965 * s2, -0.0041960863 * l2 - 0.7034186147 * m2 + 1.7076147010 * s2];
+  return '#' + lin.map(function (v) { v = Math.max(0, Math.min(1, v)); v = v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055; return ('0' + Math.round(v * 255).toString(16)).slice(-2); }).join('');
+};
+window.hemmaFlatBg = function (k, hex) {
+  var c = hex || { slate: '56656b', sand: '7a6c58', sage: '5c6b56', blue: '4c5f7d', rose: '7a5c62' }[k];
+  return c ? "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23" + c + "'/%3E%3C/svg%3E" : '';
+};
 window.hemmaMenuGlass = {
   radius: 'var(--hemma-menu-radius, var(--ha-card-border-radius, 28px))',
 
@@ -8,6 +37,7 @@ window.hemmaMenuGlass = {
     st.textContent = '.hemma-menu-glass,.hemma-menu-glass *{'
       + 'scrollbar-width:none;-ms-overflow-style:none;}'
       + '.hemma-menu-glass ::-webkit-scrollbar{display:none;width:0;height:0;}'
+      + '.hemma-menu-glass.hv::before{display:none;}'
       + '.hemma-menu-glass::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:2;'
       + 'background:linear-gradient(to bottom, rgba(255,255,255,0.40), rgba(255,255,255,0.10) 22%,'
       + ' rgba(255,255,255,0.04) 50%, rgba(255,255,255,0.07) 78%, rgba(255,255,255,0.20));'
@@ -65,16 +95,35 @@ window.hemmaMenuGlass = {
     var themes = ha && ha.hass && ha.hass.themes;
     var light = themes && typeof themes.darkMode === 'boolean' ? !themes.darkMode
       : !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    // The top-right menu belongs to the white-text toolbar, so it keeps white text by day as well.
+    var chromeDay = light && el.classList.contains('hemma-settings-menu');
+    if (chromeDay) light = false;
     el.classList.toggle('light', light);
     el.style.setProperty('--hemma-menu-ink', light ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.92)');
     el.style.setProperty('--hemma-menu-lit', light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.18)');
     el.style.color = light ? 'rgba(0,0,0,0.85)' : '#fff';
     el.style.backgroundColor = light ? 'var(--hemma-perf-pill, rgba(250,250,252,0.46))'
+      : chromeDay ? 'var(--hemma-perf-pill, rgba(58,60,66,0.34))'
       : 'var(--hemma-perf-pill, var(--hemma-menu-pane, var(--hemma-menu-pane-auto, rgba(150,152,158,0.08))))';
     el.style.backgroundImage = 'none';
     el.style.backdropFilter = light ? 'var(--hemma-perf-none, blur(32px) saturate(1.2))' : b;
     el.style.webkitBackdropFilter = el.style.backdropFilter;
     el.style.boxShadow = '0 0 0 0.5px rgba(0,0,0,0.42), var(--hemma-menu-shadow, 0 8px 20px rgba(0,0,0,0.13))';
+    // Over the page's own chrome (the weather sits in a high layer), and in HomeView, whose flat page has no blur to lean on, a near-solid pane.
+    if (!el.style.zIndex || Number(el.style.zIndex) < 2147483050) el.style.zIndex = '2147483050';
+    var hv = document.documentElement.classList;
+    el.classList.remove('hv');
+    if (hv.contains('hemma-hv')) {
+      var day = hv.contains('hv-light');
+      el.classList.toggle('light', day);
+      el.style.setProperty('--hemma-menu-ink', day ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.92)');
+      el.style.setProperty('--hemma-menu-lit', day ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.14)');
+      el.style.color = day ? 'rgba(0,0,0,0.85)' : '#fff';
+      el.classList.add('hv');
+      el.style.backgroundColor = day ? 'color-mix(in oklab, var(--hv-bg) 14%, rgb(250,249,247))' : 'color-mix(in oklab, var(--hv-bg) 55%, rgb(30,32,34))';
+      el.style.backdropFilter = el.style.webkitBackdropFilter = 'none';
+      el.style.boxShadow = '0 0 0 0.5px rgba(0,0,0,0.08), 0 12px 32px rgba(0,0,0,0.16)';
+    }
   },
 
   enter: function (el) {
@@ -387,6 +436,7 @@ window.hemmaMenuGlass = {
     + '--badge-blur:0px!important;'
     + '--hemma-badge-media-backdrop:none!important;'
     + '--hemma-badge-ring-backdrop:none!important;'
+    + '--hv-np-backdrop:none!important;'
     // The room photo is the one full-screen filter, and it repaints on every swap.
     + '--hemma-view-photo-filter:none!important;'
     + '--hero-img-blur:0px!important;'
@@ -470,6 +520,384 @@ window.hemmaMenuGlass = {
 
   apply();
 })();
+
+// ── HomeView style ───────────────────────────────────────────────────────────
+// Studio's Appearance > Style. Flat color in place of the photo and of the glass: light with dark text by day, deep slate at night.
+(function () {
+  var KEY = 'hemma_hv';
+  var TINT = { gray: '97a9ae', sand: 'c8b9a2', sage: 'a3b29a', blue: '93a7c2', rose: 'c6a9ad', lavender: 'afa9c9', sea: '90b7b6', clay: 'cea796', plum: 'c0a0b4', honey: 'cab992' };
+  var NIGHT = '49575c';
+  var NIGHTS = { gray: '49575c', sand: '5b564e', sage: '4c5944', blue: '44556d', rose: '654d51', lavender: '56506a', sea: '395c5b', clay: '684e42', plum: '664b5c', honey: '5c543f' };
+  // Light mode with white text: each color deep enough for white text to read at about 5.6:1.
+  var DEEP = { gray: '5d6a6e', sand: '6f6656', sage: '606b59', blue: '59697c', rose: '776366', lavender: '6a657c', sea: '506d6d', clay: '7e6255', plum: '78616f', honey: '72674a' };
+  var FLAT = 'html.hemma-hv{'
+    + '--hemma-perf-none:none!important;--hemma-perf-scrim:transparent!important;'
+    + '--hemma-pill-highlight:none!important;'
+    + '--hemma-badge-media-backdrop:none!important;--hemma-badge-ring-backdrop:none!important;'
+    + '--hero-img-blur:0px!important;--hero-img-blur-mobile:0px!important;'
+    + '--hv-back-dy:60px;--hv-veil-pad:34px;--hv-h1:56px;--hv-h1-lh:62px;--hv-veil-h:calc(env(safe-area-inset-top, 0px) + 150px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));--hv-veil-mask:none;'
+    + '--hemma-entity-background:rgba(255,255,255,0.12)!important;--ha-card-background:rgba(255,255,255,0.12)!important;'
+    + '--badge-background:rgba(255,255,255,0.12)!important;--hemma-glass-background:rgba(255,255,255,0.12)!important;'
+    + '--hemma-perf-pill:color-mix(in oklab, var(--hv-bg) 86%, #fff)!important;--hemma-pill-fill:color-mix(in oklab, var(--hv-bg) 86%, #fff)!important;'
+    + '--hv-h2:26px;--hv-h2-lh:31px;--hv-h2-w:700;--hv-h2-m:46px 0 16px;'
+    + '--hv-np-w:min(440px, 100%);--hv-np-max:100%;--hv-cam-w:min(440px, 100%);--hv-cam-h:200px;'
+    + '--hemma-badge-bg:transparent;--hemma-badge-glass-rim:none!important;--hemma-badge-ripple-hover:0;--hemma-badge-ripple-press:0;--hemma-badge-hover-opacity:1;--hemma-badge-press-opacity:0.45;'
+    + '--hv-np-bg:linear-gradient(135deg, color-mix(in oklab, var(--hv-np-c1) 92%, transparent), color-mix(in oklab, var(--hv-np-c2) 92%, transparent));--hv-np-backdrop:blur(22px) saturate(1.2);--hv-np-bloom:0;--hv-np-scrim:0;--hv-np-glass:0;--hv-np-ink:#fff;--hv-np-sub2:rgba(255,255,255,0.72);--hv-np-track2:rgba(255,255,255,0.25);--hv-np-glyph:#fff;--hv-np-fill:#fff;'
+    + '--hv-side-shadow:0 0 40px rgba(0,0,0,0.18);--hv-side-fill:rgba(255,255,255,0.05);--hemma-sidebar-backdrop:none!important;--hv-side-on:rgba(255,255,255,0.14);--hv-clock:22px;--hv-clock-ls:-0.01em;'
+    + '}'
+    + 'html.hemma-hv.hv-ink-w{--ha-color-fill-neutral-loud-resting:rgba(255,255,255,0.82)!important;--ha-color-fill-neutral-loud-hover:rgba(255,255,255,0.9)!important;--ha-color-fill-neutral-loud-active:#fff!important;--ha-color-on-neutral-loud:#1c1c1e!important;--ha-color-on-neutral-quiet:rgba(235,235,245,0.74)!important;--ha-color-border-neutral-loud:rgba(255,255,255,0.5)!important;--hv-chrome-solid:color-mix(in oklab, var(--hv-bg) 80%, #000);--hv-chrome-solid-hover:color-mix(in oklab, var(--hv-bg) 74%, #000);--hv-np-c1:color-mix(in oklab, var(--hv-bg) 80%, #000);--hv-np-c2:color-mix(in oklab, var(--hv-bg) 80%, #000);--hemma-icon-circle-bg:rgba(0,0,0,0.22)!important;--hemma-entity-state:rgba(255,255,255,0.72)!important;--hv-sub:rgba(235,235,245,0.74);}'
+    + 'html.hemma-hv{--button-card-box-shadow-active:0 0.5px 1.5px rgba(0,0,0,0.08)!important;--button-card-box-shadow-active-mobile:0 0.5px 1.5px rgba(0,0,0,0.08)!important;}'
+    + 'html.hemma-hv{--hemma-bell-badge:#fff;--hemma-bell-badge-ink:#1c1c1e;}html.hemma-hv{--hemma-bell-badge-ring:0 0 0 1px var(--hemma-pill-fill, var(--hv-chrome-solid));--hemma-bell-count-size:13px;--hemma-bell-count-font:9px;--hemma-bell-count-pad:3px;--hemma-hv-bell-top:1.5px;--hemma-hv-bell-right:2.5px;}'
+    + '@media (min-width: 768px) and (hover: none), (min-width: 768px) and (pointer: coarse){html.hemma-hv:not(.hv-light){--hemma-pill-fill:var(--hv-chrome-solid)!important;--hv-tab-fill:var(--hv-chrome-solid);--hv-nav-active:color-mix(in oklab, var(--hv-bg) 84%, #fff);}}'
+    + 'html.hemma-hv{--primary-color:#e5e5ea!important;--text-primary-color:#1c1c1e!important;--mdc-theme-primary:#e5e5ea!important;--mdc-theme-on-primary:#1c1c1e!important;--light-primary-color:rgba(229,229,234,0.3)!important;--dark-primary-color:#c7c7cc!important;}'
+    + 'html.hemma-hv.hv-light{--primary-color:#3a3a3c!important;--text-primary-color:#fff!important;--mdc-theme-primary:#3a3a3c!important;--mdc-theme-on-primary:#fff!important;--light-primary-color:rgba(58,58,60,0.2)!important;--dark-primary-color:#1c1c1e!important;}'
+    + '@media (hover: none){html.hemma-hv{--hemma-bell-fill:transparent;--hemma-settings-fill:transparent;--hemma-assist-fill:transparent;}}'
+    + 'html.hemma-hv.hv-light{--hemma-toast-bg:#fff;--hemma-toast-ink:#1c1c1e;--hemma-toast-hover:rgba(0,0,0,0.06);--hemma-toast-shadow:0 0 0 0.5px rgba(0,0,0,0.08),0 10px 30px -6px rgba(0,0,0,0.28);}'
+    + 'html.hemma-hv{--app-header-background-color:var(--hv-bg)!important;--app-header-text-color:#fff!important;--app-header-backdrop-filter:none!important;--sidebar-background-color:var(--hv-chrome-solid)!important;--hemma-sidebar-fill:var(--hv-chrome-solid)!important;--hemma-sidebar-backdrop:none!important;--sidebar-text-color:#fff!important;--sidebar-icon-color:rgba(255,255,255,0.85)!important;--sidebar-selected-text-color:#fff!important;--sidebar-selected-icon-color:#fff!important;}'
+    + 'html.hemma-hv.hv-light{--app-header-text-color:#1c1c1e!important;--sidebar-background-color:color-mix(in oklab, var(--hv-bg) 84%, #fff)!important;--hemma-sidebar-fill:color-mix(in oklab, var(--hv-bg) 84%, #fff)!important;--sidebar-text-color:#1c1c1e!important;--sidebar-icon-color:rgba(28,28,30,0.85)!important;--sidebar-selected-text-color:#1c1c1e!important;--sidebar-selected-icon-color:#1c1c1e!important;}'
+    + 'html.hemma-hv{--hv-chrome-solid:color-mix(in oklab, var(--hv-bg) 88%, #000);--hv-chrome-solid-hover:color-mix(in oklab, var(--hv-bg) 82%, #000);--hemma-chrome-fill:var(--hv-chrome-solid)!important;--hemma-chrome-fill-hover:var(--hv-chrome-solid-hover)!important;--hv-np-c1:color-mix(in oklab, var(--hv-bg) 88%, #000);--hv-np-c2:color-mix(in oklab, var(--hv-bg) 88%, #000);--hv-batt-fill:#fff;--hv-batt-chg:#fff;--hv-batt-track:rgba(255,255,255,0.3);}html.hemma-hv.hv-light{--hv-chrome-solid:color-mix(in oklab, var(--hv-bg) 60%, #fff);--hv-chrome-solid-hover:color-mix(in oklab, var(--hv-bg) 50%, #fff);--app-header-text-color:#1c1c1e!important;--hv-batt-fill:#1c1c1e;--hv-batt-chg:#1c1c1e;--hv-batt-track:rgba(0,0,0,0.16);}'
+    + 'html.hemma-hv{--hv-lpill-img:none;--hv-lpill-rim:none;--hv-btn-img:none;--hv-btn-sh:none;--hv-upill-bg:#fff;--hv-upill-ink:#1c1c1e;--hv-sum-w:600;--hv-g-ink:currentColor;--hv-hi-bg:rgba(255,255,255,0.16);--hv-hi-ink:#fff;--hv-icon-off:#fff;--state-media_player-active-color:#fff!important;--state-media_player-on-color:#fff!important;--md-slider-active-track-color:#fff;--md-slider-handle-color:#fff;--md-slider-focus-handle-color:#fff;--md-slider-hover-handle-color:#fff;--md-slider-pressed-handle-color:#fff;--hemma-nc-halo-blur:blur(6px);--hv-pw-ink:#fff;--hv-pw-dot:block;--hv-bi-in-o:21%;--hv-bi-in-h:16%;--hv-ov-bg:var(--hv-bg);--hv-ov-bf:none;--hv-ink:#fff;--hv-sub:rgba(235,235,245,0.6);--app-header-background-color:var(--hv-bg)!important;--hv-gauge-b:1.7;--hv-med-slab:transparent;--hv-med-slab-sh:none;--hv-med-gh:100%;--hv-med-mask:radial-gradient(60% 36% at 50% 42%, #000 0%, rgba(0,0,0,.75) 50%, transparent 100%);--hv-bi-bg:color-mix(in oklab, var(--hv-bg) 86%, #fff);--hv-bi-sel:#fff;--hv-bi-sel-ink:#1c1c1e;--hv-bi-ink:#fff;--hv-sel-bg:#fff;--hv-sel-ink:#1c1c1e;--hv-sel-sub:rgba(60,60,67,0.6);--hv-sel-c:rgba(0,0,0,0.08);--primary-background-color:var(--hv-bg)!important;--secondary-background-color:var(--hv-bg)!important;--hemma-pill-backdrop:none!important;--hemma-pill-rim:0 0 0 0 transparent!important;--hemma-pill-edge:transparent!important;--hemma-pill-highlight:none!important;--hv-en-card:var(--hv-off, rgba(255,255,255,0.08));--hv-en-ink:#fff;--hv-en-sub:rgba(235,235,245,0.82);--hv-en-line:rgba(255,255,255,0.12);--hv-en-seg:rgba(255,255,255,0.1);--hv-en-sth:rgba(255,255,255,0.22);--hv-en-grid:rgba(255,255,255,0.2);--hv-en-hi:rgba(255,255,255,0.08);--hemma-chrome-row-top-tablet:41px!important;--hemma-chrome-row-top-tablet-portrait:41px!important;--hemma-chrome-row-center-tablet:58.5px!important;--hemma-chrome-row-center-tablet-portrait:58.5px!important;--hemma-icon-circle-shadow:none;--hv-time-dy:0 -6px;--hv-icon-off-light:rgba(255,255,255,0.85);--hv-m-h2:20px;--hemma-mobile-hero-img:none!important;--hemma-mobile-hero-floor:transparent!important;'
+    + '--hemma-mobile-hero-tint-top:transparent!important;--hemma-mobile-hero-tint-bot:transparent!important;--hemma-mobile-hero-mesh-a:transparent!important;--hemma-mobile-hero-mesh-b:transparent!important;'
+    + '--hemma-mobile-hero-c-handoff:transparent!important;--hemma-mobile-hero-c-upper:transparent!important;--hemma-mobile-hero-c-mid:transparent!important;--hemma-mobile-hero-c-lower:transparent!important;--hemma-mobile-hero-c-base:transparent!important;}'
+    + 'html.hemma-hv:not(.hv-light){--card-background-color:rgba(255,255,255,0.12)!important;--ha-color-fill-neutral-quiet-resting:rgba(255,255,255,0.18)!important;--hemma-dialog-bg:color-mix(in oklab, var(--hv-bg) 45%, rgb(34,36,38))!important;--ha-dialog-background:var(--hemma-dialog-bg)!important;--ha-dialog-surface-background:var(--hemma-dialog-bg)!important;--ha-dialog-surface-backdrop-filter:none!important;--mdc-theme-surface:var(--hemma-dialog-bg)!important;--hemma-perf-dialog-fill:var(--hemma-dialog-bg)!important;--ha-color-on-primary-loud:#1c1c1e!important;--text-primary-color:#1c1c1e!important;--mdc-theme-on-primary:#1c1c1e!important;}'
+    + 'html.hemma-hv.hv-light{--card-background-color:rgba(255,255,255,0.4)!important;--ha-color-fill-neutral-quiet-resting:rgba(255,255,255,0.6)!important;--hv-upill-bg:#1c1c1e;--hv-upill-ink:#fff;--hv-hi-bg:#1c1c1e;--hv-hi-ink:#fff;--hv-hov-bg:#000;--hv-hov-op:.05;--state-media_player-active-color:#1c1c1e!important;--state-media_player-on-color:#1c1c1e!important;--md-slider-active-track-color:#1c1c1e;--md-slider-handle-color:#1c1c1e;--md-slider-focus-handle-color:#1c1c1e;--md-slider-hover-handle-color:#1c1c1e;--md-slider-pressed-handle-color:#1c1c1e;--hv-seg-th:#fff;--hv-seg-on:#1c1c1e;--hv-seg-sh:0 0.5px 1.5px rgba(0,0,0,0.08);--hv-pw-ink:#1c1c1e;--hv-gauge-b:.5;--button-card-box-shadow-active:0 0.5px 1.5px rgba(0,0,0,0.08)!important;--button-card-box-shadow-active-mobile:0 0.5px 1.5px rgba(0,0,0,0.08)!important;--hv-bi-bg:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 80%, transparent);--hv-bi-sel:#fff;--hv-bi-sel-ink:#1c1c1e;--hv-bi-ink:#1c1c1e;--hv-sel-bg:#fff;--hv-sel-ink:#1c1c1e;--hv-sel-sub:rgba(60,60,67,0.6);--hv-sel-c:rgba(0,0,0,0.08);--hv-sel-sh:0 0.5px 1.5px rgba(0,0,0,0.08);--md-menu-container-color:color-mix(in oklab, var(--hv-bg) 12%, rgb(252,252,253))!important;--md-sys-color-surface-container:color-mix(in oklab, var(--hv-bg) 12%, rgb(252,252,253))!important;--md-sys-color-on-surface:#1c1c1e!important;--md-sys-color-on-surface-variant:rgba(60,60,67,0.7)!important;--md-menu-item-label-text-color:#1c1c1e!important;--mdc-select-fill-color:rgba(0,0,0,0.05)!important;--mdc-select-ink-color:#1c1c1e!important;--mdc-select-label-ink-color:rgba(60,60,67,0.7)!important;--hemma-chrome-fill-hover:rgba(255,255,255,0.75)!important;--hv-caret:rgba(0,0,0,0.42);--hv-np-c1:rgba(255,255,255,0.5);--hv-np-c2:rgba(255,255,255,0.5);--hv-np-ink:#1c1c1e;--hv-np-sub2:rgba(60,60,67,0.6);--hv-np-track2:rgba(0,0,0,0.12);--hv-np-fill:#1c1c1e;--hv-np-glyph:#1c1c1e;--hv-wx-filter:brightness(0);--badge-title-inactive:rgba(0,0,0,0.72)!important;--hv-en-card:rgba(255,255,255,0.42);--hv-en-ink:#1c1c1e;--hv-en-sub:rgba(60,60,67,0.78);--hv-en-line:rgba(0,0,0,0.1);--hv-en-seg:rgba(0,0,0,0.06);--hv-en-sth:#fff;--hv-en-grid:rgba(0,0,0,0.16);--hv-en-hi:rgba(0,0,0,0.05);--hemma-dialog-bg:color-mix(in oklab, var(--hv-bg) 70%, rgb(248,247,245))!important;--ha-dialog-background:var(--hemma-dialog-bg)!important;--ha-dialog-surface-background:var(--hemma-dialog-bg)!important;--ha-dialog-surface-backdrop-filter:none!important;--mdc-theme-surface:var(--hemma-dialog-bg)!important;--hemma-perf-dialog-fill:var(--hemma-dialog-bg)!important;--mdc-theme-on-surface:#1c1c1e!important;--state-icon-color:#1c1c1e!important;'
+    + '--hemma-puck-num-off:#fff;--hv-icon-off-light:rgba(0,0,0,0.72);--hemma-bell-filter:brightness(0) opacity(0.86);--hemma-assist-filter:brightness(0) opacity(0.86);--hemma-nav-underline:rgba(17,17,17,0.85);--hemma-toggle-off-color:rgba(0,0,0,0.7);--hemma-settings-ink:#1c1c1e;--hemma-bell-badge:#1c1c1e;--hemma-bell-badge-ink:#fff;'
+    + '--hv-ink:#111;--hv-sub:rgba(0,0,0,0.55);'
+    + '--primary-text-color:#111!important;--secondary-text-color:rgba(0,0,0,0.55)!important;'
+    + '--hemma-entity-background:var(--hv-off)!important;--ha-card-background:var(--hv-off)!important;'
+    + '--hemma-entity-name:rgba(0,0,0,0.85)!important;--hemma-entity-state:rgba(0,0,0,0.55)!important;'
+    + '--hemma-icon-circle-bg:rgba(0,0,0,0.16)!important;--hv-icon-off:#fff;--hemma-icon-inactive-fallback-color:rgba(0,0,0,0.72)!important;'
+    + '--hemma-badge-title-color:#111!important;--hemma-badge-sub-color:rgba(0,0,0,0.55)!important;'
+    + '--hemma-glass-background:rgba(255,255,255,0.32)!important;'
+    + '--hemma-nav-label-color:#111!important;--hemma-perf-pill:color-mix(in oklab, var(--hv-bg) 60%, #fff)!important;--hemma-pill-fill:color-mix(in oklab, var(--hv-bg) 60%, #fff)!important;'
+    + '--hv-nav-active:rgba(255,255,255,0.8);--hv-off:rgba(255,255,255,0.32);'
+    + '--hv-side-fill:rgba(255,255,255,0.16);--hv-side-on:rgba(255,255,255,0.6);'
+    + '--hemma-chrome-fill:color-mix(in oklab, var(--hv-bg) 60%, #fff)!important;--hemma-chrome-ink:#111;'
+    + '--hemma-scene-name-off:rgba(0,0,0,0.85);--hemma-scene-icon-off:rgba(255,255,255,0.55);'
+    + '--hemma-np-sub:rgba(0,0,0,0.55);--hemma-np-track:rgba(0,0,0,0.12);'
+    + '}'
+    + 'html.hemma-hv{--hemma-hv-blur:0px;--hemma-hv-scale-m:1.04;}'
+    + 'html.hemma-hv.hv-light{--hemma-hero-ink:#111;--hv-sb-fill:#111;--hv-sb-track:rgba(0,0,0,0.32);}'
+    + 'html.hemma-hv.hv-bd-gradient,html.hemma-hv.hv-bd-color{--hemma-ov-photo:none;}'
+    + '#hemma-hv-backdrop-layer{position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:var(--hv-backdrop,none);background-size:100% 100%;}'
+    + 'html.hemma-hv.hv-bd-gradient{--hv-before-fill:transparent;}html.hemma-hv.hv-bd-gradient body{background:transparent!important;}'
+    + '@media (max-width: 767px){html.hemma-hv:not(.hv-bd-color){--hv-before-fill:transparent;}html.hemma-hv:not(.hv-bd-color) body{background:transparent!important;}}'
+    + 'html.hemma-hv.hv-light{--hemma-badge-bg:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 80%, transparent)!important;--hv-bg-solid:linear-gradient(color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2), color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2))!important;}'
+    + 'html.hemma-hv.hv-light.hv-ov:not(.hv-bd-gradient):not(.hv-bd-color){--hv-bg-solid:linear-gradient(color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2) 88%, transparent), color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2) 88%, transparent))!important;}'
+    + 'html.hemma-hv{--hemma-tile-glass-rim:inset 0 0 0 0.5px rgba(255,255,255,0.05)!important;--hemma-tile-glass-rim-desktop:inset 0 0 0 0.5px rgba(255,255,255,0.05)!important;--hemma-badge-glass-rim:inset 0 0 0 0.5px rgba(255,255,255,0.12)!important;}'
+    + 'html.hemma-hv.hv-light{--hv-np-bg:linear-gradient(135deg, color-mix(in oklab, color-mix(in oklab, var(--hv-np-c1) 22%, #fff) 94%, transparent), color-mix(in oklab, color-mix(in oklab, var(--hv-np-c2) 22%, #fff) 94%, transparent))!important;}'
+    + 'html.hemma-hv:not(.hv-light){--hv-bi-bg:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 58%, transparent)!important;}'
+    + 'html.hemma-hv.hv-light{--hemma-tile-glass-rim:inset 0 0 0 0.5px rgba(0,0,0,0.04)!important;--hemma-tile-glass-rim-desktop:inset 0 0 0 0.5px rgba(0,0,0,0.04)!important;--hemma-badge-glass-rim:inset 0 0 0 0.5px rgba(0,0,0,0.08)!important;--hv-off:color-mix(in oklab, #fff 48%, transparent)!important;--hv-bi-bg:color-mix(in oklab, #fff 88%, transparent)!important;--hemma-badge-bg:color-mix(in oklab, #fff 88%, transparent)!important;}'
+    + 'html.hemma-hv{--hv-veil-photo:linear-gradient(to bottom, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 62%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 44%, transparent) 55%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 12%, transparent) 100%);}'
+    + 'html.hemma-hv.hv-light{--hv-veil-photo:linear-gradient(to bottom, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 12%, #fbf8f2) 86%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 12%, #fbf8f2) 64%, transparent) 55%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 12%, #fbf8f2) 18%, transparent) 100%);}'
+    + 'html.hemma-hv.hv-ov:not(.hv-bd-gradient):not(.hv-bd-color){--hv-bg-solid:linear-gradient(rgba(255,255,255,0.05), rgba(255,255,255,0.05)), color-mix(in oklab, var(--hv-bg) 85%, transparent)!important;}'
+    + 'html.hemma-hv.hemma-hv.hv-dark:not(.hv-bd-gradient):not(.hv-bd-color){--hv-bg-solid:linear-gradient(color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 40%, rgb(22 22 24)) 84%, transparent), color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 40%, rgb(22 22 24)) 84%, transparent))!important;}'
+    + 'html.hemma-hv.hemma-hv.hv-ink-w:not(.hv-bd-gradient):not(.hv-bd-color){--hv-bg-solid:linear-gradient(color-mix(in oklab, var(--hv-bg) 78%, rgb(22 22 24)), color-mix(in oklab, var(--hv-bg) 78%, rgb(22 22 24)))!important;}'
+    + 'html.hemma-hv.hv-bd-gradient{--hv-backdrop:radial-gradient(90% 60% at 8% 0%, color-mix(in oklab, var(--hv-bg) 58%, #fff) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 58%, #fff) 0%, transparent) 72%), radial-gradient(70% 55% at 100% 38%, color-mix(in oklab, var(--hv-bg) 78%, #f2dccb) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 78%, #f2dccb) 0%, transparent) 70%), radial-gradient(110% 70% at 50% 100%, color-mix(in oklab, var(--hv-bg) 84%, #000) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 84%, #000) 0%, transparent) 75%), linear-gradient(var(--hv-bg), var(--hv-bg));}'
+    + 'html.hemma-hv.hv-bd-gradient.hv-dark{--hv-backdrop:radial-gradient(90% 60% at 8% 0%, color-mix(in oklab, var(--hv-bg) 78%, #fff) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 78%, #fff) 0%, transparent) 72%), radial-gradient(70% 55% at 100% 38%, color-mix(in oklab, var(--hv-bg) 86%, #e9c9a8) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 86%, #e9c9a8) 0%, transparent) 70%), radial-gradient(110% 70% at 50% 100%, color-mix(in oklab, var(--hv-bg) 80%, #000) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 80%, #000) 0%, transparent) 75%), linear-gradient(var(--hv-bg), var(--hv-bg));}'
+    + 'html.hemma-hv.hv-bd-gradient.hv-light{--hv-backdrop:radial-gradient(90% 60% at 8% 0%, color-mix(in oklab, var(--hv-bg) 40%, #fbf8f3) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 40%, #fbf8f3) 0%, transparent) 72%), radial-gradient(110% 70% at 50% 100%, color-mix(in oklab, var(--hv-bg) 90%, #3a3530) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 90%, #3a3530) 0%, transparent) 75%), linear-gradient(color-mix(in oklab, var(--hv-bg) 82%, #f7f4ef), color-mix(in oklab, var(--hv-bg) 82%, #f7f4ef))}'
+    + '@media (max-width: 767px){html.hemma-hv:not(.hv-bd-color){--hemma-ov-photo:none;--hv-backdrop:linear-gradient(to bottom, color-mix(in oklab, var(--hv-bg) 60%, #fff) 0%, var(--hv-bg) 45%, color-mix(in oklab, var(--hv-bg) 66%, #000) 100%);}html.hemma-hv.hv-dark:not(.hv-bd-color){--hv-backdrop:linear-gradient(to bottom, color-mix(in oklab, var(--hv-bg) 76%, #fff) 0%, var(--hv-bg) 45%, color-mix(in oklab, var(--hv-bg) 62%, #000) 100%);}html.hemma-hv.hv-light:not(.hv-bd-color){--hv-backdrop:linear-gradient(to bottom, color-mix(in oklab, var(--hv-bg) 42%, #fbf9f5) 0%, color-mix(in oklab, var(--hv-bg) 82%, #f7f4ef) 45%, color-mix(in oklab, var(--hv-bg) 92%, #2a2724) 100%);}html.hemma-hv:not(.hv-bd-color):not(.hv-bd-gradient){--hv-backdrop:none;}html.hemma-hv:not(.hv-bd-color):not(.hv-bd-gradient) #hemma-hv-backdrop-layer::before,html.hemma-hv:not(.hv-bd-color):not(.hv-bd-gradient) #hemma-hv-backdrop-layer::after{content:"";position:absolute;inset:0;}html.hemma-hv:not(.hv-bd-color):not(.hv-bd-gradient) #hemma-hv-backdrop-layer::before{background-color:var(--hv-bg);background-image:var(--hv-m-photo-day, url("/hemma_assets/rooms-soft/home-demo.jpg?v=3"));background-size:cover;background-position:center top;background-repeat:no-repeat;}html.hemma-hv.hv-dark:not(.hv-bd-color):not(.hv-bd-gradient) #hemma-hv-backdrop-layer::before{background-image:var(--hv-m-photo-night, url("/hemma_assets/rooms-soft/home-demo-night.jpg?v=3"));}html.hemma-hv:not(.hv-bd-color):not(.hv-bd-gradient) #hemma-hv-backdrop-layer::after{background-image:var(--hv-photo-wash);}}'
+    + 'html.hemma-hv.hv-bd-gradient #hemma-hv-backdrop-layer::after{content:"";position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%222%22 stitchTiles=%22stitch%22/%3E%3CfeColorMatrix values=%221 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 0.03%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E");background-size:160px 160px;}'
+    + '@media (max-width: 767px){html.hemma-hv.hv-bd-gradient:not(.hv-light){--hv-off:rgba(255,255,255,0.09)!important;--hemma-glass-background:rgba(255,255,255,0.09)!important;--hemma-tile-glass-rim:inset 0 0 0 0.5px rgba(255,255,255,0.06)!important;}}'
+    + 'html.hemma-hv.hv-ha.hv-ha{--nx-page:color-mix(in oklab, var(--hv-bg) 16%, #f2f2f7);--nx-card:#ffffff;--nx-bar:color-mix(in oklab, var(--hv-bg) 16%, #f2f2f7);--nx-side:color-mix(in oklab, var(--hv-bg) 10%, #f7f7fa);--nx-ink:#1c1c1e;--nx-sub:rgba(60,60,67,0.6);--nx-line:rgba(60,60,67,0.12);}'
+    + 'html.hemma-hv.hv-ha.hv-ha.hv-dark{--nx-page:color-mix(in oklab, var(--hv-bg) 55%, #0b0b0d);--nx-card:color-mix(in oklab, var(--hv-bg) 22%, #1d1d20);--nx-bar:color-mix(in oklab, var(--hv-bg) 55%, #0b0b0d);--nx-side:color-mix(in oklab, var(--hv-bg) 45%, #121214);--nx-ink:#f5f5f7;--nx-sub:rgba(235,235,245,0.6);--nx-line:rgba(255,255,255,0.08);}'
+    + 'html.hemma-hv.hv-ha.hv-ha{--primary-background-color:var(--nx-page)!important;--secondary-background-color:var(--nx-page)!important;--lovelace-background:var(--nx-page)!important;--card-background-color:var(--nx-card)!important;--ha-card-background:var(--nx-card)!important;--wa-color-surface-default:var(--nx-card)!important;--hemma-entity-background:var(--nx-card)!important;--hv-ha-surface:var(--nx-card)!important;--mdc-theme-surface:var(--nx-card)!important;--ha-card-backdrop-filter:none!important;--ha-card-border-color:var(--nx-line)!important;--divider-color:var(--nx-line)!important;--app-header-background-color:var(--nx-bar)!important;--app-header-text-color:var(--nx-ink)!important;--sidebar-background-color:var(--nx-side)!important;--hemma-sidebar-fill:var(--nx-side)!important;--hv-chrome-solid:var(--nx-bar)!important;--primary-text-color:var(--nx-ink)!important;--secondary-text-color:var(--nx-sub)!important;--sidebar-text-color:var(--nx-ink)!important;--sidebar-icon-color:var(--nx-sub)!important;--input-fill-color:var(--nx-card)!important;--hv-before-fill:var(--nx-page)!important;}'
+    + 'html.hemma-hv.hv-ha.hv-ha,html.hemma-hv.hv-ha.hv-ha body{background:var(--nx-page)!important;}'
+    + 'html.hemma-hv.hv-ha #hemma-hv-backdrop-layer{display:none!important;}'
+    + 'html.hemma-hv.hv-ha.hv-ha:not(.hv-dark){--primary-color:#1c1c1e!important;--text-primary-color:#fff!important;}'
+    + 'html.hemma-hv{--hv-photo-wash:radial-gradient(60% 45% at 0% 58%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 30%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 10%, transparent) 55%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 0%, transparent) 85%), linear-gradient(to top, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 22%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 8%, transparent) 50%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 0%, transparent) 80%), linear-gradient(color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 34%, transparent), color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 34%, transparent));}'
+    + 'html.hemma-hv.hv-dark{--hv-photo-wash:radial-gradient(60% 45% at 0% 58%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 40%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 14%, transparent) 55%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 0%, transparent) 85%), linear-gradient(to top, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 12%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 4%, transparent) 50%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 0%, transparent) 80%), linear-gradient(color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 16%, transparent), color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 16%, transparent));}'
+    + 'html.hemma-hv.hv-light{--hv-photo-wash:linear-gradient(to bottom, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 12%, #fbf8f2) 60%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 12%, #fbf8f2) 50%, transparent) 40%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 12%, #fbf8f2) 64%, transparent) 75%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 12%, #fbf8f2) 79%, transparent) 100%);}'
+    + 'html.hemma-hv.hv-ink-w{--hv-photo-wash:radial-gradient(38% 24% at 0% 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 30%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 0%, transparent) 100%), radial-gradient(58% 52% at 0% 42%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 44%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 18%, transparent) 55%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 0%, transparent) 100%), linear-gradient(to top, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 18%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 0%, transparent) 70%), linear-gradient(color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 18%, transparent), color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 18%, transparent));}'
+    + '@media (max-width: 767px){html.hemma-hv.hv-ink-w{--hv-photo-wash:linear-gradient(to bottom, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 24%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 15%, transparent) 45%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 20%, transparent) 100%);}html.hemma-hv.hemma-hv.hv-ink-w:not(.hv-bd-gradient):not(.hv-bd-color){--hv-off:rgba(255,255,255,0.12)!important;--hemma-glass-background:rgba(255,255,255,0.12)!important;}}'
+    + 'html.hemma-hv.hv-ov:not(.hv-light){--hv-photo-top:linear-gradient(to bottom, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 34%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 20%, transparent) 22%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 0%, transparent) 42%);}'
+    + 'html.hemma-hv:not(.hv-light){--hv-tab-fill:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 16%, #fff) 82%, transparent)!important;--hemma-pill-fill:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 16%, #fff) 82%, transparent)!important;--hv-chrome-solid:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 16%, #fff) 82%, transparent)!important;--hemma-chrome-fill:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 16%, #fff) 82%, transparent)!important;--hv-nav-active:color-mix(in oklab, var(--hv-bg) 34%, transparent)!important;--hemma-nav-label-color:#111!important;--hemma-chrome-ink:#111!important;--hv-cap-ink:rgba(28,28,30,0.68);--hemma-settings-ink:rgba(28,28,30,0.68)!important;--hemma-nav-underline:rgba(17,17,17,0.85)!important;--hemma-assist-filter:brightness(0) opacity(0.66)!important;--hemma-bell-filter:brightness(0) opacity(0.66)!important;--hemma-badge-bg:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 58%, transparent)!important;}'
+    + 'html.hemma-hv.hv-dark{--hv-tab-fill:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 40%, rgb(22 22 24)) 78%, transparent)!important;--hemma-pill-fill:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 40%, rgb(22 22 24)) 78%, transparent)!important;--hv-chrome-solid:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 40%, rgb(22 22 24)) 78%, transparent)!important;--hemma-chrome-fill:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 40%, rgb(22 22 24)) 78%, transparent)!important;--hemma-chrome-ink:#fff!important;--hv-cap-ink:rgba(255,255,255,0.88);--hemma-settings-ink:rgba(255,255,255,0.88)!important;--hemma-bell-filter:none!important;--hemma-assist-filter:none!important;--hv-nav-active:rgba(255,255,255,0.16)!important;--hemma-nav-label-color:#fff!important;--hemma-pill-divider:rgba(255,255,255,0.22)!important;}'
+    + 'html.hemma-hv.hv-light:not(.hv-ov){--hv-off:color-mix(in oklab, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 45%, #f6f4ef) 45%, #fff) 80%, transparent);}'
+    + 'html.hemma-hv:not(.hv-light){--hv-off:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 50%, rgb(24 24 27)) 70%, transparent);--hemma-glass-background:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 50%, rgb(24 24 27)) 70%, transparent)!important;}html.hemma-hv.hv-ink-w{--hv-off:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(64 64 68)) 56%, transparent);--hemma-glass-background:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(64 64 68)) 56%, transparent)!important;}'
+    + 'html.hemma-hv{--hemma-entity-background:var(--hv-off)!important;--ha-card-background:var(--hv-off)!important;}'
+    + 'html.hemma-hv.hv-light{--hv-icon-off:color-mix(in oklab, var(--hv-bg) 30%, rgba(52,54,58,0.72))!important;--hemma-icon-circle-bg:color-mix(in oklab, var(--hv-bg) 22%, transparent)!important;--hemma-puck-num-off:color-mix(in oklab, var(--hv-bg) 30%, rgba(52,54,58,0.8))!important;--hemma-chrome-fill:rgba(255,255,255,0.8)!important;--hv-chrome-solid:rgba(255,255,255,0.8)!important;--hemma-pill-fill:rgba(255,255,255,0.8)!important;--hv-tab-fill:rgba(255,255,255,0.8)!important;--hv-nav-active:color-mix(in oklab, var(--hv-bg) 40%, transparent)!important;--hemma-glass-background:rgba(255,255,255,0.75)!important;}'
+    + 'html.hemma-hv.hv-ha{--hv-ha-surface:var(--hemma-dialog-bg);--card-background-color:var(--hv-ha-surface)!important;--wa-color-surface-default:var(--hv-ha-surface)!important;--ha-card-background:var(--hv-ha-surface)!important;--hemma-entity-background:var(--hv-ha-surface)!important;--ha-card-backdrop-filter:none!important;}'
+    + 'html.hemma-hv.hv-light.hv-ha{--hv-ha-surface:color-mix(in oklab, var(--hv-bg) 5%, #fff);--hv-ha-bar:color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2);--hv-chrome-solid:var(--hv-ha-bar)!important;--sidebar-background-color:var(--hv-ha-bar)!important;--app-header-background-color:var(--hv-ha-bar)!important;--hemma-sidebar-fill:var(--hv-ha-bar)!important;--hv-ha-page:color-mix(in oklab, var(--hv-bg) 22%, #e9e4dc);--primary-background-color:var(--hv-ha-page)!important;--secondary-background-color:var(--hv-ha-page)!important;}html.hemma-hv.hv-ha.hv-light,html.hemma-hv.hv-ha.hv-light body{background:var(--hv-ha-page)!important;}'
+    + 'html.hemma-hv:not(.hv-light){--sidebar-background-color:color-mix(in oklab, var(--hv-bg) 88%, #fff)!important;--hemma-sidebar-fill:color-mix(in oklab, var(--hv-bg) 88%, #fff)!important;}'
+    + 'html.hemma-hv.hv-light{--sidebar-background-color:color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2)!important;--hemma-sidebar-fill:color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2)!important;}'
+    + 'html.hemma-hv.hv-ha:not(.hv-light){--hv-ha-surface:color-mix(in oklab, var(--hv-bg) 45%, rgb(95,95,99));--hv-ha-bar:color-mix(in oklab, var(--hv-bg) 88%, #fff);--sidebar-background-color:var(--hv-ha-bar)!important;--hemma-sidebar-fill:var(--hv-ha-bar)!important;--hv-chrome-solid:var(--hv-ha-bar)!important;--app-header-background-color:var(--hv-bg)!important;}';
+  var st = null, cur = '', cfg = { on: false, dark: false, white: false, key: '', rest: '' }, album = null, art = '', artAt = 0, tick = 0;
+  // One color behind the whole dashboard, eased as a registered property so a song change fades rather than jumps.
+  try { if (window.CSS && CSS.registerProperty) CSS.registerProperty({ name: '--hv-bg', syntax: '<color>', inherits: true, initialValue: '#97a9ae' }); } catch (e) {}
+  try { ['--hv-np-c1', '--hv-np-c2'].forEach(function (n) { CSS.registerProperty({ name: n, syntax: '<color>', inherits: true, initialValue: 'rgba(0, 0, 0, 0.22)' }); }); } catch (e) {}
+  var hex = function (c) { return '#' + c; };
+  // The Now Playing tile wears its own cover's color (the screensaver's Artwork Color pick), blending between songs.
+  var npTiles = function () {
+    var out = [], st = [document];
+    for (var i = 0; i < st.length && i < 4000; i++) {
+      var r = st[i];
+      if (!r.querySelectorAll) continue;
+      r.querySelectorAll('button-card').forEach(function (b) { var t = b._config && b._config.template; if (t && String(t).indexOf('now_playing_primary') >= 0) out.push(b); });
+      r.querySelectorAll('*').forEach(function (n) { if (n.shadowRoot) st.push(n.shadowRoot); });
+    }
+    return out;
+  };
+  var tiles = [], tilesAt = 0;
+  var INK = [['--hv-np-ink', '#fff'], ['--hv-np-sub2', 'rgba(255,255,255,0.72)'], ['--hv-np-track2', 'rgba(255,255,255,0.25)'], ['--hv-np-fill', '#fff'], ['--hv-np-glyph', '#fff']];
+  function tintTiles() {
+    if (!cfg.on || !window.hemmaAlbumColor) return;
+    if (!tiles.length || Date.now() - tilesAt > 15000 || tiles.some(function (b) { return !b.isConnected; })) { tiles = npTiles(); tilesAt = Date.now(); }
+    // With the whole dashboard already in the cover's color, the tile keeps the quiet card so it doesn't vanish into it.
+    var same = cfg.key === 'album';
+    tiles.forEach(function (b) {
+      if (same) { if (b._hvArt !== '#bg') { b._hvArt = '#bg'; b.style.removeProperty('--hv-np-c1'); b.style.removeProperty('--hv-np-c2'); INK.forEach(function (k) { b.style.removeProperty(k[0]); }); } return; }
+      var card = b.shadowRoot && b.shadowRoot.querySelector('ha-card');
+      var m = card && /url\(["']?([^"')]+)/.exec(getComputedStyle(card).getPropertyValue('--np-art'));
+      var a = m ? m[1] : '';
+      if (b._hvArt === a) return;
+      b._hvArt = a;
+      b.style.transition = '--hv-np-c1 1.6s ease, --hv-np-c2 1.6s ease';
+      if (!a) { b.style.removeProperty('--hv-np-c1'); b.style.removeProperty('--hv-np-c2'); INK.forEach(function (k) { b.style.removeProperty(k[0]); }); return; }
+      window.hemmaAlbumColor(a).then(function (c) {
+        if (b._hvArt !== a) return;
+        if (!c) { b.style.removeProperty('--hv-np-c1'); b.style.removeProperty('--hv-np-c2'); INK.forEach(function (k) { b.style.removeProperty(k[0]); }); return; }
+        INK.forEach(function (k) { b.style.setProperty(k[0], k[1]); });
+        b.style.setProperty('--hv-np-c1', 'rgb(' + c.join(',') + ')');
+        b.style.setProperty('--hv-np-c2', 'rgb(' + c.map(function (v) { return Math.round(v * 0.6); }).join(',') + ')');
+      });
+    });
+  }
+  setInterval(tintTiles, 3000);
+  // The cover only lends its hue: the default color keeps its brightness, so day stays day and a song change never lights or darkens the room.
+  var lin = function (v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  var gam = function (v) { v = v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055; return Math.round(v * 255); };
+  function oklch(c) {
+    var r = lin(c[0]), g = lin(c[1]), b = lin(c[2]);
+    var l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b), m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b), s2 = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    var L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s2, A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s2, B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s2;
+    return [L, Math.sqrt(A * A + B * B), Math.atan2(B, A)];
+  }
+  function rgbOf(L, C, H) {
+    var A = C * Math.cos(H), B = C * Math.sin(H);
+    var l = Math.pow(L + 0.3963377774 * A + 0.2158037573 * B, 3), m = Math.pow(L - 0.1055613458 * A - 0.0638541728 * B, 3), s2 = Math.pow(L - 0.0894841775 * A - 1.291485548 * B, 3);
+    return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s2, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s2, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s2];
+  }
+  // Half the chosen color stays in the mix, so the dashboard still reads as Sand (or whichever) while the cover tints it.
+  var KEEP = 0.5;
+  function tint(cover, base, night) {
+    var o = oklch(cover), b = oklch(base), c0 = Math.min(o[1], night ? 0.045 : 0.065);
+    if (o[1] < 0.02) return base;
+    var A = b[1] * Math.cos(b[2]) * KEEP + c0 * Math.cos(o[2]) * (1 - KEEP), B = b[1] * Math.sin(b[2]) * KEEP + c0 * Math.sin(o[2]) * (1 - KEEP);
+    var C = Math.sqrt(A * A + B * B), H = Math.atan2(B, A);
+    for (var i = 0; i < 12; i++, C *= 0.88) { var v = rgbOf(b[0], C, H); if (v.every(function (x) { return x >= 0 && x <= 1; })) return v.map(function (x) { return gam(x); }); }
+    return base;
+  }
+  var rgbHex = function (h) { return [0, 2, 4].map(function (i) { return parseInt(h.substr(i, 2), 16); }); };
+  var lastC = '', metaC = '', metaMo = null;
+  function meta(c) {
+    metaC = c;
+    var m = document.querySelector('meta[name="theme-color"]');
+    if (!m) return;
+    if (c && m.getAttribute('content') !== c) m.setAttribute('content', c);
+    if (!metaMo && window.MutationObserver) {
+      metaMo = new MutationObserver(function () { if (metaC && m.getAttribute('content') !== metaC) m.setAttribute('content', metaC); });
+      metaMo.observe(m, { attributes: true, attributeFilter: ['content'] });
+    }
+  }
+  // The HA app picks its status bar text from --app-theme-color; the theme's black means white text over a light page.
+  var themeWas = null;
+  function appTheme(c) {
+    var st = document.documentElement.style;
+    if (c) { if (themeWas === null) themeWas = st.getPropertyValue('--app-theme-color'); st.setProperty('--app-theme-color', c); }
+    else if (themeWas !== null) { if (themeWas) st.setProperty('--app-theme-color', themeWas); else st.removeProperty('--app-theme-color'); themeWas = null; }
+  }
+  var extT = 0;
+  function ext(wait) {
+    clearTimeout(extT);
+    extT = setTimeout(function () {
+      try { var ha = document.querySelector('home-assistant'), x = ha && ha.hass && ha.hass.auth && ha.hass.auth.external; if (x && x.fireMessage) x.fireMessage({ type: 'theme-update' }); } catch (e) {}
+    }, wait);
+  }
+  function paint(mode) {
+    var h = document.documentElement;
+    if (!cfg.on) return;
+    var bgAlbum = cfg.key === 'album' ? album : null;
+    var dark = cfg.dark;
+    var ck = cfg.key === 'album' ? cfg.rest : cfg.key;
+    var white = !dark && cfg.white;
+    var base = dark ? (NIGHTS[ck] || NIGHT) : white ? (DEEP[ck] || DEEP.gray) : (TINT[ck] || TINT.gray);
+    var A = bgAlbum ? tint(bgAlbum, rgbHex(base), dark) : null;
+    if (A && white) {
+      var lum = function (c) { var t = c.map(function (v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * t[0] + 0.7152 * t[1] + 0.0722 * t[2]; };
+      for (var n = 0; n < 40 && 1.05 / (lum(A) + 0.05) < 5.6; n++) A = A.map(function (v) { return Math.round(v * 0.97); });
+    }
+    var c = A ? 'rgb(' + A.join(',') + ')' : hex(base);
+    if (mode === 'boot') h.style.transition = 'none';
+    else if (mode === 'slow') h.style.transition = '--hv-bg 12s cubic-bezier(.45, 0, .55, 1)';
+    else if (c !== lastC && h.style.transition) h.style.removeProperty('transition');
+    lastC = c;
+    h.style.setProperty('--hv-bg', c);
+    try { localStorage.setItem('hemma_hv_bg', c); } catch (e) {}
+    var rgb0 = A || rgbHex(base), cream = [248, 246, 242];
+    var light = !dark && !white ? 'rgb(' + rgb0.map(function (v, i) { return Math.round(v * 0.14 + cream[i] * 0.86); }).join(',') + ')' : '';
+    meta(light || c);
+    appTheme(light);
+    ext(mode === 'slow' ? 12500 : 400);
+    // The icons take the background's own hue, so they shift with it frame for frame, darker by day and lighter at night to stay legible.
+    var src = bgAlbum ? 'var(--hv-bg)' : album ? 'rgb(' + album.join(',') + ')' : '';
+    if (album) h.style.setProperty('--hv-album-accent', dark || white ? 'oklch(from ' + src + ' 0.86 max(calc(c * 1.8), 0.05) h)' : 'oklch(from ' + src + ' 0.42 max(calc(c * 2.4), 0.06) h)');
+    else h.style.removeProperty('--hv-album-accent');
+    h.classList.toggle('hv-light', !dark && !white);
+    h.classList.toggle('hv-ink-w', white);
+    h.classList.toggle('hv-dark', !!dark);
+    h.style.setProperty('--hv-veil', 'linear-gradient(var(--hv-bg) 46%, color-mix(in srgb, var(--hv-bg) 92%, transparent) 60%, transparent)');
+    h.style.setProperty('--hv-bg-solid', 'linear-gradient(rgba(255,255,255,' + (dark ? '0.05' : '0.16') + '), rgba(255,255,255,' + (dark ? '0.05' : '0.16') + ')), var(--hv-bg)');
+  }
+  // A card decides its look once, when it draws; any card drawn before the style landed is told to draw again.
+  var redrawT = [];
+  function redrawCards() {
+    redrawT.forEach(clearTimeout);
+    redrawT = [0, 400, 1500, 4000].map(function (ms) {
+      return setTimeout(function () {
+        var st2 = [document];
+        for (var i = 0; i < st2.length && i < 3000; i++) {
+          var r = st2[i], all = r.querySelectorAll ? r.querySelectorAll('*') : [];
+          for (var j = 0; j < all.length; j++) {
+            var n = all[j];
+            if (n.tagName === 'BUTTON-CARD' && typeof n.requestUpdate === 'function') { try { n.requestUpdate(); if (window._hemmaHvBadge) window._hemmaHvBadge(n); } catch (e) {} }
+            if (n.shadowRoot) st2.push(n.shadowRoot);
+          }
+        }
+        if (!ms) uncover();
+      }, ms);
+    });
+  }
+  function uncover() {
+    var cov = document.getElementById('hemma-hv-cover');
+    if (cov) requestAnimationFrame(function () { requestAnimationFrame(function () { cov.remove(); }); });
+  }
+  // HA paints the page color inside its own shadow root, out of reach of page CSS; the gradient rides over it from there.
+  function backdropRoot(n) {
+    try {
+      var r = document.querySelector('home-assistant').shadowRoot.querySelector('home-assistant-main').shadowRoot;
+      if (!document.getElementById('hemma-hv-backdrop-layer')) {
+        var d = document.createElement('div');
+        d.id = 'hemma-hv-backdrop-layer';
+        document.body.appendChild(d);
+      }
+      if (r.getElementById('hemma-hv-backdrop')) return;
+      var t = document.createElement('style');
+      t.id = 'hemma-hv-backdrop';
+      t.textContent = 'partial-panel-resolver::before{background-color:var(--hv-before-fill,var(--primary-background-color))!important;}';
+      r.appendChild(t);
+    } catch (e) { if ((n || 0) < 20) setTimeout(function () { backdropRoot((n || 0) + 1); }, 500); }
+  }
+  function apply(on, light) {
+    var h = document.documentElement;
+    var was = h.classList.contains('hemma-hv') + '|' + h.classList.contains('hv-light');
+    if (on && !st) { st = document.createElement('style'); st.id = 'hemma-hv-style'; st.textContent = FLAT + '@media (max-width: 767px), (max-height: 500px){html.hemma-hv{--hemma-badge-icon-override:36px;--hv-bi-size:36px;--hv-bi-pill:44px;--hv-head-dy:0px;--hv-bi-in-o:22%;--hv-bi-in-h:22%;}}@media (min-width: 768px) and (hover: hover) and (pointer: fine){html.hemma-hv{--hv-h1:40px;--hv-h1-lh:46px;--hemma-chrome-row-center-desktop:48px !important;}html.hemma-hv.hemma-hv-lock{--hemma-chrome-row-center-desktop:60px !important;}}@media (min-width: 768px) and (max-height: 1400px) and (hover: none){html.hemma-hv{--hv-h1:40px;--hv-h1-lh:46px;}}html.hemma-hv body{background:var(--hv-bg)!important;}html.hemma-hv{background:var(--hv-bg)!important;transition:--hv-bg 6s ease;--lovelace-background:transparent!important;--view-background:transparent!important;}'; (document.head || h).appendChild(st); }
+    h.classList.toggle('hemma-hv', !!on);
+    if (!on) { metaC = ''; appTheme(''); ['--hv-veil', '--hv-bg-solid', '--hv-bg'].forEach(function (k) { h.style.removeProperty(k); }); }
+    h.classList.toggle('hv-light', !!(on && light));
+    if (was !== h.classList.contains('hemma-hv') + '|' + h.classList.contains('hv-light')) redrawCards();
+  }
+  // Artwork Color follows what is playing; a short pause keeps the color rather than flashing back to the default.
+  function watch() {
+    var want = cfg.on && (cfg.key === 'album' || document.documentElement.hasAttribute('data-hv-album-accent'));
+    if (!want) { clearInterval(tick); tick = 0; if (album) { album = null; art = ''; paint(); } return; }
+    if (tick) return;
+    var step = function () {
+      var a = window.hemmaNowArt ? window.hemmaNowArt() : '';
+      if (a) artAt = Date.now();
+      if (!a && album && Date.now() - artAt < 30000 && Date.now() > snapUntil) return;
+      if (a === art) return;
+      art = a;
+      if (!a) { album = null; keep(); land(); return; }
+      if (seen && a === seen.a) { album = seen.c; keep(); land(); return; }
+      (window.hemmaAlbumColor ? window.hemmaAlbumColor(a) : Promise.resolve(null)).then(function (c) { if (art !== a) return; album = c; keep(); land(); });
+    };
+    stepNow = step;
+    step();
+    tick = setInterval(step, 4000);
+  }
+  // Fresh from a load or back after a while, the right color is put down at once; otherwise it eases over slowly.
+  var seen = null, snapUntil = 0, stepNow = null, awayAt = 0;
+  function land() {
+    if (Date.now() < snapUntil) {
+      paint('boot');
+      requestAnimationFrame(function () { requestAnimationFrame(function () { document.documentElement.style.removeProperty('transition'); }); });
+    } else paint('slow');
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { awayAt = Date.now(); return; }
+    if (!awayAt || Date.now() - awayAt < 30000 || !cfg.on || !stepNow) return;
+    seen = album && art ? { a: art, c: album } : seen;
+    art = ''; album = null; snapUntil = Date.now() + 4000;
+    stepNow();
+  });
+  var AKEY = 'hemma_hv_album';
+  function keep() { try { if (album && art) localStorage.setItem(AKEY, JSON.stringify({ a: art, c: album })); else localStorage.removeItem(AKEY); } catch (e) {} }
+  var bootOn = false;
+  try { var saved = localStorage.getItem(KEY); if (saved) { var p = saved.split('|'); cfg = { on: true, dark: p[1] === 'd', white: p[1] === 'w', key: p[2] || '', rest: p[3] || '' }; apply(true, p[1] === 'l'); cur = 'boot'; bootOn = true; try { paint('boot'); } catch (e) {} } } catch (e) {}
+  try { if (document.documentElement.classList.contains('hemma-hv')) redrawCards(); } catch (e) {}
+  try { var last = JSON.parse(localStorage.getItem(AKEY) || 'null'); if (last && last.a && Array.isArray(last.c)) seen = last; } catch (e) {}
+  snapUntil = Date.now() + 4000;
+  var booted = false;
+  // Hemma's surfaces stop at its own dashboards: HA's pages keep opaque menus and cards.
+  var HKEY = 'hemma_hv_paths', mine = {};
+  try { mine = JSON.parse(localStorage.getItem(HKEY) || '{}') || {}; } catch (e) {}
+  function seg() { try { return String(location.pathname.split('/')[1] || ''); } catch (e) { return ''; } }
+  function scope() { try { document.documentElement.classList.toggle('hv-ha', !mine[seg()]); } catch (e) {} }
+  try { window.addEventListener('location-changed', function () { setTimeout(scope, 0); }); window.addEventListener('popstate', scope); } catch (e) {}
+  scope();
+  window._hemmaHV = {
+    // Called from hemma_room on every render, so a Studio change or a day/night flip lands at once.
+    set: function (style, dark, key, rest, text, backdrop) {
+      if (!mine[seg()]) { mine[seg()] = 1; try { localStorage.setItem(HKEY, JSON.stringify(mine)); } catch (e) {} }
+      scope();
+      var on = style === 'homeview';
+      cfg = { on: on, dark: !!dark, white: text === 'white', key: key || '', rest: rest || '' };
+      var hc = document.documentElement.classList;
+      hc.toggle('hv-bd-gradient', on && backdrop === 'gradient');
+      hc.toggle('hv-bd-color', on && backdrop === 'color');
+      if (on) backdropRoot();
+      var m = dark ? 'd' : cfg.white ? 'w' : 'l';
+      var sig = on ? 'hv|' + m + '|' + cfg.key + '|' + cfg.rest : '';
+      if (sig !== cur) {
+        cur = sig;
+        apply(on, m === 'l');
+        try { if (on) localStorage.setItem(KEY, 'hv|' + m + '|' + cfg.key + '|' + cfg.rest); else localStorage.removeItem(KEY); } catch (e) {}
+      }
+      // Cards already drawn in the remembered style never redraw, so a wrong guess at boot reloads once into the right one.
+      if (!booted && on !== bootOn) {
+        var again = 0;
+        try { again = Number(sessionStorage.getItem('hemma_hv_fix') || 0); } catch (e) {}
+        if (Date.now() - again > 15000) {
+          try { sessionStorage.setItem('hemma_hv_fix', String(Date.now())); } catch (e) {}
+          document.documentElement.style.visibility = 'hidden';
+          setTimeout(function () { location.reload(); }, 0);
+          booted = true;
+          return sig;
+        }
+      }
+      if (!booted) {
+        booted = true;
+        // A reload lands on the color it left with instead of easing in from the default again.
+        var h = document.documentElement;
+        paint('boot');
+        getComputedStyle(h).getPropertyValue('--hv-bg');
+        requestAnimationFrame(function () { requestAnimationFrame(function () { h.style.removeProperty('transition'); }); });
+      } else paint();
+      watch();
+      setTimeout(uncover, 0);
+      return sig;
+    },
+    color: function (k, dark) { return dark ? (NIGHTS[k] || NIGHT) : cfg.white ? (DEEP[k] || DEEP.gray) : (TINT[k] || TINT.gray); },
+    palette: function () { return { light: Object.assign({}, TINT), dark: Object.assign({}, NIGHTS) }; },
+    key: function () { return cfg && cfg.on ? ((cfg.key === 'album' ? cfg.rest : cfg.key) || 'gray') : null; },
+    poke: function () { watch(); },
+    on: function () { return document.documentElement.classList.contains('hemma-hv'); }
+  };
+  // A card that drew before this script arrived left its style here; nothing else would apply it until that card drew again.
+  if (window._hemmaHVPending) { try { window._hemmaHV.set.apply(window._hemmaHV, window._hemmaHVPending); } catch (e) {} window._hemmaHVPending = null; }
+})();
+
 
 // ── Number and money formatting ──────────────────────────────────────────────
 (function () {
@@ -562,6 +990,65 @@ window.hemmaMenuGlass = {
     return s;
   };
   // Reads through button-card's `states` so the title re-renders with the clock and the person.
+  // One weather line for Minimal's headers: temperature, condition, today's high and low (fetched every half hour) and the icon file.
+  var WXC = {};
+  var WXF = { sunny: 'clear-day', 'clear-night': 'clear-night', partlycloudy: 'partly-cloudy-day', cloudy: 'cloudy', overcast: 'cloudy', rainy: 'rain', pouring: 'rain-heavy', snowy: 'snow', 'snowy-rainy': 'weather-mixed', hail: 'rain-heavy', lightning: 'thunder', 'lightning-rainy': 'lightning-rainy', fog: 'fog', windy: 'wind', 'windy-variant': 'wind', exceptional: 'weather-mixed' };
+  var WXI = {};
+  window.hemmaWxFit = function (img, ref) {
+    var src = img && (img.currentSrc || img.src);
+    if (!src || !ref || !ref.nodeType) return;
+    var go = function (q) {
+      if (!q || !img.isConnected || !ref.isConnected) return;
+      var cs = getComputedStyle(ref), c = document.createElement('canvas').getContext('2d');
+      c.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+      var m = c.measureText('0'), asc = m.fontBoundingBoxAscent, capA = m.actualBoundingBoxAscent;
+      if (!asc || !capA) return;
+      var g = document.createRange();
+      g.selectNodeContents(ref);
+      var base = g.getBoundingClientRect().top + asc, h = capA / q.h;
+      img.style.height = h.toFixed(1) + 'px';
+      img.style.width = (h * q.ar).toFixed(1) + 'px';
+      img.style.objectFit = 'contain';
+      img.style.transform = 'none';
+      var r = img.getBoundingClientRect(), inkTop = r.top + q.y * h;
+      img.style.transform = 'translateY(' + (base - capA - inkTop).toFixed(1) + 'px)';
+    };
+    if (!WXI[src]) WXI[src] = new Promise(function (res) {
+      var im = new Image();
+      im.onerror = function () { res(null); };
+      im.onload = function () {
+        try {
+          var W = 160, ar = (im.naturalWidth || 1) / (im.naturalHeight || 1), H = Math.round(W / ar), cv = document.createElement('canvas');
+          cv.width = W; cv.height = H;
+          var x = cv.getContext('2d');
+          x.drawImage(im, 0, 0, W, H);
+          var d = x.getImageData(0, 0, W, H).data, y0 = H, y1 = -1;
+          for (var yy = 0; yy < H; yy++) for (var xx = 0; xx < W; xx++) if (d[(yy * W + xx) * 4 + 3] > 30) { if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
+          res(y1 < 0 ? null : { y: y0 / H, h: (y1 - y0 + 1) / H, ar: ar });
+        } catch (e) { res(null); }
+      };
+      im.src = src;
+    });
+    WXI[src].then(function (q) { requestAnimationFrame(function () { go(q); }); });
+  };
+  window.hemmaWxLine = function (hass, wid, tid) {
+    var S = (hass && hass.states) || {}, w = wid && S[wid];
+    if (!w) return null;
+    var t = tid && S[tid] ? Number(S[tid].state) : NaN;
+    if (!isFinite(t)) t = Number((w.attributes || {}).temperature);
+    if (!isFinite(t)) return null;
+    var c = WXC[wid];
+    if (hass.connection && (!c || Date.now() - c.at > 1800000)) {
+      var next = WXC[wid] = { at: Date.now(), d: c ? c.d : null };
+      hass.connection.sendMessagePromise({ type: 'call_service', domain: 'weather', service: 'get_forecasts', service_data: { type: 'daily' }, target: { entity_id: wid }, return_response: true })
+        .then(function (r) { var f = (((r && r.response) || {})[wid] || {}).forecast; next.d = f && f[0]; window.dispatchEvent(new Event('hemma-wx-fc')); }).catch(function () {});
+      c = next;
+    }
+    var d = c && c.d, cond = w.state;
+    try { if (hass.formatEntityState) cond = hass.formatEntityState(w); } catch (e) {}
+    return { t: Math.round(t), state: w.state, cond: cond, file: WXF[w.state] || '',
+      hl: d && d.temperature != null ? 'H:' + Math.round(d.temperature) + '\u00b0 L:' + Math.round(d.templow != null ? d.templow : d.temperature) + '\u00b0' : '' };
+  };
   window.hemmaGreeting = function (hass, states, variables) {
     return String(greeting(hass, states, variables)).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   };
@@ -777,36 +1264,59 @@ window.hemmaMenuGlass = {
       .some(function (b) { return states[b] && states[b].state === 'on'; });
     return { pct: Math.max(0, Math.min(100, lvl)), charging: plug || (s.attributes && s.attributes.is_charging === true) || (st.indexOf('charging') >= 0 && st.indexOf('not') < 0) };
   };
-  // The same battery with no digits: the level as an inset fill, the bolt beside it while charging.
+  // The status bar's battery (hemmaBatterySvg) without its digits: the same solid body, the bolt cut out of its middle while charging.
+  // The Now Playing tile's cover crossfades between tracks, as the screensaver's does: the old cover stays on top and fades once the new one has decoded.
+  window.hemmaArtXfade = function (el, u, id) {
+    var was = el._npArt;
+    el._npArt = { u: u, id: id };
+    if (!was || !was.u || !u || was.id === id || was.u === u || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var box = el.shadowRoot && el.shadowRoot.querySelector('.np-art-img');
+    if (!box) return;
+    box.querySelectorAll('i.np-xf').forEach(function (n) { n.remove(); });
+    var o = document.createElement('i');
+    o.className = 'np-xf';
+    o.style.cssText = 'position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:center / cover no-repeat;background-image:url("' + String(was.u).replace(/"/g, '%22') + '")';
+    box.appendChild(o);
+    var go = function () {
+      var a = o.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, easing: 'ease-in-out', fill: 'forwards' });
+      a.finished.then(function () { o.remove(); }, function () { o.remove(); });
+    };
+    var im = new Image();
+    im.onload = im.onerror = function () { requestAnimationFrame(go); };
+    im.src = u;
+  };
   window.hemmaBatteryGlyph = function (pct, charging) {
-    var fill = charging ? '#34C759' : (pct <= 20 ? '#FF3B30' : '#fff');
-    var w = Math.max(1.5, 20.5 * pct / 100).toFixed(2);
-    return '<svg viewBox="0 0 27.3 13" width="29.4" height="14" aria-hidden="true">'
-      + '<rect x=".5" y=".5" width="23.5" height="12" rx="3.8" fill="none" stroke="rgba(255,255,255,0.38)"/>'
-      + '<rect x="2" y="2" width="' + w + '" height="9" rx="2.2" fill="' + fill + '"/>'
-      + '<rect x="25.4" y="4.3" width="1.9" height="4.4" rx="0.95" fill="rgba(255,255,255,0.4)"/></svg>';
+    var p = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
+    var fill = charging ? 'var(--hv-batt-chg, #34C759)' : (p <= 20 ? '#FF3B30' : 'var(--hv-batt-fill, #fff)');
+    var u = 'g' + p + (charging ? 'c' : '');
+    var BOLT = 'M14.69 0.15 7.48 7.15H12.25L10.48 12.95 17.55 5.65H12.8z';
+    var bolt = charging ? '<path d="' + BOLT + '" style="fill:none;stroke:var(--hv-batt-bolt-edge, rgba(0,0,0,0.55));stroke-width:1.35;stroke-linejoin:round"/>'
+      + '<path d="' + BOLT + '" style="fill:var(--hv-batt-bolt, #fff);stroke:var(--hv-batt-bolt, #fff);stroke-width:0.35;stroke-linejoin:round"/>' : '';
+    return '<svg viewBox="0 0 28.66 13" width="30.86" height="14" aria-hidden="true"><defs><clipPath id="hgc' + u + '"><rect width="25.6" height="13" rx="3.8"/></clipPath></defs>'
+      + '<g clip-path="url(#hgc' + u + ')"><rect width="25.6" height="13" style="fill:var(--hv-batt-track, rgba(255,255,255,0.36))"/><rect width="' + (25.6 * p / 100).toFixed(2) + '" height="13" style="fill:' + fill + '"/>' + bolt + '</g>'
+      + '<path d="M26.8 4.05a1.86 2.45 0 0 1 0 4.9z" style="fill:var(--hv-batt-track, rgba(255,255,255,0.4))"/></svg>';
   };
   window.hemmaBatterySvg = function (states, id) {
     var info = window.hemmaBatteryInfo(states, id);
     if (!info) return '';
     var pct = info.pct, charging = info.charging;
-    var fill = charging ? '#34C759' : (pct <= 20 ? '#FF3B30' : '#fff');
-    var w = (24.5 * pct / 100).toFixed(2);
+    var fill = charging ? '#34C759' : (pct <= 20 ? '#FF3B30' : 'var(--hv-sb-fill, #fff)');
+    var w = (25.6 * pct / 100).toFixed(2);
     // As iOS draws it: the bolt is cut out of the body beside the digits, which move left to make room.
-    var bolt = charging ? '<path d="M20.9 2.4 17.6 7.3h2.2l-.8 3.9 3.3-5.1h-2.2z" fill="#000"/>' : '';
-    var vw = 27.3;
-    var tx = charging ? (pct >= 100 ? 9.4 : 10.2) : 12.25;
+    var bolt = charging ? '<path d="M22.1 2.4 18.8 7.3h2.2l-.8 3.9 3.3-5.1h-2.2z" fill="#000"/>' : '';
+    var vw = 28.66;
+    var tx = charging ? (pct >= 100 ? 10 : 10.8) : 12.6;
     var fs = charging && pct >= 100 ? 9.4 : 11.4;
     var u = pct + (charging ? 'c' : '');
-    return '<svg viewBox="0 0 ' + vw + ' 13" width="' + (vw * 14 / 13).toFixed(2) + '" height="14" aria-label="' + pct + '%">'
-      + '<defs><clipPath id="hbc' + u + '"><rect x="0" y="0" width="24.5" height="13" rx="4.2"/></clipPath>'
-      + '<mask id="hbm' + u + '"><rect width="34" height="13" fill="#fff"/>'
+    return '<svg viewBox="0 0 ' + vw + ' 13" width="' + vw + '" height="13" aria-label="' + pct + '%">'
+      + '<defs><clipPath id="hbc' + u + '"><rect x="0" y="0" width="25.6" height="13" rx="3.8"/></clipPath>'
+      + '<mask id="hbm' + u + '"><rect width="36" height="13" fill="#fff"/>'
       + '<text x="' + tx + '" y="10.6" text-anchor="middle" font-size="' + fs + '" font-weight="700" letter-spacing="-0.3"'
       + ' font-family="-apple-system, SF Pro Rounded, system-ui, sans-serif" fill="#000">' + pct + '</text>' + bolt + '</mask></defs>'
       + '<g mask="url(#hbm' + u + ')" clip-path="url(#hbc' + u + ')">'
-      + '<rect x="0" y="0" width="24.5" height="13" fill="rgba(255,255,255,0.36)"/>'
-      + '<rect x="0" y="0" width="' + w + '" height="13" fill="' + fill + '"/></g>'
-      + '<rect x="25.4" y="4.3" width="1.9" height="4.4" rx="0.95" fill="rgba(255,255,255,0.4)"/></svg>';
+      + '<rect x="0" y="0" width="25.6" height="13" style="fill:var(--hv-sb-track, rgba(255,255,255,0.5))"/>'
+      + '<rect x="0" y="0" width="' + w + '" height="13" style="fill:' + fill + '"/></g>'
+      + '<path d="M26.8 4.05a1.86 2.45 0 0 1 0 4.9z" style="fill:var(--hv-sb-track, rgba(255,255,255,0.5))"/></svg>';
   };
   window.hemmaWx = function (variables, which) {
     var v = variables || {};
@@ -1595,6 +2105,7 @@ window.hemmaMenuGlass = {
   // Memoized per render pass, so each consumer reuses one sweep.
   if (typeof window._hemmaNP !== 'function') {
     window._hemmaNP = function (states, V) {
+      if (V) window._hemmaLastNPV = V;
       const artSig = (u) => {
         const t = String(u || '');
         const q = t.indexOf('?');
@@ -1713,7 +2224,7 @@ window.hemmaMenuGlass = {
 
         const filter = states?.['input_select.hemma_mobile_filter']?.state ?? 'all';
         const inColumn = filter === 'media';
-        const usesPeek = !inColumn && activeCount > 1;
+        const usesPeek = !inColumn && activeCount > 1 && filter !== 'all';
 
         const gutters = '(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + var(--hemma-rail-left, 16px))';
         const activeW = usesPeek
@@ -1986,14 +2497,8 @@ window.hemmaMenuGlass = {
           if (S.exits.length) {
             const due = Math.min.apply(null, S.exits.map((e) => e.at + (liveKeys.length ? EXIT_MS : LAST_EXIT_MS)));
             const delay = Math.max(30, (due - Date.now()) + 40);
-            if (window._hemmaNPDebug === true) {
-              console.log('%c[NP release scheduled]', 'color:#fa0', delay + 'ms');
-            }
             S.timer = setTimeout(() => {
               forceRender();
-              if (window._hemmaNPDebug === true) {
-                console.log('%c[NP release fired]', 'color:#fa0');
-              }
             }, delay);
           }
         }
@@ -2779,8 +3284,35 @@ window.hemmaMenuGlass = {
   if (!document.getElementById('hemma-tablet-dialog-css')) {
     const el = document.createElement('style');
     el.id = 'hemma-tablet-dialog-css';
-    el.textContent = '@media (hover: none) and (pointer: coarse) and (min-width: 768px) and (min-height: 501px) {'
+    el.textContent = '@media (pointer: coarse) and (min-width: 768px) and (min-height: 501px), (hover: none) and (min-width: 768px) and (min-height: 501px) {'
       + ' body { --dialog-surface-margin-top: initial; } }';
+    document.head.appendChild(el);
+  }
+
+  // Safari's gray tap box over HA's switches and rows; it is inherited, so one rule reaches every dialog's shadow tree.
+  if (!document.getElementById('hemma-tap-css')) {
+    const el = document.createElement('style');
+    el.id = 'hemma-tap-css';
+    // The theme's clear divider color also cleared HA's form field outlines, which then showed only on hover.
+    el.textContent = 'html { -webkit-tap-highlight-color: transparent; --ha-color-border-neutral-quiet: rgba(255,255,255,0.3) !important; }'
+      + 'html.hemma-hv.hv-light { --ha-color-border-neutral-quiet: rgba(0,0,0,0.18) !important; }';
+    document.head.appendChild(el);
+  }
+
+  // Glass Focus on Mac and iPad: the softened photo carries the blur, so the card adds none and no flat tint; Overview copies the card's recipe and keeps its own.
+  if (!document.getElementById('hemma-glass-look-css')) {
+    const el = document.createElement('style');
+    el.id = 'hemma-glass-look-css';
+    el.textContent = '@media (min-width: 768px) and (min-height: 501px) { html:not(.hemma-hv):not(.hv-ov) { --hero-tint: transparent !important; --hemma-hv-blur: 0px;'
+      + ' --hemma-glass-wash-day: radial-gradient(70% 55% at 0% 58%, rgba(30,30,32,0.42) 0%, rgba(30,30,32,0.18) 50%, rgba(30,30,32,0) 80%), linear-gradient(to bottom, rgba(30,30,32,0.22) 0%, rgba(30,30,32,0) 15%), radial-gradient(70% 60% at 88% 6%, rgba(255,252,246,0.20) 0%, rgba(255,252,246,0) 65%), linear-gradient(to top, rgba(250,247,242,0.30) 0%, rgba(250,247,242,0.14) 22%, rgba(250,247,242,0) 45%);'
+      + ' --hemma-glass-wash-night: radial-gradient(70% 55% at 0% 58%, rgba(20,19,18,0.50) 0%, rgba(20,19,18,0.22) 50%, rgba(20,19,18,0) 80%), linear-gradient(to bottom, rgba(20,19,18,0.28) 0%, rgba(20,19,18,0) 15%), radial-gradient(70% 60% at 88% 6%, rgba(255,236,214,0.12) 0%, rgba(255,236,214,0) 65%), linear-gradient(to top, rgba(255,236,214,0.18) 0%, rgba(255,236,214,0.08) 22%, rgba(255,236,214,0) 45%), linear-gradient(rgba(20,19,18,0.08), rgba(20,19,18,0.08)), linear-gradient(rgba(255,255,255,0.06), rgba(255,255,255,0.06)); } }';
+    document.head.appendChild(el);
+  }
+  // Glass with dark text by day: light glass, dark ink.
+  if (!document.getElementById('hemma-glass-ink-css')) {
+    const el = document.createElement('style');
+    el.id = 'hemma-glass-ink-css';
+    el.textContent = '@media (min-width: 768px) and (min-height: 501px) { html.hg-ink-d:not(.hemma-hv) { --hemma-glass-wash-day: linear-gradient(to bottom, rgba(250,248,244,0.34) 0%, rgba(250,248,244,0.16) 45%, rgba(250,248,244,0.26) 100%) !important; --hv-wx-filter: brightness(0) opacity(0.82); --hemma-hero-ink: #111; --hv-ink: #111; --hv-sub: rgba(0,0,0,0.55); --hv-np-ink: #fff; --hemma-badge-bg: rgba(255,255,255,0.72); --badge-blur: 20px; --hemma-badge-title-color: #111; --hemma-badge-sub-color: rgba(0,0,0,0.58); --badge-title-inactive: rgba(0,0,0,0.62) !important; --hemma-badge-tone-yellow: #D99A00; --hemma-badge-climate-color: #0096B4 !important; --hemma-badge-temp-very-cold-color: #3A6FE0 !important; --hemma-badge-temp-cool-color: #0096B4 !important; --hemma-badge-temp-comfortable-color: #1E9E45 !important; --hemma-badge-temp-warm-color: #D99A00 !important; --hemma-badge-temp-hot-color: #E07400 !important; --hemma-badge-temp-very-hot-color: #E0353A !important; --hemma-badge-presence-home-color: #1E9E45 !important; --hemma-badge-presence-away-color: #D99A00 !important; --hemma-badge-security-color: #00969F !important; --hemma-badge-energy-color: #1E9E45 !important; --hemma-badge-energy-low-color: #1E9E45 !important; --hemma-badge-energy-medium-color: #D99A00 !important; --hemma-badge-energy-high-color: #E07400 !important; --hemma-badge-energy-very-high-color: #E0353A !important; --hv-tab-fill: rgba(255,255,255,0.55); --hv-nav-active: rgba(255,255,255,0.88); --hemma-nav-label-color: #111; --hemma-pill-fill: rgba(255,255,255,0.55) !important; --hemma-pill-divider: rgba(0,0,0,0.16) !important; --hemma-chrome-ink: #111; --hemma-status-shadow: none; --hv-sb-fill: #111; --hv-sb-track: rgba(0,0,0,0.32); --hemma-bell-filter: brightness(0) opacity(0.82); --hemma-assist-filter: brightness(0) opacity(0.82); --hemma-settings-ink: rgba(28,28,30,0.82); --hemma-entity-background: rgba(255,255,255,0.42) !important; --hemma-entity-name: rgba(0,0,0,0.85) !important; --hemma-entity-state: rgba(0,0,0,0.55) !important; --hemma-icon-circle-bg: rgba(0,0,0,0.08) !important; --hv-icon-off: rgba(0,0,0,0.62); --hv-icon-off-light: rgba(0,0,0,0.62); --hemma-icon-inactive-fallback-color: rgba(0,0,0,0.62) !important; --hemma-scene-name-off: rgba(0,0,0,0.85); --hemma-scene-icon-off: rgba(0,0,0,0.08); --hv-side-fill: rgba(255,255,255,0.55); --hv-side-on: rgba(255,255,255,0.7); } html:not(.hemma-hv):not(.hg-ink-d) { --hemma-badge-bg: rgba(0,0,0,0.30); --badge-blur: 20px; --hemma-badge-tone-yellow: #F8D849; --hemma-badge-climate-color: #6DD0F9 !important; --hemma-badge-temp-very-cold-color: #7DA8FF !important; --hemma-badge-temp-cool-color: #6DD0F9 !important; --hemma-badge-temp-comfortable-color: #65DB7C !important; --hemma-badge-temp-warm-color: #F8D849 !important; --hemma-badge-temp-hot-color: #FFA552 !important; --hemma-badge-temp-very-hot-color: #FF6961 !important; --hemma-badge-presence-home-color: #65DB7C !important; --hemma-badge-presence-away-color: #F8D849 !important; --hemma-badge-security-color: #63D7C3 !important; --hemma-badge-energy-color: #65DB7C !important; --hemma-badge-energy-low-color: #65DB7C !important; --hemma-badge-energy-medium-color: #F8D849 !important; --hemma-badge-energy-high-color: #FFA552 !important; --hemma-badge-energy-very-high-color: #FF6961 !important; } }';
     document.head.appendChild(el);
   }
 
@@ -2788,7 +3320,7 @@ window.hemmaMenuGlass = {
   if (!document.getElementById('hemma-tablet-pill-css')) {
     const el = document.createElement('style');
     el.id = 'hemma-tablet-pill-css';
-    el.textContent = '@media (hover: none) and (pointer: coarse) and (min-width: 768px) and (min-height: 501px) { body {'
+    el.textContent = '@media (pointer: coarse) and (min-width: 768px) and (min-height: 501px), (hover: none) and (min-width: 768px) and (min-height: 501px) { html:not(.hemma-hv) body {'
       + ' --hemma-pill-highlight: brightness(1.5);'
       + ' --hemma-pill-rim: inset 0 0.5px 0 rgba(255,255,255,0.14), inset 0 -0.5px 0 rgba(255,255,255,0.14),'
       + ' inset 0 3px 4px -3px rgba(255,255,255,0.18), inset 0 -3px 4px -3px rgba(255,255,255,0.13); } }';
@@ -2862,7 +3394,7 @@ window.hemmaMenuGlass = {
     + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.45" y="1.45" width="21.1" height="16.1" rx="4.4"/>'
     + '<path d="M8.6 1.45v16.1"/></svg>';
 
-  // Will's Apple glyphs from hemma-icons.js when loaded, else the drawn fallback.
+  // Hemma's glyphs from hemma-icons.js when loaded, else the drawn fallback.
   const navGlyph = (name, fallback) => {
     const d = (window.HEMMA_ICONS && (window.HEMMA_ICONS[name] || (name === 'navbar' && window.HEMMA_ICONS.sidebar)))
       || (/^[a-z0-9_-]+$/.test(String(name || '')) ? '/hemma_assets/icons/' + name + '.svg' : null);
@@ -2871,10 +3403,78 @@ window.hemmaMenuGlass = {
 
   const FX_EASE = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
   const FX_SPRING = 'cubic-bezier(0.32, 0.72, 0, 1)';
+  const CAT_CHEV = '<span></span><svg viewBox="0 0 9 15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 7.5 1.5 13.5"/></svg>';
   // Opacity below 1 makes an element the backdrop root of everything inside it, so glass would blur nothing.
   const FX_TEXT = (el) => el.id === 'name' || el.id === 'temperature';
   // The gap between the open sidebar and the content, on the dashboard and on category pages alike.
 
+  // Shared by the Mac and iPad navigation bar and the phone's Energy card.
+  const ENERGY_CSS = `
+          .cat-en {
+            border-radius: 26px; padding: 16px 18px 14px; background: rgba(12, 14, 19, 0.62);
+            -webkit-backdrop-filter: var(--hemma-perf-none, blur(24px) saturate(1.8)); backdrop-filter: var(--hemma-perf-none, blur(24px) saturate(1.8));
+            box-shadow: 0 18px 40px -22px rgba(0, 0, 0, 0.50);
+          }
+          .cat-cards.en-row { align-items: stretch; grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr)); max-width: 1250px; }
+          .cat-en { position: relative; padding: 18px 22px 16px; display: flex; flex-direction: column; min-width: 0; }
+          .cat-en .k { font-size: 13px; font-weight: 600; color: rgba(235, 235, 245, 0.6); letter-spacing: 0.02em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; height: 22px; }
+          .cat-en .k .all { display: none; align-items: center; gap: 6px; border: 0; background: rgba(255, 255, 255, 0.14); color: #fff; font: inherit; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; padding: 5px 12px 5px 10px; margin-block: -8px; border-radius: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+          @media (pointer: coarse) { .cat-en .k { height: 40px; margin-bottom: 10px; } .cat-en .k .all { font-size: 15px; padding: 8px 15px 8px 13px; margin-block: 0; border-radius: 999px; } }
+          .cat-en .k .all::before { content: ""; width: 7px; height: 12px; background: currentColor;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 14'%3E%3Cpath d='M6.5 1.5 1.5 7l5 5.5' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 14'%3E%3Cpath d='M6.5 1.5 1.5 7l5 5.5' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; }
+          .cat-en.f .k .all { display: inline-flex; margin-left: auto; }
+          .cat-en .big { font-size: 34px; font-weight: 600; line-height: 1.1; margin-top: 4px; font-variant-numeric: tabular-nums; }
+          .cat-en .big small { font-size: 20px; color: rgba(235, 235, 245, 0.6); margin-left: 4px; }
+          .cat-en .sub { font-size: 15px; color: rgba(235, 235, 245, 0.6); margin-bottom: 10px; }
+          .cat-en .seg { position: relative; display: flex; padding: 2px; border-radius: 999px; background: rgba(118, 118, 128, 0.24); margin-bottom: 14px; }
+          .cat-en .seg button { flex: 1; }
+          .cat-en .seg .sth { position: absolute; top: 2px; left: 2px; width: 0; height: calc(100% - 4px); border-radius: 999px; background: rgba(255, 255, 255, 0.22); pointer-events: none; transform-origin: center; }
+          .cat-en .seg button { position: relative; z-index: 1; border: 0; background: none; color: rgba(255, 255, 255, 0.72); font: inherit; font-size: 13px; font-weight: 600; padding: 4px 12px; border-radius: 999px; cursor: pointer; transition: color .22s ease; -webkit-tap-highlight-color: transparent; }
+          .cat-en .seg button[aria-pressed="true"] { color: #fff; }
+          @media (pointer: coarse) { .cat-en .seg button { font-size: 14px; padding: 7px 14px; } }
+          .cat-en svg { display: block; overflow: visible; touch-action: pan-y; }
+          .cat-en .lgs { display: grid; grid-template-columns: repeat(var(--lgc, 3), minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+          .cat-en .lg { flex: 1 1 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; text-align: left; border: 0; font: inherit; font-size: 14px; font-weight: 500; padding: 7px 14px; border-radius: 17px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; background: rgba(255, 255, 255, 0.08); color: var(--c); cursor: pointer;
+            transition: opacity .3s ease, background-color .3s ease; -webkit-tap-highlight-color: transparent; }
+          @media (pointer: coarse) { .cat-en .lg { font-size: 15px; padding: 10px 16px; border-radius: 21px; } .cat-en .lgs { gap: 8px; } }
+          .cat-en .lg span { white-space: nowrap; }
+          .cat-en .lg b { flex: none; color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 4px; }
+          .cat-en.f .lg:not(.on) { opacity: 0.38; }
+          .cat-en .lg.on { background: color-mix(in srgb, var(--c) 26%, transparent); }
+          .cat-en .dvs { display: flex; flex-direction: column; flex: 1; justify-content: flex-start; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; margin: 0 -14px; }
+          .cat-en .dvs::-webkit-scrollbar { display: none; }
+          .cat-en .dvs.few { justify-content: flex-start; }
+          .cat-en .dv { position: relative; flex: none; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; column-gap: 12px; align-items: center; padding: 12px 14px 14px; border: 0; border-radius: 16px; background: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+            color: #fff; font: inherit; text-align: left; cursor: pointer; transition: opacity .3s ease, background-color .3s ease; -webkit-tap-highlight-color: transparent; }
+          .cat-en .dv + .dv::before { content: ""; position: absolute; left: 14px; right: 14px; top: 0; border-top: 0.5px solid rgba(255, 255, 255, 0.12); }
+          .cat-en .dv.on::before, .cat-en .dv.on + .dv::before { display: none; }
+          .cat-en.f .dv:not(.on) { opacity: 0.38; }
+          .cat-en .dv.on { background: rgba(255, 255, 255, 0.08); }
+          :host(.hv) .cat-en { background: var(--hv-en-card); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; color: var(--hv-en-ink); }
+          :host(.hv) .cat-en :is(.k, .sub, .big small, .hv, .pc, .foot) { color: var(--hv-en-sub); }
+          :host(.hv) .cat-en :is(.big, .dv, .lg b, .seg button[aria-pressed="true"]) { color: var(--hv-en-ink); }
+          :host(.hv) .cat-en .seg button { color: var(--hv-en-sub); }
+          :host(.hv) .cat-en :is(.seg, .k .all, .lg:not(.on), .hbar) { background: var(--hv-en-seg); }
+          :host(.hv) .cat-en .k .all { color: var(--hv-en-ink); }
+          :host(.hv) .cat-en .seg .sth { background: var(--hv-en-sth); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+          :host(.hv) .cat-en .dv + .dv::before { border-top-color: var(--hv-en-line); }
+          :host(.hv) .cat-en .dv.on { background: var(--hv-en-hi); }
+          :host(.hv) .cat-en .lg span { color: var(--hv-en-ink) !important; display: inline-flex; align-items: center; gap: 7px; }
+          :host(.hv) .cat-en .lg span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+          :host(.hv) .cat-en svg line[stroke^="rgba(255"] { stroke: var(--hv-en-grid); }
+          :host(.hv) .cat-en svg text[fill^="rgba(235"] { fill: var(--hv-en-sub); }
+          .cat-en .ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; }
+          .cat-en .ic i { width: 19px; height: 19px; background: #fff; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+          .cat-en .hn { font-size: 16px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .cat-en .hv { font-size: 15px; color: rgba(235, 235, 245, 0.6); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+          .cat-en .pc { font-size: 12px; color: rgba(235, 235, 245, 0.45); margin-left: 6px; }
+          .cat-en .hbar { grid-column: 2 / 4; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; margin-top: 6px; }
+          .cat-en .hbar i { display: block; height: 100%; border-radius: 3px; }
+          .cat-en .split { height: 10px; border-radius: 5px; display: flex; gap: 2px; overflow: hidden; margin-top: 12px; flex: none; }
+          .cat-en .split i { cursor: pointer; transition: opacity .3s ease; min-width: 2px; }
+          .cat-en .foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 13px; color: rgba(235, 235, 245, 0.6); }
+  `;
   class HemmaNavBar extends HTMLElement {
     constructor() {
       super();
@@ -2887,6 +3487,7 @@ window.hemmaMenuGlass = {
       this._path    = normalize(location.pathname);
       this._menu    = null;
       this._onRoute  = () => this._syncRoute();
+      this._onContentLeft = () => { this._pushEdge = null; if (this._sideOpen) this._pushView(true, true); else this._placeClock(0); };
       this._onResize = () => {
         this._fold(); this._syncHeaderOffset(); this._placeIndicator(true);
         this._pushEdge = null;
@@ -2896,12 +3497,12 @@ window.hemmaMenuGlass = {
         this._syncCatPush();
         setTimeout(() => this._fitNP(), 450);
         clearTimeout(this._repaintT);
-        this._repaintT = setTimeout(() => this._repaintPhotos(), 400);
+        this._repaintT = setTimeout(() => { this._repaintPhotos(); this._bgSync(); }, 400);
       };
       this._onVis = () => {
         if (document.hidden) return;
         // Again once a room Return to Home switched to while asleep has drawn and its photo settled.
-        [300, 1200, 2500].forEach((t) => setTimeout(() => this._repaintPhotos(), t));
+        [300, 1200, 2500].forEach((t) => setTimeout(() => { this._repaintPhotos(); this._bgRenew(); }, t));
       };
     }
 
@@ -2949,6 +3550,9 @@ window.hemmaMenuGlass = {
 
     set hass(hass) {
       this._hass = hass;
+      this._keepSources(hass);
+      const dark = hass.themes && hass.themes.darkMode;
+      if (dark !== this._bgDark) { this._bgDark = dark; if (this._bg) this._bgSync(true); }
       if (!this._built) return;
       const vh = this._vh && this._vh.isConnected ? this._vh : null;
       if (vh && vh.style.userSelect !== 'none') {
@@ -2971,8 +3575,22 @@ window.hemmaMenuGlass = {
         const tint = this._statusVars().sidebar_icon_color || '';
         if (tint !== this._sideTint) {
           this._sideTint = tint;
+          document.documentElement.toggleAttribute('data-hv-album-accent', tint.indexOf('hv-album-accent') >= 0);
+          if (window._hemmaHV && window._hemmaHV.poke) window._hemmaHV.poke();
           if (tint) this.style.setProperty('--hemma-sidebar-icon', tint);
           else this.style.removeProperty('--hemma-sidebar-icon');
+        }
+        const hvOn = document.documentElement.classList.contains('hemma-hv');
+        if (hvOn !== this.classList.contains('hv')) { this.classList.toggle('hv', hvOn); requestAnimationFrame(() => this._hvWx()); }
+        const hc = document.documentElement.classList;
+        const hvPhoto = hvOn && !hc.contains('hv-bd-gradient') && !hc.contains('hv-bd-color') && (window.innerWidth || 0) >= 768 && (window.innerHeight || 0) > 500;
+        if (hvPhoto !== this.classList.contains('hvp')) { this.classList.toggle('hvp', hvPhoto); this._bgSync(); }
+        // Minimal's icons follow the text unless a color is chosen, as HomeView's do.
+        const hvIcon = !tint && document.documentElement.classList.contains('hemma-hv');
+        if (hvIcon !== !!this._sideHv) {
+          this._sideHv = hvIcon;
+          if (hvIcon) this.style.setProperty('--hemma-sidebar-icon', 'currentColor');
+          else if (!tint) this.style.removeProperty('--hemma-sidebar-icon');
         }
       }
       this._syncBadges();
@@ -3004,6 +3622,7 @@ window.hemmaMenuGlass = {
       window.addEventListener('location-changed', this._onRoute, true);
       window.addEventListener('popstate', this._onRoute, true);
       window.addEventListener('resize', this._onResize);
+      window.addEventListener('hemma-content-left', this._onContentLeft);
       document.addEventListener('visibilitychange', this._onVis);
       window.addEventListener('pageshow', this._onVis);
       window.addEventListener('focus', this._onVis);
@@ -3028,6 +3647,7 @@ window.hemmaMenuGlass = {
       window.removeEventListener('location-changed', this._onRoute, true);
       window.removeEventListener('popstate', this._onRoute, true);
       window.removeEventListener('resize', this._onResize);
+      window.removeEventListener('hemma-content-left', this._onContentLeft);
       document.removeEventListener('visibilitychange', this._onVis);
       window.removeEventListener('pageshow', this._onVis);
       window.removeEventListener('focus', this._onVis);
@@ -3070,12 +3690,10 @@ window.hemmaMenuGlass = {
       const glass = document.createElement('div');
       glass.className = 'glass';
       bar.appendChild(glass);
-      if (this._variant === 'tablet') {
-        const rim = document.createElement('div');
-        rim.className = 'rim';
-        bar.appendChild(rim);
-        bar.appendChild(Object.assign(document.createElement('div'), { className: 'rim-in' }));
-      }
+      const rim = document.createElement('div');
+      rim.className = 'rim';
+      bar.appendChild(rim);
+      bar.appendChild(Object.assign(document.createElement('div'), { className: 'rim-in' }));
       const scroller = document.createElement('div');
       scroller.className = 'scroller';
       bar.appendChild(scroller);
@@ -3271,9 +3889,20 @@ window.hemmaMenuGlass = {
         + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.4 1.6 1.8 10l8.6 8.4"/></svg>';
       back.addEventListener('click', (e) => {
         e.stopPropagation();
+        this._backGone = true;
+        back.classList.remove('on');
+        back.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+        if (this._cat === 'home' && this._roomBack()) {
+          const home = (this._sideRooms || []).find((r) => r.idx === 0);
+          this._popNext = true;
+          if (home) home.btn.click(); else if (this._els[0]) this._activate(this._els[0].route, this._els[0].btn);
+          this._popNext = false;
+          return;
+        }
         this._closeCat();
       });
       this._bloom(back);
+      this._onPress(back);
       this.shadowRoot.appendChild(back);
       this._sideBack = back;
       this._side = side;
@@ -3379,7 +4008,23 @@ window.hemmaMenuGlass = {
         b._motion = m;
       }
       b.addEventListener('click', (e) => { e.stopPropagation(); onTap(b); });
+      this._onPress(b);
       return b;
+    }
+
+    // A Mac sidebar and its back button act on the mouse going down, as the Mac's own do; the click that follows on release is swallowed.
+    // That puts the press itself (about 100ms) toward the work a page change costs before it can move. Touch and keys keep the click.
+    _onPress(el) {
+      el.addEventListener('pointerdown', (e) => {
+        if (e.pointerType !== 'mouse' || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        e.preventDefault();
+        el._pressed = performance.now();
+        el.click();
+        el._pressed = performance.now();
+      });
+      el.addEventListener('click', (e) => {
+        if (el._pressed && e.isTrusted && performance.now() - el._pressed < 1500) { el._pressed = 0; e.stopImmediatePropagation(); e.preventDefault(); }
+      }, true);
     }
 
     _sideSection(list, key, text) {
@@ -3409,10 +4054,12 @@ window.hemmaMenuGlass = {
         if (!g.animate || from === to || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
         if (shut) g.classList.remove('shut');
         g.style.overflow = 'clip';
-        const a = g.animate([{ height: from + 'px' }, { height: to + 'px' }],
-          { duration: 260, easing: 'cubic-bezier(.32,.72,0,1)' });
+        // An even ease: a front-loaded curve dropped two thirds of the way in 50ms and then crawled.
+        // The rows fade as they fold, so the moving edge never cuts through them.
+        const a = g.animate([{ height: from + 'px' }, { height: to + 'px' }], { duration: 340, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' });
+        const f = g.animate(shut ? [{ opacity: 1 }, { opacity: 0, offset: 0.6 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 0, offset: 0.25 }, { opacity: 1 }], { duration: 340, easing: 'linear' });
         const done = () => { g.style.overflow = ''; g.classList.toggle('shut', shut); };
-        a.finished.then(done, done);
+        Promise.all([a.finished, f.finished]).then(done, done);
       });
       list.appendChild(h);
       list.appendChild(g);
@@ -3420,13 +4067,24 @@ window.hemmaMenuGlass = {
     }
 
     async _mobileConfig() {
-      if (this._mobCfg && Date.now() - this._mobCfgAt < 60000) return this._mobCfg;
+      // Kept and refreshed behind the scenes: waiting on a connection that is still waking up held the first slide after a pause until it was too late to run.
+      if (this._mobCfg) {
+        if (Date.now() - this._mobCfgAt >= 60000 && !this._mobCfgBusy) {
+          this._mobCfgBusy = true;
+          this._mobileFetch().finally(() => { this._mobCfgBusy = false; });
+        }
+        return this._mobCfg;
+      }
+      return this._mobileFetch();
+    }
+
+    async _mobileFetch() {
       const seg = String(location.pathname.split('/')[1] || '');
       const path = seg.replace(/[-_]mobile$/i, '') + '-mobile';
       let cfg = null;
       try { cfg = await this._hass.callWS({ type: 'lovelace/config', url_path: path }); } catch (_) {}
-      this._mobCfg = cfg;
-      this._mobCfgAt = Date.now();
+      // Waking from the background, HA's connection is still coming back and the read fails; that failure is never kept.
+      if (cfg) { this._mobCfg = cfg; this._mobCfgAt = Date.now(); }
       return cfg;
     }
 
@@ -3517,7 +4175,7 @@ window.hemmaMenuGlass = {
       const inner = document.createElement('div');
       inner.className = 'cat-in';
       const title = document.createElement('h1');
-      if (k === 'home') title.textContent = this._baseTitle();
+      if (k === 'home') this._setH1(title, this._baseTitle());
       inner.appendChild(title);
       const pills = document.createElement('div');
       pills.className = 'cat-pills';
@@ -3526,7 +4184,14 @@ window.hemmaMenuGlass = {
       body.className = 'cat-body';
       if (lift) body.style.visibility = 'hidden';
       // Held by opacity, never visibility: visibility is inherited and would hide the tiles from _pageDrawn.
-      if (base === 'still') { inner.style.opacity = '0'; this._bootReveal = inner; }
+      if (base === 'still') {
+        inner.style.opacity = '0';
+        this._bootReveal = inner;
+        // The sidebar waits with the page, so the dashboard appears as one; never longer than the page's own wait allows.
+        this.classList.add('booting');
+        clearTimeout(this._bootT);
+        this._bootT = setTimeout(() => this.classList.remove('booting'), 2500);
+      }
       inner.appendChild(body);
       page.appendChild(veilWrap);
       page.appendChild(inner);
@@ -3539,8 +4204,9 @@ window.hemmaMenuGlass = {
       if (lift) {
         this._glideStart();
         this._fxOut();
-        title.animate([{ transform: 'translateY(24px)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+        this._titleRise = title.animate([{ transform: 'translateY(24px)', opacity: 0 }, { transform: 'none', opacity: 1 }],
           { duration: 520, easing: FX_SPRING, fill: 'backwards' });
+        if (this._sideBack && this._sideBack.animate) this._sideBack.animate([{ translate: '0 24px' }, { translate: '0 0' }], { duration: 520, easing: FX_SPRING, fill: 'backwards' });
       } else if (fade) this._fxOut();
       else this._fxHold('none');
       // HA runs a card's action only when hass-action reaches it from inside the dashboard view, which this layer is not.
@@ -3571,17 +4237,18 @@ window.hemmaMenuGlass = {
           v = v === 'people' ? 'presence' : v === 'room_scenes' ? 'scenes' : v;
           if (v === 'all' || v === 'none') { if (this._cat !== 'home') this._closeCat(); return; }
           if (v !== this._cat) {
-            if (this._baseMode) this._catSwap = 'rise';
+            if (this._baseMode) this._catSwap = this._cat === 'home' ? 'rise' : 'swap';
             this._cat = v; this._markSide(); this._syncBack(); this._fillCat(v);
           }
         });
       }
       if (lift || fade) requestAnimationFrame(() => this._catEls && this._catEls.forEach((n) => n.classList.add('show')));
       else this._catEls.forEach((n) => n.classList.add('show'));
+      this._bgSync();
       await this._fillCat(k);
     }
 
-    // The veil holds no badges (they scroll, as in Apple Home): its height is the stylesheet's.
+    // The veil holds no badges (they scroll): its height is the stylesheet's.
     _sizeVeil() {
       const veil = this._catPage && this._catPage.querySelector('.cat-veil');
       if (veil) veil.style.removeProperty('height');
@@ -3617,6 +4284,7 @@ window.hemmaMenuGlass = {
       box._hemmaN = n;
       // Only a section on screen moves; a page being built or one on the shelf just changes.
       const move = was >= 0 && box.getClientRects().length > 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (n || !move) box.classList.toggle('hv-np', n > 0);
       const h0 = move ? box.getBoundingClientRect().height : 0;
       if (!n && move && h0) {
         // Leaving, the tiles fade, then the section closes and what is below rises into its place.
@@ -3645,14 +4313,21 @@ window.hemmaMenuGlass = {
           out.push(head.animate([{ marginTop: getComputedStyle(head).marginTop }, { marginTop: '0px' }], close));
         }
         out.push(box.animate([{ height: h0 + 'px', marginBottom: '0px' }, { height: '0px', marginBottom: -slack + 'px' }], close));
-        box._npT = setTimeout(() => { if (box._hemmaN === 0) this._npClear(box); }, 480);
+        box._npT = setTimeout(() => { if (box._hemmaN === 0) { this._npClear(box); box.classList.remove('hv-np'); } }, 480);
         return;
       }
       this._npClear(box);
       if (!n) return;
       const h = document.createElement('h2');
-      h.textContent = _hemmaT('now_playing.title', 'Now Playing');
+      const one = box._npHome;
+      if (one && n > 1) {
+        h.className = 'cat-link';
+        h.innerHTML = CAT_CHEV;
+        h.firstChild.textContent = _hemmaT('now_playing.title', 'Now Playing');
+        h.onclick = () => this._openCat('media', null, true);
+      } else h.textContent = _hemmaT('now_playing.title', 'Now Playing');
       box.appendChild(h);
+      if (one) n = 1;
       const row = document.createElement('div');
       row.className = 'cat-np';
       box.appendChild(row);
@@ -3743,7 +4418,7 @@ window.hemmaMenuGlass = {
           const c = i >= was && el.shadowRoot && el.shadowRoot.querySelector('ha-card');
           if (!c) return;
           const enter = { duration: 300, delay: 100 + (i - was) * 40, easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)', fill: 'backwards' };
-          // A fade and a slight settle, as Apple's do; the scale is on the glass itself, which keeps its blur.
+          // A fade and a slight settle; the scale is on the glass itself, which keeps its blur.
           anims.push(...this._npFade(el, c, enter, false));
           anims.push(c.animate([{ transform: 'scale(0.98)' }, { transform: 'none' }], enter));
         });
@@ -3760,6 +4435,8 @@ window.hemmaMenuGlass = {
         return;
       }
       if (this._npBox) this._syncNP();
+      this._hvWxFill();
+      this._hvBadges();
       this._syncBattery();
       this._edgeFade();
       this._npEqual();
@@ -3786,6 +4463,7 @@ window.hemmaMenuGlass = {
       if (!off) { try { off = parseInt(localStorage.getItem('hemma_chip_off_' + this._variant), 10) || 0; } catch (_) { off = 0; } }
       if (off) {
         this._chipOff = off;
+        this._chipOffSet = true;
         ch._hemmaOff = off;
         ch.style.setProperty('--hemma-rail-left', 'calc(var(--cat-gutter, 20px) - ' + off + 'px)');
       } else {
@@ -3827,7 +4505,9 @@ window.hemmaMenuGlass = {
           find(row, 0);
           if (icons.length) {
             const off = Math.round(Math.min(...icons) - row.getBoundingClientRect().left - (parseFloat(getComputedStyle(row).paddingLeft) || 0) + row.scrollLeft);
-            if (off > 0 && off < 40 && off !== ch._hemmaOff) {
+            // Measured while the row is still hidden, then kept: Safari's text can land a pixel either way per room, and a row already showing would twitch sideways.
+            if (off > 0 && off < 40 && off !== ch._hemmaOff && (ch._hemmaHold || !this._chipOffSet)) {
+              this._chipOffSet = true;
               this._chipOff = off;
               ch._hemmaOff = off;
               ch.style.setProperty('--hemma-rail-left', 'calc(var(--cat-gutter, 20px) - ' + off + 'px)');
@@ -3902,6 +4582,9 @@ window.hemmaMenuGlass = {
     async _fillCat(k) {
       const page = this._catPage;
       if (!page) return;
+      if (this._catSwap === 'push') this._holdPane();
+      // A page changed in place still waits for its tiles to pack and draw their icons before it shows.
+      if (!this._catSwap && this._pane && page.contains(this._pane) && this._pane.getClientRects().length) this._catSwap = 'swap';
       const inner = page.querySelector('.cat-in');
       const ICON = { climate: 'fan', lights: 'light', presence: 'person', media: 'media', security: 'lock-fill', energy: 'energy' };
       const COLOR = { climate: 'var(--hemma-badge-climate-color, #00C3D0)', lights: 'var(--hemma-badge-light-color, #FFCC00)',
@@ -3911,20 +4594,42 @@ window.hemmaMenuGlass = {
       const name = (c) => (c === 'scenes' ? _hemmaT('nav.scenes', 'Scenes') : _hemmaT('filter.' + c, EN[c] || c));
       const head1 = k === 'home' ? this._baseTitle() : name(k);
       // A swap shows the new title with its page, not over the page it is leaving.
+      // Sliding, the page being left keeps its own badge or chip row to carry off with it.
+      const slid = this._catSwap === 'push' || this._catSwap === 'pop';
+      if (this._catSwap) this._swapSettle();
+      if (slid) {
+        const keep = (el) => el && el.getClientRects().length && el.offsetHeight ? { el, top: el.offsetTop, left: el.offsetLeft, width: el.offsetWidth, h: el.offsetHeight } : null;
+        this._headWas = { pills: keep(inner.querySelector('.cat-pills')), chips: keep(inner.querySelector('.cat-chipcard')) };
+      }
+      if (slid || this._catSwap === 'rise' || this._catSwap === 'return') {
+        const pin = this._pane && this._pane.getClientRects().length && (this._pane.querySelector('h2, .cat-grid, .cat-scenes') || this._pane);
+        this._prevTop = pin ? { pin, y: pin.getBoundingClientRect().top } : null;
+      }
       if (this._catSwap) this._swapTitle = head1;
-      else inner.querySelector('h1').textContent = head1;
+      else this._setH1(inner.querySelector('h1'), head1);
       page.classList.toggle('scenes', k === 'scenes');
       page.classList.toggle('home', k === 'home');
       const mini = this.shadowRoot.querySelector('.cat-mini');
       if (mini) mini.classList.toggle('home', k === 'home');
-      // Overview on a desktop runs smaller, as Apple Home does on a Mac; the tablet keeps its touch sizes.
+      // Overview on a desktop runs smaller; the tablet keeps its touch sizes.
       page.classList.toggle('compact', this._compact());
       // A room has its sensors where Home has its badges, from the phone's chip row for that room.
-      page.classList.toggle('room', k === 'home' && !!this._catRoom);
-      this._roomKey = k === 'home' && this._catRoom ? 'room_' + String(this._catRoom).trim().toLowerCase().replace(/[^a-z0-9]+/g, '') : null;
+      const roomOn = k === 'home' && !!this._catRoom;
+      this._roomKey = roomOn ? 'room_' + String(this._catRoom).trim().toLowerCase().replace(/[^a-z0-9]+/g, '') : null;
       // The chip row is one card and changes with the room, so it never waits for a slide as the tiles do.
-      this._syncChips();
-      this._catEls[0].classList.toggle('clear', k === 'home');
+      if (slid && !roomOn) this._chipsLater = true;
+      // Sliding, the switch of header row waits for the slide, which first holds the page being left where it is: done now, it dropped that page for a frame.
+      const headRow = () => { page.classList.toggle('room', roomOn); if (!(slid && !roomOn)) this._syncChips(); };
+      if (slid) {
+        this._headLater = headRow;
+        setTimeout(() => { if (this._headLater === headRow) { this._headLater = null; headRow(); } }, 1500);
+      } else headRow();
+      // A category sheet brings its header rows in with its frost (_sheetRun); until then they stay out of sight.
+      if (this._catSwap === 'rise') inner.querySelectorAll(':scope > .cat-chipcard').forEach((el) => { el.style.opacity = '0'; setTimeout(() => el.style.removeProperty('opacity'), 1500); });
+      // A pushed page brings its own background in with it, so the page being left keeps its own until it is covered.
+      this._bgWasClear = this._catEls[0].classList.contains('clear');
+      if (this._catSwap === 'push' || this._catSwap === 'rise' || this._catSwap === 'return') this._clearAfterPush = k === 'home';
+      else this._catEls[0].classList.toggle('clear', k === 'home');
       this._syncChrome();
       this._catEls[2].textContent = this._miniTitle(k, head1);
       const pills = inner.querySelector('.cat-pills');
@@ -3932,6 +4637,14 @@ window.hemmaMenuGlass = {
       const cfg = await this._mobileConfig();
       const helpers = await this._catHelpers();
       if (this._cat !== k || this._catPage !== page) return;
+      // Without the config or HA's card helpers the page would read as empty; it keeps what it shows and tries again.
+      if (!cfg || !helpers) {
+        this._catRetry = (this._catRetry || 0) + 1;
+        clearTimeout(this._catRetryT);
+        if (this._catRetry <= 30) this._catRetryT = setTimeout(() => { if (this._cat === k && this._catPage === page) this._fillCat(k); }, Math.min(5000, 500 * this._catRetry));
+        return;
+      }
+      this._catRetry = 0;
       const head = this._catHeadCards(cfg);
       if (helpers && head.badges && !this._catHead) {
         this._catHead = [];
@@ -3965,6 +4678,7 @@ window.hemmaMenuGlass = {
         if (chips) pills.after(chips);
         if (chips) this._chipInset(chips);
         if (chips && this._catLift) chips.style.visibility = 'hidden';
+        else if (chips && this._catSwap && this._catSwap !== 'swap' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) chips.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280, delay: 260, easing: 'ease-out', fill: 'backwards' });
         this._catChips = chips || null;
         this._catHass(true);
       }
@@ -3974,8 +4688,10 @@ window.hemmaMenuGlass = {
           const box = document.createElement('div');
           box.className = 'cat-wx';
           box.appendChild(wx);
+          box.appendChild(Object.assign(document.createElement('div'), { className: 'hvw', hidden: true }));
           inner.insertBefore(box, inner.firstChild);
           this._catWx = wx;
+          requestAnimationFrame(() => this._hvWx());
         }
       }
       if (!this._catHead) pills.innerHTML = '';
@@ -4005,7 +4721,7 @@ window.hemmaMenuGlass = {
       });
       const norm = (t) => String(t || '').trim().toLowerCase();
       const scope = this._catRoom && norm(this._catRoom);
-      if (k === 'home' && !this._catRoom && !inner.querySelector('h1').textContent.trim()) setTimeout(() => this._syncBaseTitle(), 600);
+      if (k === 'home' && !this._catRoom && !(inner.querySelector('h1').dataset.t || '').trim()) setTimeout(() => this._syncBaseTitle(), 600);
       // Moving a card out of the document and back would have UIX restyle it mid-slide, so panes are only hidden.
       const shelf = this._shelf(page, cfg);
       const swap = this._catSwap;
@@ -4029,18 +4745,19 @@ window.hemmaMenuGlass = {
         this._npBox = hit.np;
       } else {
         shelf.delete(key);
-        const pane = body.appendChild(Object.assign(document.createElement('div'), { className: 'cat-pane', hidden: !!(swap && prev) }));
+        const pane = body.appendChild(Object.assign(document.createElement('div'), { className: 'cat-pane' + (k === 'home' && !scope ? ' hv-home' : ''), hidden: !!(swap && prev) || !prev }));
         pane._hemmaSorted = k === 'home';
         this._pane = pane;
         this._catCards = [];
         this._npBox = null;
         const ok = await this._buildBody(pane, k, scope, cfg, helpers, head, page, this._catCards);
         if (this._cat !== k || this._catPage !== page) return;
-        if (!ok) { if (swap) this._swapPanes(prev, this._pane, swap); this._filled(); return; }
+        if (!ok) { if (swap) this._swapPanes(prev, this._pane, swap); else if (!prev) this._pane.hidden = false; this._filled(); return; }
       }
       this._bodyKey = key;
       if (swap) this._swapPanes(prev, this._pane, swap, reused);
       else if (prev && prev !== this._pane && prev.parentNode === body) prev.hidden = true;
+      if (!swap && !prev && !reused && this._pane.hidden) this._revealWhenReady(this._pane);
       // Its cards refresh a frame later, once the compositor is carrying the slide.
       if (reused) {
         const shown = this._pane;
@@ -4106,7 +4823,7 @@ window.hemmaMenuGlass = {
         return false;
       }
       const group = () => body.appendChild(Object.assign(document.createElement('div'), { className: 'cat-sec' }));
-      if ((k === 'media' || k === 'home') && !scope && head.np && cards === this._catCards) this._mountNP(group(), cfg, head.np, helpers);
+      if ((k === 'media' || k === 'home') && !scope && head.np && cards === this._catCards) { const g = group(); g._npHome = k === 'home'; this._mountNP(g, cfg, head.np, helpers); }
       // Cameras sit under Now Playing on Home, first in a room (its own cameras) and first on Security.
       const CS = cfg && cfg.hemma_cameras, CV = window.hemmaCams;
       if (CV && CV.on(CS) && ((k === 'home') || (k === 'security' && !scope && CS.security !== false))) {
@@ -4115,13 +4832,20 @@ window.hemmaMenuGlass = {
           const box = group();
           const h = document.createElement('h2');
           h.className = 'cat-link';
-          h.innerHTML = '<span></span><svg viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2.5 8 8l-5.5 5.5"/></svg>';
+          h.innerHTML = CAT_CHEV;
           h.firstChild.textContent = _hemmaT('cameras.title', 'Cameras');
-          h.onclick = () => window.hemmaCameraView && window.hemmaCameraView.openAll(CV.list(this._hass, CS));
+          h.onclick = () => {
+            let cams = null;
+            const walk = (c) => { if (cams || !c || typeof c !== 'object') return; if ([].concat(c.template || []).indexOf('hemma_cameras') >= 0 && c.variables && Array.isArray(c.variables.cameras) && c.variables.cameras.length) { cams = c.variables.cameras; return; } (c.cards || []).forEach(walk); if (c.card) walk(c.card); };
+            ((cfg && cfg.views) || []).forEach((v) => { (v.cards || []).forEach(walk); (v.sections || []).forEach((sec) => (sec.cards || []).forEach(walk)); });
+            if (!cams) cams = Object.keys(this._hass.states).filter((id) => id.startsWith('camera.') && !/record|snapshot/.test(id));
+            if (window.hemmaCameraView) window.hemmaCameraView.openAll(cams.length ? cams : CV.list(this._hass, CS));
+          };
           box.appendChild(h);
           const el = document.createElement('hemma-camera-strip');
           el.setConfig({ cameras: ids });
           el.classList.add('cat-cams');
+          box.classList.add('hv-cam');
           box.appendChild(el);
           try { el.hass = this._hass; } catch (_) {}
           cards.push(el);
@@ -4131,7 +4855,24 @@ window.hemmaMenuGlass = {
         const box = group();
         if (sec.name && (!(k === 'home' && scope) || sec.bucket || sec.scenes)) {
           const h = document.createElement('h2');
-          h.textContent = sec.name;
+          // On Home every section but Favorites leads somewhere, as the phone's headers do.
+          const room = k === 'home' && !scope && !sec.fav && !sec.scenes ? this._els.findIndex((e, j) => j > 0 && norm(e.label.textContent) === norm(sec.name)) : -1;
+          if (room > 0 || (k === 'home' && !scope && sec.scenes)) {
+            h.className = 'cat-link';
+            h.innerHTML = CAT_CHEV;
+            h.firstChild.textContent = sec.name;
+            h.onclick = () => {
+              if (room < 0) {
+                if (this._baseMode && this._catPage) { this._catSwap = 'push'; this._viaPush = true; }
+                return this._openCat('scenes');
+              }
+              this._pushNext = !!this._baseMode;
+              const side = (this._sideRooms || []).find((r) => r.idx === room);
+              if (side) side.btn.click(); else this._activate(this._els[room].route, this._els[room].btn);
+              this._pushNext = false;
+            };
+            this._onPress(h);
+          } else h.textContent = sec.name;
           box.appendChild(h);
         }
         if (sec.scenes) {
@@ -4177,7 +4918,7 @@ window.hemmaMenuGlass = {
 
     // Shown before its cards draw and pack, a new page's first frame jumps from the stylesheet's columns to the packed ones.
     _swapPanes(prev, next, mode, reused) {
-      const drawn = (p) => [...p.querySelectorAll('.cat-grid')].every((g) => [...g.children].every((el) => el.hidden || (el.shadowRoot && el.shadowRoot.querySelector('ha-card'))));
+      const drawn = (p) => this._paneReady(p);
       if (!reused && prev && prev !== next && prev.isConnected && !drawn(next)) {
         const t0 = performance.now();
         const tok = this._swapWait = {};
@@ -4195,17 +4936,35 @@ window.hemmaMenuGlass = {
 
     _swapRun(prev, next, mode, late) {
       next.hidden = false;
-      if (this._swapTitle != null) {
+      const slide = mode === 'push' || mode === 'pop';
+      // The title and forecast stay with the window's top bar and simply change; only the page beneath them moves.
+      const oldH1 = null, ghost = null;
+      // Sliding, the new title arrives with the first frame of motion, not before it over the page still showing.
+      const newTitle = this._swapTitle;
+      this._swapTitle = null;
+      if (newTitle != null && !slide) {
         const h1 = this._catPage && this._catPage.querySelector('.cat-in > h1');
-        if (h1) h1.textContent = this._swapTitle;
-        this._swapTitle = null;
+        if (h1) this._setH1(h1, newTitle);
       }
       const g = next.querySelector('.cat-grid');
       if (late || (g && g.offsetWidth && next._hemmaPackW !== g.offsetWidth)) { this._sortSig = null; this._sortSoon('fill'); }
-      if (!prev || prev === next || !prev.isConnected) return;
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { prev.hidden = true; return; }
+      const owed = () => {
+        this._unholdPane();
+        if (this._headLater) { const f = this._headLater; this._headLater = null; f(); }
+        if (slide && newTitle != null) { const h1 = this._catPage && this._catPage.querySelector('.cat-in > h1'); if (h1) this._setH1(h1, newTitle); }
+        this._headWas = null;
+        if (this._chipsLater) { this._chipsLater = false; this._syncChips(); }
+        if (this._clearAfterPush != null && this._catEls) { this._catEls[0].classList.toggle('clear', this._clearAfterPush); this._clearAfterPush = null; }
+        const f = slide && this._afterPush; this._afterPush = null; if (f) f();
+        if (this._backHold) { this._backHold = 0; this._syncBack(); }
+      };
+      if (!prev || prev === next || !prev.isConnected) return owed();
+      if (mode === 'swap' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { prev.hidden = true; return owed(); }
+      this._swapSettle();
       (this._swapAnims || []).forEach((a) => { try { a.cancel(); } catch (_) {} });
       const anims = this._swapAnims = [];
+      if (slide) { this._slideRun(prev, next, mode === 'pop', anims, newTitle); return; }
+      if (mode === 'rise' || mode === 'return') { this._sheetRun(prev, next, mode === 'return', anims); return; }
       const rise = mode === 'rise';
       this._slideUntil = performance.now() + (rise ? 760 : 660);
       prev.hidden = false;
@@ -4226,8 +4985,6 @@ window.hemmaMenuGlass = {
         anims.push(inner.animate([{ transform: back, transformOrigin: '50% 30%' }, { transform: 'none', transformOrigin: '50% 30%' }],
           { duration: 560, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }));
       }
-      const h1 = this._catPage && this._catPage.querySelector('.cat-in > h1');
-      if (h1) anims.push(h1.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: 'ease-out' }));
       const done = () => {
         if (this._swapAnims !== anims) return;
         if (prev !== this._pane) prev.hidden = true;
@@ -4235,6 +4992,317 @@ window.hemmaMenuGlass = {
         out.cancel();
       };
       out.finished.then(() => setTimeout(done, rise ? 340 : 400), done);
+    }
+
+    // The category sheet, measured frame by frame on a Mac: a frost settles over Home where it stands (about 250ms), then each section
+    // rises from just below the window on one exponential (a ~80ms time constant), the lower ones a little later. Going back, the sheet fades off
+    // and the frost clears from Home in place.
+    _sheetRun(prev, next, back, anims) {
+      const page = this._catPage, inner = page && page.querySelector('.cat-in');
+      const bgEl = this._catEls && this._catEls[0];
+      if (!inner || !bgEl) { prev.hidden = true; return; }
+      const pr = page.getBoundingClientRect(), H = window.innerHeight || 800;
+      this._slideUntil = performance.now() + (back ? 520 : 820);
+      const bcs = getComputedStyle(bgEl);
+      const veil = document.createElement('div');
+      Object.assign(veil.style, { position: 'fixed', left: pr.left + 'px', right: '0px', top: '0px', bottom: '0px', pointerEvents: 'none', zIndex: '1',
+        background: bcs.backgroundColor, backdropFilter: bcs.backdropFilter, webkitBackdropFilter: bcs.webkitBackdropFilter || bcs.backdropFilter });
+      if (this.classList.contains('hv') && !this.classList.contains('hvp')) veil.style.background = 'var(--hv-bg)';
+      inner.appendChild(veil);
+      const pTop = this._prevTop;
+      this._prevTop = null;
+      const r = prev.getBoundingClientRect();
+      Object.assign(prev.style, { position: 'fixed', top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', right: 'auto', pointerEvents: 'none', zIndex: back ? '2' : '0' });
+      if (pTop && pTop.pin.isConnected) prev.style.top = (r.top + pTop.y - pTop.pin.getBoundingClientRect().top) + 'px';
+      Object.assign(next.style, { position: 'relative', zIndex: back ? '0' : '2' });
+      const tops = [...inner.children].filter((el) => el !== veil && !el.classList.contains('cat-body') && el.getClientRects().length);
+      const held = tops.map((el) => [el, el.style.position, el.style.zIndex]);
+      tops.forEach((el) => { if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.style.zIndex = '3'; });
+      const out = [];
+      // Depth: Home sinks about 3% under the frost and comes forward again on the way back, scaled about the window's middle.
+      const depth = (el) => { const b = el.getBoundingClientRect(); el.style.transformOrigin = ((window.innerWidth || 0) / 2 - b.left) + 'px ' + (H / 2 - b.top) + 'px'; };
+      if (back) {
+        depth(next);
+        out.push(next.animate([{ transform: 'scale(0.97)' }, { transform: 'none' }], { duration: 440, delay: 40, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)', fill: 'both' }));
+        out.push(prev.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, easing: 'cubic-bezier(0.2, 0.6, 0.35, 1)', fill: 'both' }));
+        out.push(veil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 360, delay: 60, easing: 'cubic-bezier(0.25, 0.6, 0.3, 1)', fill: 'both' }));
+        bgEl.style.transition = 'none';
+        bgEl.classList.toggle('clear', this._clearAfterPush !== false);
+        this._clearAfterPush = null;
+      } else {
+        const flat = this.classList.contains('hv') && !this.classList.contains('hvp');
+        if (!flat) out.push(veil.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 250, easing: 'cubic-bezier(0.2, 0.6, 0.35, 1)', fill: 'both' }));
+        // The sheet's own header rows (a category's sensor chips) come in with the frost; shown at once, they sat on Home's headings for a frame.
+        tops.filter((el) => el.tagName !== 'H1' && !/\b(cat-pills|cat-wx|cat-chrome)\b/.test(el.className)).forEach((el) => {
+          // Home's page is gone at 300ms; starting with it, the chips sat on its headings.
+          if (flat) { el.getAnimations().forEach((x) => x.cancel()); el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 280, easing: 'ease-out', fill: 'backwards' }); }
+          else out.push(el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, delay: 280, easing: 'cubic-bezier(0.2, 0.6, 0.35, 1)', fill: 'both' }));
+          el.style.removeProperty('opacity');
+        });
+        const D = 480, TAU = 80, N = 24, end = Math.exp(-D / TAU);
+        // On the GPU: the sheet's tiles sit over the frost, which is already a blur, so nothing is lost if Safari drops theirs while they move.
+        const rise = (A) => Array.from({ length: N + 1 }, (_, i) => ({ transform: 'translateY(' + (A * (Math.exp(-(i / N) * D / TAU) - end) / (1 - end)).toFixed(2) + 'px)', offset: i / N }));
+        const secs = [...next.children].filter((el) => el.getClientRects().length);
+        const top0 = secs.length ? secs[0].getBoundingClientRect().top : 0;
+        secs.forEach((el) => {
+          const lag = Math.min(150, Math.max(0, (el.getBoundingClientRect().top - top0) * 0.17));
+          out.push(el.animate(rise(Math.round(H * 0.9)), { duration: D, delay: 230 + lag, easing: 'linear', fill: 'both' }));
+        });
+        depth(prev);
+        out.push(prev.animate([{ transform: 'none', opacity: 1 }, { transform: 'scale(0.97)', opacity: 1, offset: 0.9 }, { transform: 'scale(0.97)', opacity: 0 }], { duration: 300, easing: 'cubic-bezier(0.2, 0.6, 0.35, 1)', fill: 'both' }));
+      }
+      out.forEach((a) => { a.pause(); anims.push(a); });
+      // One start time for every layer: started one by one, WebKit can begin them a frame apart and the sheets tear.
+      this._startWhenSmooth(anims);
+      let settled = false;
+      const done = (forced) => {
+        if (settled || (!forced && this._swapAnims !== anims)) return;
+        settled = true;
+        if (this._swapFinish === finish) this._swapFinish = null;
+        if (this._clearAfterPush != null) { bgEl.style.transition = 'none'; bgEl.classList.toggle('clear', this._clearAfterPush); this._clearAfterPush = null; }
+        requestAnimationFrame(() => { bgEl.style.transition = ''; });
+        veil.remove();
+        if (prev !== this._pane) prev.hidden = true;
+        ['position', 'left', 'right', 'top', 'width', 'pointerEvents', 'zIndex', 'transformOrigin'].forEach((k) => { prev.style[k] = ''; next.style[k] = ''; });
+        held.forEach(([el, pos, z]) => { el.style.removeProperty('position'); if (pos) el.style.position = pos; el.style.zIndex = z; });
+        anims.forEach((a) => { try { a.cancel(); } catch (_) {} });
+      };
+      const finish = () => done(true);
+      this._swapFinish = finish;
+      Promise.all(anims.map((a) => a.finished)).then(() => done(false), () => done(false));
+    }
+
+    // Overview's push and pop: the two pages slide side by side, each over its own room photo, the one left going out as the next comes in.
+    // The photos ride as flat pictures already blurred the way the dashboard draws them: a live blurred photo moving cost a full-window blur every frame.
+    _slideRun(prev, next, back, anims, title) {
+      const page = this._catPage, inner = page && page.querySelector('.cat-in');
+      const after = this._afterPush;
+      this._afterPush = null;
+      this._popFrom = null;
+      const setTitle = () => {
+        if (title != null && inner) { const h = inner.querySelector(':scope > h1'); if (h) this._setH1(h, title); }
+        if (this._backHold) { this._backHold = 0; this._syncBack(); }
+      };
+      if (!inner) { setTitle(); prev.hidden = true; if (after) after(); return; }
+      this._slideUntil = performance.now() + 1400;
+      this._slideLive = true;
+      const W = page.getBoundingClientRect().width;
+      const bgEl = this._catEls && this._catEls[0];
+      const fromIdx = this._shownIdx, toIdx = this._activeIdx;
+      this._prevTop = null;
+      let settled = false;
+      const held = (this._held && this._held.pane === prev) ? this._held : this._holdPane();
+      const prevWas = held ? [held.was.find((w) => w[0] === 'position')[1], held.was.find((w) => w[0] === 'zIndex')[1]] : [prev.style.position, prev.style.zIndex];
+      if (this._headLater) { const f = this._headLater; this._headLater = null; f(); if (held) held.repin(); }
+      // The leaving page's badge or chip row, if the arriving page shows the other one, is lifted out of the flow at its place and goes with its page.
+      const was = this._headWas || {};
+      this._headWas = null;
+      const usesPills = !page.classList.contains('room') && !page.classList.contains('scenes'), usesChips = page.classList.contains('room') && !this._chipsLater;
+      const lifted = [];
+      [[was.pills, usesPills, 'flex'], [was.chips, usesChips, 'block']].forEach(([w, used, disp]) => {
+        if (!w || used) return;
+        const st = w.el.style;
+        st.setProperty('display', disp, 'important');
+        st.setProperty('position', 'absolute', 'important');
+        st.pointerEvents = 'none';
+        if (getComputedStyle(w.el).position === 'absolute') Object.assign(st, { top: w.top + 'px', left: w.left + 'px', width: w.width + 'px', margin: '0' });
+        else {
+          // Its height is fixed too: the chip card redraws for the page arriving, can empty to nothing mid-slide, and would pull everything under it up.
+          const cs = getComputedStyle(w.el), mt = parseFloat(cs.marginTop) || 0, mb = parseFloat(cs.marginBottom) || 0, d = w.top - w.el.offsetTop, h = w.el.offsetHeight;
+          st.setProperty('height', h + 'px', 'important');
+          st.setProperty('min-height', h + 'px', 'important');
+          st.setProperty('max-height', h + 'px', 'important');
+          st.setProperty('box-sizing', 'border-box', 'important');
+          st.setProperty('overflow', 'visible', 'important');
+          st.marginTop = mt + d + 'px';
+          st.marginBottom = (mb - d - h) + 'px';
+        }
+        lifted.push(w.el);
+      });
+      const head = [...inner.children].filter((el) => lifted.indexOf(el) < 0 && el.tagName !== 'H1' && !el.classList.contains('cat-wx') && !el.classList.contains('cat-body') && el.getClientRects().length);
+      const still = [...inner.children].filter((el) => el.tagName === 'H1' || el.classList.contains('cat-wx'));
+      const chrome = page.querySelector('.cat-chrome');
+      const stacked = [prev, next].concat(head, lifted, still, chrome ? [chrome] : []);
+      const zWas = stacked.map((el) => (el === prev ? prevWas : [el.style.position, el.style.zIndex]));
+      Object.assign(next.style, { position: 'relative', zIndex: '1' });
+      head.concat(still).forEach((el) => { if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; });
+      head.concat(lifted).forEach((el) => { el.style.zIndex = '2'; });
+      still.forEach((el) => { el.style.zIndex = '3'; });
+      if (chrome) chrome.style.zIndex = '4';
+      const outs = [prev].concat(lifted), ins = [next].concat(head);
+      const was0 = outs.concat(ins).map((el) => [el.style.transform, el.style.opacity]);
+      outs.concat(ins).forEach((el) => { el.style.willChange = 'transform'; });
+      // Browsers draw only what is on screen, so everything arriving is drawn where it will land while it cannot be seen; drawn mid-slide, a room's first visit froze it.
+      ins.forEach((el) => { el.style.opacity = '0.003'; });
+      const dir = back ? -1 : 1, SD = 480, SLIDE = 'cubic-bezier(0.3, 0, 0, 1)', V = Math.max(W, window.innerWidth || 0);
+      // Each page is a window-wide sheet carrying its own photo, the very layer Overview draws (_photoBuild): the two photos ride side by side
+      // across the whole window, behind the sidebar too, and the pages move the same distance, their tiles cut off at the sidebar's edge.
+      const R = this.shadowRoot;
+      let lane = null, base = null;
+      const photos = () => {
+        if (fromIdx === toIdx || !this._bg || !this._catEls) return;
+        const a = this._photoBuild(fromIdx), b = this._photoBuild(toIdx), nb = this._photoBuild(toIdx);
+        if (!a || !b || !nb) return;
+        lane = document.createElement('div');
+        lane.className = 'cat-photo';
+        Object.assign(lane.style, { zIndex: '38', opacity: '0.003' });
+        const row = lane.appendChild(document.createElement('div'));
+        Object.assign(row.style, { position: 'absolute', inset: '0', willChange: 'transform' });
+        [[a, 0], [b, dir * V]].forEach(([p, x]) => {
+          const cut = row.appendChild(document.createElement('div'));
+          Object.assign(cut.style, { position: 'absolute', left: x + 'px', top: '0px', width: V + 'px', height: '100%', overflow: 'hidden' });
+          cut.appendChild(p);
+        });
+        lane._row = row;
+        base = document.createElement('div');
+        base.className = 'cat-photo';
+        base.appendChild(nb);
+        base._key = nb._key;
+        base.style.opacity = '0.003';
+        R.insertBefore(base, this._catEls[0]);
+        R.insertBefore(lane, this._catEls[0]);
+        this._slideLive = true;
+      };
+      const go = () => {
+        if (settled || this._swapAnims !== anims) return;
+        const opt = { duration: SD, easing: SLIDE, fill: 'both' };
+        ins.forEach((el) => { el.style.opacity = ''; });
+        setTitle();
+        if (bgEl && this._clearAfterPush != null) { bgEl.classList.toggle('clear', this._clearAfterPush); this._clearAfterPush = null; }
+        outs.forEach((el) => anims.push(el.animate([{ transform: 'translateX(0px)' }, { transform: 'translateX(' + (-dir * V) + 'px)' }], opt)));
+        ins.forEach((el) => anims.push(el.animate([{ transform: 'translateX(' + (dir * V) + 'px)' }, { transform: 'translateX(0px)' }], opt)));
+        if (lane) {
+          lane.style.opacity = '1';
+          base.style.opacity = '1';
+          anims.push(lane._row.animate([{ transform: 'translateX(0px)' }, { transform: 'translateX(' + (-dir * V) + 'px)' }], opt));
+        }
+        Promise.all(anims.map((a) => a.finished)).then(() => done(false), () => done(false));
+      };
+      // A photo already decoded is not waited on again: even a finished decode costs a frame before it answers.
+      const known = this._decoded || (this._decoded = new Set());
+      const urls = [fromIdx, toIdx].map((i) => { const ph = this._photoFor(i); return ph && ph.url; }).filter((u) => u && !known.has(u));
+      const start = () => {
+        if (settled || this._swapAnims !== anims) return;
+        photos();
+        this._whenDrawn(go);
+      };
+      if (!urls.length) start();
+      else Promise.race([Promise.all(urls.map((u) => { const im = new Image(); im.src = u; return im.decode().then(() => known.add(u), () => {}); })), new Promise((r) => setTimeout(r, 600))]).then(start);
+      // The page holds its scroll through the slide and the hand-off after it, unless the person scrolls.
+      const sy = page.scrollTop;
+      let touched = false;
+      const mine = () => { touched = true; };
+      ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach((t) => page.addEventListener(t, mine, { passive: true }));
+      const hold = () => { if (!touched && page.scrollTop !== sy) page.scrollTop = sy; };
+      page.addEventListener('scroll', hold, { passive: true });
+      const release = () => { page.removeEventListener('scroll', hold); ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach((t) => page.removeEventListener(t, mine)); };
+      const done = (forced) => {
+        if (settled || (!forced && this._swapAnims !== anims)) return;
+        settled = true;
+        if (this._swapFinish === finish) this._swapFinish = null;
+        setTitle();
+        if (bgEl && this._clearAfterPush != null) { bgEl.classList.toggle('clear', this._clearAfterPush); this._clearAfterPush = null; }
+        // The arriving photo is already the page's photo, built the same way under the strip, so the strip goes with nothing to change.
+        if (lane) {
+          base.style.opacity = '1';
+          if (this._bg && this._bg !== base) this._bg.remove();
+          this._bg = base;
+          lane.remove();
+        }
+        this._slideLive = false;
+        if (this._held === held) { this._held = null; if (held) held.ro.disconnect(); }
+        if (!lane) this._bgSync(true);
+        outs.concat(ins).forEach((el, i) => { el.style.removeProperty('will-change'); el.style.transform = was0[i][0]; el.style.opacity = was0[i][1]; });
+        if (prev !== this._pane) prev.hidden = true;
+        ['left', 'right', 'top', 'width', 'pointerEvents'].forEach((k) => { prev.style[k] = ''; next.style[k] = ''; });
+        stacked.forEach((el, i) => { el.style.position = zWas[i][0]; el.style.zIndex = zWas[i][1]; });
+        lifted.forEach((el) => ['display', 'position', 'top', 'left', 'width', 'height', 'min-height', 'max-height', 'box-sizing', 'overflow', 'margin', 'margin-top', 'margin-bottom', 'pointer-events'].forEach((k) => el.style.removeProperty(k)));
+        if (this._chipsLater) { this._chipsLater = false; this._syncChips(); }
+        anims.forEach((a) => { try { a.cancel(); } catch (_) {} });
+        hold();
+        if (forced) release(); else setTimeout(release, 1500);
+        if (after && !forced) after();
+      };
+      const finish = () => done(true);
+      this._swapFinish = finish;
+    }
+
+    // From the tap, the page being left is held where it is on screen, inside the page (pinned to the window, it slid out under the sidebar),
+    // and held again whenever anything above it changes size: building the next page moved it 40-60px before the slide began.
+    _holdPane() {
+      const pane = this._pane, inner = this._catPage && this._catPage.querySelector('.cat-in');
+      if (!pane || !inner || !pane.isConnected) return null;
+      if (this._held && this._held.pane === pane) return this._held;
+      this._unholdPane();
+      const pin = pane.querySelector('h2, .cat-grid, .cat-scenes') || pane, y = pin.getBoundingClientRect().top;
+      const was = ['position', 'left', 'right', 'top', 'pointerEvents', 'zIndex'].map((k) => [k, pane.style[k]]);
+      Object.assign(pane.style, { position: 'absolute', left: '0', right: '0', top: '0', pointerEvents: 'none', zIndex: '1' });
+      const held = { pane, was };
+      held.repin = () => { if (this._held === held) pane.style.top = ((parseFloat(pane.style.top) || 0) + y - pin.getBoundingClientRect().top) + 'px'; };
+      held.ro = new ResizeObserver(held.repin);
+      [...inner.children].concat(inner.querySelector('.cat-body') ? [...inner.querySelector('.cat-body').children] : []).forEach((el) => held.ro.observe(el));
+      this._held = held;
+      held.repin();
+      clearTimeout(this._holdT);
+      this._holdT = setTimeout(() => { if (this._held === held && !this._slideLive) this._unholdPane(); }, 2500);
+      return held;
+    }
+
+    _unholdPane() {
+      const held = this._held;
+      if (!held) return;
+      this._held = null;
+      held.ro.disconnect();
+      held.was.forEach(([k, v]) => { held.pane.style[k] = v; });
+    }
+
+    // Frames stall while the browser is still drawing what was just shown; two on time in a row means it is done.
+    _whenDrawn(fn, need = 2) {
+      let last = 0, calm = 0, n = 0;
+      const tick = (ts) => {
+        if (last) calm = ts - last < 22 ? calm + 1 : 0;
+        last = ts;
+        if (++n < 10 && (n < need + 1 || calm < need)) requestAnimationFrame(tick);
+        else fn();
+      };
+      requestAnimationFrame(tick);
+    }
+
+    // Started only once frames arrive on time again: building the arriving page stalls the first frames (most on a large desktop window),
+    // and a clock already running through that stall shows its first frame part way across, a jump. Started together, so no layer lags another.
+    _startWhenSmooth(anims, onStart) {
+      let last = 0, calm = 0, n = 0;
+      const tick = (ts) => {
+        if (this._swapAnims !== anims) return;
+        const dt = last ? ts - last : 99;
+        last = ts;
+        calm = dt < 22 ? calm + 1 : 0;
+        if ((calm < 3 || n < 3) && ++n < 18) { requestAnimationFrame(tick); return; }
+        if (onStart) onStart();
+        const t0 = document.timeline.currentTime;
+        anims.forEach((a) => { a.startTime = t0; });
+      };
+      requestAnimationFrame(tick);
+    }
+
+    // A slide cut short by the next one is wound up at once (copies gone, rows and panes back in place), never left half done.
+    // A TV reports its inputs only while on; the TV popup lists the last ones seen.
+    _keepSources(hass) {
+      const seen = window._hemmaSrcSeen || (window._hemmaSrcSeen = new WeakSet());
+      const n = Object.keys(hass.states).length;
+      if (!this._mpIds || n !== this._mpN) { this._mpN = n; this._mpIds = Object.keys(hass.states).filter((id) => id.startsWith('media_player.')); }
+      this._mpIds.forEach((id) => {
+        const st = hass.states[id], l = st && st.attributes.source_list;
+        if (!st || seen.has(st) || !Array.isArray(l) || !l.length) return;
+        seen.add(st);
+        try { localStorage.setItem('hemma_srcs:' + id, JSON.stringify(l)); } catch (e) {}
+      });
+    }
+
+    _swapSettle() {
+      const f = this._swapFinish;
+      this._swapFinish = null;
+      if (f) f();
     }
 
     // Each Overview card's own ha-card takes the top-edge fade (tablet stylesheet), so its glass keeps blurring.
@@ -4284,6 +5352,8 @@ window.hemmaMenuGlass = {
             if (this._sortSig == null) { this._sortSoon('fill'); if (this._sortSig == null) { requestAnimationFrame(wait); return; } }
           }
           boot.style.removeProperty('opacity');
+          clearTimeout(this._bootT);
+          this.classList.remove('booting');
         };
         wait();
       }
@@ -4336,6 +5406,17 @@ window.hemmaMenuGlass = {
             const h = this._hass && F ? F.apply(this._hass) : this._hass;
             cards.forEach((el) => { try { el.hass = h; } catch (_) {} });
             shelf.set(key, { pane: box, cards, np: null });
+            // Laid out once now, while idle, so the first slide into this room does not pay for every tile at its start; its photo is decoded too.
+            idle(() => {
+              if (box.parentNode !== body || !box.hidden) return;
+              Object.assign(box.style, { position: 'absolute', left: '-20000px', top: '0', width: body.clientWidth + 'px', visibility: 'hidden' });
+              box.hidden = false;
+              void box.offsetHeight;
+              box.hidden = true;
+              ['position', 'left', 'top', 'width', 'visibility'].forEach((k) => box.style.removeProperty(k));
+            });
+            const ri = this._els.findIndex((e, j) => j > 0 && norm(e.label.textContent) === scope), ph = ri > 0 && this._photoFor(ri);
+            if (ph) { const im = new Image(); im.src = ph.url; if (im.decode) im.decode().then(() => (this._decoded || (this._decoded = new Set())).add(ph.url), () => {}); (this._warmPhotos = this._warmPhotos || []).push(im); }
           } else box.remove();
           idle(next);
         });
@@ -4365,61 +5446,224 @@ window.hemmaMenuGlass = {
       return list.length ? list : false;
     }
 
-    // HA's Energy dashboard reads the same numbers: each device's hourly change in long-term statistics.
+    // HA's Energy dashboard reads the same numbers: each device's change in long-term statistics, by the hour for a day, by the day for a week or month.
+    // Drawn as a usage chart: the total first, stacked bars with a dotted grid, the scale on the right and a dashed average.
+    // A device tapped in the legend, the list or the split bar filters both cards to it, the bars easing to its share; tapping it again, All Devices or the empty chart goes back.
     async _drawEnergy(row, devices) {
-      const COLORS = ['#4FA08F', '#C9A13B', '#4466B8', '#C0655C', '#8E6CC1', '#5BA3D0', '#D08A4E', '#6FA35A'];
+      // Rebuilding the cards would shrink the row for a frame, and the page scrolled up to follow it.
+      if (row.offsetHeight) row.style.minHeight = row.offsetHeight + 'px';
+      const COLORS = ['#00C3D0', '#FFCC00', '#0A84FF', '#FF453A', '#BF5AF2', '#30D158', '#FF9F0A', '#64D2FF', '#FF375F', '#5E5CE6', '#AC8E68', '#66D4CF'];
+      const range = this._enRange || 'day';
+      const days = range === 'week' ? 7 : range === 'month' ? 30 : 1, n = range === 'day' ? 24 : days;
       const day = new Date(); day.setHours(0, 0, 0, 0);
+      const start = new Date(day); start.setDate(start.getDate() - (days - 1));
       let stats = {};
       try {
-        stats = await this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: day.toISOString(),
-          period: 'hour', statistic_ids: devices.map((d) => d.stat_consumption), types: ['change'], units: { energy: 'kWh' } });
+        stats = await this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: start.toISOString(),
+          period: range === 'day' ? 'hour' : 'day', statistic_ids: devices.map((d) => d.stat_consumption), types: ['change'], units: { energy: 'kWh' } });
       } catch (_) { stats = {}; }
-      if (!row.isConnected) return;
+      if (!row.isConnected || (this._enRange || 'day') !== range) return;
       const st = (this._hass && this._hass.states) || {};
+      const lang = this._hass && this._hass.language;
+      const slotOf = (t) => {
+        const d = new Date(typeof t === 'number' ? t : Date.parse(t));
+        if (range === 'day') return d.getHours();
+        const m = new Date(d); m.setHours(0, 0, 0, 0);
+        return Math.round((m - start) / 86400000);
+      };
+      const ICON = (nm) => /\btv\b|television/i.test(nm) ? 'tv' : /ps\d|xbox|switch|console|game/i.test(nm) ? 'console' : /laptop|macbook/i.test(nm) ? 'laptop'
+        : /office|desk|computer|\bpc\b|mac|imac/i.test(nm) ? 'desktop' : /lab|server|nas|rack|router|network/i.test(nm) ? 'network'
+        : /fridge|freezer/i.test(nm) ? 'fridge' : /lamp|light/i.test(nm) ? 'lamp' : /speaker|sonos|homepod/i.test(nm) ? 'speaker' : /fan/i.test(nm) ? 'fan' : 'plug';
       const devs = devices.map((d, i) => {
-        const id = d.stat_consumption;
-        const e = st[id];
+        const id = d.stat_consumption, e = st[id];
         const name = d.name || (e && e.attributes && e.attributes.friendly_name) || id;
-        const hours = new Array(24).fill(0);
-        (stats[id] || []).forEach((r) => {
-          const h = new Date(typeof r.start === 'number' ? r.start : Date.parse(r.start)).getHours();
-          if (h >= 0 && h < 24) hours[h] += Math.max(0, Number(r.change) || 0);
-        });
-        return { name, color: COLORS[i % COLORS.length], hours, total: hours.reduce((a, b) => a + b, 0) };
+        const vals = new Array(n).fill(0);
+        (stats[id] || []).forEach((r) => { const k = slotOf(r.start); if (k >= 0 && k < n) vals[k] += Math.max(0, Number(r.change) || 0); });
+        const c0 = COLORS[i % COLORS.length];
+        return { id, name, color: window.hemmaHarmonize ? window.hemmaHarmonize(c0) : c0, vals, total: vals.reduce((a, b) => a + b, 0), icon: ICON(name) };
       });
       const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-      const kwh = (v) => (v >= 10 ? v.toFixed(1) : v.toFixed(2)) + ' kWh';
-      const per = devs[0].hours.map((_, h) => devs.reduce((a, d) => a + d.hours[h], 0));
-      const top = Math.max(0.01, ...per);
-      const step = [0.03, 0.06, 0.15, 0.3, 0.6, 1.5, 3, 6, 15, 30].find((s) => s * 3 >= top) || Math.ceil(top / 3);
-      const max = step * 3;
-      const W = 360, H = 190, X = 36, Y = 8, slot = W / 24;
-      let svg = '<svg viewBox="0 0 ' + (W + X + 6) + ' ' + (H + Y + 24) + '" width="100%">';
-      for (let i = 0; i <= 3; i++) {
-        const y = Y + H - (H * i) / 3;
-        svg += '<line x1="' + X + '" x2="' + (X + W) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="rgba(255,255,255,.12)"/>'
-          + '<text x="' + (X - 6) + '" y="' + (y + 4).toFixed(1) + '" text-anchor="end" fill="rgba(255,255,255,.55)" font-size="11">' + (step * i).toFixed(step < 0.1 ? 2 : 1) + '</text>';
-      }
-      for (let h = 0; h < 24; h++) {
-        let y = Y + H;
-        devs.forEach((d) => {
-          const v = d.hours[h];
-          if (!v) return;
-          const hh = (H * v) / max;
-          y -= hh;
-          svg += '<rect x="' + (X + h * slot + slot * 0.18).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + (slot * 0.64).toFixed(1) + '" height="' + hh.toFixed(1) + '" fill="' + d.color + '"/>';
-        });
-      }
-      const clock = (h) => { const d = new Date(day); d.setHours(h); return d.toLocaleTimeString(this._hass && this._hass.language, { hour: 'numeric' }); };
-      [0, 6, 12, 18].forEach((h) => { svg += '<text x="' + (X + h * slot + 2).toFixed(1) + '" y="' + (Y + H + 18) + '" fill="rgba(255,255,255,.55)" font-size="11">' + esc(clock(h)) + '</text>'; });
-      svg += '</svg>';
+      const num = (v) => (v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2));
+      const sum = devs.reduce((a, d) => a + d.total, 0);
+      const keep = row._en && row._en.range === range && row._en.n === n && row._en.count === devs.length;
+      const E = row._en = { range, n, count: devs.length, sel: keep ? row._en.sel : null, cur: keep ? row._en.cur : null, shown: row._en ? row._en.shown : 0, raf: 0, nraf: 0 };
+      const past = range === 'day' ? new Date().getHours() + 1 : n;
+      const sub = range === 'day' ? _hemmaT('nav.energy_today', 'Today') : range === 'week' ? _hemmaT('nav.energy_past_week', 'Past 7 Days') : _hemmaT('nav.energy_past_month', 'Past 30 Days');
+      const seg = [['day', _hemmaT('nav.energy_day', 'Day')], ['week', _hemmaT('nav.energy_week', 'Week')], ['month', _hemmaT('nav.energy_month', 'Month')]]
+        .map(([k, l]) => '<button type="button" data-r="' + k + '" aria-pressed="' + (k === range) + '">' + esc(l) + '</button>').join('');
+      const order = devs.map((_, k) => k).sort((a, b) => devs[b].total - devs[a].total);
       const big = Math.max(0.001, ...devs.map((d) => d.total));
-      const sorted = devs.slice().sort((a, b) => b.total - a.total);
-      row.innerHTML = '<div class="cat-en"><h3>' + esc(_hemmaT('nav.energy_usage', 'Usage today')) + '</h3><div class="sub">' + esc(_hemmaT('nav.energy_per_hour', 'kWh per hour')) + '</div>' + svg
-        + '<div class="lgs">' + devs.map((d) => '<span class="lg"><i style="background:' + d.color + '"></i>' + esc(d.name) + '</span>').join('') + '</div></div>'
-        + '<div class="cat-en"><h3>' + esc(_hemmaT('nav.energy_devices_title', 'Individual devices')) + '</h3><div class="sub">' + esc(_hemmaT('nav.energy_today', 'Today')) + '</div>'
-        + sorted.map((d) => '<div class="hb"><span class="hn">' + esc(d.name) + '</span><span class="hbar"><i style="width:' + Math.round((d.total / big) * 100) + '%;background:' + d.color + '"></i></span><span class="hv">' + kwh(d.total) + '</span></div>').join('')
-        + '</div>';
+      const pct = (v) => (sum > 0 ? Math.round((v / sum) * 100) : 0) + '%';
+      const ico = (name) => window.hemmaIconUrl ? window.hemmaIconUrl(name) : '/hemma_assets/icons/' + name + '.svg';
+      row.classList.add('en-row');
+      const hold = (row._segUntil || 0) - performance.now();
+      if (hold > 0) await new Promise((r) => setTimeout(r, hold));
+      if (!row.isConnected || (this._enRange || 'day') !== range) return;
+      row.innerHTML = '<div class="cat-en"><div class="seg"><i class="sth"></i>' + seg + '</div><div class="k"><span class="ttl"></span><button type="button" class="all">' + esc(_hemmaT('nav.energy_all_devices', 'All Devices')) + '</button></div>'
+        + '<div class="big"><span class="num"></span><small>kWh</small></div><div class="sub">' + esc(sub) + '</div><div class="chart"></div>'
+        + '<div class="lgs" style="--lgc:' + Math.ceil(devs.length / Math.ceil(devs.length / 3)) + '">' + devs.map((d, k) => '<button type="button" class="lg" data-k="' + k + '" style="--c:' + d.color + '"><span>' + esc(d.name) + '</span><b>' + num(d.total) + '</b></button>').join('') + '</div></div>'
+        + '<div class="cat-en"><div class="k">' + esc(_hemmaT('nav.energy_devices', 'Devices')) + '</div><div class="sub">' + esc(sub) + '</div><div class="dvs' + (devs.length < 4 ? ' few' : '') + '">'
+        + order.map((k) => { const d = devs[k]; return '<button type="button" class="dv" data-k="' + k + '"><span class="ic" style="background:' + d.color + '"><i style="--i:url(\'' + ico(d.icon) + '\')"></i></span><span class="hn">' + esc(d.name) + '</span>'
+          + '<span class="hv">' + num(d.total) + ' kWh<span class="pc">' + pct(d.total) + '</span></span><span class="hbar"><i style="width:' + Math.round((d.total / big) * 100) + '%;background:' + d.color + '"></i></span></button>'; }).join('')
+        + '</div><div class="split">' + devs.map((d, k) => '<i data-k="' + k + '" style="flex-grow:' + d.total + ';background:' + d.color + '"></i>').join('') + '</div><div class="foot"><span class="fl"></span><span class="fr"></span></div></div>';
+      const chartBox = row.querySelector('.chart');
+      const marks = range === 'day' ? [0, 6, 12, 18] : range === 'week' ? [...Array(7).keys()] : [0, 7, 14, 21, 28];
+      const label = (k) => {
+        if (range === 'day') {
+          const d = new Date(day); d.setHours(k);
+          const t = d.toLocaleTimeString(lang, { hour: 'numeric' });
+          return k % 12 ? t.replace(/\s*[AaPp]\.?\s?[Mm]\.?$/, '') : t;
+        }
+        const d = new Date(start); d.setDate(d.getDate() + k);
+        return range === 'week' ? d.toLocaleDateString(lang, { weekday: 'short' }) : d.toLocaleDateString(lang, { month: 'short', day: 'numeric' });
+      };
+      const target = () => devs[0].vals.map((_, i) => devs.map((d, k) => (E.sel === null || E.sel === k ? d.vals[i] : 0)));
+      const scaleOf = (vals) => {
+        const per = vals.map((r) => r.reduce((a, b) => a + b, 0)), tot = per.reduce((a, b) => a + b, 0), avg = tot / Math.max(1, past);
+        const top = Math.max(0.01, ...per, avg);
+        return { step: [0.025, 0.05, 0.075, 0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5, 7.5, 10, 15, 20, 25, 50, 100].find((x) => x * 4 >= top) || Math.ceil(top / 4), avg, per, tot };
+      };
+      const ease = (p) => 1 - Math.pow(1 - p, 3);
+      // Drawn at its real width so the type is 12px whatever the card's size.
+      const draw = (animate) => {
+        const inner = Math.max(260, chartBox.clientWidth || 480), R = 34, W = inner - R, H = 200, Y = 6, slot = W / n, bw = slot * (n > 24 ? 0.6 : 0.62);
+        const to = target(), from = E.cur && animate ? E.cur : to, s0 = scaleOf(from), s1 = scaleOf(to);
+        const t0 = performance.now(), dur = 460;
+        cancelAnimationFrame(E.raf);
+        const frame = (t) => {
+          const p = animate ? ease(Math.max(0, Math.min(1, (t - t0) / dur))) : 1;
+          const vals = to.map((r, i) => r.map((v, k) => from[i][k] + (v - from[i][k]) * p));
+          const step = s0.step + (s1.step - s0.step) * p, max = step * 4, avg = s0.avg + (s1.avg - s0.avg) * p;
+          let svg = '<svg class="enc" viewBox="0 0 ' + inner + ' ' + (H + Y + 22) + '" width="100%">';
+          for (let i = 0; i <= 4; i++) {
+            const y = Y + H - (H * i) / 4;
+            svg += '<line x1="0" x2="' + W + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="rgba(255,255,255,' + (i ? '.16' : '.28') + ')"' + (i ? ' stroke-dasharray="2 3"' : '') + '/>'
+              + '<text x="' + (W + 8) + '" y="' + (y + 4).toFixed(1) + '" fill="rgba(235,235,245,.6)" font-size="12">' + (i ? String(+(s1.step * i).toFixed(3)) : '0') + '</text>';
+          }
+          marks.forEach((k) => {
+            const x = range === 'week' ? k * slot + slot / 2 : k * slot;
+            if (range !== 'week') svg += '<line x1="' + x.toFixed(1) + '" x2="' + x.toFixed(1) + '" y1="' + Y + '" y2="' + (Y + H) + '" stroke="rgba(255,255,255,.12)" stroke-dasharray="2 3"/>';
+            svg += '<text x="' + (range === 'week' ? x : x + 3).toFixed(1) + '" y="' + (Y + H + 17) + '"' + (range === 'week' ? ' text-anchor="middle"' : '') + ' fill="rgba(235,235,245,.6)" font-size="12">' + esc(label(k)) + '</text>';
+          });
+          vals.forEach((r, i) => {
+            let y = Y + H;
+            const segs = r.map((v, k) => [v, k]).filter(([v]) => v > max * 0.002);
+            segs.forEach(([v, k], j) => {
+              const hh = (H * v) / max, x = i * slot + (slot - bw) / 2;
+              y -= hh;
+              if (j === segs.length - 1) {
+                const rr = Math.min(3, hh, bw / 2);
+                svg += '<path d="M' + x.toFixed(1) + ' ' + (y + hh).toFixed(1) + 'V' + (y + rr).toFixed(1) + 'Q' + x.toFixed(1) + ' ' + y.toFixed(1) + ' ' + (x + rr).toFixed(1) + ' ' + y.toFixed(1)
+                  + 'H' + (x + bw - rr).toFixed(1) + 'Q' + (x + bw).toFixed(1) + ' ' + y.toFixed(1) + ' ' + (x + bw).toFixed(1) + ' ' + (y + rr).toFixed(1) + 'V' + (y + hh).toFixed(1) + 'Z" fill="' + devs[k].color + '"/>';
+              } else svg += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hh.toFixed(1) + '" fill="' + devs[k].color + '"/>';
+            });
+          });
+          if (s1.tot > 0) {
+            const ay = Y + H - (H * avg) / max;
+            const avgC = window.hemmaHarmonize ? window.hemmaHarmonize('#30D158') : '#30D158';
+            svg += '<line x1="0" x2="' + W + '" y1="' + ay.toFixed(1) + '" y2="' + ay.toFixed(1) + '" stroke="' + avgC + '" stroke-width="1.5" stroke-dasharray="5 4"/>'
+              + '<text x="' + (W - 4) + '" y="' + (ay - 6).toFixed(1) + '" text-anchor="end" fill="' + avgC + '" font-size="12" font-weight="600">' + esc(_hemmaT('nav.energy_avg', 'avg')) + '</text>';
+          }
+          svg += '<g class="tip" visibility="hidden"><line stroke="rgba(255,255,255,.4)"/><rect rx="9" height="36" fill="rgba(60,60,64,.96)"/><text class="t1" fill="rgba(235,235,245,.6)" font-size="11" font-weight="600"/><text class="t2" fill="#fff" font-size="14" font-weight="600"/></g></svg>';
+          chartBox.innerHTML = svg;
+          E.cur = vals; E.geo = { inner, W, H, Y, slot, max: s1.step * 4, per: s1.per };
+          if (p < 1) E.raf = requestAnimationFrame(frame);
+        };
+        if (animate) E.raf = requestAnimationFrame(frame); else frame(t0);
+      };
+      const count = (to) => {
+        const el = row.querySelector('.num'), from = E.shown || 0, t0 = performance.now();
+        cancelAnimationFrame(E.nraf);
+        const step = (t) => { const p = ease(Math.max(0, Math.min(1, (t - t0) / 460))); E.shown = from + (to - from) * p; el.textContent = num(E.shown); if (p < 1) E.nraf = requestAnimationFrame(step); };
+        if (!from || Math.abs(to - from) < 0.005) { E.shown = to; el.textContent = num(to); } else E.nraf = requestAnimationFrame(step);
+      };
+      const paint = () => {
+        const f = E.sel !== null;
+        row.querySelectorAll('.cat-en').forEach((c) => c.classList.toggle('f', f));
+        row.querySelectorAll('.lg, .dv').forEach((el) => el.classList.toggle('on', Number(el.dataset.k) === E.sel));
+        row.querySelectorAll('.split i').forEach((el) => { el.style.opacity = !f || Number(el.dataset.k) === E.sel ? '1' : '0.3'; });
+        const ttl = row.querySelector('.ttl');
+        ttl.textContent = f ? devs[E.sel].name : _hemmaT('nav.energy_total', 'Total');
+        ttl.style.color = f ? devs[E.sel].color : '';
+        const topK = order[0], k = f ? E.sel : topK;
+        row.querySelector('.fl').textContent = f ? devs[k].name : (sum > 0 ? _hemmaT('nav.energy_highest', 'Highest: {name}', { name: devs[k].name }) : '');
+        row.querySelector('.fr').textContent = sum > 0 ? _hemmaT('nav.energy_share', '{n} of all use', { n: pct(devs[k].total) }) : '';
+        count(f ? devs[E.sel].total : sum);
+      };
+      const pick = (k) => { E.sel = k === E.sel ? null : k; paint(); draw(true); };
+      row.querySelectorAll('.lg, .dv, .split i').forEach((el) => { el.onclick = (e) => { e.stopPropagation(); if (el._held) { el._held = false; return; } pick(Number(el.dataset.k)); }; });
+      row.querySelector('.all').onclick = (e) => { e.stopPropagation(); pick(null); };
+      // The Day / Week / Month thumb slides with a slight stretch, as the energy popup's does; the page redraws once it lands.
+      const segEl = row.querySelector('.seg');
+      const slide = (animate) => {
+        const th = segEl.querySelector('.sth'), on = segEl.querySelector('button[aria-pressed="true"]');
+        if (!th || !on || !on.offsetWidth) return;
+        const toX = on.offsetLeft - 2, toW = on.offsetWidth, from = row._segPos;
+        th.style.transform = 'translateX(' + toX + 'px)'; th.style.width = toW + 'px';
+        row._segPos = { x: toX, w: toW };
+        if (!animate || !from || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const stretch = 1 + Math.min(0.06, Math.abs(toX - from.x) / 2200);
+        th.animate([{ transform: 'translateX(' + from.x + 'px)', width: from.w + 'px' },
+          { transform: 'translateX(' + (from.x + toX) / 2 + 'px) scaleX(' + stretch.toFixed(3) + ') scaleY(.98)', width: Math.round((from.w + toW) / 2) + 'px', offset: 0.5 },
+          { transform: 'translateX(' + toX + 'px)', width: toW + 'px' }], { duration: 260, easing: 'cubic-bezier(.25,.8,.25,1)' });
+      };
+      requestAnimationFrame(() => slide(false));
+      row.querySelectorAll('.seg button').forEach((b) => { b.onclick = () => {
+        if (b.dataset.r === (this._enRange || 'day')) return;
+        this._enRange = b.dataset.r;
+        row.querySelectorAll('.seg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        slide(true);
+        row._segUntil = performance.now() + 270;
+        this._drawEnergy(row, devices);
+      }; });
+      // A long press (or a right click) on a device opens Home Assistant's own dialog for its sensor; a tap filters.
+      const info = (k) => { const id = devs[k] && devs[k].id; if (id && st[id] && window.hemmaPopup) window.hemmaPopup.moreInfo(id); };
+      row.querySelectorAll('.lg, .dv').forEach((el) => {
+        let t = 0;
+        const k = Number(el.dataset.k);
+        el.addEventListener('pointerdown', (e) => { if (e.button) return; el._held = false; clearTimeout(t); t = setTimeout(() => { el._held = true; info(k); }, 500); });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach((x) => el.addEventListener(x, () => clearTimeout(t)));
+        el.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(t); info(k); });
+      });
+      // A tap on a bar shows its amount over it, as Health and Screen Time do; a tap on the empty chart clears a filter.
+      chartBox.addEventListener('pointerdown', (e) => {
+        const svg = chartBox.querySelector('svg.enc'), tip = svg && svg.querySelector('.tip'), G = E.geo;
+        if (!svg || !tip || !G) return;
+        const r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * (G.inner / r.width), k = Math.floor(x / G.slot);
+        if (x > G.W || k < 0 || k >= n || !G.per[k]) { tip.setAttribute('visibility', 'hidden'); if (E.sel !== null) pick(null); return; }
+        const cx = k * G.slot + G.slot / 2, ty = G.Y + G.H - (G.H * G.per[k]) / G.max;
+        const when = range === 'day' ? (() => { const d = new Date(day); d.setHours(k); return d.toLocaleTimeString(lang, { hour: 'numeric' }); })()
+          : (() => { const d = new Date(start); d.setDate(d.getDate() + k); return d.toLocaleDateString(lang, { weekday: 'short', month: 'short', day: 'numeric' }); })();
+        const t1 = tip.querySelector('.t1'), t2 = tip.querySelector('.t2'), bx = tip.querySelector('rect'), ln = tip.querySelector('line');
+        t1.textContent = when.toUpperCase(); t2.textContent = num(G.per[k]) + ' kWh';
+        const w = 104, left = Math.max(0, Math.min(G.W - w, cx - w / 2)), top = Math.max(-34, ty - 52);
+        bx.setAttribute('x', left); bx.setAttribute('y', top); bx.setAttribute('width', w);
+        t1.setAttribute('x', left + 10); t1.setAttribute('y', top + 14); t2.setAttribute('x', left + 10); t2.setAttribute('y', top + 30);
+        ln.setAttribute('x1', cx); ln.setAttribute('x2', cx); ln.setAttribute('y1', top + 36); ln.setAttribute('y2', ty - 2);
+        tip.setAttribute('visibility', 'visible');
+      });
+      paint();
+      draw(!!(keep && E.cur));
+      if (!row._enRO && window.ResizeObserver) {
+        let w0 = 0;
+        row._enRO = new ResizeObserver(() => { const w = row.clientWidth; if (Math.abs(w - w0) < 2) return; w0 = w; if (row._enRedraw) row._enRedraw(); });
+        row._enRO.observe(row);
+      }
+      // Side by side, the list keeps to the chart card's height and scrolls when there are more devices than fit; stacked, each card takes its own height.
+      const fitList = () => {
+        const [a, b] = row.querySelectorAll('.cat-en');
+        if (!a || !b) return;
+        const keep = row.style.minHeight;
+        row.style.minHeight = row.offsetHeight + 'px';
+        b.style.height = '0px';
+        a.style.alignSelf = 'start';
+        const side = Math.abs(a.offsetTop - b.offsetTop) < 2, h = a.offsetHeight;
+        a.style.alignSelf = '';
+        b.style.height = side ? h + 'px' : '';
+        row.style.minHeight = keep;
+      };
+      requestAnimationFrame(() => { fitList(); requestAnimationFrame(() => { row.style.minHeight = ''; }); });
+      row._enRedraw = () => { draw(false); fitList(); };
       clearTimeout(this._energyTick);
       this._energyTick = setTimeout(() => { if (row.isConnected && this._cat === 'energy') this._drawEnergy(row, devices); }, 300000);
     }
@@ -4427,12 +5671,13 @@ window.hemmaMenuGlass = {
     _closeCat(instant) {
       this.classList.remove('under');
       if (this._baseMode && !instant && this._catPage) {
-        if (this._cat !== 'home') { this._catSwap = 'return'; this._toBase(); }
+        if (this._cat !== 'home') { this._catSwap = this._viaPush && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'pop' : 'return'; this._viaPush = false; this._toBase(); }
         return;
       }
       const els = this._catEls;
       if (!els) { this._cat = null; return; }
       this._catEls = null;
+      if (this._bg) { this._bg.remove(); this._bg = null; }
       this._catPage = null;
       window._hemmaCatOpen = false;
       this._catCards = [];
@@ -4558,8 +5803,8 @@ window.hemmaMenuGlass = {
       // layout-card gives every badge 4px either side as well.
       pills.style.setProperty('--masonry-view-card-margin', '4px 0 8px');
       // Plain px: Safari drops calc(clamp() * k), which is how the room card's own sizes are written.
-      if (this._compact()) [['--badge-padding-current', '3px 12px 3px 7px'], ['--badge-min-height-current', '40px'],
-        ['--badge-icon-size-current', '24px'], ['--badge-font-size-current', '12px'], ['--badge-btn-size-current', '18px']]
+      if (this._compact()) [['--badge-padding-current', '3px 12px 3px 7px'], ['--badge-min-height-current', '44px'],
+        ['--badge-icon-size-current', '24px'], ['--badge-font-size-current', '13px'], ['--badge-btn-size-current', '18px']]
         .forEach(([n, v]) => pills.style.setProperty(n, v));
     }
 
@@ -4653,20 +5898,7 @@ window.hemmaMenuGlass = {
       this._slideDir = 0;
       if (!dir) return;
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      // Overview hides the room card, so only the page slides; the card's photo still drifts on its own.
-      if (this._baseMode) { this._baseDir = dir; return; }
-      const W = this._sideOpen && this._pushed ? Math.round(this._side.getBoundingClientRect().width) : 0;
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        this._pushTargets().forEach((el) => {
-          if (!el.animate || el.id === 'time') return;
-          const P = this._pushShift(W);
-          // The header fades in quickly, so it shows most of its travel; it moves less than the rows to look the same.
-          const d = el.tagName === 'HEMMA-SMART-ROW' ? 70 : 32;
-          el.animate([{ translate: (P + dir * d) + 'px 0px' }, { translate: P + 'px 0px' }],
-            { duration: 480, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' });
-          if (FX_TEXT(el)) el.animate([{ opacity: 0, offset: 0 }], { duration: 220, easing: 'ease-out' });
-        });
-      }));
+      if (this._baseMode) this._baseDir = dir;
     }
 
     // The photo a room's card will draw (hemma_room's --hero-img), worked out before HA has built that card.
@@ -4678,65 +5910,110 @@ window.hemmaMenuGlass = {
       if (!v) return null;
       const t = this._hass && this._hass.themes;
       const dark = t && typeof t.darkMode === 'boolean' ? t.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (v.hv && !this.classList.contains('hvp')) return { url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'/%3E", pos: 'center center' };
       const base = v.image || 'default';
-      return { url: '/hemma_assets/rooms/' + (dark ? (v.night || base + '-night') : base) + '.jpg', pos: v.pos || 'center center' };
+      return { url: '/hemma_assets/' + (v.hv ? 'rooms-even/' : 'rooms/') + (dark ? (v.night || base + '-night') : base) + '.jpg', pos: v.pos || 'center center' };
     }
 
-    // The arriving photo fades in over the leaving one and is dropped once that room's card shows the same photo.
-    _photoSwap(fromIdx, toIdx, drift) {
-      this._photoEnd();
-      const card = this._heroCardFor(fromIdx);
-      const ph = this._photoFor(toIdx);
-      if (!card || !card.isConnected || !ph) return false;
-      const r = card.getBoundingClientRect();
-      const cs = getComputedStyle(card, '::after');
-      if (!r.width || !/url\(/.test(cs.backgroundImage)) return false;
+    // How the room card draws its photo behind the page, read off the card itself, so a layer built from it is drawn the same way by the same browser.
+    _photoRecipe() {
+      const card = this._heroCardFor(this._shownIdx) || this._heroCardFor(this._activeIdx);
+      if (card && card.isConnected) {
+        const r = card.getBoundingClientRect(), a = getComputedStyle(card, '::after'), d = getComputedStyle(card, '::before');
+        if (r.width && /url\(/.test(a.backgroundImage)) {
+          const pick = (cs, keys) => Object.fromEntries(keys.map((k) => [k, cs[k]]));
+          this._bgRecipe = {
+            left: r.left, top: r.top, width: r.width, height: r.height, radius: getComputedStyle(card).borderRadius,
+            after: pick(a, ['backgroundImage', 'backgroundSize', 'backgroundRepeat', 'backgroundPosition', 'filter', 'transform', 'transformOrigin']),
+            // Whichever room's card it was read from, the photo itself is swapped for the room asked for (_photoBuild).
+            grain: d.backgroundImage && d.backgroundImage !== 'none' ? pick(d, ['backgroundImage', 'backgroundSize', 'backgroundRepeat', 'backgroundPosition', 'opacity', 'mixBlendMode']) : null,
+          };
+          this._bgRecipe.after.backgroundImage = this._bgRecipe.after.backgroundImage.replace(/url\([^)]*\)/g, 'url()');
+        }
+      }
+      return this._bgRecipe || null;
+    }
+
+    // A room photo built as the card builds it: the photo layer (its tint, blur and zoom) with the card's grain blended over it, and nothing else.
+    _photoBuild(idx, at) {
+      const rc = this._photoRecipe(), ph = this._photoFor(idx);
+      if (!rc || !ph) return null;
       const box = document.createElement('div');
-      box.className = 'cat-xfade';
-      Object.assign(box.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: getComputedStyle(card).borderRadius });
+      Object.assign(box.style, { position: 'absolute', left: (rc.left - (at ? at.left : 0)) + 'px', top: (rc.top - (at ? at.top : 0)) + 'px', width: rc.width + 'px', height: rc.height + 'px',
+        borderRadius: rc.radius, overflow: 'hidden', isolation: 'isolate', pointerEvents: 'none' });
       const img = box.appendChild(document.createElement('div'));
-      ['backgroundSize', 'backgroundRepeat', 'filter', 'transform', 'transformOrigin'].forEach((k) => { img.style[k] = cs[k]; });
-      img.style.backgroundImage = cs.backgroundImage.replace(/url\([^)]*\)/g, 'url("' + ph.url + '")');
-      img.style.backgroundPosition = cs.backgroundPosition.split(',').map((p, i) => (i ? ph.pos : p)).join(',');
-      // The card's dither (::before) sits over its photo; without it the copy is a shade brighter and the hand-off shows.
-      const ds = getComputedStyle(card, '::before');
-      if (ds.backgroundImage && ds.backgroundImage !== 'none') {
-        const dith = box.appendChild(document.createElement('div'));
-        ['backgroundImage', 'backgroundSize', 'backgroundRepeat', 'backgroundPosition', 'opacity', 'mixBlendMode'].forEach((k) => { dith.style[k] = ds[k]; });
-      }
-      this.shadowRoot.appendChild(box);
-      this._xfade = box;
-      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        box.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
-        // Home to a room and back, the photo drifts in as Focus's does (hemmaRoomParallax), from the tap.
-        const xf = cs.transform === 'none' ? '' : cs.transform;
-        if (drift) img.animate([{ transform: xf + ' translateX(1.2%)' }, { transform: xf || 'none' }],
-          { duration: 500, delay: 50, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)', fill: 'backwards' });
-      }
-      this._xfadeT = setTimeout(() => this._photoEnd(), 4000);
-      return true;
+      Object.assign(img.style, rc.after, { position: 'absolute', inset: '0' });
+      img.style.backgroundImage = rc.after.backgroundImage.replace(/url\([^)]*\)/g, 'url("' + ph.url + '")');
+      img.style.backgroundPosition = rc.after.backgroundPosition.split(',').map((p, i) => (i ? ph.pos : p)).join(',');
+      if (rc.grain) { const g = box.appendChild(document.createElement('div')); Object.assign(g.style, rc.grain, { position: 'absolute', inset: '0' }); }
+      box._key = [ph.url, ph.pos, JSON.stringify(rc).replace(/-?\d+\.\d+/g, (n) => (+n).toFixed(2))].join('|');
+      box._url = ph.url;
+      return box;
     }
 
-    // Two frames after the card is found, so its own photo has painted under the copy.
-    _photoDone() {
-      const box = this._xfade;
-      if (!box) return;
-      requestAnimationFrame(() => requestAnimationFrame(() => { if (this._xfade === box) this._photoEnd(); }));
+    // Overview draws the room photo itself and keeps it: pages slide over it bringing their own, and nothing is swapped behind them when they land.
+    _bgSync(fade) {
+      const R = this.shadowRoot, els = this._catEls;
+      if (!this._baseMode || !els || !els[0].isConnected || (this.classList.contains('hv') && !this.classList.contains('hvp'))) { if (this._bg) { this._bg.remove(); this._bg = null; } return; }
+      if (this._slideLive) return;
+      const box = this._photoBuild(this._activeIdx);
+      clearTimeout(this._bgRetryT);
+      // The room's card can arrive after the page: the photo is built from it, so it waits for it.
+      if (!box) { if ((this._bgTries = (this._bgTries || 0) + 1) < 40) this._bgRetryT = setTimeout(() => this._bgSync(fade), 150); return; }
+      this._bgTries = 0;
+      if (this._bg && this._bg.isConnected && this._bg._key === box._key) return;
+      // Same photo, new geometry: a fresh layer re-decodes and re-blurs it, and WebKit shows a blank frame meanwhile.
+      const cur = this._bg && this._bg.isConnected && this._bg.firstChild;
+      if (cur && cur._url === box._url && cur.children.length === box.children.length) {
+        cur.style.cssText = box.style.cssText;
+        [...box.children].forEach((c, i) => { cur.children[i].style.cssText = c.style.cssText; });
+        cur._key = box._key; this._bg._key = box._key;
+        return;
+      }
+      const host = document.createElement('div');
+      host.className = 'cat-photo';
+      host.appendChild(box);
+      host._key = box._key;
+      R.insertBefore(host, els[0]);
+      const old = this._bg;
+      this._bg = host;
+      if (!old) return;
+      if (!fade || !host.animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const pic = new Image(); pic.src = box._url;
+        const drop = () => requestAnimationFrame(() => requestAnimationFrame(() => old.remove()));
+        (pic.decode ? pic.decode() : Promise.resolve()).then(drop, drop);
+        return;
+      }
+      host.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' }).finished.then(() => old.remove(), () => old.remove());
     }
 
-    _photoEnd() {
-      clearTimeout(this._xfadeT);
-      if (this._xfade) this._xfade.remove();
-      this._xfade = null;
+    // WebKit (iPad HA app) can come back with the photo's tiles past 1024px never repainted; a new layer has no stale tiles to keep.
+    _bgRenew() {
+      const old = this._bg;
+      if (!old || !old.isConnected || this._slideLive) return;
+      this._bg = null;
+      this._bgSync();
+      if (!this._bg || this._bg === old) { if (!this._bg) this._bg = old; return; }
+      requestAnimationFrame(() => requestAnimationFrame(() => old.remove()));
     }
 
     // HA's switch to the room's view is the heaviest step; run on the tap, it held the first frame for a quarter second.
     _baseGo(idx, to) {
       const prev = this._activeIdx;
       const fromCat = !!this._cat && this._cat !== 'home';
-      const dir = !fromCat && prev >= 0 && (prev === 0) !== (idx === 0) ? (idx === 0 ? -1 : 1) : 0;
-      if (fromCat) this._catSwap = 'return';
-      this._photoSwap(this._shownIdx, idx, !!dir);
+      // Overview navigation: into a room is a push, back to Home a pop, from a title, the sidebar or a tab alike.
+      const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const cross = !fromCat && prev >= 0 && (prev === 0) !== (idx === 0);
+      const titled = this._pushNext;
+      const push = !calm && (titled || (cross && idx !== 0));
+      const pop = !calm && !push && (this._popNext || (cross && idx === 0));
+      this._pushNext = false;
+      this._popNext = false;
+      this._roomViaPush = push && titled ? idx : null;
+      if (push) this._catSwap = 'push';
+      else if (pop) this._catSwap = 'pop';
+      else if (fromCat) this._catSwap = 'return';
+      if (!push && !pop) requestAnimationFrame(() => this._bgSync(true));
       this._els.forEach((el, i) => el.btn.classList.toggle('active', i === idx));
       this._activeIdx = idx;
       if (this._variant === 'tablet') { this._fold(); this._placeIndicator(); }
@@ -4745,12 +6022,19 @@ window.hemmaMenuGlass = {
       clearTimeout(this._navT);
       const token = this._navTok = {};
       const nav = () => { if (this._navTok === token) { this._navTok = null; navigate(to); } };
-      this._toBase();
-      if (dir && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        this._afterSlide = nav;
-        this._slidePage(dir);
+      if (push || pop) {
+        this._swapSettle();
+        this._holdPane();
+        // The back button comes and goes with the title, on the slide's first frame.
+        this._backHold = performance.now() + 2000;
+        setTimeout(() => { if (this._backHold && performance.now() >= this._backHold) { this._backHold = 0; this._syncBack(); } }, 2050);
+        this._afterPush = nav;
         this._navT = setTimeout(nav, 1800);
-      } else this._navT = setTimeout(nav, 120);
+        this._toBase();
+        return;
+      }
+      this._toBase();
+      this._navT = setTimeout(nav, 120);
     }
 
     // Overview's page changes the frame the room's own card appears, so the photo and the page change together.
@@ -4764,10 +6048,12 @@ window.hemmaMenuGlass = {
       const tick = () => {
         if (this._activeIdx !== idx || !this._baseMode) return;
         if (!this._heroCardFor(idx) && performance.now() - t0 < 600) { this._baseRaf = requestAnimationFrame(tick); return; }
+        this._bgSync(true);
         // Moved already (_baseGo): only the photo was waiting for HA.
-        if (early) { this._photoDone(); return; }
+        if (early) { this._bgSync(); return; }
+        // A room change from outside Overview's own controls (the browser's back, a link) pushes and pops the same way.
+        if (dir && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) { this._catSwap = dir > 0 ? 'push' : 'pop'; this._popFrom = this._prevShown; }
         this._toBase();
-        if (dir && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) this._slidePage(dir);
       };
       tick();
     }
@@ -4780,6 +6066,40 @@ window.hemmaMenuGlass = {
       const walk = (r) => r.querySelectorAll('*').forEach((e) => { if (e.tagName === 'HA-ICON') icons.push(e); else if (e.shadowRoot) walk(e.shadowRoot); });
       walk(row.shadowRoot);
       return icons.every((i) => {
+        const svg = i.shadowRoot && i.shadowRoot.querySelector('ha-svg-icon');
+        const path = svg && svg.shadowRoot && svg.shadowRoot.querySelector('path');
+        return !!(path && path.getAttribute('d'));
+      });
+    }
+
+    _paneReady(p) {
+      const shown = (el) => { const c = el.shadowRoot && el.shadowRoot.querySelector('ha-card'); return !!c && (c._hemmaShown || (c._hemmaShown = getComputedStyle(c).visibility !== 'hidden')); };
+      return [...p.querySelectorAll('.cat-grid')].every((g) => [...g.children].every((el) => el.hidden || shown(el))) && this._iconsDrawn(p);
+    }
+
+    // A page opened with nothing before it is built hidden and shown once its tiles are drawn, so it never shows unpacked.
+    _revealWhenReady(pane) {
+      const t0 = performance.now();
+      const step = () => {
+        if (this._pane !== pane || !pane.isConnected) return;
+        if (!this._paneReady(pane) && performance.now() - t0 < 600) { requestAnimationFrame(step); return; }
+        pane.hidden = false;
+        this._sortSig = null;
+        this._sortSoon('fill');
+      };
+      step();
+    }
+
+    _iconsDrawn(root) {
+      const icons = [];
+      const walk = (r, d) => { if (d > 4) return; r.querySelectorAll('*').forEach((e) => { if (e.tagName === 'HA-ICON') icons.push(e); else if (e.shadowRoot) walk(e.shadowRoot, d + 1); }); };
+      const imgs = [];
+      const walk2 = (r, d) => { if (d > 4) return; r.querySelectorAll('*').forEach((e) => { if (e.tagName === 'IMG' && e.getAttribute('src')) imgs.push(e); else if (e.shadowRoot) walk2(e.shadowRoot, d + 1); }); };
+      root.querySelectorAll('.cat-grid > *').forEach((el) => { if (!el.hidden && el.shadowRoot) { walk(el.shadowRoot, 0); walk2(el.shadowRoot, 0); } });
+      // An icon image not yet decoded paints as an empty circle for a frame or two.
+      if (!imgs.every((im) => { if (!im._hemmaDec && im.decode) { im._hemmaDec = 1; im.decode().then(() => { im._hemmaDec = 2; }, () => { im._hemmaDec = 2; }); } return im.complete && im.naturalWidth > 0; })) return false;
+      return icons.every((i) => {
+        if (!i.icon) return true;
         const svg = i.shadowRoot && i.shadowRoot.querySelector('ha-svg-icon');
         const path = svg && svg.shadowRoot && svg.shadowRoot.querySelector('path');
         return !!(path && path.getAttribute('d'));
@@ -4850,9 +6170,15 @@ window.hemmaMenuGlass = {
       // Layout width, not the drawn one: a page coming back from a filter is still scaled down by its entrance.
       const w = (w0 != null ? w0 : g.offsetWidth) + (this._packDW || 0);
       if (!w) return;
+      // A rotation can settle after the resize handler has looked, so the grid re-lays itself out whenever its own width moves.
+      g._packedW = g.offsetWidth;
+      if (!g._packRO && window.ResizeObserver) {
+        g._packRO = new ResizeObserver(() => { const nw = g.offsetWidth; if (nw && Math.abs(nw - (g._packedW || 0)) > 20 && performance.now() > (this._slideUntil || 0) && !this._sideAnim) { this._sortSig = null; this._sortSoon('fill'); } });
+        g._packRO.observe(g);
+      }
       const pane = g.closest('.cat-pane');
       if (pane) pane._hemmaPackW = w;
-      const cols = Math.max(1, Math.floor((w + 10) / (this._compact() ? 175 : 200)));
+      const cols = Math.max(1, Math.floor((w + 10) / (this.classList.contains('hv') ? 230 : this._compact() ? 175 : 200)));
       g.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
       if (pane) pane.style.setProperty('--cat-two-tiles', (2 * (w - 10 * (cols - 1)) / cols + 10).toFixed(2) + 'px');
       const big = (el) => el.dataset.hemmaSize === 'large';
@@ -4872,7 +6198,7 @@ window.hemmaMenuGlass = {
           row += Math.ceil(band.length / cols);
           continue;
         }
-        // A band that fits one row stays one row, large tiles first as Apple Home does; a wider one pairs smalls under each other.
+        // A band that fits one row stays one row, large tiles first; a wider one pairs smalls under each other.
         const fits = band.length <= cols;
         let top = (fits ? band.length : Math.min(cols, bigs + Math.ceil((band.length - bigs) / 2))) - bigs;
         const row1 = [], row2 = [];
@@ -4995,10 +6321,16 @@ window.hemmaMenuGlass = {
         if (!c || typeof c !== 'object') return;
         if ([].concat(c.template || []).indexOf('hemma_room') >= 0) {
           const v = c.variables || {};
-          if (view != null && !rooms[view]) rooms[view] = { image: v.image, night: v.image_night, pos: v.image_position };
+          if (view != null && !rooms[view]) rooms[view] = { image: v.image, night: v.image_night, pos: v.image_position, bg: v.hemma_bg_color, hv: v.hemma_style === 'homeview', hvc: v.hemma_hv_color };
           const base = v.image || 'default';
           urls.add('/hemma_assets/rooms/' + base + '.jpg');
           urls.add('/hemma_assets/rooms/' + (v.image_night || base + '-night') + '.jpg');
+          if ((window.innerWidth || 0) >= 768 && (window.innerHeight || 0) > 500) {
+            const hv = v.hemma_style === 'homeview', soft = '/hemma_assets/' + (hv ? 'rooms-soft/' : 'rooms-glass/'), q = hv ? '?v=3' : '?v=5';
+            urls.add(soft + base + '.jpg' + q);
+            urls.add(soft + (v.image_night || base + '-night') + '.jpg' + q);
+            if (hv) { urls.add('/hemma_assets/rooms-even/' + base + '.jpg'); urls.add('/hemma_assets/rooms-even/' + (v.image_night || base + '-night') + '.jpg'); }
+          }
         }
         (c.cards || []).forEach(walk);
         if (c.card) walk(c.card);
@@ -5086,7 +6418,7 @@ window.hemmaMenuGlass = {
         this._catLeftRO = new ResizeObserver(() => this._syncCatLeft());
         this._catLeftRO.observe(vh);
       }
-      const pushed = !!(this._sideOpen && this._pushed);
+      const pushed = !!(this._sideOpen && this._pushed), lift = pushed || this._liftFits();
       (this._catEls || []).forEach((n) => {
         if (instant && n.classList.contains('pushed') !== pushed) {
           n.style.transition = 'none';
@@ -5096,10 +6428,20 @@ window.hemmaMenuGlass = {
       });
       const page = this._catPage;
       if (!page) return;
+      clearTimeout(this._liftT);
+      if (instant) { page.classList.add('now'); page.classList.toggle('lifted', lift); requestAnimationFrame(() => requestAnimationFrame(() => { page.classList.remove('now'); this._hvBackPos(); })); }
+      else if (page.classList.contains('lifted') !== lift) { this._liftAt = performance.now() + 700; this._liftT = setTimeout(() => {
+        if (this._catPage !== page) return;
+        page.classList.toggle('lifted', !!(this._sideOpen && this._pushed) || this._liftFits());
+        const t0 = performance.now(), follow = () => { this._hvBackPos(); if (performance.now() - t0 < 600) requestAnimationFrame(follow); };
+        follow();
+        const h1 = page.querySelector('.cat-in > h1');
+        if (h1) this._hvSideAlign(h1, parseFloat(getComputedStyle(h1).lineHeight) || 62);
+      }, 500); }
       const card = !pushed && this._heroCardFor(this._activeIdx);
       const n = card && card.querySelector('#name');
       const r = n && n.getBoundingClientRect();
-      // Overview without the sidebar keeps Apple Home's even margins: the left gutter is the right one.
+      // Overview without the sidebar keeps even margins: the left gutter is the right one.
       const x = pushed ? this._sideGap() : this._baseMode ? 22 : r && r.width ? Math.round(r.left - (parseFloat(n.style.translate) || 0)) : 0;
       const mini = this.shadowRoot.querySelector('.cat-mini');
       [page, mini].forEach((el) => { if (!el) return; if (pushed || x > 20) el.style.setProperty('--cat-gutter', x + 'px'); else el.style.removeProperty('--cat-gutter'); });
@@ -5167,7 +6509,7 @@ window.hemmaMenuGlass = {
       if (!list) return;
       list.innerHTML = '';
       const hass = this._hass;
-      // Apple Home keeps the sidebar open and swaps the room beside it.
+      // The sidebar stays open and the room swaps beside it.
       const go = (idx) => () => {
         const el = this._els[idx];
         if (!el) return;
@@ -5331,7 +6673,7 @@ window.hemmaMenuGlass = {
       return out;
     }
 
-    // Overview uses Apple Home's gap (20pt on an iPad, 15pt on a Mac); Focus is mostly photo and needs more.
+    // Overview uses a fixed gap (20pt on an iPad, 15pt on a Mac); Focus is mostly photo and needs more.
     _sideGap() {
       if (!this._baseMode) return this._variant === 'tablet' ? 26 : 24;
       return this._variant === 'tablet' ? 20 : 15;
@@ -5381,11 +6723,17 @@ window.hemmaMenuGlass = {
       const r = t && t.getBoundingClientRect();
       if (r && r.width) { this._clockX = Math.round(r.left - 22); this._clockY = Math.round(r.top); }
       // Overview lines everything up on its own gap, the clock included.
-      if (this._baseMode && this._clockX != null) this._clockX = this._sideGap() - 22;
+      if (this._baseMode && this._clockX != null) this._clockX = this._sideGap() - 22 + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hemma-content-left')) || 0);
       if (this._clockX == null) return;
       const vh = this._viewHost();
       if (vh) vh.style.setProperty('--hemma-side-time', 'hidden');
+      const barEl = this.shadowRoot && this.shadowRoot.querySelector('.bar'), bar = barEl && barEl.getBoundingClientRect();
       st.style.top = this._clockY + 'px';
+      if (bar && bar.height && !this._baseMode && st.firstChild) {
+        const rg = document.createRange(); rg.selectNodeContents(st);
+        const tx = rg.getBoundingClientRect();
+        if (tx.height) st.style.top = Math.round(this._clockY + bar.top + bar.height / 2 - (tx.top + tx.height / 2)) + 'px';
+      }
       st.style.transition = T ? 'transform ' + T + 'ms ' + E : 'none';
       st.style.transform = this._sideOpen && this._pushed ? 'none' : 'translateX(' + this._clockX + 'px)';
       st.classList.add('on');
@@ -5406,6 +6754,7 @@ window.hemmaMenuGlass = {
     }
 
     _pushView(on, instant) {
+      this._pushUntil = performance.now() + 700;
       const land = this._variant === 'tablet' ? window.matchMedia('(orientation: landscape)').matches : window.innerWidth >= 900;
       const still = instant || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const T = still ? 0 : (on ? 520 : 480);
@@ -5469,7 +6818,7 @@ window.hemmaMenuGlass = {
       return V.home_layout === 'overview';
     }
 
-    // Desktop Overview keeps the sidebar open, as Apple Home's Mac app does; a tablet can still switch.
+    // Desktop Overview keeps the sidebar open; a tablet can still switch.
     _sideLocked() {
       return !!this._baseMode && this._variant !== 'tablet' && window.innerWidth >= 900;
     }
@@ -5490,12 +6839,13 @@ window.hemmaMenuGlass = {
       }
       const vh = this._viewHost();
       this.classList.toggle('side-locked', on && this._variant !== 'tablet' && window.innerWidth >= 900);
+      document.documentElement.classList.toggle('hemma-hv-lock', this.classList.contains('side-locked'));
       this.classList.toggle('compact', on && this._variant !== 'tablet');
       if (on && !this._baseMode) {
         // Overview lays far more over the photo, so it blurs it a little more than Focus (4px).
         if (vh) {
           vh.style.setProperty('--hemma-page-chrome', 'hidden'); vh.style.setProperty('--hemma-anim-name', 'none'); vh.style.setProperty('--hero-img-blur', '7px');
-          // Overview changes its wallpaper with the tap (_photoSwap); the photo's own drift is Focus's.
+          // Overview draws and changes its wallpaper itself (_bgSync); the photo's own drift is Focus's.
           vh.style.setProperty('--hemma-hero-anim-dur', '0s'); vh.style.setProperty('--hemma-hero-anim-delay', '0s');
         }
         this._openBase(true);
@@ -5507,6 +6857,8 @@ window.hemmaMenuGlass = {
       this._bootOpen = false;
       if (!on && this._baseMode) {
         this._baseMode = false;
+        this.classList.remove('base');
+        document.documentElement.classList.remove('hv-ov');
         if (vh) ['--hemma-page-chrome', '--hemma-anim-name', '--hero-img-blur', '--hemma-hero-anim-dur', '--hemma-hero-anim-delay'].forEach((k) => vh.style.removeProperty(k));
         // A room card drawn by the save that switched to Focus still read the Overview boot mark and hid its chrome.
         const rooms = [];
@@ -5532,6 +6884,8 @@ window.hemmaMenuGlass = {
 
     _openBase(instant) {
       this._baseMode = true;
+      this.classList.add('base');
+      document.documentElement.classList.add('hv-ov');
       if (this._catPage) { this._syncBack(); this._syncChrome(); return; }
       this._openCat('home', this._baseRoom(), false, instant ? 'still' : 'fade');
     }
@@ -5554,13 +6908,15 @@ window.hemmaMenuGlass = {
 
     _baseTitle() {
       this._titleStale = false;
-      if (this._catRoom) return this._catRoom;
+      if (this._catRoom) { if (!this._greetVars && !this._heroCardFor(0)) this._greetLoad(); return this._catRoom; }
       const card = this._heroCardFor(0);
       // The greeting comes from its own function: the card's name reads its room name until its template has run.
       const host = card && card.getRootNode && card.getRootNode().host;
       const cfg = (host && host._config) || {};
       // Remembered: going Home, the title is set before Home's card has drawn.
-      if (card) this._greetVars = String(cfg.name || '').indexOf('hemmaGreeting') >= 0 ? (cfg.variables || {}) : null;
+      if (card) { this._greetVars = String(cfg.name || '').indexOf('hemmaGreeting') >= 0 ? (cfg.variables || {}) : null; this._greetMark(!!this._greetVars); }
+      // Opened in a room, Home's card never drew: the dashboard's own config says whether Home greets, and the last visit is remembered meanwhile.
+      if (!card && !this._greetVars) { this._greetLoad(); if (this._greetMark() && window.hemmaGreeting) this._greetVars = {}; }
       const vars = this._greetVars;
       if (vars && window.hemmaGreeting && this._hass) {
         const g = String(window.hemmaGreeting(this._hass, this._hass.states, vars)).replace(/&lt;/g, '<').replace(/&amp;/g, '&');
@@ -5576,11 +6932,7 @@ window.hemmaMenuGlass = {
     async _syncChrome() {
       const page = this._catPage;
       if (!page) return;
-      const want = !!this._baseMode;
-      if (!want || page.querySelector('.cat-chrome')) {
-        if (!want) page.querySelectorAll('.cat-chrome, .cat-batt').forEach((n) => n.remove());
-        return;
-      }
+      if (page.querySelector('.cat-chrome')) return;
       const card = this._heroCardFor(this._activeIdx);
       const helpers = await this._catHelpers();
       if (!helpers || this._catPage !== page || page.querySelector('.cat-chrome')) return;
@@ -5588,7 +6940,7 @@ window.hemmaMenuGlass = {
       const tablet = this._variant === 'tablet';
       const assist = V.show_assist !== false && ((this._hass && this._hass.config && this._hass.config.components) || []).includes('conversation');
       const box = document.createElement('div');
-      box.className = 'cat-chrome' + (tablet ? ' cap' : '');
+      box.className = 'cat-chrome cap';
       const add = (template, variables) => {
         let el = null;
         try { el = helpers.createCardElement({ type: 'custom:button-card', template, variables }); } catch (_) {}
@@ -5599,15 +6951,18 @@ window.hemmaMenuGlass = {
       if (V.show_notifications !== false) add('hemma_notifications_button', { shown: true });
       // A tablet keeps Assist in the dots menu, as its room card does.
       if (assist && !tablet) add('hemma_assist_button', { shown: true });
-      if (box.childElementCount && tablet) box.appendChild(Object.assign(document.createElement('i'), { className: 'sep' }));
+      if (box.childElementCount) box.appendChild(Object.assign(document.createElement('i'), { className: 'sep' }));
       add('hemma_settings_button', { shown: true, assist_available: assist, hemma_ui_managed: !!V.hemma_ui_managed });
       if (!this._catChrome.length) return;
-      if (tablet) ['cap-rim', 'cap-rim-in'].forEach((c) => box.appendChild(Object.assign(document.createElement('i'), { className: c })));
-      const ref = card && [...card.querySelectorAll(tablet ? '#chrome_pill' : '#settings, #assist, #notifications')]
+      ['cap-rim', 'cap-rim-in'].forEach((c) => box.appendChild(Object.assign(document.createElement('i'), { className: c })));
+      const ref = card && [...card.querySelectorAll('#chrome_pill')]
         .map((e) => e.getBoundingClientRect()).filter((r) => r.width).sort((a, b) => b.right - a.right)[0];
-      if (ref && tablet) box.style.right = Math.max(0, Math.round(window.innerWidth - ref.right)) + 'px';
+      if (ref) { box.style.right = Math.max(0, Math.round(window.innerWidth - ref.right)) + 'px'; page.style.setProperty('--cat-chrome-r', box.style.right); }
       page.appendChild(box);
-      if (!tablet) page.style.setProperty('--cat-chrome-w', (box.childElementCount * 46 - 12) + 'px');
+      if (!tablet) {
+        page.style.setProperty('--cat-chrome-w', (this._catChrome.length * 46 + 1) + 'px');
+        setTimeout(() => { const w = box.getBoundingClientRect().width; if (w > 40) page.style.setProperty('--cat-chrome-w', Math.round(w) + 'px'); }, 400);
+      }
       if (tablet) {
         const b = document.createElement('div');
         b.className = 'cat-batt';
@@ -5632,12 +6987,395 @@ window.hemmaMenuGlass = {
       return String((el && (el.route.label || el.label.textContent)) || '').trim() || _hemmaT('nav.home', 'Home');
     }
 
+    _greetMark(on) {
+      const key = 'hemma_greet:' + String(location.pathname.split('/')[1] || '');
+      try {
+        if (on === undefined) return localStorage.getItem(key) === '1';
+        localStorage.setItem(key, on ? '1' : '0');
+      } catch (_) {}
+      return !!on;
+    }
+
+    async _greetLoad() {
+      if (this._greetTried || !this._hass) return;
+      this._greetTried = true;
+      let cfg = null;
+      try { cfg = await this._hass.callWS({ type: 'lovelace/config', url_path: String(location.pathname.split('/')[1] || '') }); } catch (_) { this._greetTried = false; return; }
+      const view = cfg && (cfg.views || [])[0];
+      let hit = null;
+      const walk = (list) => (list || []).forEach((c) => {
+        if (hit || !c || typeof c !== 'object') return;
+        if ([].concat(c.template || []).indexOf('hemma_room') >= 0) { hit = c; return; }
+        walk(c.cards); if (c.card) walk([c.card]); (c.sections || []).forEach((sec) => walk(sec.cards));
+      });
+      walk(view && view.cards);
+      (view && view.sections || []).forEach((sec) => walk(sec.cards));
+      if (!hit) return;
+      const greets = String(hit.name || '').indexOf('hemmaGreeting') >= 0;
+      this._greetMark(greets);
+      if (!this._heroCardFor(0)) this._greetVars = greets ? (hit.variables || {}) : null;
+      this._syncBaseTitle();
+    }
+
+    _setH1(h1, t) {
+      if (!h1) return;
+      t = String(t == null ? '' : t);
+      let d = h1.querySelector(':scope > .hvd');
+      if (!d) { h1.textContent = ''; d = document.createElement('span'); d.className = 'hvd'; if (this._variant !== 'tablet' && !this.classList.contains('side-locked')) d.style.display = 'none'; d.innerHTML = '<b></b> <span></span>'; h1.append(d, document.createTextNode('')); }
+      h1.lastChild.nodeValue = t;
+      h1.dataset.t = t;
+      const full = (window.hemmaDate ? window.hemmaDate(this._hass, 'short') : '') || '';
+      const day = (window.hemmaDate ? window.hemmaDate(this._hass, 'long') : '').split(/[\s,]/)[0];
+      const cut = full.search(/[\s,]/);
+      d.firstChild.textContent = (day || (cut > 0 ? full.slice(0, cut) : full)) + ',';
+      d.lastChild.textContent = cut > 0 ? full.slice(cut).replace(/^[\s,]+/, '') : '';
+      if (!h1._hvRO && window.ResizeObserver) { h1._hvRO = new ResizeObserver(() => this._hvWx()); h1._hvRO.observe(h1); }
+      requestAnimationFrame(() => this._hvWx());
+    }
+    _hvWx() {
+      const page = this._catPage, wx = page && page.querySelector('.cat-wx'), h1 = page && page.querySelector('.cat-in > h1');
+      if (!wx || !h1) return;
+      const hvOn = document.documentElement.classList.contains('hemma-hv'), ovw = this.classList.contains('compact') || this._overview();
+      wx.classList.toggle('d2', ovw);
+      if (!hvOn && !ovw) { wx.style.removeProperty('top'); return; }
+      const lh = parseFloat(getComputedStyle(h1).lineHeight) || 62;
+      const d = h1.querySelector(':scope > .hvd');
+      const dd = this._variant === 'tablet' || this.classList.contains('side-locked') ? '' : 'none';
+      if (d && d.style.display !== dd) d.style.display = dd;
+      if (this._hvWxPage !== h1) { this._hvWxPage = h1; clearTimeout(this._hvdT); this._hvdT = setTimeout(() => this._hvWx(), 700); }
+      const rg = d && d.offsetHeight && document.createRange();
+      if (rg) rg.selectNodeContents(d);
+      const dw = rg ? rg.getBoundingClientRect().width : 0;
+      if (d) d.style.visibility = 'hidden';
+      wx.classList.remove('ond', 'abv', 'nod', 'sm', 'row');
+      wx.classList.add('big');
+      wx.classList.toggle('inroom', !!this._catRoom || this._cat !== 'home');
+      wx.style.removeProperty('left'); wx.style.removeProperty('right');
+      // As Glass: Focus has the forecast on a line above the greeting, Overview beside the toolbar buttons.
+      const ovTab = !this.classList.contains('compact') && this._overview();
+      wx.classList.toggle('ovtab', ovTab);
+      if (ovTab && d) { d.style.display = ''; d.style.visibility = 'hidden'; }
+      if (ovTab) wx.style.top = Math.round(h1.offsetTop + h1.offsetHeight - lh) + 'px';
+      if (!this.classList.contains('compact') && !ovTab) {
+        const V = this._statusVars(), dateUp = V.hero_line === 'date', both = V.hero_line === 'both' && !!d;
+        wx.classList.remove('big', 'ci-none', 'ci-text', 'both');
+        wx.classList.add('abv');
+        if (V.conditions === 'none') wx.classList.add('ci-none');
+        else if (V.conditions === 'text') wx.classList.add('ci-text');
+        wx.style.display = dateUp ? 'none' : '';
+        if (d) { d.style.display = dateUp || both ? '' : 'none'; d.style.visibility = dateUp || both ? 'visible' : 'hidden'; }
+        wx.style.right = 'auto';
+        if (both) {
+          // Beside the weather the date shortens to "MON NOV 2", unless Date style asks for the full one.
+          if (V.date_style !== 'long' && d.firstChild && window.hemmaDate) {
+            const sh = window.hemmaDate(this._hass, 'short') || '', cut = sh.search(/[\s,]/);
+            if (cut > 0) { d.firstChild.textContent = sh.slice(0, cut); d.lastChild.textContent = sh.slice(cut).replace(/^[\s,]+/, ''); }
+          }
+          wx.classList.add('both');
+          const rg2 = document.createRange(); rg2.selectNodeContents(d);
+          const dr = rg2.getBoundingClientRect(), hr = h1.getBoundingClientRect();
+          wx.style.left = Math.round(h1.offsetLeft + (dr.right - hr.left)) + 'px';
+          wx.style.top = Math.round(h1.offsetTop + d.offsetTop + (d.offsetHeight - 26) / 2) + 'px';
+        } else {
+          wx.style.left = Math.round(h1.offsetLeft - (parseFloat(getComputedStyle(h1).marginLeft) || 0)) + 'px';
+          wx.style.top = Math.round(h1.offsetTop - 34) + 'px';
+        }
+        this._hvWxFill();
+        return;
+      }
+      const lockRow = false;
+      if (!ovTab) wx.style.removeProperty('top');
+      this._hvWxFill();
+      this._rowFitArgs = [wx, !!lockRow, lockRow ? null : h1];
+      this._hvRowFit(...this._rowFitArgs);
+      const gt = h1.lastChild, gr = !wx.classList.contains('d2') && gt && gt.nodeType === 3 && document.createRange();
+      if (gr) {
+        gr.selectNodeContents(gt);
+        const end = lockRow ? lockRow.right : gr.getBoundingClientRect().right, clear = () => wx.getBoundingClientRect().left > end + 20;
+        if (!clear()) { wx.classList.add('nod'); if (!clear()) { wx.classList.add('sm'); const sb = wx.querySelector('.hvw .r > b'); if (sb) { sb.style.removeProperty('font-size'); sb.style.removeProperty('translate'); } } }
+      }
+      if (this._variant === 'tablet' && d && d.offsetHeight) {
+        const page = this._catPage, inner = page && page.querySelector('.cat-in');
+        if (!this.style.getPropertyValue('--hv-date-fs')) { this.style.setProperty('--hv-date-fs', '17px'); this.style.setProperty('--hv-date-lh', '22px'); }
+        const it = this._sideList && this._sideList.querySelector('.side-item'), ir = it && it.getBoundingClientRect();
+        if (ir && ir.height) {
+          this._homeMid = ir.top + ir.height / 2 - (parseFloat(this._sideList.style.getPropertyValue('--hv-side-dy')) || 0);
+          try { localStorage.setItem('hemma_hv_home_mid', String(Math.round(this._homeMid * 2) / 2)); } catch (e) {}
+        }
+        if (this._homeMid == null) { let v = NaN; try { v = parseFloat(localStorage.getItem('hemma_hv_home_mid')); } catch (e) {} this._homeMid = Number.isFinite(v) ? v : 119; }
+        const mid0 = parseFloat(getComputedStyle(this).getPropertyValue('--hemma-chrome-row-center-tablet')) || 54.5;
+        const gap = Math.max(4, Math.min(48, Math.round((this._homeMid - (mid0 + d.offsetHeight / 2 + lh / 2)) * 2) / 2));
+        if (Math.abs((parseFloat(this.style.getPropertyValue('--hv-date-gap')) || 0) - gap) > 0.9) this.style.setProperty('--hv-date-gap', gap + 'px');
+        if (inner && !(page.scrollTop > 1) && !page.classList.contains('pushed') && performance.now() > (this._pushUntil || 0)) {
+          const cs = getComputedStyle(this), mid = parseFloat(cs.getPropertyValue('--hemma-chrome-row-center-tablet')) || 54.5;
+          const shift = parseFloat(getComputedStyle(inner).translate.split(' ')[1]) || 0;
+          const top = d.getBoundingClientRect().top - shift - page.getBoundingClientRect().top;
+          const up = Math.max(0, Math.round(top - (mid - d.offsetHeight / 2)) - 16);
+          if (Math.abs((parseFloat(this.style.getPropertyValue('--hv-push-up')) || 0) - up) > 1) this.style.setProperty('--hv-push-up', up + 'px');
+        }
+        if (page && performance.now() > (this._liftAt || 0) && page.classList.contains('lifted') !== (!!(this._sideOpen && this._pushed) || this._liftFits())) this._syncCatPush(true);
+      }
+      this._hvClockAlign(d, dw);
+      this._hvSideAlign(h1, lh);
+      if (performance.now() >= (this._slideUntil || 0)) this._hvBackAlign(h1);
+    }
+    _liftFits() {
+      const page = this._catPage;
+      return this._variant === 'tablet' && this.classList.contains('hv') && !!page;
+    }
+    _hvBackAlign(h1) {
+      const t = h1.lastChild, page = this._catPage;
+      if (!t || t.nodeType !== 3 || !t.nodeValue || (page && page.scrollTop > 1)) return;
+      const g = document.createRange();
+      g.selectNodeContents(t);
+      const A = (this._swapAnims || []).concat(this._titleRise || []).filter((a) => a.playState === 'running' && a.effect), at = A.map((a) => a.currentTime);
+      A.forEach((a) => { a.currentTime = a.effect.getComputedTiming().endTime; });
+      const r = g.getBoundingClientRect();
+      A.forEach((a, i) => { a.currentTime = at[i]; });
+      if (!r.height || r.top <= 0) return;
+      const cs = getComputedStyle(h1), font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+      if (!this._capM || this._capM.font !== font) {
+        const c = document.createElement('canvas').getContext('2d');
+        c.font = font;
+        const m = c.measureText('H');
+        this._capM = { font, asc: m.fontBoundingBoxAscent, cap: m.actualBoundingBoxAscent };
+      }
+      if (!this._capM.asc) return;
+      const inn = page && page.querySelector('.cat-in'), lift = inn ? parseFloat(getComputedStyle(inn).translate.split(' ')[1]) || 0 : 0;
+      this._backBase = r.top - lift + this._capM.asc - this._capM.cap / 2 - 22;
+      this.style.setProperty('--hv-back-top', Math.round(this._backBase) + 'px');
+      if (page && !page._hvBk) { page._hvBk = true; page.addEventListener('scroll', () => this._hvBackPos(), { passive: true }); }
+      this._hvBackPos();
+      if (this._backPlaced || this._backWait) return;
+      this._backWait = true;
+      const t0 = performance.now(), seen = () => { let o = 1; for (let e = page; e && o > 0.5; e = e.parentElement || (e.parentNode && e.parentNode.host)) o *= parseFloat(getComputedStyle(e).opacity); return o > 0.5; };
+      const tick = () => { if (!page || seen() || performance.now() - t0 > 4000) { this._backWait = false; this._backPlaced = true; this._syncBack(); } else requestAnimationFrame(tick); };
+      tick();
+    }
+    _hvBackPos() {
+      const b = this._sideBack, page = this._catPage;
+      if (!b || !page || this._backBase == null || !this.classList.contains('hv')) return;
+      const inn = page.querySelector('.cat-in');
+      // Focus with the sidebar open moves the title up into the toolbar row; the back button follows it there frame by frame.
+      if (inn && !inn._hvBkT) {
+        inn._hvBkT = true;
+        let raf = 0;
+        const h1 = () => inn.querySelector(':scope > h1');
+        const step = () => { const h = h1(); if (h) this._hvBackAlign(h); raf = requestAnimationFrame(step); };
+        inn.addEventListener('transitionstart', (e) => { if (e.target === inn && e.propertyName === 'padding-top' && !raf) raf = requestAnimationFrame(step); });
+        inn.addEventListener('transitionend', (e) => { if (e.target === inn && e.propertyName === 'padding-top') { cancelAnimationFrame(raf); raf = 0; const h = h1(); if (h) this._hvBackAlign(h); } });
+      }
+      if (this._variant !== 'tablet' || !inn) { b.style.top = Math.round(this._backBase) + 'px'; return; }
+      let hold = inn.querySelector(':scope > .hv-bk');
+      if (!hold) { hold = document.createElement('div'); hold.className = 'hv-bk'; inn.prepend(hold); }
+      if (b.parentNode !== hold) hold.appendChild(b);
+      const lift = parseFloat(getComputedStyle(inn).translate.split(' ')[1]) || 0;
+      const off = this._backBase - (inn.getBoundingClientRect().top + (parseFloat(getComputedStyle(inn).paddingTop) || 0) - lift + page.scrollTop);
+      const mid = parseFloat(getComputedStyle(this).getPropertyValue('--hemma-chrome-row-center-tablet')) || 54.5;
+      hold.style.setProperty('--bk-off', Math.round(off) + 'px');
+      hold.style.setProperty('--bk-t', Math.round(mid - 22 - off) + 'px');
+    }
+    // The temperature's digits span the two text lines beside it, cap top to baseline, and the glyph fits the digits.
+    _wxD2Fit(row, h1) {
+      if (!h1 || !h1.lastChild || h1.lastChild.nodeType !== 3) return;
+      const cs = getComputedStyle(h1), c = document.createElement('canvas').getContext('2d');
+      c.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+      const mH = c.measureText('H'), mg = c.measureText('g');
+      if (!mH.fontBoundingBoxAscent) return;
+      const g = document.createRange(); g.selectNodeContents(h1.lastChild);
+      const base = g.getBoundingClientRect().top + mH.fontBoundingBoxAscent, cap = mH.actualBoundingBoxAscent;
+      const mid = base - cap / 2;
+      row.style.setProperty('--wxt', (cap * 0.74).toFixed(1) + 'px');
+      row.style.setProperty('--wxc', (cap * 0.48).toFixed(1) + 'px');
+      row.style.setProperty('--wxh', (cap + mg.actualBoundingBoxDescent).toFixed(1) + 'px');
+      row.style.translate = '';
+      const im = row.querySelector('img'), tb = row.querySelector('.s b'), ti = row.querySelector('.s i') || tb;
+      const band = (el) => {
+        const k = getComputedStyle(el), x = document.createElement('canvas').getContext('2d');
+        x.font = k.fontWeight + ' ' + k.fontSize + ' ' + k.fontFamily;
+        const m = x.measureText('H'), q = document.createRange(); q.selectNodeContents(el);
+        const b0 = q.getBoundingClientRect().top + m.fontBoundingBoxAscent;
+        return [b0 - m.actualBoundingBoxAscent, b0];
+      };
+      [im, tb && tb.parentNode].forEach((el) => el && (el.style.translate = ''));
+      if (im) { const r = im.getBoundingClientRect(); im.style.translate = '0 ' + (mid - (r.top + r.height / 2)).toFixed(1) + 'px'; }
+      if (tb) { const t0 = band(tb)[0], t1 = band(ti)[1]; tb.parentNode.style.translate = '0 ' + (mid - (t0 + t1) / 2).toFixed(1) + 'px'; }
+    }
+    _hvRowFit(wx, on, h1) {
+      const d2 = wx.querySelector('.hvw .r.d2');
+      if (d2) { this._wxD2Fit(d2, h1); return; }
+      const row = wx.querySelector('.hvw .r'), b = row && row.querySelector(':scope > b'), i = row && row.querySelector('.d i'), sm = row && row.querySelector('.d small');
+      if (!b) return;
+      const dd = row.querySelector('.d');
+      if (h1 && h1.lastChild && h1.lastChild.nodeType === 3 && b.firstChild && !wx.classList.contains('inroom')) {
+        const met = (el, ch) => { const cs = getComputedStyle(el), c = document.createElement('canvas').getContext('2d'); c.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily; const m = c.measureText(ch); return { asc: m.fontBoundingBoxAscent, cap: m.actualBoundingBoxAscent, fs: parseFloat(cs.fontSize) }; };
+        const top = (n) => { const g = document.createRange(); g.selectNodeContents(n); return g.getBoundingClientRect().top; };
+        const mg = met(h1, 'H');
+        if (!mg.asc) return;
+        const gTop = top(h1.lastChild) + mg.asc - mg.cap, gBase = top(h1.lastChild) + mg.asc;
+        b.style.translate = ''; if (dd) dd.style.translate = '';
+        const m0 = met(b, '0');
+        if (!m0.cap) return;
+        b.style.fontSize = (mg.cap * m0.fs / m0.cap).toFixed(1) + 'px';
+        const m1 = met(b, '0');
+        b.style.translate = '0 ' + (gBase - (top(b.firstChild) + m1.asc)).toFixed(1) + 'px';
+        if (dd && i && sm && i.firstChild && sm.firstChild && getComputedStyle(dd).display !== 'none') {
+          const mi = met(i, 'H'), ms = met(sm, 'H'), a = top(i.firstChild) + mi.asc - mi.cap, z = top(sm.firstChild) + ms.asc;
+          dd.style.translate = '0 ' + ((gTop + gBase) / 2 - (a + z) / 2).toFixed(1) + 'px';
+        }
+        const im0 = row.querySelector('img');
+        if (im0 && window.hemmaWxFit) window.hemmaWxFit(im0, b);
+        return;
+      }
+      if (dd) dd.style.removeProperty('translate');
+      if (!on || !i || !sm || !i.firstChild || !sm.firstChild || getComputedStyle(row.querySelector('.d')).display === 'none') { b.style.removeProperty('font-size'); b.style.removeProperty('translate'); return; }
+      const met = (el, ch) => { const cs = getComputedStyle(el), c = document.createElement('canvas').getContext('2d'); c.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily; const m = c.measureText(ch); return { asc: m.fontBoundingBoxAscent, cap: m.actualBoundingBoxAscent, fs: parseFloat(cs.fontSize) }; };
+      const top = (n) => { const g = document.createRange(); g.selectNodeContents(n); return g.getBoundingClientRect().top; };
+      const mi = met(i, 'H'), ms = met(sm, 'H');
+      if (!mi.asc || !ms.asc) return;
+      const capTop = top(i.firstChild) + mi.asc - mi.cap, base = top(sm.firstChild) + ms.asc, H = base - capTop;
+      const m0 = met(b, '0');
+      if (!(H > 8) || !m0.cap) return;
+      b.style.translate = '';
+      b.style.fontSize = (H * m0.fs / m0.cap).toFixed(1) + 'px';
+      const m1 = met(b, '0'), bTop = top(b.firstChild) + m1.asc - m1.cap;
+      b.style.translate = '0 ' + (capTop - bTop).toFixed(1) + 'px';
+      const im = row.querySelector('img');
+      if (im && window.hemmaWxFit) window.hemmaWxFit(im, b);
+    }
+    _hvBadgeBox(page) {
+      const host = page && page.querySelector('.cat-pills button-card');
+      if (!host || !host.shadowRoot) return null;
+      let top = Infinity, bottom = -Infinity, right = -Infinity;
+      const walk = (root, d) => {
+        if (!root || d > 6) return;
+        root.querySelectorAll('ha-card.button-card-main').forEach((c) => {
+          const b = c.getBoundingClientRect();
+          if (b.width > 20 && b.width < 320 && b.height > 24 && b.height < 80) { top = Math.min(top, b.top); bottom = Math.max(bottom, b.bottom); right = Math.max(right, b.right); }
+        });
+        root.querySelectorAll('*').forEach((n) => { if (n.shadowRoot) walk(n.shadowRoot, d + 1); });
+      };
+      walk(host.shadowRoot, 0);
+      return isFinite(top) ? { mid: (top + bottom) / 2, right } : null;
+    }
+    _hvLockAlign() {
+      const st = this._status, page = this._catPage, tn = st && [...st.childNodes].find((n) => n.nodeType === 3);
+      if (!tn || !st.classList.contains('on') || !page || page.scrollTop > 1) return;
+      const asc = (el) => { const cs = getComputedStyle(el), f = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily; this._ascM = this._ascM || {}; if (this._ascM[f] == null) { const c = document.createElement('canvas').getContext('2d'); c.font = f; this._ascM[f] = c.measureText('H').fontBoundingBoxAscent || parseFloat(cs.fontSize) * 0.95; } return this._ascM[f]; };
+      const a = document.createRange(); a.selectNodeContents(tn);
+      const ra = a.getBoundingClientRect();
+      if (!ra.height) return;
+      const mid = parseFloat(getComputedStyle(this).getPropertyValue('--hemma-nav-row-center')) || 60;
+      const cur = parseFloat(this.style.getPropertyValue('--hv-clock-dy')) || 0, next = Math.round((cur + mid - (ra.top + ra.height / 2)) * 2) / 2;
+      if (Math.abs(next - cur) > 0.5 && Math.abs(next) < 60) this.style.setProperty('--hv-clock-dy', next + 'px');
+      const h1 = page.querySelector('.cat-in > h1'), gt = h1 && h1.lastChild;
+      if (gt && gt.nodeType === 3 && performance.now() >= (this._slideUntil || 0)) {
+        const g = document.createRange(); g.selectNodeContents(gt);
+        const tr = g.getBoundingClientRect();
+        if (tr.height) {
+          const c0 = parseFloat(this.style.getPropertyValue('--hv-desk-dy')) || 0;
+          // The greeting's capitals are centered on the toolbar row, as the clock and buttons are; a shared baseline let the larger type ride high.
+          const capH = (el) => { const cs = getComputedStyle(el), f = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily; this._capH = this._capH || {}; if (this._capH[f] == null) { const c = document.createElement('canvas').getContext('2d'); c.font = f; this._capH[f] = c.measureText('H').actualBoundingBoxAscent || parseFloat(cs.fontSize) * 0.72; } return this._capH[f]; };
+          const c1 = Math.max(-60, Math.min(80, Math.round(c0 + mid - (tr.top + asc(h1) - capH(h1) / 2))));
+          if (Math.abs(c1 - c0) > 1) { this.style.setProperty('--hv-desk-dy', c1 + 'px'); requestAnimationFrame(() => this._hvWx()); }
+        }
+      }
+    }
+    _hvClockAlign(d, dw) {
+      if (this.classList.contains('side-locked')) { this._hvLockAlign(); return; }
+      const st = this._status, page = this._catPage;
+      if (!d || !dw) { this.style.removeProperty('--hv-clock-dy'); return; }
+      if (!st || !d || !dw || !st.classList.contains('on') || (page && page.scrollTop > 1)) return;
+      const a = document.createRange(), b = document.createRange();
+      a.selectNodeContents(st); b.selectNodeContents(d);
+      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      if (!ra.height || !rb.height) return;
+      const cur = parseFloat(this.style.getPropertyValue('--hv-clock-dy')) || 0, next = Math.round((cur + rb.bottom - ra.bottom) * 2) / 2;
+      if (Math.abs(next - cur) > 0.5 && Math.abs(next) < 60) this.style.setProperty('--hv-clock-dy', next + 'px');
+      const it = this._sideList && this._sideList.querySelector('.side-item');
+      const h1 = page && page.querySelector('.cat-in > h1');
+      if (it && h1 && h1.lastChild && h1.lastChild.nodeType === 3 && this.classList.contains('compact') && this._cat === 'home' && !this._catRoom && performance.now() >= (this._slideUntil || 0)) {
+        const g = document.createRange(); g.selectNodeContents(h1.lastChild);
+        const tr = g.getBoundingClientRect(), sr = it.getBoundingClientRect();
+        if (tr.height && sr.height) {
+          const c0 = parseFloat(this.style.getPropertyValue('--hv-desk-dy')) || 0;
+          const c1 = Math.max(0, Math.min(60, Math.round(c0 + (sr.top + sr.height / 2) - (tr.top + tr.height / 2))));
+          if (Math.abs(c1 - c0) > 1) this.style.setProperty('--hv-desk-dy', c1 + 'px');
+        }
+      }
+      const mini = this._catEls && this._catEls[2];
+      if (mini && this.classList.contains('compact')) {
+        const m = document.createRange(); m.selectNodeContents(mini);
+        const mr = m.getBoundingClientRect(), ca = document.createRange(); ca.selectNodeContents(st);
+        const cr = ca.getBoundingClientRect();
+        if (mr.height && cr.height) { const mc = parseFloat(this.style.getPropertyValue('--hv-mini-dy')) || 0, mn = Math.round((mc + cr.bottom - mr.bottom) * 2) / 2; if (Math.abs(mn - mc) > 0.5 && Math.abs(mn) < 40) this.style.setProperty('--hv-mini-dy', mn + 'px'); }
+      }
+    }
+    // The sidebar's Home row sits on the greeting's line, as HomeView sets them; measured on Home only, so it never shifts between pages.
+    _hvSideAlign(h1, lh) {
+      const list = this._sideList, it = list && list.querySelector('.side-item');
+      if (!list || !it || !this._sideOpen || this._cat !== 'home' || this._catRoom || list.scrollTop) return;
+      if (performance.now() < (this._slideUntil || 0)) { clearTimeout(this._hvSideT); this._hvSideT = setTimeout(() => this._hvSideAlign(h1, lh), 300); return; }
+      const r = it.getBoundingClientRect(), b = h1.getBoundingClientRect();
+      if (!r.height || !b.height) return;
+      const page = this._catPage, inn = page && page.querySelector('.cat-in');
+      const bb = this.classList.contains('side-locked') && this._hvBadgeBox(page);
+      if (bb) {
+        const cur0 = parseFloat(list.style.getPropertyValue('--hv-side-dy')) || 0;
+        const d0 = Math.max(0, Math.min(220, Math.round(cur0 + bb.mid - (r.top + r.height / 2))));
+        if (Math.abs(d0 - cur0) > 1) list.style.setProperty('--hv-side-dy', d0 + 'px');
+        return;
+      }
+      const now = inn ? parseFloat(getComputedStyle(inn).translate.split(' ')[1]) || 0 : 0;
+      const want = page && page.classList.contains('lifted') ? -(parseFloat(this.style.getPropertyValue('--hv-push-up')) || 0) : 0;
+      const cur = parseFloat(list.style.getPropertyValue('--hv-side-dy')) || 0;
+      const d = Math.max(0, Math.min(220, Math.round(cur + (b.bottom - now + want - lh / 2) - (r.top + r.height / 2))));
+      if (Math.abs(d - cur) > 1) list.style.setProperty('--hv-side-dy', d + 'px');
+    }
+    // Minimal's badges carry their icon in a white circle with an ink glyph, as the clock screensaver's rows do.
+    _hvBadges() {
+      const page = this._catPage;
+      if (!page) return;
+      page.querySelectorAll('.cat-pills, .cat-chipcard').forEach((row) => {
+        const st = [row];
+        for (let i = 0; i < st.length && i < 400; i++) {
+          const r = st[i];
+          (r.querySelectorAll ? r.querySelectorAll('button-card') : []).forEach((b) => {
+            if (window._hemmaHvBadge) window._hemmaHvBadge(b);
+          });
+          (r.querySelectorAll ? r.querySelectorAll('*') : []).forEach((n) => { if (n.shadowRoot) st.push(n.shadowRoot); });
+        }
+      });
+    }
+    _hvWxFill() {
+      const box = this._catPage && this._catPage.querySelector('.cat-wx > .hvw'), h = this._hass;
+      const d2 = !!(box && box.parentNode.classList.contains('d2'));
+      if (!box || !h || !(d2 || document.documentElement.classList.contains('hemma-hv'))) return;
+      if (!this._hvFcOn) { this._hvFcOn = true; window.addEventListener('hemma-wx-fc', () => this._hvWxFill()); }
+      const V = this._statusVars();
+      const wid = window.hemmaWx ? window.hemmaWx(V, 'entity') : V.weather_entity, tid = window.hemmaWx ? window.hemmaWx(V, 'temp') : V.weather_temp_sensor;
+      const x = window.hemmaWxLine && window.hemmaWxLine(h, wid, tid);
+      if (!x) { box.hidden = true; box._sig = null; return; }
+      box._wid = wid;
+      if (!box._tap) { box._tap = true; box.addEventListener('click', (e) => { e.stopPropagation(); const ha = document.querySelector('home-assistant'); if (box._wid && ha) ha.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: box._wid }, bubbles: true, composed: true })); }); }
+      const sig = [x.t, x.state, x.cond, x.hl, d2].join('|');
+      if (box._sig === sig) return;
+      box._sig = sig;
+      const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      box.hidden = false;
+      if (d2) box.innerHTML = `<div class="r d2"><span class="s"><b>${x.t}°</b>${x.cond ? `<i>${esc(x.cond)}</i>` : ''}</span>${x.file ? `<img alt="" src="/hemma_assets/weather/${x.file}-fill.svg?v=2">` : ''}</div>`;
+      else box.innerHTML = `<div class="r">${x.cond || x.hl ? `<span class="d"><i>${esc(x.cond || '')}</i><small>${esc(x.hl || '')}</small></span>` : ''}${x.file ? `<img alt="" src="/hemma_assets/weather/${x.file}-fill.svg?v=2">` : ''}<b>${x.t}°</b><span class="c">${esc(x.cond || '')}</span></div>`;
+      const im = box.querySelector('img');
+      if (im && !d2 && window.hemmaWxFit) window.hemmaWxFit(im, box.querySelector('.r b'));
+      const fa = this._rowFitArgs;
+      if (fa && fa[0].isConnected && fa[0].contains(box)) requestAnimationFrame(() => this._hvRowFit(...fa));
+    }
     _syncBaseTitle() {
       const page = this._catPage;
-      if (!page || this._cat !== 'home') return;
+      if (!page || this._cat !== 'home' || performance.now() < (this._backHold || 0)) return;
       const t = this._baseTitle();
       const h1 = page.querySelector('.cat-in h1');
-      if (h1 && h1.textContent !== t) h1.textContent = t;
+      if (h1 && h1.dataset.t !== t) this._setH1(h1, t);
       const m = this._miniTitle('home', t);
       if (this._catEls && this._catEls[2].textContent !== m) this._catEls[2].textContent = m;
     }
@@ -5656,16 +7394,33 @@ window.hemmaMenuGlass = {
 
     _syncBack() {
       const b = this._sideBack;
-      if (!b) return;
-      // Only a category page has somewhere to go back to; rooms are reached from the sidebar and tabs.
-      const show = !!(this._cat && this._cat !== 'home' && this._catPage);
+      if (!b || performance.now() < (this._backHold || 0)) return;
+      // A category page goes back, and so does a room pushed in from its title on Home.
+      const room = this._roomBack();
+      if (this._catPage) this._catPage.classList.toggle('backable', room);
+      const want = !!(this._cat && this._catPage && (this._cat !== 'home' || room));
+      // A tap on back hides it for good: until the page it leads to has landed, the old page still says it wants one.
+      if (this._backGone) { if (want) { b.classList.remove('on'); return; } this._backGone = false; }
+      if (want && !this._backPlaced && !this._backWait && this.classList.contains('hv')) {
+        const wait = (this._slideUntil || 0) - performance.now();
+        const h1 = this._catPage.querySelector('.cat-in > h1');
+        if (h1 && wait <= 0) this._hvBackAlign(h1);
+        if (!this._backPlaced && !this._backWait && (this._backTries = (this._backTries || 0) + 1) < 40) {
+          clearTimeout(this._backRetry);
+          this._backRetry = setTimeout(() => this._syncBack(), Math.max(wait, 0) + 50);
+        }
+      }
+      if (this._backPlaced) this._backTries = 0;
+      const show = want && (this._backPlaced || !this.classList.contains('hv'));
       if (show) {
         const edge = this._sideOpen && this._pushed ? this._side.getBoundingClientRect().width : (this._catLeft || 0);
         const g = parseFloat(this._catPage.style.getPropertyValue('--cat-gutter')) || 20;
-        b.style.left = Math.round(edge + g) + 'px';
+        if (!b.parentNode.classList || !b.parentNode.classList.contains('hv-bk')) b.style.left = Math.round(edge + g) + 'px';
       }
       b.classList.toggle('on', show);
     }
+
+    _roomBack() { return !!(this._baseMode && this._cat === 'home' && this._activeIdx > 0); }
 
     // Matched by name: mid room change HA keeps the previous view, so the first visible card is often the one just left.
     _heroCardFor(idx) {
@@ -5791,7 +7546,7 @@ window.hemmaMenuGlass = {
       if (!glass || !glass.animate || still) return null;
       const gr = glass.getBoundingClientRect();
       const sr = side.getBoundingClientRect();
-      const tab = this._variant === 'tablet';
+      const pg = bar.querySelector(':scope > .glass'), tab = this._variant === 'tablet' || (!!pg && getComputedStyle(pg).display !== 'none' && pg.getBoundingClientRect().width > 120);
       const glyph = !tab && this._toggle && this._toggle.querySelector('svg, .gl');
       const gb = (tab ? bar : (glyph || this._toggle || bar)).getBoundingClientRect();
       // Desktop lands on a small plate around the icon, under the raised tab row, as the tablet lands under its pill.
@@ -5823,7 +7578,7 @@ window.hemmaMenuGlass = {
           clipPath: 'inset(' + y + 'px ' + (VW - x - w) + 'px ' + (VH - y - h) + 'px ' + x + 'px round ' + r + 'px)',
           backgroundColor: 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + c[3].toFixed(3) + ')',
         });
-        // The labels ride the shape, blurring out as it grows and back in as it settles, as Apple's do.
+        // The labels ride the shape, blurring out as it grows and back in as it settles.
         const lv = open ? Math.max(0, 1 - t / 0.5) : Math.max(0, (t - 0.5) / 0.5);
         barFrames.push({
           transform: 'translateX(' + ((x - pr.left) + (w - pr.width) / 2) + 'px)',
@@ -5860,9 +7615,10 @@ window.hemmaMenuGlass = {
       this._fillSide();
       this._sideOpen = true;
       side.classList.add('open');
+      setTimeout(() => this._hvWx(), 420);
       this._syncSideStatus();
       this._statusTick = setInterval(() => this._syncSideStatus(), 15000);
-      // On load it is simply there, as Apple Home's is; the morph is for a tap.
+      // On load it is simply there; the morph is for a tap.
       if (!still) this._morph(true);
       this._pushView(true, still);
       if (still) {
@@ -5938,12 +7694,21 @@ window.hemmaMenuGlass = {
     // The phone capsule's tap: light blooms from the thumb, rises fast and leaves slowly.
     _flash(ev, f = this._flashEl, host = this._bar, size = 90) {
       if (!f || !host || !f.animate) return;
+      // Minimal has no glass to light up: what was pressed dims for a moment.
+      if (document.documentElement.classList.contains('hemma-hv')) {
+        // A tab answers with its selection moving; only the round buttons dim.
+        const t = host === this._bar ? null : host;
+        if (t && t.animate && !t.classList.contains('side-back')) t.animate([{ opacity: 1 }, { opacity: 0.55, offset: 0.25 }, { opacity: 1 }], { duration: 320, easing: 'ease-out' });
+        return;
+      }
       const r = host.getBoundingClientRect();
       const x = r.width ? Math.max(0, Math.min(100, ((ev.clientX - r.left) / r.width) * 100)) : 50;
       f.style.background = 'radial-gradient(' + size + 'px circle at ' + x.toFixed(1) + '% 50%,'
         + ' rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.12) 55%, rgba(255,255,255,0) 100%)';
       f.animate([{ opacity: 0 }, { opacity: 1, offset: 0.25, easing: 'cubic-bezier(0.4,0,0.6,1)' }, { opacity: 0 }],
         { duration: 560, easing: 'ease-out' });
+      const lab = host === this._bar && ev.composedPath && ev.composedPath().find((n) => n.classList && n.classList.contains('label'));
+      if (lab && lab.animate) lab.animate([{ opacity: 1 }, { opacity: 0.65, offset: 0.25 }, { opacity: 1 }], { duration: 420, easing: 'ease-out' });
     }
 
     _bloom(btn) {
@@ -5974,9 +7739,11 @@ window.hemmaMenuGlass = {
 
       this._activeIdx = bestIdx;
       const prev = this._shownIdx;
+      this._prevShown = prev;
       this._shownIdx = bestIdx;
-      if (prev != null && prev >= 0 && bestIdx >= 0 && prev !== bestIdx && (prev === 0) !== (bestIdx === 0)
-        && !this._fxAwait && !(Date.now() - (this._fxNoSlideAt || 0) < 1500)) this._slideDir = bestIdx === 0 ? -1 : 1;
+      requestAnimationFrame(() => this._bgSync(true));
+      if (prev != null && prev >= 0 && bestIdx >= 0 && prev !== bestIdx && (!this._baseMode || (prev === 0) !== (bestIdx === 0))
+        && !this._fxAwait && !(Date.now() - (this._fxNoSlideAt || 0) < 1500)) this._slideDir = bestIdx > prev ? 1 : -1;
       if (this._fxAwait && prev !== bestIdx) this._fxPlay();
       if (this._catDefer && prev !== bestIdx) this._dropDeferredWhenPainted();
       this._fold();
@@ -6461,7 +8228,7 @@ window.hemmaMenuGlass = {
           width: 20px;
           height: 20px;
           margin-left: 2px;
-          background-color: rgba(255,255,255,0.42);
+          background-color: color-mix(in srgb, currentColor 42%, transparent);
           -webkit-mask: url("${CHEVRON}") no-repeat center / contain;
           mask: url("${CHEVRON}") no-repeat center / contain;
           transform: rotate(0deg);
@@ -6470,6 +8237,10 @@ window.hemmaMenuGlass = {
 
         .route[data-has-popup][data-popup-open] .label::after {
           transform: rotate(90deg);
+        }
+
+        :host(.hv) .route[data-has-popup] .label::after {
+          background-color: color-mix(in srgb, var(--hemma-nav-label-color, #fff) 55%, transparent);
         }
 
         @keyframes hemma-badge-pulse {
@@ -6623,7 +8394,7 @@ window.hemmaMenuGlass = {
             padding-top: calc(var(--hemma-chrome-row-top-tablet, 46px) - 8px
               + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
             transform-origin: top left;
-            color: #fff;
+            color: var(--hv-ink, #fff);
             font-family: var(--primary-font-family, system-ui);
           }
           @media (orientation: portrait) {
@@ -6636,12 +8407,13 @@ window.hemmaMenuGlass = {
             top: calc(env(safe-area-inset-top, 0px) + 7px
               + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
             line-height: 18px; font-size: 13.5px; font-weight: 600;
-            color: #fff; opacity: var(--hemma-nav-label-inactive-opacity, 0.84);
+            color: var(--hemma-hero-ink, #fff); opacity: var(--hemma-nav-label-inactive-opacity, 0.84);
             font-family: var(--primary-font-family, system-ui);
           }
           .status .extra { text-transform: none; }
           .status .extra { margin-left: .9em; }
           .side.open { display: flex; pointer-events: auto; }
+          :host(.booting) :is(.side, .status) { opacity: 0; }
           .side, .side * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
           .side-grip {
             position: absolute; top: 0; bottom: 0; right: -14px; width: 28px; z-index: 2;
@@ -6655,14 +8427,18 @@ window.hemmaMenuGlass = {
             position: absolute; left: 0; top: 0; bottom: 0; width: 100vw; z-index: -1;
             pointer-events: none;
             clip-path: inset(0px calc(100% - var(--side-w, min(264px, 38vw))) 0px 0px);
-            background: var(--hemma-sidebar-fill, rgba(28,28,32,0.74));
+            background: var(--hv-side-fill, var(--hemma-sidebar-fill, rgba(28,28,32,0.74)));
             -webkit-backdrop-filter: var(--hemma-sidebar-backdrop, blur(40px) saturate(1.15));
             backdrop-filter: var(--hemma-sidebar-backdrop, blur(40px) saturate(1.15));
+          }
+          :host(.hv) .side-glass { background: var(--hv-bg-solid, var(--hv-bg, rgba(28,28,32,0.74))) !important; box-shadow: var(--hv-side-shadow, none); -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+          @media (orientation: portrait) {
+            .side-glass { background: var(--hv-bg-solid, var(--hv-side-fill, var(--hemma-sidebar-fill, rgba(28,28,32,0.74)))); box-shadow: var(--hv-side-shadow, none); }
           }
           .side-head { display: flex; justify-content: flex-end; padding: calc(var(--hemma-nav-row-center, 66px) - var(--hemma-chrome-row-top-tablet, 46px) - 14px) 10px 10px; }
           .side-close, .side-back {
             position: relative; width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0;
-            display: grid; place-items: center; color: #fff; cursor: pointer;
+            display: grid; place-items: center; color: var(--hemma-chrome-ink, #fff); cursor: pointer;
             background-color: rgba(255,255,255,0.07);
             background-image: radial-gradient(140% 90% at 50% -20%, rgba(255,255,255,0.14), rgba(255,255,255,0.04) 45%, transparent 62%);
             -webkit-backdrop-filter: var(--hemma-perf-none, blur(10px) saturate(1.2));
@@ -6670,7 +8446,7 @@ window.hemmaMenuGlass = {
           }
           .side-close::before, .side-back::before {
             content: ""; position: absolute; inset: 0; border-radius: 50%; padding: 1px; pointer-events: none;
-            /* Lit from the top-left as Apple's round glass is: a top and bottom glint reads as a tall oval. */
+            /* Lit from the top-left: a top and bottom glint reads as a tall oval. */
             background: conic-gradient(from 0deg, rgba(255,255,255,0.10) 0deg, rgba(255,255,255,0.05) 60deg,
               rgba(255,255,255,0.10) 100deg, rgba(255,255,255,0.26) 135deg, rgba(255,255,255,0.10) 170deg,
               rgba(255,255,255,0.05) 240deg, rgba(255,255,255,0.10) 280deg, rgba(255,255,255,0.46) 315deg,
@@ -6689,6 +8465,8 @@ window.hemmaMenuGlass = {
             mask-composite: exclude;
           }
           .side-close > .flash, .side-back > .flash { position: absolute; inset: 0; border-radius: 50%; opacity: 0; pointer-events: none; }
+          :host(.hv) :is(.side-close, .side-back) { color: var(--hv-cap-ink, var(--hemma-chrome-ink, var(--hv-ink, #fff))); background: var(--hemma-chrome-fill, rgba(255,255,255,0.14)); -webkit-backdrop-filter: none; backdrop-filter: none; }
+          :host(.hv) :is(.side-close, .side-back)::before, :host(.hv) :is(.side-close, .side-back)::after { display: none; }
           .side-close:active { transform: scale(0.94); }
           .side-close { transition: transform .15s ease; }
           .gl {
@@ -6716,15 +8494,15 @@ window.hemmaMenuGlass = {
             display: flex; align-items: center; justify-content: space-between; width: 100%;
             border: 0; background: none; cursor: pointer; text-align: left; font: inherit;
             font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
-            color: rgba(255,255,255,0.55); padding: 18px 12px 6px;
+            color: var(--hv-sub, rgba(255,255,255,0.55)); padding: 18px 12px 6px;
           }
-          .side-heading svg { width: 17px; height: 17px; flex: none; transition: transform .26s cubic-bezier(.32,.72,0,1); }
+          .side-heading svg { width: 17px; height: 17px; flex: none; transition: transform .34s cubic-bezier(0.4, 0, 0.2, 1); }
           .side-heading[aria-expanded="false"] svg { transform: rotate(-90deg); }
           .side-group.shut { display: none; }
           .side-item {
             position: relative; display: flex; align-items: center; gap: 14px; width: 100%;
             height: 44px; padding: 0 12px; box-sizing: border-box; border: 0; border-radius: 22px;
-            background: transparent; color: #fff; cursor: pointer; text-align: left;
+            background: transparent; color: var(--hv-ink, #fff); cursor: pointer; text-align: left;
             font: inherit; font-size: 17px; font-weight: 500; letter-spacing: -0.01em;
             -webkit-tap-highlight-color: transparent;
           }
@@ -6744,7 +8522,15 @@ window.hemmaMenuGlass = {
           :host(.compact) .side-heading svg { width: 14px; height: 14px; }
           :host(.compact) .side-motion { width: 22px; height: 22px; }
           :host(.compact) .side-motion img { height: 12px; }
-          .side-item.on { background: rgba(255,255,255,0.12); }
+          .side-item.on { background: var(--hv-side-on, rgba(255,255,255,0.12)); }
+          :host(.hv) .side-list { padding-top: calc(4px + var(--hv-side-dy, 0px)); transition: padding-top .42s cubic-bezier(0.25, 0.1, 0.25, 1); }
+          :host(.hv) .side-item { height: 48px; gap: 15px; font-size: 18px; font-weight: 600; border-radius: 24px; }
+          :host(.hv) .side-glyph { width: 26px; height: 26px; }
+          :host(.hv) .side-item ha-icon { --mdc-icon-size: 25px; width: 25px; }
+          :host(.hv.compact) .side-item { height: 44px; gap: 13px; font-size: 16px; border-radius: 22px; }
+          :host(.hv.compact) .side-glyph { width: 24px; height: 24px; }
+          :host(.hv.compact) .side-item ha-icon { --mdc-icon-size: 23px; width: 23px; }
+          :host(.hv.compact) .side-heading { font-size: 14px; }
           .side-item > span:not(.side-motion) { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .side-motion {
             width: 26px; height: 26px; border-radius: 9999px; flex: none; box-sizing: border-box;
@@ -6754,14 +8540,17 @@ window.hemmaMenuGlass = {
             transition: opacity .4s cubic-bezier(.34,1.56,.64,1), transform .4s cubic-bezier(.34,1.56,.64,1);
           }
           .side-motion.on { opacity: 1; transform: scale(1); }
+          :host(.hv) .side-back { top: var(--hv-back-top, calc(var(--hemma-nav-row-center, 66px) + 38px)); }
           .side-back {
             position: fixed; z-index: 61;
-            top: calc(var(--hemma-nav-row-center, 66px) - 22px
+            top: calc(var(--hemma-nav-row-center, 66px) - 22px + var(--hv-back-dy, 0px)
               + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
             opacity: 0; transform: scale(0.8); pointer-events: none;
             transition: opacity .28s ease, transform .4s cubic-bezier(.34,1.56,.64,1);
           }
           .side-back.on { opacity: 1; transform: none; pointer-events: auto; }
+          /* Gone at once, never fading: the greeting arrives where it stood in the same frame and would show through it. */
+          .side-back:not(.on) { transition: none; }
           .side-back svg { width: 12px; height: 20px; display: block; margin-right: 3px; }
           .side-motion img { height: 14px; width: auto; display: block; }
           .bar { position: relative; z-index: 50; }
@@ -6778,11 +8567,14 @@ window.hemmaMenuGlass = {
             -webkit-backdrop-filter: var(--hemma-perf-none, blur(40px)); backdrop-filter: var(--hemma-perf-none, blur(40px));
           }
           .cat-bg.show { opacity: 1; }
-          .cat-xfade { position: fixed; z-index: 38; overflow: hidden; pointer-events: none; }
-          .cat-xfade > div { position: absolute; inset: 0; }
+          :host(.hv:not(.hvp)) .cat-bg { background: var(--hv-bg, #49575c); -webkit-backdrop-filter: none; backdrop-filter: none; }
+          :host(.hv:not(.base)) .cat-bg { background: color-mix(in oklab, var(--hv-bg, #49575c) 40%, transparent); -webkit-backdrop-filter: blur(40px) saturate(1.1); backdrop-filter: blur(40px) saturate(1.1); }
+          :host(.hv) .cat-bg.show { transition: left .48s cubic-bezier(0.32, 0.72, 0, 1); }
+          :host(.hvp) { --hv-veil: var(--hv-veil-photo); --hv-veil-bf: blur(28px) saturate(1.2); --hv-veil-mask: linear-gradient(to bottom, #000 55%, transparent); --hv-veil-mask-d: linear-gradient(to bottom, #000 60%, transparent); }
+          .cat-photo { position: fixed; inset: 0; z-index: 37; overflow: hidden; pointer-events: none; }
           .cat {
             z-index: 40; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain; scrollbar-width: none; color: #fff;
+            overscroll-behavior: contain; scrollbar-width: none; color: var(--hv-ink, #fff);
             font-family: var(--primary-font-family, system-ui);
             opacity: 0; pointer-events: none;
           }
@@ -6793,16 +8585,88 @@ window.hemmaMenuGlass = {
               calc(40px + env(safe-area-inset-bottom, 0px)) var(--cat-gutter, 20px);
           }
           .cat-in { --hemma-anim-name: none; --hemma-anim-delay: -1s; --hemma-anim-duration: 0.001s; position: relative; }
-          /* Under the top-right buttons on the tiles' edge, as Apple Home sets its forecast. */
+          :host(.hv:not(.base)) .cat:not(.home) .cat-in { transition: padding-top .42s cubic-bezier(0.25, 0.1, 0.25, 1), translate .42s cubic-bezier(0.25, 0.1, 0.25, 1); }
+          :host(.hv:not(.base)) .cat.pushed:not(.home) .cat-in { padding-top: calc(var(--hemma-nav-row-center, 66px) - 22.5px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))) !important; }
+          /* Under the top-right buttons on the tiles' edge. */
           .cat-wx { display: none; position: absolute; right: 22px; transform: translateY(-50%);
             top: calc(var(--hemma-chrome-row-top-tablet, 46px) + 51px + 20.5px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
           .cat.home .cat-wx { display: block; }
+          .cat-in > h1 > .hvd { display: none; }
+          .cat-wx > .hvw { display: none; }
+          :host(.hv) .cat .cat-wx { display: block; transform: none; }
+          :host(.hv) .cat.compact .cat-wx { transform: translateY(-50%); }
+          :host(.hv) .cat .cat-wx.ovtab { right: 22px; }
+          :host(.hv) .cat .cat-wx.abv .hvw .r .c { text-transform: none; letter-spacing: 0; display: none; }
+          :host(.hv) .cat .cat-wx.abv.ci-text .hvw .r .c { display: block; }
+          :host(.hv) .cat .cat-wx.abv.both .hvw .r { font-size: var(--hv-date-fs, 20px); }
+          :host(.hv) .cat .cat-wx.abv.both .hvw .r::before { content: "·"; margin: 0 2px 0 8px; font-weight: 600; color: var(--hv-sub, rgba(235,235,245,.6)); }
+          :host(.hv) .cat .cat-wx.abv:is(.ci-none, .ci-text) .hvw .r img { display: none; }
+          :host(.hv) .cat .cat-wx > :not(.hvw) { display: none; }
+          :host(.hv) .cat .cat-wx > .hvw:not([hidden]) { display: grid; justify-items: end; color: var(--hv-ink, currentColor); cursor: pointer; pointer-events: auto; -webkit-tap-highlight-color: transparent; }
+          :host(.hv) .cat .cat-wx > .hvw:active { opacity: .6; }
+          .hvw .r { display: flex; align-items: center; gap: 10px; height: var(--hv-h1-lh, 62px); }
+          .hvw .r img { width: 54px; height: 44px; object-fit: contain; filter: var(--hv-wx-filter, brightness(0) invert(1)); }
+          .hvw .r b { font-size: var(--hv-h1, 56px); font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
+          .hvw .r .c { display: none; }
+          :host(.hv) .cat .cat-wx.ond > .hvw:not([hidden]), :host(.hv) .cat .cat-wx.abv > .hvw:not([hidden]) { justify-items: start; }
+          .cat-wx.abv .hvw .r { height: 26px; gap: 7px; font-size: 20px; letter-spacing: 0.02em; }
+          .cat-wx.abv .hvw .r img { width: 26px; height: 22px; opacity: .6; }
+          .cat-wx.abv .hvw .r b { font-size: 20px; font-weight: 600; letter-spacing: 0.02em; }
+          .cat-wx.abv .hvw .r .c { display: block; font-size: 20px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: var(--hv-sub, rgba(235,235,245,.6)); white-space: nowrap; }
+          .cat-wx .hvw .r .d, .status .hvdt { display: none; }
+          :host(.hv) .cat-wx.big.inroom, :host(.hv) .cat-wx.abv.inroom { display: none !important; }
+          .cat-wx.big { opacity: var(--hv-wx-op, 1); transition: opacity .26s ease; z-index: 4; }
+          :host(.nc-open) .cat-wx.ovtab { opacity: 0; pointer-events: none; }
+          .cat-wx.big .hvw .r { gap: 12px; }
+          .cat-wx.big .hvw .r b { font-weight: 300; letter-spacing: -0.02em; }
+          .cat-wx.big .hvw .r .c { display: none; }
+          .cat-wx.big .hvw .r .d { display: grid; justify-items: end; line-height: 1.25; margin-right: 2px; white-space: nowrap; }
+          .cat-wx.big .hvw .r .d i { font-style: normal; font-size: calc(var(--hv-h1, 56px) * 0.4); font-weight: 600; }
+          .cat-wx.big .hvw .r .d small { font-size: calc(var(--hv-h1, 56px) * 0.36); font-weight: 600; color: var(--hv-sub, rgba(235,235,245,.6)); }
+          .cat-wx.big.nod .hvw .r .d { display: none; }
+          .cat-wx.big.sm .hvw .r b { font-size: calc(var(--hv-h1, 56px) * 0.7); }
+          .cat .cat-wx.d2 > :not(.hvw) { display: none; }
+          .cat .cat-wx.d2 > .hvw:not([hidden]) { display: grid; justify-items: end; color: var(--hv-ink, #fff); cursor: pointer; pointer-events: auto; -webkit-tap-highlight-color: transparent; }
+          .cat .cat-wx.d2 > .hvw:active { opacity: .6; }
+          .cat .cat-wx.d2.ovtab { right: 22px; transform: none; }
+          .cat-wx.d2 .hvw .r.d2 { height: auto; gap: calc(var(--wxt, 28px) * 0.36); }
+          .cat-wx.d2 .hvw .r.d2 .s { display: grid; justify-items: end; white-space: nowrap; }
+          .cat-wx.d2 .hvw .r.d2 .s b { font-size: var(--wxt, 28px); font-weight: 600; letter-spacing: -0.01em; line-height: 1.05; }
+          .cat-wx.d2 .hvw .r.d2 .s i { font-style: normal; font-size: var(--wxc, 17px); font-weight: 600; line-height: 1.15; color: var(--hv-sub, rgba(235,235,245,.6)); }
+          .cat-wx.d2 .hvw .r.d2 img { width: auto; height: var(--wxh, 40px); flex: none; }
+          :host(:not(.hv)) .cat-wx.d2 .hvw { text-shadow: 0 1px 10px rgba(0,0,0,.3); }
+          :host(:not(.hv)) .cat-wx.d2 .hvw .r.d2 img { filter: brightness(0) invert(1) drop-shadow(0 1px 8px rgba(0,0,0,.3)); }
+          :host(:not(.hv)) .cat-wx.d2 .hvw .r.d2 .s i { color: rgba(255,255,255,.72); }
+          :host(.hv.side-locked) .cat-in > h1 > .hvd { display: none; }
+          :host(.hv.side-locked) .cat-wx.row .hvw .r { height: 44px; }
+          :host(.hv.side-locked) .cat-wx.row .hvw .r b { font-size: 30px; }
+          :host(.hv.side-locked) .cat-wx.row .hvw .r .d i { font-size: 15px; }
+          :host(.hv.side-locked) .cat-wx.row .hvw .r .d small { font-size: 13px; }
+          .cat-wx.ond .hvw .r { height: var(--hv-date-lh, 32px); gap: 7px; font-size: var(--hv-date-fs, 26px); letter-spacing: 0.02em; }
+          .cat-wx.ond .hvw .r::before { content: "·"; margin: 0 4px 0 9px; font-weight: 600; color: var(--hv-sub, rgba(235,235,245,.6)); }
+          .cat-wx.ond .hvw .r img { width: calc(var(--hv-date-fs, 26px) * 1.23); height: calc(var(--hv-date-fs, 26px) * 1.04); opacity: .6; }
+          .cat-wx.ond .hvw .r b { font-size: var(--hv-date-fs, 26px); font-weight: 600; letter-spacing: 0.02em; }
+          .cat-wx.ond .hvw .r .c { display: none; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--hv-sub, rgba(235,235,245,.6)); white-space: nowrap; }
+          .hvw > span { margin-top: 2px; font-size: 15px; font-weight: 600; opacity: .55; white-space: nowrap; }
+          :host(.hv) .cat.home .cat-wx { --weather-icon-size-tablet: 62px; --weather-icon-size-desktop: 62px; --weather-icon-size-mobile: 62px; --hero-weather-title-size: 48px; --hero-weather-title-size-mobile: 48px; --hero-weather-sub-size: 17px; --hero-weather-sub-size-mobile: 17px; }
+          :host(.hv) .cat-in > h1 > .hvd { display: block; font-size: var(--hv-date-fs, 26px); line-height: var(--hv-date-lh, 32px); font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; margin: 0 0 var(--hv-date-gap, 12px); color: var(--hv-sub, rgba(235,235,245,.6)); }
+          :host(.hv) .cat-in > h1 > .hvd b { font-weight: 600; color: var(--hv-ink, #fff); }
+          :host(.hv) .cat.backable .cat-in > h1, :host(.hv) .cat:not(.home) .cat-in > h1 { margin-left: 58px; }
+          :host(.hv) .cat.backable .cat-in > h1 > .hvd, :host(.hv) .cat:not(.home) .cat-in > h1 > .hvd { margin-left: -58px; }
+          :host(.hv) .cat-in > h1 > .hvd > span { opacity: 1; }
+          .cat-pane.hv-home { display: grid; grid-template-columns: min(var(--cat-two-tiles, 466px), 400px) min(var(--cat-two-tiles, 466px), 400px) minmax(0, 1fr); column-gap: 10px; grid-auto-flow: row dense; --hv-np-w: min(var(--cat-two-tiles, 466px), 400px); --hv-cam-w: min(var(--cat-two-tiles, 466px), 400px); --hv-cam-h: 140px; }
+          .cat-pane.hv-home > * { grid-column: 1 / -1; min-width: 0; }
+          .cat-pane.hv-home > .cat-sec.hv-np, .cat-pane.hv-home > .cat-sec.hv-cam { grid-column: auto; }
+          .cat-pane.hv-home > .cat-sec.hv-np:first-child + .cat-sec.hv-cam h2, .cat-pane.hv-home > .cat-sec:first-child h2 { margin-top: 7px; }
+          .cat-pane.hv-home .cat-sec > .cat-cams { margin: 0; --hemma-cam-pad: 0px; --hemma-cam-pad-r: 0px; }
           .cat-bg.show.clear { opacity: 0; }
           .cat-chrome {
             position: fixed; z-index: 4; right: 22px; display: flex; align-items: center; gap: 12px;
             top: calc(var(--hemma-nav-row-center, 66px) + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
             transform: translateY(-50%); --hemma-chrome-btn-size: 34px;
           }
+          @media (pointer: coarse) { .cat-chrome { --hemma-bell-count-top: 0px; --hemma-bell-count-right: 1px; } }
+          :host(.hv) .cat-chrome { --hemma-bell-count-top: 1.5px; --hemma-bell-count-right: 2.5px; --hemma-settings-ink: var(--hv-cap-ink, var(--hemma-chrome-ink, #111)); }
           .cat-chrome > :not(.sep) { flex: none; width: var(--hemma-chrome-btn-size); height: var(--hemma-chrome-btn-size); }
           .cat-chrome.cap {
             --hemma-chrome-btn-size: var(--hemma-chrome-btn-size-tablet, 34px);
@@ -6835,7 +8699,7 @@ window.hemmaMenuGlass = {
             position: fixed; z-index: 4; right: 15px; top: calc(env(safe-area-inset-top, 0px) + 7px); height: 18px;
             display: flex; align-items: center; pointer-events: none; opacity: var(--hemma-nav-label-inactive-opacity, 0.84);
           }
-          .cat-in h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: 0.01em; line-height: 41px; }
+          .cat-in h1 { margin: 0; font-size: var(--hv-h1, 34px); font-weight: 700; letter-spacing: var(--hv-h1-ls, 0.01em); line-height: var(--hv-h1-lh, 41px); }
           .cat-pills {
             position: sticky; top: calc(var(--hemma-chrome-row-top-tablet, 46px) + 58px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
             z-index: 3; display: flex; gap: 8px; margin: 18px 0 4px; overflow-x: auto; scrollbar-width: none;
@@ -6855,14 +8719,18 @@ window.hemmaMenuGlass = {
           .cat-pill {
             flex: none; display: flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px 0 11px;
             border: 0; border-radius: 20px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
-            color: #fff; background: rgba(0, 0, 0, 0.40);
+            color: var(--hv-ink, #fff); background: var(--hv-off, rgba(0, 0, 0, 0.40));
             -webkit-backdrop-filter: var(--hemma-perf-none, blur(20px) saturate(1.2)); backdrop-filter: var(--hemma-perf-none, blur(20px) saturate(1.2));
             transition: background-color .2s ease, color .2s ease;
           }
           .cat-pill.on { background: rgba(255, 255, 255, 0.94); color: #1c1c1e; }
           .cat-glyph { width: 20px; height: 20px; flex: none; -webkit-mask: var(--g) center / contain no-repeat; mask: var(--g) center / contain no-repeat; }
-          .cat-body h2 { margin: 36px 0 12px; font-size: 20px; font-weight: 600; letter-spacing: 0.01em; line-height: 24px; }
-          .cat-pane > .cat-sec:first-child h2 { margin-top: 22px; }
+          .cat-body h2 { margin: var(--hv-h2-m, 36px 0 12px); font-size: var(--hv-h2, 20px); font-weight: var(--hv-h2-w, 600); letter-spacing: 0.01em; line-height: var(--hv-h2-lh, 24px); }
+          .cat-pane > .cat-sec:first-child h2, .cat-pane > .cat-sec:first-child:empty + .cat-sec h2 { margin-top: 22px; }
+          /* Home's badge row already carries 16px of air under the badges, so its first section sits as close as the phone's (measured 48px against 36px between sections). */
+          .cat:not(.room) .cat-pane > .cat-sec:first-child h2, .cat:not(.room) .cat-pane > .cat-sec:first-child:empty + .cat-sec h2 { margin-top: 7px; }
+          /* A room's chips sit where Home's badges do, so a page pushed in lines up with the one it covers. */
+          .cat.room .cat-chipcard { margin-top: 14px; }
           .cat-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
             grid-auto-rows: 72px; grid-auto-flow: row dense; gap: 10px;
@@ -6874,6 +8742,10 @@ window.hemmaMenuGlass = {
           /* button-card hides a card with the host's hidden attribute, which its own :host display outranks. */
           .cat-grid > [hidden] { display: none; }
           .cat-pane[hidden] { display: none !important; }
+          /* Safari otherwise shifts the scroll when the page left behind a slide is taken away, carrying the first section under the header. */
+          .cat { overflow-anchor: none; }
+          /* Its own block, so a section's top margin never folds into the chips' above: a pane laid out alone and one beside a parked pane sit at the same height. */
+          .cat-body { display: flow-root; }
           /* Hidden but still laid out, so showing Home again does not rebuild every tile's layout. */
           @supports (content-visibility: hidden) {
             .cat-pane[hidden] { display: block !important; content-visibility: hidden; }
@@ -6884,66 +8756,59 @@ window.hemmaMenuGlass = {
             --hemma-entity-name-font-current: 13px; --hemma-entity-state-font-current: 13px;
           }
           .cat.compact .cat-grid > [data-hemma-size="large"] { --hemma-entity-inner-pad-current: 10px; }
-          .cat.compact .cat-body h2 { font-size: 17px; line-height: 21px; }
-          /* A Mac's title sits in the toolbar row, as Apple Home's: level with the clock and the buttons, the forecast beside them. */
+          :host(.hv) .cat-grid { grid-auto-rows: 76px; --hemma-entity-name-font-current: 15px; --hemma-entity-state-font-current: 15px; }
+          :host(.hv) .cat.compact .cat-grid { grid-auto-rows: 66px; --hemma-entity-name-font-current: 15px; --hemma-entity-state-font-current: 15px; --hemma-entity-icon-size-current: 30px; }
+          :host(.hv) :is(.cat-pills, .cat-chipcard) { --badge-font-size-current: 16px !important; --badge-font-size-tablet: 16px; --badge-icon-size-current: 40px !important; --badge-icon-size-tablet: 40px; --hv-bi-size: 40px; --hemma-badge-icon-override: 40px; --badge-col-gap-current: 11px !important; --badge-min-height-current: 46px !important; }
+          :host(.hv.compact) :is(.cat-pills, .cat-chipcard) { --badge-icon-size-current: 38px !important; --hv-bi-size: 38px; --hemma-badge-icon-override: 38px; --badge-col-gap-current: 10px !important; --badge-min-height-current: 44px !important; }
+          :host(.hv) .cat-pills { --badge-padding-current: 7px 18px 8px 7px !important; --badge-padding-tablet: 7px 18px 8px 7px; }
+          :host(.hv.compact) .cat-pills { --badge-padding-current: 3px 17px 3px 7px !important; }
+          .cat.compact .cat-body h2 { font-size: var(--hv-h2, 17px); line-height: var(--hv-h2-lh, 21px); }
+          /* A Mac's title sits in the toolbar row: level with the clock and the buttons, the forecast beside them. */
           .cat.compact .cat-in { padding-top: calc(var(--hemma-nav-row-center, 66px) - 20.5px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
-          .cat.compact:not(.home) .cat-in > h1 { margin-left: 58px; }
+          .cat.compact:not(.home) .cat-in > h1, .cat.compact.backable .cat-in > h1 { margin-left: 58px; }
           .cat.compact .cat-wx { top: calc(var(--hemma-nav-row-center, 66px) + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
-            right: calc(var(--cat-gutter, 20px) + var(--cat-chrome-w, 80px) + 26px); }
+            right: calc(var(--cat-chrome-r, var(--cat-gutter, 20px)) + var(--cat-chrome-w, 80px) + 18px); }
           :host(.compact) .cat-chrome { right: var(--cat-gutter, 20px); }
           /* A dashboard is tapped, not read: a double tap on a title must not select it. */
           .bar, .side, .cat, .cat-mini, .cat-chrome { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-          .cat.compact .cat-np { --np-col: min(var(--cat-two-tiles, 366px), 332px, 100%); }
-          .cat.compact .cat-np > * { --np-tile-width: min(var(--cat-two-tiles, 366px), 332px, 100%); --np-inner-radius: 20px; }
-          /* Apple Home on a Mac: 19px corners on 54px tiles, so 20 on these 62px ones. */
+          .cat.compact .cat-np { --np-col: var(--hv-np-w, min(var(--cat-two-tiles, 366px), 332px, 100%)); }
+          .cat.compact .cat-np > * { --np-tile-width: var(--hv-np-w, min(var(--cat-two-tiles, 366px), 332px, 100%)); --np-inner-radius: 20px; }
+          /* On a Mac: 19px corners on 54px tiles, so 20 on these 62px ones. */
           .cat.compact { --hemma-tile-radius-phone: 20px; --hemma-scene-tile-radius: 20px; }
           .cat.room .cat-pills { display: none; }
           .cat-body { position: relative; }
           .cat.scenes .cat-pills, .cat.scenes .cat-chipcard { display: none; }
           .cat-warm { position: fixed; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
           /* The tile's #container is z-index 2, which would tie the veil's and paint over it: keep it in here. */
-          .cat-np { position: relative; z-index: 0; display: grid; grid-template-columns: repeat(auto-fill, var(--np-col, min(352px, 100%))); grid-auto-rows: 1fr; gap: 10px; --np-elevation: 0 0 #0000; }
+          .cat-np { position: relative; z-index: 0; display: grid; grid-template-columns: repeat(auto-fill, var(--np-col, var(--hv-np-w, min(352px, 100%)))); grid-auto-rows: 1fr; gap: var(--hv-gap, 10px); --np-elevation: 0 0 #0000; }
           /* The tile's :host sizes it with !important, so it is fed variables instead. */
-          .cat-np > * { flex: none; --np-tile-width: min(352px, 100%); --np-max-w: 100%; --np-inner-radius: 26px; margin: 0 !important; }
+          .cat-np > * { flex: none; --np-tile-width: var(--hv-np-w, min(352px, 100%)); --np-max-w: 100%; --np-inner-radius: 26px; margin: 0 !important; }
           .cat-scenes-row { margin: 0 -22px 0 calc(-1 * var(--cat-gutter, 20px)); }
-          .cat-body h2.cat-link { display: flex; align-items: center; gap: 6px; cursor: pointer; width: max-content; -webkit-tap-highlight-color: transparent; }
-          .cat-body h2.cat-link svg { width: 8px; height: 13px; opacity: .55; margin-top: 1px; }
-          .cat-cams { margin: 0 -22px 0 calc(-1 * var(--cat-gutter, 20px)); --hemma-cam-pad: var(--cat-gutter, 20px); --hemma-cam-pad-r: 22px; --hemma-cam-w: min(352px, 100%); --hemma-cam-h: 140px; --hemma-cam-r: 26px; }
-          .cat.compact .cat-cams { --hemma-cam-w: min(var(--cat-two-tiles, 366px), 332px, 100%); --hemma-cam-r: 20px; }
+          .cat-body h2.cat-link { display: flex; align-items: center; gap: 7px; cursor: pointer; width: max-content; -webkit-tap-highlight-color: transparent; }
+          .cat-body h2.cat-link svg { width: 0.53em; height: 0.88em; flex: none; opacity: .5; margin-top: 0.06em; }
+          .cat-cams { margin: 0 -22px 0 calc(-1 * var(--cat-gutter, 20px)); --hemma-cam-pad: var(--cat-gutter, 20px); --hemma-cam-pad-r: 22px; --hemma-cam-w: var(--hv-cam-w, min(352px, 100%)); --hemma-cam-h: var(--hv-cam-h, 140px); --hemma-cam-r: 26px; }
+          .cat.compact .cat-cams { --hemma-cam-w: var(--hv-cam-w, min(var(--cat-two-tiles, 366px), 332px, 100%)); --hemma-cam-r: 20px; }
           .cat-scenes-row > .cat-scenes { --hemma-rail-left: var(--cat-gutter, 20px); }
           .cat-scenes { display: block; margin-top: 14px; --hemma-rail-left: 0px; --hemma-measured-safe-left: 0px;
             --hemma-scene-grid-cols: repeat(auto-fill, minmax(190px, 1fr)); --hemma-scene-grid-col-gap: 10px; --hemma-scene-grid-row-gap: 10px; }
           .cat-empty { margin-top: 40px; font-size: 17px; opacity: 0.6; }
           .cat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 560px)); gap: 10px; align-items: start; }
-          .cat-en {
-            border-radius: 26px; padding: 16px 18px 14px; background: rgba(12, 14, 19, 0.62);
-            -webkit-backdrop-filter: var(--hemma-perf-none, blur(24px) saturate(1.8)); backdrop-filter: var(--hemma-perf-none, blur(24px) saturate(1.8));
-            box-shadow: 0 18px 40px -22px rgba(0, 0, 0, 0.50);
-          }
-          .cat-en h3 { margin: 0 0 2px; font-size: 16px; font-weight: 600; }
-          .cat-en .sub { font-size: 12.5px; opacity: 0.6; margin-bottom: 8px; }
-          .cat-en svg { display: block; }
-          .cat-en .lgs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
-          .cat-en .lg { font-size: 12px; opacity: 0.85; display: flex; align-items: center; gap: 6px; }
-          .cat-en .lg i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-          .cat-en .hb { display: grid; grid-template-columns: minmax(0, 120px) 1fr 74px; align-items: center; gap: 10px; height: 40px; }
-          .cat-en .hn { font-size: 13.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-          .cat-en .hbar { height: 12px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
-          .cat-en .hbar i { display: block; height: 100%; border-radius: 6px; }
-          .cat-en .hv { font-size: 13px; opacity: 0.7; text-align: right; }
+          ${ENERGY_CSS}
           .cat-veilwrap { position: sticky; top: 0; height: 0; z-index: 2; pointer-events: none; }
           .cat-veil {
             position: absolute; top: 0; left: 0; right: 0; pointer-events: none; opacity: 0;
             height: calc(var(--hemma-chrome-row-top-tablet, 46px) + 58px + 40px + 12px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
-            -webkit-backdrop-filter: var(--hemma-perf-none, blur(30px) saturate(1.3) brightness(0.72));
-            backdrop-filter: var(--hemma-perf-none, blur(30px) saturate(1.3) brightness(0.72));
+            -webkit-backdrop-filter: var(--hv-veil-bf, var(--hemma-perf-none, blur(30px) saturate(1.3) brightness(0.72)));
+            backdrop-filter: var(--hv-veil-bf, var(--hemma-perf-none, blur(30px) saturate(1.3) brightness(0.72)));
+            background: var(--hv-veil, none);
+            -webkit-mask-image: var(--hv-veil-mask-d, none); mask-image: var(--hv-veil-mask-d, none);
             transition: opacity 220ms ease-in-out;
           }
           .cat-veil.on { opacity: 1; }
           .cat-mini {
             z-index: 42; bottom: auto; pointer-events: none; opacity: 0; text-align: center;
             top: calc(var(--hemma-chrome-row-top-tablet, 46px) - 3px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
-            font-family: var(--primary-font-family, system-ui); font-size: 17px; font-weight: 600; color: #fff;
+            font-family: var(--primary-font-family, system-ui); font-size: 17px; font-weight: 600; color: var(--hv-ink, #fff);
             transition: opacity 200ms ease, left .48s cubic-bezier(0.32, 0.72, 0, 1);
           }
           .cat-mini.show.on.pushed { opacity: 1; }
@@ -6951,15 +8816,17 @@ window.hemmaMenuGlass = {
           :host(.compact) .cat-mini { text-align: left; padding-left: var(--cat-gutter, 20px); line-height: 22px;
             top: calc(var(--hemma-nav-row-center, 66px) - 11px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
           :host(.compact) .cat-mini:not(.home) { padding-left: calc(var(--cat-gutter, 20px) + 58px); }
+          :host(.hv) .cat.compact .cat-in { padding-top: calc(var(--hemma-nav-row-center, 66px) - 20.5px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)) + var(--hv-desk-dy, 0px)); }
+          :host(.hv.compact) .cat-mini { font-size: var(--hv-clock, 26px); font-weight: 600; letter-spacing: -0.01em; line-height: 30px; top: calc(var(--hemma-nav-row-center, 66px) - 15px + var(--hv-mini-dy, 0px) + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
           /*SIDE-END*/
-          /* As Apple Home on an iPad: badges scroll; the veil is a thin fading band under the navbar, button-row deep with the sidebar. */
+          /* On an iPad: badges scroll; the veil is a thin fading band under the navbar, button-row deep with the sidebar. */
           .cat-pills { position: relative; top: auto; z-index: 0; }
-          /* Apple's top edge: what scrolls up fades into the wallpaper as it reaches the clock, under only a light blur. */
+          /* Top edge: what scrolls up fades into the wallpaper as it reaches the clock, under only a light blur. */
           .cat-veil {
-            height: calc(env(safe-area-inset-top, 0px) + 34px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
-            background: none;
-            -webkit-backdrop-filter: var(--hemma-perf-none, blur(6px)); backdrop-filter: var(--hemma-perf-none, blur(6px));
-            -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent); mask-image: linear-gradient(to bottom, #000 40%, transparent);
+            height: var(--hv-veil-h, calc(env(safe-area-inset-top, 0px) + 34px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))));
+            background: var(--hv-veil, none);
+            -webkit-backdrop-filter: var(--hv-veil-bf, var(--hemma-perf-none, blur(6px))); backdrop-filter: var(--hv-veil-bf, var(--hemma-perf-none, blur(6px)));
+            -webkit-mask-image: var(--hv-veil-mask, linear-gradient(to bottom, #000 40%, transparent)); mask-image: var(--hv-veil-mask, linear-gradient(to bottom, #000 40%, transparent));
           }
           /* Fades a registered --cat-edge, never opacity on the card: an animated ancestor opacity kills the tile's own glass blur. */
           @supports (animation-timeline: view()) {
@@ -6970,31 +8837,32 @@ window.hemmaMenuGlass = {
             }
             .cat:not(.pushed) :is(.cat-in > h1, .cat-body h2) { opacity: var(--cat-edge, 1); }
           }
-          :host(.under) :is(.status, .cat-batt) { opacity: 1; text-shadow: 0 0 6px rgba(0,0,0,0.30), 0 0.5px 1.5px rgba(0,0,0,0.22); }
+          :host(.under) :is(.status, .cat-batt) { opacity: 1; text-shadow: var(--hemma-status-shadow, 0 0 6px rgba(0,0,0,0.30), 0 0.5px 1.5px rgba(0,0,0,0.22)); }
           :host(.under) .cat-batt { filter: drop-shadow(0 0 3px rgba(0,0,0,0.30)); }
-          /* Apple's tablet glass, matched pixel for pixel over Apple's own sky (harnesses/glasslab): a blur mixed 26% toward a
+          :host(.hv.under) :is(.status, .cat-batt) { text-shadow: none; filter: none; }
+          /* Tablet glass, matched pixel for pixel against a reference (harnesses/glasslab): a blur mixed 26% toward a
              NEUTRAL gray (a tinted gray turned every room photo blue); one crisp light pixel top and bottom with a softer one inside it and a faint glow. Half-point shadows,
              not masked rings: those round to two device pixels wherever the pill lands on a fraction. */
           :host {
             --hemma-pill-backdrop: var(--hemma-perf-none, blur(12px) saturate(1.45));
-            --hemma-pill-fill: var(--hemma-perf-pill, rgba(108,108,108,0.26));
+            --hemma-pill-fill: var(--hv-tab-fill, var(--hemma-perf-pill, rgba(108,108,108,0.26)));
+            --hemma-nav-active-fill: var(--hv-nav-active, rgba(0,0,0,0.26));
             --hemma-pill-edge: transparent;
-            /* Apple's glass is flat a couple of pixels inside the edge: only a short falloff, no deep glow band. */
+            /* The glass is flat a couple of pixels inside the edge: only a short falloff, no deep glow band. */
             --hemma-pill-rim: inset 0 2px 2px -1px rgba(255,255,255,0.07), inset 0 -2px 2px -1px rgba(255,255,255,0.07);
-            --hemma-nav-active-fill: rgba(0,0,0,0.26);
             --hemma-nav-label-inactive-opacity: 1;
           }
           .bar { font-family: var(--primary-font-family, -apple-system, system-ui); }
           .label { font-weight: 500; font-size: 17px; }
           .route.toggle .label { opacity: 1; }
-          /* Apple's edge, placed and toned against Apple's own pixels (glasslab option H): a light line on the glass's outermost
+          /* The edge, placed and toned against reference pixels (glasslab option H): a light line on the glass's outermost
              row along the top and bottom, and a dark line on the pixel just OUTSIDE the glass, strongest mid-end; both full
              half-point rings faded by vertical masks, so they follow the curve without a seam. */
           .glass::after, .cat-chrome.cap::after {
             content: ""; position: absolute; border-radius: 9999px; pointer-events: none; z-index: 0;
             padding: 0; border: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none;
           }
-          /* The light line is the glass itself brightened (Apple's is 1.2x what is behind it, so it takes that color): a
+          /* The light line is the glass itself brightened (1.2x what is behind it, so it takes that color): a
              half-point ring of backdrop brightness beside the glass, faded out a quarter of the way round the curve. */
           .bar > .rim, .cat-chrome > .cap-rim, .bar > .rim-in, .cat-chrome > .cap-rim-in {
             display: block; position: absolute; inset: 0.5px; z-index: 0; border-radius: 9999px; pointer-events: none;
@@ -7021,86 +8889,59 @@ window.hemmaMenuGlass = {
           .bar > .glass { inset: 0.5px; }
           .cat-chrome.cap::before { inset: 0.5px; }
           .cat-chrome.cap::after { inset: 0; }
+          :host(.hv) :is(.glass, .cat-chrome.cap)::after, :host(.hv) .bar > :is(.rim, .rim-in), :host(.hv) .cat-chrome > :is(.cap-rim, .cap-rim-in) { display: none !important; }
+          :host(.hv) .bar > .glass, :host(.hv) .cat-chrome.cap::before { box-shadow: none !important; }
 
           .cat.pushed .cat-veil {
             height: calc(var(--hemma-chrome-row-center-tablet, 54.5px) + 30.5px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
             background: none; -webkit-backdrop-filter: var(--hemma-perf-none, blur(30px) saturate(1.3) brightness(0.72)); backdrop-filter: var(--hemma-perf-none, blur(30px) saturate(1.3) brightness(0.72));
             -webkit-mask-image: none; mask-image: none;
           }
+          :host(.hv) .cat.pushed .cat-veil { height: calc(var(--hemma-chrome-row-center-tablet, 54.5px) + 44px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); background: var(--hv-veil, none); }
+          :host(.hv) .cat .cat-in { transition: translate .42s cubic-bezier(0.25, 0.1, 0.25, 1); }
+          :host(.hv) .cat.lifted .cat-in { translate: 0 calc(-1 * var(--hv-push-up, 0px)); }
+          .hv-bk { position: sticky; top: var(--bk-t, 0px); height: 0; z-index: 3; pointer-events: none; transition: top .42s cubic-bezier(0.25, 0.1, 0.25, 1); }
+          .cat.lifted .hv-bk { top: calc(var(--bk-t, 0px) + var(--hv-push-up, 0px)); }
+          .hv-bk > .side-back { position: absolute !important; left: 0 !important; top: var(--bk-off, 0px) !important; }
+          :host(.hv) .cat.lifted.now .cat-in { transition: none; }
           .cat-mini { line-height: 22px;
             top: calc(var(--hemma-chrome-row-center-tablet, 54.5px) - 11px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
         `;
-      const desktopCss = `
-        :host {
-          top: calc(var(--hemma-chrome-row-center-desktop, 56px)
-            - var(--hemma-nav-label-pad-top, 8px)
-            - (var(--hemma-chrome-font-size, 18px) / 2)
-            + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
-        }
-
-        .bar {
-          display: flex;
-          justify-content: center;
-          width: fit-content;
-          max-width: calc(100vw - 2 * var(--hemma-nav-margin-current, 8vw));
-          margin: 0 auto;
-        }
-
-        @supports (animation-timeline: scroll()) {
-          .scroller {
-            animation: hemma-fade-mask linear;
-            animation-timeline: scroll(self inline);
-          }
-        }
-
-        @keyframes hemma-fade-mask {
-          0% {
-            -webkit-mask-image: linear-gradient(to right, transparent 0px, black 0px, black calc(100% - 80px), transparent 100%);
-            mask-image: linear-gradient(to right, transparent 0px, black 0px, black calc(100% - 80px), transparent 100%);
-          }
-          100% {
-            -webkit-mask-image: linear-gradient(to right, transparent 0px, black 80px, black 100%, transparent calc(100% + 80px));
-            mask-image: linear-gradient(to right, transparent 0px, black 80px, black 100%, transparent calc(100% + 80px));
-          }
-        }
-
-        .route { padding: 0 20px; }
-
-        .label {
-          box-sizing: border-box;
-          height: calc(var(--hemma-chrome-font-size, 18px)
-            + var(--hemma-nav-label-pad-top, 8px) + 14px);
-          padding: var(--hemma-nav-label-pad-top, 8px) 0 14px;
-          font-size: var(--hemma-chrome-font-size, 18px);
-          font-weight: var(--hemma-chrome-font-weight, 500);
-          letter-spacing: var(--hemma-chrome-letter-spacing, 0.2px);
-          opacity: 1;
-        }
-
-        .indicator {
-          bottom: var(--hemma-nav-underline-gap, 4px);
-          height: var(--hemma-nav-underline-thickness, 2px);
-        }
-
-        .indicator .fill { background: rgba(255,255,255,0.85); }
-
-        .badge { top: 6px; right: 10px; }
-      `;
       if (this._variant === 'tablet') return shared + tabletCss;
       const sideCss = tabletCss.slice(tabletCss.indexOf('/*SIDE-START*/'), tabletCss.indexOf('/*SIDE-END*/'));
-      return shared + desktopCss + sideCss + `
+      // The Mac draws the iPad's pill; only its row, clock and sidebar stay its own.
+      const pillCss = tabletCss.slice(tabletCss.indexOf('          .bar {'), tabletCss.indexOf('/*SIDE-START*/'))
+        + tabletCss.slice(tabletCss.indexOf('          :host {\n            --hemma-pill-backdrop'), tabletCss.indexOf('          .cat.pushed .cat-veil {'))
+        + `
+        :host {
+          top: calc(var(--hemma-chrome-row-center-desktop, 56px) - var(--hemma-nav-pill-height-tablet, 46px) / 2
+            + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
+          left: var(--hemma-content-left, 0px);
+          --hemma-nav-reserve-current: var(--hemma-chrome-side-reserve-desktop, 240px);
+          --hemma-nav-bar-max: min(calc(75vw - 35px), calc(100vw - var(--hemma-content-left, 0px)
+            - 2 * (var(--hero-gutter, 23px) + var(--hemma-nav-reserve-current, 188px))));
+        }
+        :host(.hv:not(.base)) .cat:not(.home) .cat-in {
+          padding-top: calc(var(--hemma-chrome-row-top-tablet, 46px) + 83px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
+        }
+        :host(.hv) .route:not(.active) .label:hover { background: color-mix(in srgb, var(--hemma-nav-active-fill, rgba(0,0,0,0.26)) 45%, transparent); }
+      `;
+      return shared + pillCss + sideCss + `
         :host { --hemma-chrome-row-top-tablet: calc(var(--hemma-chrome-row-center-desktop, 56px) - 20px);
           --hemma-nav-row-center: var(--hemma-chrome-row-center-desktop, 56px); }
         /* As the tablet: the badges scroll with the page, so the veil only covers the toolbar row. */
         .cat-pills { position: relative; top: auto; z-index: 0; }
-        .cat-veil { height: calc(var(--hemma-nav-row-center, 66px) + 30.5px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
+        .cat-veil { height: calc(var(--hemma-nav-row-center, 66px) + 30.5px + var(--hv-veil-pad, 0px) + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
         /* The room card's clock, rule for rule (hemma_time), so one element can stand in for it everywhere. */
         .status {
           left: 22px; top: 0; z-index: 63; line-height: 1; padding-block: .16em; margin-block: -.16em;
-          font-size: var(--hemma-chrome-font-size, 18px); font-weight: var(--hemma-chrome-font-weight, 700);
-          letter-spacing: var(--hemma-time-letter-spacing, 1px); color: var(--primary-text-color, #fff); opacity: 0;
+          font-size: var(--hv-clock, var(--hemma-chrome-font-size, 18px)); font-weight: var(--hemma-chrome-font-weight, 700);
+          letter-spacing: var(--hv-clock-ls, var(--hemma-time-letter-spacing, 1px)); color: var(--hemma-hero-ink, var(--primary-text-color, #fff)); opacity: 0;
         }
         .status.on { opacity: var(--hemma-time-opacity, 1); }
+        :host(.hv) .status { font-weight: 600; translate: 0 var(--hv-clock-dy, 0px); }
+        :host(.hv.side-locked) .status { font-size: 22px; }
+        :host(.hv.side-locked) .status .hvdt { display: block; position: absolute; left: 0; bottom: 100%; margin-bottom: 2px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--hv-sub, rgba(235,235,245,.6)); white-space: nowrap; }
         .status .extra { margin-left: 0; text-transform: none; font-weight: 500; letter-spacing: var(--hemma-time-sub-spacing, .2px); }
         .status .extra::before { content: "\\00b7"; margin: 0 .4em; }
         .status.tight .extra { display: none; }
@@ -7113,6 +8954,39 @@ window.hemmaMenuGlass = {
   }
 
   customElements.define('hemma-nav-bar', HemmaNavBar);
+  // The phone's Energy page: the Mac's two cards drawn as one, the total and chart above each device and its bar.
+  class HemmaEnergyCard extends HTMLElement {
+    setConfig() {}
+    getCardSize() { return 8; }
+    set hass(h) {
+      this._hass = h;
+      if (this._started) return;
+      this._started = true;
+      const sr = this.attachShadow({ mode: 'open' });
+      sr.innerHTML = `<style>
+        :host { display: block; padding: 0 var(--hemma-rail-left, 16px); }
+        ${ENERGY_CSS}
+        .cat-cards.en-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+        .cat-cards.en-row > .cat-en:first-child { border-bottom-left-radius: 0; border-bottom-right-radius: 0; padding-bottom: 4px; }
+        .cat-cards.en-row > .cat-en:first-child .lgs { display: none; }
+        .cat-cards.en-row > .cat-en + .cat-en { border-top-left-radius: 0; border-top-right-radius: 0; padding-top: 0; }
+        .cat-cards.en-row > .cat-en + .cat-en > :is(.k, .sub, .split, .foot) { display: none; }
+        .cat-cards.en-row > .cat-en + .cat-en .dvs { overflow: visible; }
+      </style><div class="cat-cards"></div>`;
+      const row = sr.querySelector('.cat-cards');
+      this._cat = 'energy';
+      const hv = () => this.classList.toggle('hv', document.documentElement.classList.contains('hemma-hv'));
+      hv();
+      this._hvMo = new MutationObserver(hv);
+      this._hvMo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+      this._energyDevices().then((devices) => { if (devices) this._drawEnergy(row, devices); else this.style.display = 'none'; });
+    }
+    disconnectedCallback() { if (this._hvMo) this._hvMo.disconnect(); clearTimeout(this._energyTick); this._cat = null; }
+    connectedCallback() { if (this._started) this._cat = 'energy'; }
+  }
+  HemmaEnergyCard.prototype._energyDevices = HemmaNavBar.prototype._energyDevices;
+  HemmaEnergyCard.prototype._drawEnergy = HemmaNavBar.prototype._drawEnergy;
+  if (!customElements.get('hemma-energy-card')) customElements.define('hemma-energy-card', HemmaEnergyCard);
 
   function walkFind(root, selector, out, depth) {
     if (!root || depth > 20 || !root.querySelectorAll) return;
@@ -7253,6 +9127,8 @@ window.hemmaMenuGlass = {
       background-color: rgba(255,255,255,0.135); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cdefs%3E%3ClinearGradient id='t' x1='0' x2='1'%3E%3Cstop offset='0.000' stop-color='white' stop-opacity='0.000'/%3E%3Cstop offset='0.030' stop-color='white' stop-opacity='0.060'/%3E%3Cstop offset='0.067' stop-color='white' stop-opacity='0.080'/%3E%3Cstop offset='0.117' stop-color='white' stop-opacity='0.085'/%3E%3Cstop offset='0.179' stop-color='white' stop-opacity='0.210'/%3E%3Cstop offset='0.250' stop-color='white' stop-opacity='0.305'/%3E%3Cstop offset='0.329' stop-color='white' stop-opacity='0.330'/%3E%3Cstop offset='0.413' stop-color='white' stop-opacity='0.415'/%3E%3Cstop offset='0.500' stop-color='white' stop-opacity='0.500'/%3E%3Cstop offset='0.587' stop-color='white' stop-opacity='0.415'/%3E%3Cstop offset='0.671' stop-color='white' stop-opacity='0.330'/%3E%3Cstop offset='0.750' stop-color='white' stop-opacity='0.305'/%3E%3Cstop offset='0.821' stop-color='white' stop-opacity='0.210'/%3E%3Cstop offset='0.883' stop-color='white' stop-opacity='0.085'/%3E%3Cstop offset='0.933' stop-color='white' stop-opacity='0.080'/%3E%3Cstop offset='0.970' stop-color='white' stop-opacity='0.060'/%3E%3Cstop offset='1.000' stop-color='white' stop-opacity='0.000'/%3E%3C/linearGradient%3E%3ClinearGradient id='b' x1='0' x2='1'%3E%3Cstop offset='0.000' stop-color='white' stop-opacity='0.000'/%3E%3Cstop offset='0.117' stop-color='white' stop-opacity='0.000'/%3E%3Cstop offset='0.179' stop-color='white' stop-opacity='0.030'/%3E%3Cstop offset='0.250' stop-color='white' stop-opacity='0.305'/%3E%3Cstop offset='0.329' stop-color='white' stop-opacity='0.320'/%3E%3Cstop offset='0.413' stop-color='white' stop-opacity='0.455'/%3E%3Cstop offset='0.500' stop-color='white' stop-opacity='0.450'/%3E%3Cstop offset='0.587' stop-color='white' stop-opacity='0.455'/%3E%3Cstop offset='0.671' stop-color='white' stop-opacity='0.320'/%3E%3Cstop offset='0.750' stop-color='white' stop-opacity='0.305'/%3E%3Cstop offset='0.821' stop-color='white' stop-opacity='0.030'/%3E%3Cstop offset='0.883' stop-color='white' stop-opacity='0.000'/%3E%3Cstop offset='1.000' stop-color='white' stop-opacity='0.000'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M.5 22A21.5 21.5 0 0 1 43.5 22' fill='none' stroke='url(%23t)'/%3E%3Cpath d='M43.5 22A21.5 21.5 0 0 1 .5 22' fill='none' stroke='url(%23b)'/%3E%3C/svg%3E"), linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.07) 6%, rgba(255,255,255,0.025) 12%, rgba(255,255,255,0) 18%), linear-gradient(to top, rgba(255,255,255,0.11), rgba(255,255,255,0.05) 6%, rgba(255,255,255,0.015) 12%, rgba(255,255,255,0) 18%); background-size: 100% 100%;
       box-shadow: -1px 0 0 -0.4px rgba(0,0,0,0.28), 1px 0 0 -0.4px rgba(0,0,0,0.28);; -webkit-tap-highlight-color: transparent; }
     .cornerx svg { width: 18px; height: 18px; }
+    :host([hv]:not([hvl])) .cornerx { background-color: rgba(255,255,255,0.14); background-image: none; box-shadow: none; }
+    :host([hvl]) .cornerx { background-color: var(--hv-btn-c, rgba(255,255,255,0.5)); background-image: none; box-shadow: none; color: #1c1c1e; }
     :host([corner-x]:not([deep])) .cornerx { display: grid; }
     @media (hover: hover) { .cornerx:hover { filter: brightness(1.12); } }
     :host {
@@ -7282,7 +9158,7 @@ window.hemmaMenuGlass = {
                   var(--hemma-popup-scrim-ease, cubic-bezier(0.25, 0.6, 0.3, 1));
     }
     :host([shown]) .scrim { opacity: 1; }
-    /* Grown from a tile, the panel dims the room as Apple Home's do: measured at 34% black, no blur. */
+    /* Grown from a tile, the panel dims the room: measured at 34% black, no blur. */
     :host([morph]) .scrim {
       background: var(--hemma-morph-scrim, rgba(0, 0, 0, 0.32));
       backdrop-filter: none;
@@ -7355,8 +9231,19 @@ window.hemmaMenuGlass = {
       -webkit-backdrop-filter: var(--hemma-popup-backdrop,
         var(--hemma-surface-backdrop, blur(28px) saturate(60%) brightness(0.78)));
     }
+    :host([solid]) .glass { background: rgb(var(--hemma-popup-solid)) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+    :host([solid]) .glass::before, :host([solid]) .glass::after { display: none; }
+    :host([solid]) .cornerx { background-color: rgba(255,255,255,0.2) !important; background-image: none !important; box-shadow: none !important; color: #fff !important; }
     :host([flat]) .glass { background: var(--hemma-popup-tint-flat, rgba(8, 8, 12, 0.24)); }
-    /* A third of the room's contrast washed out, as Apple's Mac app does, but toward dark gray so the screen never brightens. localStorage hemma_glass = 'dark' restores the black dim. */
+    /* HomeView by day: a light flat card, and the panels inside swap their white ink for dark. */
+    :host([hvl]) { --hv-glyph: #1c1c1e; --hv-pk: 0,0,0; --hv-pk2: 60,60,67; --hv-pd: 120,120,128; --hv-pi: #1c1c1e;
+      --primary-text-color: #1c1c1e; --secondary-text-color: rgba(60,60,67,0.6); --hemma-popup-grain: 0; --hemma-popup-grain-dark: 0; }
+    :host([hvl]) { --hv-tile: #fff; --hv-tile-head: #1c1c1e; --hv-photo-sh: none; --hv-plant-slab: transparent; --hv-pill-bg: #fff; --hv-pill-ink: #0a8a94; --hv-glow-op: .3; --hv-spk-bg: color-mix(in oklab, var(--hv-bg, #97a9ae) 10%, rgb(252,252,253)); --hv-spk-bf: none; --hv-spk-sh: 0 0 0 0.5px rgba(0,0,0,0.08), 0 18px 40px -16px rgba(0,0,0,0.3); --hv-spk-row: rgba(0,0,0,0.05); --hv-spk-on: #fff; --hv-spk-f: rgba(0,0,0,0.05); --hv-spk-fon: rgba(0,0,0,0.07); --hv-veil-bg: color-mix(in oklab, var(--hv-bg, #97a9ae) var(--hv-pop-mix, 40%), rgba(248,247,245,0.9)); --hv-veil-bf: blur(20px) saturate(1.2); --hv-veil-line: rgba(0,0,0,0.1); --hv-sub2: rgba(60,60,67,0.6); --hemma-stage-dim: color-mix(in oklab, var(--hv-bg, #97a9ae) var(--hv-pop-mix, 40%), rgb(248,247,245)); --hemma-stage-backdrop: none; --hv-btn-c: rgba(0,0,0,0.06); --hv-btn-img: none; --hv-btn-sh: none; --hv-pm-sh: none; --hv-pm-bg: rgba(0,0,0,0.07); --hemma-popup-tint: color-mix(in oklab, var(--hv-bg, #97a9ae) var(--hv-pop-mix, 40%), rgb(248,247,245)) !important; --hemma-popup-tint-flat: color-mix(in oklab, var(--hv-bg, #97a9ae) var(--hv-pop-mix, 40%), rgb(248,247,245)) !important; --hemma-popup-backdrop: none !important; --hemma-surface-backdrop: none !important; }
+    :host([hv]) { --hv-batt-chg-ink: rgba(var(--hv-pk2, 235,235,245),0.6); }
+    :host([hv]:not([hvl])) { --hv-btn-img: none; --hv-btn-sh: none; --hv-btn-c: rgba(255,255,255,0.14); }
+    :host([hv]) { --hv-lpill-img: none; --hv-lpill-rim: none; }
+    :host([hvl][morph]) .scrim, :host([hvl]) .scrim { background: rgba(0,0,0,0.18); }
+    /* A third of the room's contrast washed out, toward dark gray so the screen never brightens. localStorage hemma_glass = 'dark' restores the black dim. */
     :host([lightglass][morph]) .scrim { background: var(--hemma-popup-veil, rgba(46, 46, 50, 0.33)); }
 
     /* A mix-blend-mode layer makes the browser read the backdrop back and
@@ -7396,7 +9283,8 @@ window.hemmaMenuGlass = {
 
     :host([closing]) .surface { animation: hemma-popup-out 140ms ease-in forwards; }
     .sbveil { position: absolute; left: 0; right: 0; top: 0; height: env(safe-area-inset-top, 0px); z-index: 20; pointer-events: none; opacity: 0; transition: opacity .22s ease;
-      -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3); background: rgba(30,30,34,0.45); }
+      -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3); background: rgba(36,36,40,0.32); }
+    /* The same veil as a popup's pinned title (hemma-cards VEIL), so the status bar and the title read as one band. */
     .surface.sbv .sbveil { opacity: 1; }
 
     @keyframes hemma-popup-fade {
@@ -7705,8 +9593,10 @@ window.hemmaMenuGlass = {
       :host([stage]) .layer { align-items: stretch; }
       :host([stage]) .surface {
         height: 100dvh; min-height: 100dvh; max-height: 100dvh; border-radius: 0; animation: none;
-        padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); box-sizing: border-box;
+        padding: 0 0 env(safe-area-inset-bottom, 0px); box-sizing: border-box;
       }
+      /* The status bar's room is inside the content, so a panel's list can scroll up under it and one veil covers both (--hemma-stage-top). */
+      :host([stage]) .content { padding-top: env(safe-area-inset-top, 0px); --hemma-stage-top: env(safe-area-inset-top, 0px); }
       :host([stage][closing]) .surface { animation: none; }
       :host([stage]) .glass, :host([stage]) .rim, :host([stage]) .grab { display: none; }
       /* Blur and dim animate as values, never through opacity: iOS shows a fading backdrop-filter as all or nothing. */
@@ -7858,7 +9748,7 @@ window.hemmaMenuGlass = {
         for (var i = 0; i < path.length; i++) {
           var n = path[i];
           if (!n || n.nodeType !== 1) continue;
-          if (n === this) return null;
+          if (n === this || n.tagName === 'HEMMA-MEDIA-PANEL') return null;
           if (n.dataset && n.dataset.tip) return { el: n, text: n.dataset.tip };
           if (n.hasAttribute('data-notip') || n.classList.contains('back') || n.classList.contains('rback') || n.classList.contains('tg')) return null;
           if ((n.tagName === 'BUTTON' || n.getAttribute('role') === 'button') && n.getAttribute('aria-label') && !n.hasAttribute('data-i')) {
@@ -7934,6 +9824,8 @@ window.hemmaMenuGlass = {
       this.surface = root.querySelector('.surface');
       // A panel's header veil stops where its page does, under the status bar; this band carries it to the screen's edge.
       this.addEventListener('hemma-veil', (e) => this.surface.classList.toggle('sbv', !!e.detail));
+      const content = this.surface.querySelector('.content');
+      if (content) content.addEventListener('scroll', () => this.surface.classList.toggle('sbv', content.scrollTop > 2), { passive: true });
       this.addEventListener('hemma-deep', () => this.surface.classList.remove('sbv'));
       this.container = root.querySelector('.container');
       this.content = root.querySelector('.content');
@@ -8051,16 +9943,20 @@ window.hemmaMenuGlass = {
       // A control that pins itself visible (the thermostat's - and +) reads this, or it shows through before the morph.
       if (morph) { this.surface.style.visibility = 'hidden'; this.surface.style.setProperty('--hemma-pop-hidden', 'hidden'); }
       if (!wasOpen) this.toggleAttribute('morph', !!morph);
-      // On a phone a tile opens Apple's way: no card, the room blurs behind and the tile becomes the control.
+      // On a phone a tile opens with no card: the room blurs behind and the tile becomes the control.
       if (!wasOpen) this.toggleAttribute('stage', !!morph && this._isSheet());
       if (!wasOpen) {
         var dark = false;
         try { dark = localStorage.getItem('hemma_glass') === 'dark'; } catch (e) {}
         this.toggleAttribute('lightglass', !this._isSheet() && !dark);
+        const ct = String(((cfg.content || {}).type) || '');
+        this.toggleAttribute('hvl', document.documentElement.classList.contains('hv-light'));
+        this.toggleAttribute('hv', document.documentElement.classList.contains('hemma-hv'));
+        this.removeAttribute('solid');
       }
 
       this._dismissable = cfg.dismissable !== false;
-      // Only a sheet that slides up, short of full screen, closes from an X, as Apple Home's sensor sheets do.
+      // Only a sheet that slides up, short of full screen, closes from an X.
       this.toggleAttribute('corner-x', !morph && this._dismissable && this._isSheet());
       // Focus leaves the whole page open behind a centered popup, so it is drawn larger to use the room.
       this.toggleAttribute('roomy', !morph && !this._isSheet() && focus && window.matchMedia('(hover: hover) and (min-width: 1100px) and (min-height: 760px)').matches);
@@ -8312,7 +10208,8 @@ window.hemmaMenuGlass = {
         var flight = document.createElement('div');
         flight.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2;';
         root.appendChild(flight);
-        hero.el.style.visibility = 'hidden';
+        // A card the tile grows into (the media player) is real content that fades in with the morph; only a control the tile flies into waits hidden.
+        if (!hero.card) hero.el.style.visibility = 'hidden';
         M.heroFly(card, look, hero, true, G.dur, G.ease, flight);
         ends.push(function () { hero.el.style.visibility = ''; flight.remove(); });
       }
@@ -8343,6 +10240,30 @@ window.hemmaMenuGlass = {
           M.heroFly(card, look, hero, true, G.dur, G.ease, layer);
         }
         ends.push(() => { if (hero) hero.el.style.visibility = ''; layer.remove(); this._rescroll(); });
+        // Minimal's sheet keeps following the dashboard color while it is open, rather than the color it opened with.
+        if (this.hasAttribute('hvl')) ends.push(() => { const sc = root.querySelector('.scrim'); if (!sc || !this._morph) return; sc.style.backgroundColor = 'var(--hemma-stage-dim)'; sc.getAnimations().forEach((a) => a.cancel()); });
+        // Corner buttons are fixed to the screen, which a scaling popup turns into fixed to itself: they wait for it to land, then fade in where they belong.
+        var corners = [], q = [this.content];
+        while (q.length) {
+          var r0 = q.shift();
+          if (!r0 || !r0.querySelectorAll) continue;
+          r0.querySelectorAll('.corner').forEach(function (c) { corners.push(c); });
+          r0.querySelectorAll('*').forEach(function (n) { if (n.shadowRoot) q.push(n.shadowRoot); });
+        }
+        corners.forEach(function (c) { c.style.opacity = '0'; });
+        var landed = false, goal = corners.map(function (c) { return c.getBoundingClientRect(); });
+        var pin = () => {
+          if (landed) return;
+          corners.forEach(function (c, i) {
+            var t = parseFloat((c.style.translate || '0 0').split(' ')[1]) || 0, r = c.getBoundingClientRect();
+            if (goal[i].height) c.style.translate = '0 ' + (t + goal[i].top - r.top).toFixed(1) + 'px';
+          });
+          requestAnimationFrame(pin);
+        };
+        var early = () => corners.forEach(function (c) { if (c.style.opacity !== '0') return; c.style.opacity = ''; c.animate([{ opacity: 0 }, { opacity: 1 }], { duration: G.dur * 0.45, easing: 'ease-out' }); });
+        ends.push(() => { landed = true; corners.forEach(function (c) { c.style.translate = ''; }); });
+        ends.push(early);
+        requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => { if (!landed) pin(); early(); }, G.dur * 0.55)));
         root.querySelector('.scrim').animate([this._stageVeil(false), this._stageVeil(true)], { duration: G.dur * 0.8, easing: 'ease-out', fill: 'both' });
         var zoom = hero ? null : this._stageZoom(t);
         [this._header, this.content].forEach(function (e) {
@@ -8365,6 +10286,7 @@ window.hemmaMenuGlass = {
       if (mo.fade) mo.fade.cancel();
       var hero = M.heroFly && this._heroOf(true);
       mo.fade = M.tileFade(card, S.dur, true, hero ? (hero.card ? 'card' : 'land') : false);
+      root.querySelector('.scrim').style.removeProperty('background-color');
       root.querySelector('.scrim').animate([this._stageVeil(true), this._stageVeil(false)], { duration: S.dur * 0.85, easing: 'ease-in-out', fill: 'forwards' });
       var holder = document.createElement('div');
       holder.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2;';
@@ -8409,13 +10331,13 @@ window.hemmaMenuGlass = {
         + Math.max(0.05, t.width / c.width).toFixed(3) + ')';
     }
 
-    // Apple dismisses a phone popup from anywhere that is not a control or a block of content.
+    // A phone popup dismisses from anywhere that is not a control or a block of content.
     _stageBackground(e) {
       var path = e.composedPath(), stop = path.indexOf(this.surface);
       for (var i = 0; i < stop; i++) {
         var n = path[i];
         if (!n || n.nodeType !== 1) continue;
-        if (n.matches('button, a, input, select, textarea, label, svg, canvas, img, video, [role], .ctl, .menu, .list, .tiles, .t, .li, .w, .dial, .ctiles, .mini, .acts, .fpow, .ptile, .row, .shelf, .det, .lr')) return false;
+        if (n.matches('[data-hemma-nodismiss], button, a, input, select, textarea, label, svg, canvas, img, video, [role], .ctl, .menu, .list, .tiles, .t, .li, .w, .dial, .ctiles, .mini, .acts, .fpow, .ptile, .row, .shelf, .det, .lr')) return false;
         if (n.tagName.indexOf('-') > 0 && n.tagName.indexOf('HEMMA-') !== 0) return false;
       }
       return true;
@@ -8476,9 +10398,9 @@ window.hemmaMenuGlass = {
       root.appendChild(holder);
       mo.holder = holder;
       if (M.bounce) M.bounce(holder, back.rect, S.dur);
-      // Apple's control is what lands as the tile, so the glass clears early and the control takes the tile's fill.
+      // The control is what lands as the tile, so the glass clears early and the control takes the tile's fill.
       if (hero) {
-        hero.el.style.visibility = 'hidden';
+        if (!hero.card) hero.el.style.visibility = 'hidden';
         M.heroFly(card, back, Object.assign({ land: true }, hero), false, S.dur, S.ease, holder);
       }
       return S.dur;
@@ -8506,6 +10428,7 @@ window.hemmaMenuGlass = {
       if (this._keepIn) this._keepIn.disconnect();
       mo.card.style.visibility = '';
       this.shadowRoot.querySelector('.scrim').getAnimations().forEach(function (a) { a.cancel(); });
+      this.shadowRoot.querySelector('.scrim').style.removeProperty('background-color');
       if (mo.fade) mo.fade.cancel();
       if (mo.holder) mo.holder.remove();
       var root = this.shadowRoot;
@@ -8556,6 +10479,7 @@ window.hemmaMenuGlass = {
 
       this.removeAttribute('shown');
       this.setAttribute('closing', '');
+      this.removeAttribute('solid');
 
       var done = false;
       var finish = () => {
@@ -8596,6 +10520,16 @@ window.hemmaMenuGlass = {
       if (/^custom:hemma-[a-z-]+-panel$/.test(ty || ''))
         out += '@media (min-width: 769px) { :host { --popup-min-width: 340px; --popup-max-width: 340px; --hemma-panel-h: min(600px, calc(100svh - 64px)); } }\n'
           + '@media (min-width: 769px) and (pointer: coarse) { :host { --popup-min-width: 376px; --popup-max-width: 376px; --hemma-panel-h: min(729px, calc(100svh - 90px)); } }\n';
+      // Popups that hold one control and fit the screen never scroll or bounce; the rest scroll with a small title.
+      var still = { phone: ['light', 'cover', 'vacuum', 'plant', 'fan', 'humidifier'], tablet: ['cover', 'lock', 'fan', 'humidifier', 'vacuum', 'energy'] };
+      var kindOf = (ty || '').replace(/^custom:hemma-|-panel$/g, '');
+      var lock = '.content, .container { overflow: hidden !important; overscroll-behavior: none !important; touch-action: pan-x pinch-zoom; }';
+      // The phone's frame is the screen itself; the inner box starts below the status bar and must not clip a header band reaching up under it.
+      if (still.phone.indexOf(kindOf) >= 0) out += '@media (max-width: 768px) { ' + lock + ' .container { overflow: visible !important; } }\n';
+      if (still.tablet.indexOf(kindOf) >= 0) out += '@media (min-width: 769px) and (pointer: coarse) { ' + lock + ' }\n';
+      // Temperature, humidity and air quality lay their sensors out three across, in a fixed-size popup.
+      if (ty === 'custom:hemma-sensor-panel')
+        out += '@media (min-width: 769px) and (pointer: fine) { :host { --popup-min-width: min(514px, calc(100vw - 40px)); --popup-max-width: min(514px, calc(100vw - 40px)); --hemma-panel-h: min(520px, calc(100svh - 64px)); } }\n';
       if (ty === 'custom:hemma-camera-panel')
         out += '@media (min-width: 769px) { :host { --popup-min-width: min(760px, calc(100vw - 40px)); --popup-max-width: min(760px, calc(100vw - 40px)); } }\n'
           + '@media (min-width: 769px) and (pointer: coarse) { :host { --popup-min-width: min(820px, calc(100vw - 40px)); --popup-max-width: min(820px, calc(100vw - 40px)); } }\n';
@@ -8707,7 +10641,7 @@ window.hemmaMenuGlass = {
     _bindSheetDrag(surface, grab, content) {
       var y0 = 0, dy = 0, tracking = false, dragging = false, lastY = 0, lastT = 0, speed = 0;
 
-      // The iPad's centered popups dismiss with the same downward swipe, as Apple Home's do.
+      // The iPad's centered popups dismiss with the same downward swipe.
       var touchCard = () => !this._isSheet() && window.matchMedia('(pointer: coarse) and (min-width: 769px)').matches;
       var held = false;
       var start = (e) => {
@@ -8722,13 +10656,14 @@ window.hemmaMenuGlass = {
         var mine = path.indexOf(surface) >= 0 ? path.slice(0, path.indexOf(surface)) : [];
         var inner = mine.some((n) => n !== content && n.nodeType === 1 && n.scrollTop > 0 && n.scrollHeight > n.clientHeight);
         var onCtl = mine.some((n) => n.nodeType === 1 && getComputedStyle(n).touchAction === 'none');
-        tracking = onGrab || (content.scrollTop <= 0 && !inner && !onCtl);
+        var onMenu = mine.some((n) => n.classList && n.classList.contains('gmenu'));
+        tracking = onGrab || (content.scrollTop <= 0 && !inner && !onCtl && !onMenu);
         // On the iPad nothing in a popup scrolls, so a vertical drag there would only bounce the page behind it.
         var scrolls = mine.some((n) => n.nodeType === 1 && n.scrollHeight > n.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(n).overflowY));
         held = touchCard() && !scrolls && !onCtl;
       };
 
-      // Apple's upward pull on an iPad popup: the content rides up with resistance, the title shrinks into a pinned header over a frosted band, and it all springs back.
+      // Upward pull on an iPad popup: the content rides up with resistance, the title shrinks into a pinned header over a frosted band, and it all springs back.
       var pull = null;
       var findHd = () => {
         var q = [content];
@@ -8746,20 +10681,36 @@ window.hemmaMenuGlass = {
         if (!pull) {
           var hd = findHd();
           if (!hd) return;
+          // The same band a scrolling popup pins (hemma-cards' .hvbar): 58pt, the name 17pt semibold over the state 17pt gray, centered.
           var veil = document.createElement('div');
           var sr = surface.getBoundingClientRect(), hr = hd.getBoundingClientRect();
-          veil.style.cssText = 'position:absolute;left:0;right:0;top:' + (sr.top - hr.top + hd.offsetTop) + 'px;height:62px;pointer-events:none;z-index:4;opacity:0;'
-            + '-webkit-backdrop-filter:blur(20px) saturate(1.3);backdrop-filter:blur(20px) saturate(1.3);background:rgba(36,36,40,0.32);box-shadow:inset 0 -0.5px 0 rgba(255,255,255,0.16);';
-          hd.parentNode.insertBefore(veil, hd);
-          hd.style.position = hd.style.position || 'relative';
-          hd.style.zIndex = '5';
-          hd.style.transformOrigin = '50% 0';
-          pull = { hd: hd, veil: veil, gap: Math.max(0, hr.top - sr.top - 10) };
+          var tEl = hd.querySelector('b'), sEl = hd.querySelector('span, small');
+          var title = (tEl || hd).textContent.trim(), sub = sEl ? sEl.textContent.trim() : '';
+          veil.style.cssText = 'position:absolute;left:0;right:0;top:' + (sr.top - hr.top + hd.offsetTop) + 'px;height:58px;box-sizing:border-box;pointer-events:none;z-index:6;opacity:0;'
+            + 'display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;align-content:' + (sub ? 'start;padding-top:6.5px;' : 'center;')
+            + '-webkit-backdrop-filter:blur(20px) saturate(1.3);backdrop-filter:blur(20px) saturate(1.3);background:rgba(36,36,40,0.32);box-shadow:inset 0 -0.5px 0 rgba(255,255,255,0.32);color:#fff;';
+          var tb = document.createElement('b');
+          tb.style.cssText = 'font-size:17px;font-weight:600;line-height:22px;letter-spacing:-0.01em;white-space:nowrap;max-width:80%;overflow:hidden;text-overflow:ellipsis;';
+          tb.textContent = title;
+          veil.appendChild(tb);
+          if (sub) {
+            var sb = document.createElement('small');
+            sb.style.cssText = 'font-size:17px;font-weight:500;line-height:22px;margin-top:5px;color:rgba(235,235,245,0.6);white-space:nowrap;font-variant-numeric:tabular-nums;';
+            sb.textContent = sub;
+            veil.appendChild(sb);
+          }
+          // At the end, so the title keeps any :first-child spacing it has.
+          hd.parentNode.appendChild(veil);
+          // The content rides up only until what follows the title reaches the band, never under it.
+          var nx = hd.nextElementSibling;
+          while (nx && (!nx.offsetHeight || nx === veil)) nx = nx.nextElementSibling;
+          var nt = nx ? nx.getBoundingClientRect().top : hr.bottom;
+          pull = { hd: hd, veil: veil, R: Math.max(24, Math.min(140, nt - sr.top - 66)) };
         }
-        var r = 140 * (1 - Math.exp(d / 140));
-        var k = Math.min(1, r / Math.max(40, pull.gap));
+        var r = pull.R * (1 - Math.exp(d / pull.R));
+        var k = Math.min(1, r / (pull.R * 0.7));
         content.style.transform = 'translateY(' + (-r) + 'px)';
-        pull.hd.style.transform = 'translateY(' + (r - pull.gap * k) + 'px) scale(' + (1 - 0.32 * k).toFixed(3) + ')';
+        pull.hd.style.opacity = (1 - k).toFixed(3);
         pull.veil.style.transform = 'translateY(' + r + 'px)';
         pull.veil.style.opacity = k.toFixed(3);
       };
@@ -8767,11 +10718,13 @@ window.hemmaMenuGlass = {
         if (!pull) return;
         var P = pull, opts = { duration: 420, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' };
         pull = null;
-        [[content, content.style.transform], [P.hd, P.hd.style.transform], [P.veil, P.veil.style.transform]].forEach(([el, from]) => {
+        [[content, content.style.transform], [P.veil, P.veil.style.transform]].forEach(([el, from]) => {
           el.animate([{ transform: from }, { transform: 'none' }], opts);
           el.style.transform = '';
         });
-        P.veil.animate([{ opacity: P.veil.style.opacity }, { opacity: 0 }], opts).finished.then(() => { P.veil.remove(); P.hd.style.zIndex = ''; }, () => P.veil.remove());
+        P.hd.animate([{ opacity: P.hd.style.opacity }, { opacity: 1 }], opts);
+        P.hd.style.opacity = '';
+        P.veil.animate([{ opacity: P.veil.style.opacity }, { opacity: 0 }], opts).finished.then(() => P.veil.remove(), () => P.veil.remove());
       };
       var move = (e) => {
         if (held && e.cancelable && !dragging) e.preventDefault();
@@ -8858,12 +10811,13 @@ window.hemmaMenuGlass = {
   window.hemmaPopup = {
     open: function (data, origin) {
       var c = data && data.content;
-      // A camera opens Apple's camera view, not a popup: one camera straight to it, several to the Cameras page.
-      if (c && c.type === 'custom:hemma-camera-panel' && window.hemmaCameraView) {
-        var ex = Array.isArray(c.exclude) ? c.exclude : [];
-        var ids = (Array.isArray(c.cameras) && c.cameras.length ? c.cameras : [c.entity]).filter(function (x) { return x && ex.indexOf(x) < 0; });
-        if (ids.length > 1) window.hemmaCameraView.openAll(ids); else window.hemmaCameraView.open(ids[0], ids);
-        return Promise.resolve();
+      // A camera tile grows into a popup with its live feed, which opens the full camera view from there.
+      if (c && c.type === 'custom:hemma-camera-panel' && customElements.get('hemma-cam-popup-panel')) data = Object.assign({}, data, { content: Object.assign({}, c, { type: 'custom:hemma-cam-popup-panel' }) });
+      // A Now Playing tile opens the full-screen player, its artwork growing out of the tile; other media tiles keep the popup.
+      var tpl = origin && origin._config && [].concat(origin._config.template || []);
+      if (c && c.type === 'custom:hemma-media-panel' && window.hemmaMediaFull && tpl && tpl.some(function (t) { return /now_playing/.test(String(t)); })) {
+        window.hemmaMediaFull.open(Object.assign({}, c, { type: undefined }), origin);
+        return;
       }
       return instance().open(data || {}, origin);
     },
@@ -10360,6 +12314,7 @@ window.hemmaMenuGlass = {
   var BATTERY_HOLD_MIN = 30;
   var KEY = 'hemma_notify_read_v1';
   var COUNT_IN_BADGE = true;
+  var NOTCH_X = 15.496;
 
   function iconUrl(name) {
     return (typeof window.hemmaIconUrl === 'function')
@@ -10643,6 +12598,10 @@ window.hemmaMenuGlass = {
     }
 
     if (id.indexOf('person.') === 0) {
+      // You may have a second account, like an admin login, with its own person under your name; that's still you.
+      var me = !on('people_mine') && hassOf(), uid = me && me.user && me.user.id, uname = me && me.user && String(me.user.name || '').trim().toLowerCase();
+      var sa = (st && st.attributes) || {};
+      if (uid && (sa.user_id === uid || (uname && String(sa.friendly_name || '').trim().toLowerCase() === uname))) return null;
       var AWAY = 'var(--hemma-color-blue, #0A84FF)';
       var pic = st && st.attributes && st.attributes.entity_picture;
       var who = {
@@ -11156,9 +13115,11 @@ window.hemmaMenuGlass = {
     var root = glyph.getRootNode();
     if (!root || !root.querySelector || !root.appendChild) return null;
     var have = root.querySelector('.hemma-bell-count');
-    if (have) return have;
+    // Set off from the bell by a ring of the button's own fill, as iOS cuts a badge out of an icon; only Minimal sets the ring.
+    if (have) { have.style.setProperty('box-shadow', 'var(--hemma-bell-badge-ring, none)', 'important'); return have; }
     var span = document.createElement('span');
     span.className = 'hemma-bell-count';
+    span.style.setProperty('box-shadow', 'var(--hemma-bell-badge-ring, none)', 'important');
     span.style.display = 'none';
     root.appendChild(span);
     return span;
@@ -11189,14 +13150,25 @@ window.hemmaMenuGlass = {
     var n = unread();
     var text = n > 99 ? '99+' : String(n);
     var inBadge = COUNT_IN_BADGE && !isPhone();
-    var show = (n > 0 && inBadge) ? 'grid' : 'none';
-    var src = iconUrl(!inBadge && n > 0 ? 'bell-badge' : 'bell');
+    // The phone shows a dot, not a count: a bell with a cut-out and the dot drawn over it, red in Glass and the bell's own ink in Minimal.
+    var dot = !inBadge && n > 0;
+    var show = n > 0 ? 'grid' : 'none';
+    var src = iconUrl(dot ? 'bell-notch' : 'bell');
     bells().forEach(function (el) {
-      if (el.textContent !== text) el.textContent = text;
+      var want = dot ? '' : text;
+      if (el.textContent !== want) el.textContent = want;
       if (el.style.display !== show) el.style.display = show;
       var glyph = el.parentNode && el.parentNode.querySelector('.hemma-bell');
       if (glyph && glyph.getAttribute('src') !== src) glyph.setAttribute('src', src);
-      if (glyph) glyph.classList.toggle('badged', !inBadge && n > 0);
+      if (glyph) glyph.classList.toggle('badged', dot);
+      el.classList.toggle('dot', dot);
+      ['width', 'min-width', 'height', 'padding', 'top', 'right', 'box-shadow'].forEach(function (k) { if (!dot) el.style.removeProperty(k); });
+      if (!dot) { el.style.setProperty('box-shadow', 'var(--hemma-bell-badge-ring, none)', 'important'); return; }
+      var host = el.getRootNode().host, hr = host && host.getBoundingClientRect(), gr = glyph && glyph.getBoundingClientRect();
+      if (!hr || !gr || !gr.width) return;
+      var d = gr.height * (8.8 / 23.3761), cx = gr.left + gr.width * (NOTCH_X / 19.042), cy = gr.top + gr.height * (4.731 / 23.3761);
+      [['width', d + 'px'], ['min-width', d + 'px'], ['height', d + 'px'], ['padding', '0'], ['box-shadow', 'none'],
+       ['top', (cy - d / 2 - hr.top).toFixed(2) + 'px'], ['right', (hr.right - cx - d / 2).toFixed(2) + 'px']].forEach(function (kv) { el.style.setProperty(kv[0], kv[1], 'important'); });
     });
     if (n !== _lastCount) {
       _lastCount = n;
@@ -11465,18 +13437,41 @@ window.hemmaMenuGlass = {
       + '-webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);-webkit-mask-composite:xor;'
       + 'mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);mask-composite:exclude;}';
     var MORPH = '420ms cubic-bezier(0.4,0,0.2,1)';
-    // Measured off Apple's: a hairline just outside the card, darker down the sides, and a one-pixel highlight inside top and bottom.
+    // A hairline just outside the card, darker down the sides, and a one-pixel highlight inside top and bottom.
     // WebKit drops a masked border along curves; a half-pixel shadow ring on the card itself stays continuous.
     var EDGE = '0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.42)';
     var st = document.createElement('style');
     st.id = 'hemma-nc-style';
+    var HVC = 'html.hemma-hv .hemma-nc :is(.hemma-nc-card, .hemma-nc-x, .hemma-nc-pill, .hemma-nc-ghost, .hemma-nc-clear, .hemma-nc-close)';
+    var HVT = ' :is(.hemma-nc-title, .hemma-nc-ghead b, .hemma-nc-t, .hemma-nc-s, .hemma-nc-x, .hemma-nc-pill, .hemma-nc-empty, .hemma-nc-close)';
     st.textContent = ''
+      + 'html.hemma-hv .hemma-nc{--hv-nc-fill:color-mix(in oklab, var(--hv-bg) 12%, #ffffff);--hv-nc-ink:#1c1c1e;--hv-nc-dim:rgba(60,60,67,0.6);}'
+      + 'html.hemma-hv:not(.hv-light) .hemma-nc{--hv-nc-fill:color-mix(in oklab, var(--hv-bg) 45%, rgb(95,95,99));--hv-nc-ink:#fff;--hv-nc-dim:rgba(235,235,245,0.6);}'
+      + 'html.hemma-hv.hv-ink-w .hemma-nc{--hv-nc-fill:color-mix(in oklab, var(--hv-bg) 12%, #ffffff);--hv-nc-ink:#1c1c1e;--hv-nc-dim:rgba(60,60,67,0.6);}'
+      + 'html.hemma-hv.hv-ink-w .hemma-nc :is(.hemma-nc-title, .hemma-nc-empty, .hemma-nc-ghead b){color:#fff !important;}'
+      + HVC + '{background:var(--hv-nc-fill) !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;box-shadow:0 0 0 0.5px rgba(0,0,0,0.08), 0 6px 20px rgba(0,0,0,0.10) !important;}'
+      + HVC + '::before{display:none !important;}'
+      + 'html.hemma-hv .hemma-nc' + HVT + '{color:var(--hv-nc-ink) !important;text-shadow:none !important;}'
+      + 'html.hemma-hv .hemma-nc :is(.hemma-nc-when, .hemma-nc-tag){color:var(--hv-nc-dim) !important;}'
+      + '@media (min-width: 768px) and (min-height: 501px){html.hemma-hv .hemma-nc:not(.phone) .hemma-nc-x{height:34px !important;min-width:34px !important;padding:0 10px !important;border-radius:17px !important;font-size:13px !important;}html.hemma-hv .hemma-nc:not(.phone) .hemma-nc-x:not(.open) svg{width:14px;height:14px;}html.hemma-hv .hemma-nc:not(.phone) .hemma-nc-x.open svg{height:14px;}'
+      + 'html.hemma-hv .hemma-nc:not(.phone) .hemma-nc-title{font-size:26px !important;font-weight:700 !important;letter-spacing:0.01em !important;}'
+      + 'html.hemma-hv .hemma-nc.phone .hemma-nc-title{font-size:26px !important;font-weight:700 !important;letter-spacing:0.01em !important;text-transform:none;}}'
+      + 'html.hemma-hv .hemma-nc .hemma-nc-count{background:var(--hv-nc-ink, #1c1c1e) !important;color:var(--hv-nc-fill, #fff) !important;font-weight:700 !important;}'
       + '.hemma-nc-scrim{position:fixed;inset:0;z-index:99998;}'
+      + '.hemma-nc-scrim.phone{background:rgba(0,0,0,0.12);-webkit-backdrop-filter:blur(12px) saturate(1.1);backdrop-filter:blur(12px) saturate(1.1);opacity:0;transition:opacity .3s ease;}'
+      + 'html.hemma-hv .hemma-nc-scrim.phone{background:color-mix(in oklab, var(--hv-bg, #49575c) 20%, transparent);}'
+      + '.hemma-nc.handset .hemma-nc-halo{display:none !important;}'
+      + '.hemma-nc-scrim.wide > i{display:none;}'
+      + 'html.hemma-hv .hemma-nc-scrim.wide > i{display:block;position:absolute;inset:0;opacity:0;transition:opacity .34s ease;-webkit-backdrop-filter:blur(var(--b)) saturate(1.08);backdrop-filter:blur(var(--b)) saturate(1.08);}'
+      + 'html.hemma-hv .hemma-nc-scrim.wide.on > i{opacity:1;}'
+      + '.hemma-nc-scrim.wide > b{opacity:0;transition:opacity .2s ease;cursor:pointer;}.hemma-nc-scrim.wide.on > b{opacity:1;}'
+      + '.hemma-nc-scrim.wide > b.bt, .hemma-nc-scrim.wide.on > b.bt{opacity:var(--o, 1);transition:none;}'
+      + '.hemma-nc-scrim.phone.on{opacity:1;}'
       // 0.5px is 1.5 device pixels at 3x, which WebKit draws as one on the top and left and two on the bottom and right.
       + '@media (min-resolution: 2.5dppx){.hemma-nc{--nc-edge:0.3333px;}}'
       + '.hemma-nc{position:fixed;z-index:99999;box-sizing:border-box;display:flex;flex-direction:column;'
       + 'color:#fff;-webkit-text-size-adjust:100%;text-size-adjust:100%;}'
-      + '.hemma-nc *{box-sizing:border-box;}'
+      + '.hemma-nc, .hemma-nc *, .hemma-nc-scrim{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}'
       + '.hemma-nc-halo{position:absolute;left:-30px;right:-30px;top:-30px;bottom:-30px;z-index:-2;pointer-events:none;}'
       + '.hemma-nc-slot.stack .hemma-nc-halo{bottom:-39px;}'
       + '.hemma-nc-slot.stack.deep .hemma-nc-halo{bottom:-46px;}'
@@ -11496,7 +13491,7 @@ window.hemmaMenuGlass = {
       + 'font:inherit;font-size:11px;font-weight:500;letter-spacing:0;color:rgba(255,255,255,0.8);'
       + glass + 'box-shadow:' + EDGE + ';transition:background-color 160ms ease, padding ' + MORPH + ';-webkit-tap-highlight-color:transparent;}'
       + '.hemma-nc-x::before' + rim
-      // Apple's highlight is brightest along the top and bottom, fading into the corners and on faintly down the sides.
+      // The highlight is brightest along the top and bottom, fading into the corners and on faintly down the sides.
       + '.hemma-nc-card::before, .hemma-nc-clear::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;'
       + 'background:linear-gradient(to right, rgba(255,255,255,0) 24px, rgba(255,255,255,var(--nc-hl-t, 0.15)) 62px, rgba(255,255,255,var(--nc-hl-t, 0.15)) calc(100% - 62px), rgba(255,255,255,0) calc(100% - 24px)) 0 0/100% 0.5px no-repeat,'
       + ' linear-gradient(to right, rgba(255,255,255,0) 24px, rgba(255,255,255,var(--nc-hl-2, 0.14)) 62px, rgba(255,255,255,var(--nc-hl-2, 0.14)) calc(100% - 62px), rgba(255,255,255,0) calc(100% - 24px)) 0 0.5px/100% 0.5px no-repeat,'
@@ -11570,7 +13565,7 @@ window.hemmaMenuGlass = {
       + 'opacity:0;pointer-events:none;transition:opacity 140ms ease;}'
       + '.hemma-nc-close::before' + rim
       + '.hemma-nc-close svg{width:8px;height:8px;}'
-      // Apple's Clear is a glass tile like the card, not a red button. Above the card, so the card's blur cannot pull it in.
+      // Clear is a glass tile like the card, not a red button. Above the card, so the card's blur cannot pull it in.
       + '.hemma-nc-clear{position:absolute;right:0;top:0;bottom:0;z-index:2;width:0;border:0;border-radius:22px;overflow:hidden;white-space:nowrap;'
       + 'padding:0;cursor:pointer;font:inherit;font-size:15px;font-weight:400;letter-spacing:-0.01em;color:rgba(255,255,255,0.92);'
       + glass + 'box-shadow:' + EDGE + ', 0 4px 16px rgba(0,0,0,0.10);opacity:0;pointer-events:none;-webkit-tap-highlight-color:transparent;}'
@@ -11668,7 +13663,7 @@ window.hemmaMenuGlass = {
       // Measured off iOS 27: a crisp dark hairline down the sides, a bright line along the top and a brighter one along the bottom.
       + '.hemma-nc.phone.handset.light .hemma-nc-card, .hemma-nc.phone.handset.light .hemma-nc-clear{--nc-glow-b:0.12;box-shadow:inset 0 var(--nc-edge, 0.5px) 0 rgba(255,255,255,0.6),'
       + ' inset 0 calc(-1 * var(--nc-edge, 0.5px)) 0 rgba(255,255,255,0.75), 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.42), 0 4px 16px rgba(0,0,0,0.08);}'
-      // A ring as dark on the sides as Apple's draws half as dark where it turns the corner, which reads as a cut; the extra darkness fades out before the curve.
+      // A full-strength ring on the sides draws half as dark where it turns the corner, which reads as a cut; the extra darkness fades out before the curve.
       + '.hemma-nc.phone.handset.light .hemma-nc-card::after, .hemma-nc.phone.handset.light .hemma-nc-clear::after{content:"";position:absolute;inset:calc(-1 * var(--nc-edge, 0.5px));border-radius:inherit;pointer-events:none;'
       + 'box-shadow:inset 0 0 0 var(--nc-edge, 0.5px) rgba(0,0,0,0.3);'
       + '-webkit-mask:linear-gradient(to bottom, transparent 6%, #000 42%, #000 58%, transparent 94%);mask:linear-gradient(to bottom, transparent 6%, #000 42%, #000 58%, transparent 94%);}'
@@ -11748,7 +13743,9 @@ window.hemmaMenuGlass = {
       return '<div class="hemma-nc-lead' + (r.imageFit === 'cover' ? '' : ' contain') + '">'
         + '<img src="' + UI.esc(r.image) + '" alt=""></div>';
     }
-    return '<div class="hemma-nc-lead">' + UI.icon(r.icon || 'bell', r.tone) + '</div>';
+    var ic = r.icon || 'bell';
+    if (ic === 'updates' && document.documentElement.classList.contains('hemma-hv')) ic = 'update-fill';
+    return '<div class="hemma-nc-lead">' + UI.icon(ic, r.tone) + '</div>';
   }
 
   function cardHtml(r, fresh, count) {
@@ -11774,7 +13771,7 @@ window.hemmaMenuGlass = {
     var mark = watermark();
 
     var scrim = document.createElement('div');
-    scrim.className = 'hemma-nc-scrim' + (phone ? ' phone' : '');
+    scrim.className = 'hemma-nc-scrim' + (phone ? ' phone' : ' wide');
 
     var nc = document.createElement('div');
     var themes = (hassOf() || {}).themes;
@@ -11784,6 +13781,9 @@ window.hemmaMenuGlass = {
     var touch = !phone && !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
     var mobile = phone || touch;
     nc.className = 'hemma-nc' + (mobile ? ' phone' : '') + (phone ? ' handset' : '') + (dark ? '' : ' light');
+    document.documentElement.classList.add('hemma-nc-open');
+    var ncBar = document.querySelector('hemma-nav-bar');
+    if (ncBar) ncBar.classList.add('nc-open');
     nc.setAttribute('role', 'dialog');
     nc.setAttribute('aria-label', _hemmaT('notify.title', 'Notifications'));
     nc.style.fontFamily = window._hemmaUI.tokens.font;
@@ -11824,7 +13824,7 @@ window.hemmaMenuGlass = {
     emptyText.textContent = _hemmaT('notify.none', 'No recent notifications');
     empty.appendChild(emptyText);
 
-    // Apple's column blur grows in strength toward the cards; one blur faded by opacity shows a sharp and a soft copy at once.
+    // The column blur grows in strength toward the cards; one blur faded by opacity shows a sharp and a soft copy at once.
     var ramp = function (from, len) {
       var r = function (dir) {
         return 'linear-gradient(' + dir + ', transparent ' + from + 'px, #000 ' + (from + len) + 'px, #000 calc(100% - '
@@ -11832,12 +13832,12 @@ window.hemmaMenuGlass = {
       };
       return r('to right') + ', ' + r('to bottom');
     };
-    // Measured off Apple's over a white page: a wide soft shadow, heavier below, and only a hint of blur near the card.
+    // Over a white page: a wide soft shadow, heavier below, and only a hint of blur near the card.
     var halo = function () {
       var h = document.createElement('div');
       h.className = 'hemma-nc-halo';
       var soft = document.createElement('div');
-      var f = 'var(--hemma-perf-none, blur(2px))';
+      var f = 'var(--hemma-nc-halo-blur, var(--hemma-perf-none, blur(2px)))';
       soft.style.backdropFilter = f;
       soft.style.webkitBackdropFilter = f;
       var m = ramp(0, 30);
@@ -11856,7 +13856,7 @@ window.hemmaMenuGlass = {
       var d = h.lastChild;
       d.style.webkitMaskImage = d.style.maskImage = 'radial-gradient(closest-side, #000 30%, transparent 100%)';
       d.style.webkitMaskComposite = d.style.maskComposite = '';
-      d.style.backdropFilter = d.style.webkitBackdropFilter = 'var(--hemma-perf-none, blur(' + blur + 'px))';
+      d.style.backdropFilter = d.style.webkitBackdropFilter = 'var(--hemma-nc-halo-blur, var(--hemma-perf-none, blur(' + blur + 'px)))';
       d.style.background = 'var(--hemma-perf-none, radial-gradient(closest-side, rgba(0,0,0,' + dark + '), rgba(0,0,0,' + mid + ') 60%, rgba(0,0,0,0)))';
       return h;
     };
@@ -11872,7 +13872,8 @@ window.hemmaMenuGlass = {
     document.body.appendChild(scrim);
     document.body.appendChild(nc);
     _center = nc;
-    lift(anchor, true);
+    var twin = !phone && document.documentElement.classList.contains('hemma-hv') && !capsuled(anchor);
+    if (!twin) lift(anchor, true);
 
     var slots = {};
     var opened = {};
@@ -11890,7 +13891,7 @@ window.hemmaMenuGlass = {
       return h ? [].slice.call(h.children) : [];
     };
     // A stack swipes as one, so the cards behind never sit over the Clear button.
-    // Apple's Clear grows out of the card's edge into the room the card leaves, joined at first, so the two never overlap.
+    // Clear grows out of the card's edge into the room the card leaves, joined at first, so the two never overlap.
     var clearSize = function (btn, off) {
       var room = Math.max(0, -off);
       var w = Math.max(0, room - Math.min(9, room * 0.25));
@@ -12079,7 +14080,7 @@ window.hemmaMenuGlass = {
         if (Date.now() - blockClick < 400) return;
         if (swiped) { settle(swiped, 0); return; }
         if (slot._stack) { spread(slot._stack); return; }
-        // Opening a notification clears it, as Apple's do.
+        // Opening a notification clears it.
         var rows = slot._rows;
         activate(slot._row);
         if (rows && rows.length) clearRows(rows, false);
@@ -12351,7 +14352,7 @@ window.hemmaMenuGlass = {
       var back = yielded.splice(0);
       back.forEach(function (y) {
         y.anim.cancel();
-        y.anim = y.el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: DUR, easing: OUT });
+        y.anim = y.el.animate(y.dim ? y.dim.slice().reverse() : [{ opacity: 0 }, { opacity: 1 }], { duration: DUR, easing: OUT });
       });
       live.forEach(function (slot, i) {
         slot._gone = true;
@@ -12371,7 +14372,7 @@ window.hemmaMenuGlass = {
           headOut.forEach(function (an) { an.cancel(); });
           back.forEach(function (y) {
             y.anim.cancel();
-            y.anim = y.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: 'ease', fill: 'forwards' });
+            y.anim = y.el.animate(y.dim || [{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: 'ease', fill: 'forwards' });
             yielded.push(y);
           });
         }
@@ -12481,18 +14482,101 @@ window.hemmaMenuGlass = {
 
     var yielded = [];
     var box = nc.getBoundingClientRect();
+    if (!phone) {
+      var ar = anchor.getBoundingClientRect(), mid = ar.top + ar.height / 2, hole = { l: ar.left, t: ar.top, r: ar.right, b: ar.bottom }, holes = [];
+      var grow = function (q) { if (!q || !q.width || q.width > 300 || q.height > 70 || Math.abs(q.top + q.height / 2 - mid) > 8 || q.left < window.innerWidth / 2) return; holes.push(q); hole.l = Math.min(hole.l, q.left); hole.t = Math.min(hole.t, q.top); hole.r = Math.max(hole.r, q.right); hole.b = Math.max(hole.b, q.bottom); };
+      (function walk(root, depth) {
+        if (!root || depth > 3 || !root.querySelectorAll) return;
+        root.querySelectorAll('button-card, #chrome_pill, #np_head').forEach(function (e) {
+          var wv = e.shadowRoot && e.shadowRoot.querySelector('.np-head-wave');
+          if (!wv || parseFloat(getComputedStyle(wv).opacity) > 0.05) grow(e.getBoundingClientRect()); if (e.shadowRoot && depth < 3) walk(e.shadowRoot, depth + 1); });
+      })(anchor.getRootNode(), 0);
+      // The tablet's buttons share one capsule, so one capsule-shaped hole; the Mac's are separate circles, each its own.
+      var cuts = [];
+      if (capsuled(anchor)) {
+        // The capsule is wider and taller than the buttons in it; the hole takes its full shape so its rim never blurs.
+        var capEl = anchor.parentElement && anchor.parentElement.classList.contains('cat-chrome') ? anchor.parentElement : null, cq = capEl && capEl.getBoundingClientRect();
+        var ins = document.documentElement.classList.contains('hemma-hv') ? 0.5 : 0;
+        if (cq && cq.width) cuts.push({ l: cq.left + ins, t: cq.top + ins, r: cq.right - ins, b: cq.bottom - ins, exact: true });
+        else { var pad = Math.max(0, (44 - (hole.b - hole.t)) / 2); cuts.push({ l: hole.l - pad, t: hole.t - pad, r: hole.r + pad, b: hole.b + pad }); }
+      }
+      else {
+        var cr = (anchor.shadowRoot && anchor.shadowRoot.querySelector('ha-card') || anchor).getBoundingClientRect();
+        holes.forEach(function (q) {
+          var mine = Math.abs(q.left - ar.left) < 2 && Math.abs(q.width - ar.width) < 2;
+          if (twin && mine) return;
+          var d = Math.min(q.width, q.height), x = q.left + q.width / 2, y = q.top + q.height / 2;
+          if (mine) { d = Math.min(cr.width, cr.height); x = cr.left + cr.width / 2; y = cr.top + cr.height / 2; }
+          cuts.push({ l: x - d / 2, t: y - d / 2, r: x + d / 2, b: y + d / 2 });
+        });
+      }
+      var nbar0 = document.querySelector('hemma-nav-bar'), tabs = nbar0 && nbar0.shadowRoot && nbar0.shadowRoot.querySelector('.bar'), tq = tabs && tabs.getBoundingClientRect();
+      if (tq && tq.width && tq.height) cuts.push({ l: tq.left, t: tq.top, r: tq.right, b: tq.bottom, exact: true });
+      var hsvg = cuts.map(function (c) { var m = c.exact ? 0 : 2, w2 = c.exact ? +(c.r - c.l).toFixed(2) : Math.ceil(c.r - c.l) + 4, h2 = c.exact ? +(c.b - c.t).toFixed(2) : Math.ceil(c.b - c.t) + 4; return { x: c.exact ? +c.l.toFixed(2) : Math.floor(c.l) - m, y: c.exact ? +c.t.toFixed(2) : Math.floor(c.t) - m, w: w2, h: h2, u: 'url("data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="' + w2 + '" height="' + h2 + '"><rect width="' + w2 + '" height="' + h2 + '" rx="' + h2 / 2 + '"/></svg>') + '")' }; });
+      var cut = function (i, m) {
+        var st = i.style;
+        st.webkitMaskImage = st.maskImage = [m || 'linear-gradient(#000 0 0)'].concat(hsvg.map(function (h) { return h.u; })).join(', ');
+        st.webkitMaskSize = st.maskSize = ['100% 100%'].concat(hsvg.map(function (h) { return h.w + 'px ' + h.h + 'px'; })).join(', ');
+        st.webkitMaskPosition = st.maskPosition = ['0 0'].concat(hsvg.map(function (h) { return h.x + 'px ' + h.y + 'px'; })).join(', ');
+        st.webkitMaskRepeat = st.maskRepeat = 'no-repeat';
+        st.webkitMaskComposite = hsvg.length ? ['source-out'].concat(hsvg.slice(1).map(function () { return 'source-over'; })).join(', ') : 'source-over';
+        st.maskComposite = hsvg.length ? ['subtract'].concat(hsvg.slice(1).map(function () { return 'add'; })).join(', ') : 'add';
+      };
+      var fall = function (a, b) {
+        var k = [0, 0.03, 0.12, 0.25, 0.5, 0.75, 0.88, 0.97, 1], n = k.length - 1;
+        return 'radial-gradient(circle at ' + cx + 'px ' + cy + 'px, ' + k.map(function (v, j) { return 'rgba(0,0,0,' + (1 - v).toFixed(2) + ') ' + Math.round(a + (b - a) * j / n) + 'px'; }).join(', ') + ')';
+      };
+      if (!list.querySelector('.hemma-nc-slot, .hemma-nc-card') && !empty.parentNode) list.appendChild(empty);
+      var lone = empty.parentNode && !list.querySelector('.hemma-nc-card') && emptyText.getClientRects().length ? emptyText.getBoundingClientRect() : null, gb = lone || box;
+      var cx = Math.round(gb.left + gb.width / 2), cy = Math.round(gb.top + Math.min(gb.height, 320) / 2), r0 = Math.round(Math.max(gb.width, Math.min(gb.height, 320)) / 2);
+      // Each step fades out only where the next lighter one is fully on, so the page never shows sharp and blurred at once.
+      var k = lone ? 0.5 : 1, steps = [[1.5, 120, 220], [3, 80, 170], [6, 40, 120], [12, 0, 80], [20, -40, 40]].map(function (L) { return [L[0], r0 + L[1] * k, r0 + L[2] * k]; });
+      var nbar = document.querySelector('hemma-nav-bar');
+      // Minimal blurs as Glass does, behind each card (its halo), and needs no page-wide layer.
+      if (!document.documentElement.classList.contains('hemma-hv')) steps.forEach(function (L) {
+        var i = document.createElement('i');
+        i.style.setProperty('--b', L[0] + 'px');
+        cut(i, fall(L[1], L[2]));
+        scrim.appendChild(i);
+      });
+      var batt = !document.documentElement.classList.contains('hemma-hv') && nbar && nbar.shadowRoot && nbar.shadowRoot.querySelector('.cat-batt'), bq = batt && batt.getBoundingClientRect();
+      if (bq && bq.width && batt.innerHTML) {
+        var bc = document.createElement('b');
+        bc.style.cssText = 'position:fixed;left:' + bq.left + 'px;top:' + bq.top + 'px;width:' + bq.width + 'px;height:' + bq.height + 'px;display:flex;align-items:center;pointer-events:none;';
+        bc.style.setProperty('--o', getComputedStyle(batt).opacity);
+        bc.className = 'bt';
+        bc.innerHTML = batt.innerHTML;
+        scrim.appendChild(bc);
+        batt.style.visibility = 'hidden';
+        scrim._batt = batt;
+      }
+      // The open bell is drawn over the blur, so the blur never spreads its white across the toolbar.
+      var bimg = twin && anchor.shadowRoot && anchor.shadowRoot.querySelector('img.hemma-bell');
+      if (bimg) {
+        var hc = anchor.shadowRoot.querySelector('ha-card') || anchor, br = hc.getBoundingClientRect(), ir = bimg.getBoundingClientRect();
+        var bb = document.createElement('b');
+        bb.style.cssText = 'position:fixed;left:' + br.left + 'px;top:' + br.top + 'px;width:' + br.width + 'px;height:' + br.height + 'px;border-radius:50%;background:#fff;display:grid;place-items:center;';
+        var bi = document.createElement('img');
+        bi.src = bimg.currentSrc || bimg.src;
+        bi.style.cssText = 'width:' + ir.width + 'px;height:' + ir.height + 'px;filter:brightness(0);display:block;';
+        bb.appendChild(bi);
+        scrim.appendChild(bb);
+        var cnt = anchor.shadowRoot.querySelector('.hemma-bell-count');
+        if (cnt && cnt.getClientRects().length && cnt.textContent.trim()) {
+          // A white badge (Minimal's) would vanish into the white bell, so it turns dark there.
+          var cq = cnt.getBoundingClientRect(), cs = getComputedStyle(cnt), pale = /255, 255, 255/.test(cs.backgroundColor);
+          var bn = document.createElement('b');
+          bn.textContent = cnt.textContent.trim();
+          bn.style.cssText = 'position:fixed;left:' + cq.left + 'px;top:' + cq.top + 'px;width:' + cq.width + 'px;height:' + cq.height + 'px;box-sizing:border-box;display:grid;place-items:center;'
+            + 'border-radius:' + cs.borderRadius + ';font:' + cs.font + ';letter-spacing:' + cs.letterSpacing + ';font-variant-numeric:tabular-nums;'
+            + 'background:' + (pale ? '#1c1c1e' : cs.backgroundColor) + ';color:' + (pale ? '#fff' : cs.color) + ';';
+          scrim.appendChild(bn);
+        }
+      }
+    }
     // The phone's header card holds the title as well as the weather: the weather always steps aside, the title only for cards.
-    var yieldTo = function (c, whole) {
-      var t = c._config && c._config.template;
-      t = t ? [].concat(t) : [];
-      var mobile = t.indexOf('hemma_mobile_weather') >= 0;
-      if (t.indexOf('hemma_weather') < 0 && !mobile) return;
-      var el = mobile && !whole ? (c.shadowRoot && c.shadowRoot.getElementById('weather')) : c;
-      if (!el || !el.animate || yielded.some(function (y) { return y.el === el; })) return;
-      var b = c.getBoundingClientRect();
-      if (!b.width || b.right < box.left || b.left > box.right || b.bottom < box.top - 8 || b.top > box.bottom) return;
-      yielded.push({ el: el, anim: el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: 'ease', fill: 'forwards' }) });
-    };
+    // The blur behind the panel covers the weather now, so nothing steps aside for it.
+    var yieldTo = function () {};
     var yieldAll = function (whole) {
       var each = function (c) { yieldTo(c, whole); };
       var bar = document.querySelector('hemma-nav-bar');
@@ -12511,6 +14595,26 @@ window.hemmaMenuGlass = {
       }
     };
     yieldAll(false);
+    // Now Playing is the one card that reaches under the panel; it steps back behind it rather than staying sharp.
+    if (!phone && anchor && anchor.getRootNode) {
+      var nb = nc.getBoundingClientRect();
+      [].forEach.call(anchor.getRootNode().querySelectorAll('#now_playing'), function (np) {
+        var bc = np.querySelector('button-card'), el = (bc && bc.shadowRoot && bc.shadowRoot.querySelector('#np_main')) || np;
+        var q = el.getBoundingClientRect();
+        if (!el.animate || !q.width || q.bottom < nb.top || q.top > nb.bottom || q.right < nb.left || q.left > nb.right) return;
+        var dim = [{ opacity: 1, filter: 'blur(0px)' }, { opacity: 0.3, filter: 'blur(10px)' }];
+        yielded.push({ el: el, dim: dim, anim: el.animate(dim, { duration: 320, easing: EASE, fill: 'forwards' }) });
+      });
+    }
+    var seat = function (n) {
+      var e = nc.querySelector('.hemma-nc-empty'), w = nc._wxRow;
+      if (!w || !w.height || w.top < nc.getBoundingClientRect().top - 4) return;
+      if (!e || !e.getBoundingClientRect().height) { if (n < 20) requestAnimationFrame(function () { seat(n + 1); }); return; }
+      e.style.translate = '';
+      var q = e.getBoundingClientRect();
+      e.style.translate = '0 ' + Math.round(w.top + w.height / 2 - (q.top + q.height / 2)) + 'px';
+    };
+    requestAnimationFrame(function () { seat(0); });
     if (_rows.length) yieldAll(true); else nc._yield = function () { yieldAll(true); };
 
     var width = window.innerWidth;
@@ -12544,6 +14648,8 @@ window.hemmaMenuGlass = {
       if (!idleOut) seal();
       scrim.classList.remove('on');
       nc.style.pointerEvents = 'none';
+      document.documentElement.classList.remove('hemma-nc-open');
+      if (ncBar) ncBar.classList.remove('nc-open');
       yielded.forEach(function (y) {
         y.anim.reverse();
         y.anim.onfinish = function () { y.anim.cancel(); };
@@ -12554,6 +14660,7 @@ window.hemmaMenuGlass = {
           { duration: 260, easing: 'ease-in', fill: 'forwards' });
       });
       setTimeout(function () {
+        if (scrim._batt) scrim._batt.style.visibility = '';
         if (scrim.parentNode) scrim.remove();
         if (nc.parentNode) nc.remove();
       }, 440);
@@ -12577,7 +14684,7 @@ window.hemmaMenuGlass = {
   }
 
   // The categories a dashboard can switch off, as the panel writes them.
-  var TYPES = ['safety', 'air', 'locks', 'alarm', 'doorbell', 'doors', 'people',
+  var TYPES = ['safety', 'air', 'locks', 'alarm', 'doorbell', 'doors', 'people', 'people_mine',
     'vacuum', 'appliances', 'plants', 'battery', 'updates', 'restart', 'plex'];
 
   function configureFrom(V) {
@@ -12619,12 +14726,22 @@ window.hemmaMenuGlass = {
     open: open,
     close: function () { if (_center) _center._close(); },
     clearAll: function () { clearRows(_rows.slice(), true); },
+    clear: function (list) { clearRows(list || [], false); },
     refresh: collect,
     configure: configure,
     configureFrom: configureFrom,
     markAll: seal,
     get count() { return unread(); },
     get rows() { return _rows.slice(); },
+    // What a tap on the row does in the notification center, for places that list the same rows (the screensaver).
+    activate: function (row) {
+      if (!row) return;
+      if (_center) _center._close();
+      if (row.opens) { openTarget(row.opens, row.entity); return; }
+      if (!row.entity) return;
+      var h = document.querySelector('home-assistant');
+      if (h) h.dispatchEvent(new CustomEvent('hass-more-info', { bubbles: true, composed: true, detail: { entityId: row.entity } }));
+    },
   };
 
   function boot() {
@@ -12660,6 +14777,118 @@ window.hemmaMenuGlass = {
   }, 0);
 })();
 
+// Minimal's badge look is applied as each badge card renders, so a colored badge is never drawn first.
+(function () {
+  if (window._hemmaHvBadgeCss) return;
+  window._hemmaHvBadgeCss = ''
+    + 'ha-card #img-cell::before,ha-card .img-cell::before{-webkit-mask-size:contain!important;mask-size:contain!important;-webkit-mask-position:center!important;mask-position:center!important;background-color:var(--hv-bi-ink,#1c1c1e)!important;inset:var(--hv-bi-in-o,10%)!important;scale:var(--hv-bi-s,1);}'
+    + 'ha-card #img-cell #icon,ha-card #img-cell ha-icon,ha-card #img-cell ha-state-icon{color:var(--hv-bi-ink,#1c1c1e)!important;--icon-primary-color:var(--hv-bi-ink,#1c1c1e)!important;--state-icon-color:var(--hv-bi-ink,#1c1c1e)!important;--state-climate-active-color:var(--hv-bi-ink,#1c1c1e)!important;--state-active-color:var(--hv-bi-ink,#1c1c1e)!important;transform:scale(.85);}'
+    + 'ha-card{--hv-bi-inset:max(3px,calc((var(--hv-bi-pill,46px) - var(--hv-bi-size,40px)) / 2));padding-left:var(--hv-bi-inset)!important;left:calc(-1 * var(--hv-bi-inset))!important;}'
+    + ':host([hvhome]) #img-cell,:host([hvhome]) .img-cell{background:transparent!important;overflow:visible!important;width:var(--hv-bi-size,40px)!important;height:var(--hv-bi-size,40px)!important;}'
+    + ':host([hvhome]) ha-card #img-cell::before,:host([hvhome]) ha-card .img-cell::before{inset:var(--hv-bi-in-h,24%)!important;}'
+    + '#container{column-gap:8px!important;}'
+    + ':host([hvhome]) ha-card #img-cell #icon,:host([hvhome]) ha-card #img-cell ha-icon,:host([hvhome]) ha-card #img-cell ha-state-icon{transform:scale(.8);}'
+    + ':host([hvhome]) #img-cell,:host([hvhome]) .img-cell{transition:background-color .2s ease;}'
+    + 'ha-card{--badge-active-color:transparent!important;}'
+    + '@media (min-width: 768px) and (min-height: 501px){:host([hvhome]){--hemma-badge-icon-override:var(--hv-bi-size,40px);--badge-icon-size-current:var(--hv-bi-size,40px);}}'
+    + ':host([hvhome]) ha-card{background:var(--hv-bi-bg,#fff)!important;border-radius:999px!important;padding-right:16px!important;transition:background-color .2s ease;}'
+    + ':host([hvhome]) #container{column-gap:8px!important;}'
+    + ':host([hvhome]){--hv-bi-ic:25px;--hemma-badge-icon-override:var(--hv-bi-ic);--badge-icon-size-current:var(--hv-bi-ic);--hv-bi-size:var(--hv-bi-ic);--hv-bi-in-h:0%;--hv-bi-h:48px;}'
+    + '@media (hover: hover){:host([hvhome]){--hv-bi-h:44px;}:host([hvhome]) .badge-title{font-size:14px!important;}:host([hvhome]) .badge-sub{font-size:13px!important;}}'
+    + '@media (min-width: 768px) and (hover: none), (min-width: 768px) and (pointer: coarse){:host([hvhome]){--hv-bi-ic:23px;--hv-bi-h:48px;}:host([hvhome]) .badge-title{font-size:14px!important;}:host([hvhome]) .badge-sub{font-size:13px!important;}}'
+    + '@media (max-width: 767px), (max-height: 500px){:host([hvhome]){--hv-bi-ic:23px;--hv-bi-h:42px;}:host([hvhome]) #container{column-gap:7px!important;}}'
+    + ':host([hvhome]) ha-card{--hv-bi-inset:3px!important;min-height:0!important;padding-left:12px!important;padding-top:0!important;padding-bottom:0!important;height:var(--hv-bi-h,44px)!important;align-content:center!important;}'
+    + ':host([hvhome]:not([hvsel])) #name,:host([hvhome]:not([hvsel])) .badge-title{color:var(--hv-ink,#fff)!important;}'
+    + ':host([hvhome]:not([hvsel])) .badge-sub{color:var(--hv-sub,rgba(235,235,245,0.6))!important;opacity:1!important;}'
+    + ':host([hvsel]) ha-card{background:var(--hv-bi-sel,#1c1c1e)!important;box-shadow:none!important;}'
+    + ':host([hvsel]) #name,:host([hvsel]) #name *,:host([hvsel]) .badge-title{color:var(--hv-bi-sel-ink,#fff)!important;}'
+    + ':host([hvsel]) .badge-sub,:host([hvsel]) ha-card .badge-sub,:host([hvsel]) #name .badge-sub{color:rgba(60,60,67,0.6)!important;opacity:1!important;}'
+    + ':host([hvsel]) ha-card #img-cell::before,:host([hvsel]) ha-card .img-cell::before{background-color:var(--hv-bi-cat,var(--hv-bi-sel-ink,#fff))!important;}'
+    + ':host([hvsel]) ha-card #img-cell ha-state-icon,:host([hvsel]) ha-card #img-cell #icon{color:var(--hv-bi-cat,var(--hv-bi-sel-ink,#fff))!important;--icon-primary-color:var(--hv-bi-cat,var(--hv-bi-sel-ink,#fff))!important;}';
+  const tplOf = (b) => [].concat(((b && b._config) || {}).template || []).join();
+  const isBadge = (b) => { const t = tplOf(b); return /badge/.test(t) && !/filter_badges/.test(t); };
+  // The climate gauges keep their ring, without a circle behind it and without color.
+  const GAUGE = /badge_(temp|humidity|air_quality)\b/;
+  const GAUGE_CSS = '#img-cell,.img-cell{filter:grayscale(1) brightness(var(--hv-gauge-b,.5));}ha-card{padding-right:6px!important;}';
+  const INK = new Map();
+  const inkOf = (u) => {
+    if (INK.has(u)) return INK.get(u);
+    const p = new Promise((res) => {
+      const img = new Image();
+      img.onerror = () => res(null);
+      img.onload = () => {
+        try {
+          const S = 200, c = document.createElement('canvas'), x = c.getContext('2d');
+          c.width = c.height = S;
+          const iw = img.naturalWidth || 100, ih = img.naturalHeight || 100, k = Math.min(S / iw, S / ih);
+          x.drawImage(img, (S - iw * k) / 2, (S - ih * k) / 2, iw * k, ih * k);
+          const d = x.getImageData(0, 0, S, S).data;
+          let x0 = S, y0 = S, x1 = -1, y1 = -1;
+          for (let yy = 0; yy < S; yy++) for (let xx = 0; xx < S; xx++) if (d[(yy * S + xx) * 4 + 3] > 40) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
+          res(x1 < 0 ? null : { w: (x1 - x0 + 1) / S, h: (y1 - y0 + 1) / S });
+        } catch (e) { res(null); }
+      };
+      img.src = u;
+    });
+    INK.set(u, p);
+    return p;
+  };
+  window._hemmaHvInk = inkOf;
+  const optical = (b, sr) => {
+    if (b._hvbT) return;
+    b._hvbT = requestAnimationFrame(() => {
+      b._hvbT = 0;
+      const cell = sr.querySelector('#img-cell, .img-cell');
+      if (!cell) return;
+      const be = getComputedStyle(cell, '::before'), m = be.webkitMaskImage || be.maskImage || '';
+      const u = (m.match(/url\("?(.*?)"?\)/) || [])[1];
+      if (!u || u === b._hvbU) return;
+      b._hvbU = u;
+      inkOf(u).then((q) => { if (q && b._hvbU === u) b.style.setProperty('--hv-bi-s', Math.min(0.8 / Math.sqrt(q.w * q.h), 0.86 / Math.max(q.w, q.h)).toFixed(3)); });
+    });
+  };
+  window._hemmaHvBadge = (b) => {
+    const sr = b && b.shadowRoot;
+    if (!sr || !isBadge(b)) return;
+    const on = document.documentElement.classList.contains('hemma-hv'), has = sr.querySelector('style[data-hvb]');
+    const cfg = b._config || {}, cat = (cfg.tap_action || {}).hemma_category || (cfg.variables || {}).hemma_category;
+    const st = cat && (b._stateObj || (b.hass && cfg.entity && b.hass.states[cfg.entity]));
+    let nb = null;
+    for (let r = b.getRootNode(), i = 0; r && r.host && i < 12; r = r.host.getRootNode(), i++) if (r.host.tagName === 'HEMMA-NAV-BAR') { nb = r.host; break; }
+    const phone = window.matchMedia('(max-width: 767px), (max-height: 500px)').matches;
+    const fv = phone && st && /^input_select\./.test(st.entity_id || '') ? st.state : nb && nb._cat && window._hemmaFilter ? window._hemmaFilter.get() : 'all';
+    const sel = !!(on && cat && fv === cat), was = b.hasAttribute('hvsel');
+    if (sel !== was) b.toggleAttribute('hvsel', sel);
+    // A selected category lights up white with its own color in the icon.
+    const CAT = { climate: 'teal', lights: 'yellow', presence: 'blue', people: 'blue', media: 'pink', security: 'mint', energy: 'green' };
+    if (sel && CAT[cat]) b.style.setProperty('--hv-bi-cat', 'var(--hemma-color-' + CAT[cat] + ')'); else b.style.removeProperty('--hv-bi-cat');
+    let chip = false;
+    for (let e = b; e && !chip; e = e.parentElement || (e.getRootNode && e.getRootNode().host)) if (e.classList && e.classList.contains('cat-chipcard')) chip = true;
+    const home = on && !chip;
+    if (home !== b.hasAttribute('hvhome')) b.toggleAttribute('hvhome', home);
+    const gauge = GAUGE.test(tplOf(b));
+    if (on && !has) { const el = document.createElement('style'); el.dataset.hvb = ''; el.textContent = gauge ? GAUGE_CSS : window._hemmaHvBadgeCss; sr.appendChild(el); }
+    else if (!on && has) { has.remove(); b.style.removeProperty('--hv-bi-s'); b._hvbU = null; }
+    if (on && !gauge) optical(b, sr);
+    // The template clips the icon to a circle, which cut the corners off square glyphs once the circle fill went away.
+    const cell = home && sr.querySelector('#img-cell');
+    if (cell && cell.style.getPropertyValue('overflow') !== 'visible') { cell.style.setProperty('overflow', 'visible', 'important'); cell.style.setProperty('border-radius', '0', 'important'); }
+  };
+  const restyle = () => {
+    const st = [document];
+    for (let i = 0; i < st.length; i++) st[i].querySelectorAll('*').forEach((n) => { if (n.tagName === 'BUTTON-CARD') window._hemmaHvBadge(n); if (n.shadowRoot) st.push(n.shadowRoot); });
+  };
+  const listen = () => { if (window._hemmaFilter) window._hemmaFilter.onChange(() => requestAnimationFrame(restyle)); else setTimeout(listen, 200); };
+  listen();
+  if (window.customElements && customElements.whenDefined) customElements.whenDefined('button-card').then(() => {
+    const P = customElements.get('button-card').prototype;
+    if (P._hemmaHvb) return;
+    P._hemmaHvb = true;
+    const up = P.updated;
+    P.updated = function (c) { if (up) up.call(this, c); try { window._hemmaHvBadge(this); } catch (e) {} };
+  });
+})();
+
 // Return to Home after a spell without input, for wall tablets. Off unless a
 // dashboard asks for it in Hemma Studio under General > Dashboard.
 (function () {
@@ -12670,7 +14899,7 @@ window.hemmaMenuGlass = {
   var OFF = /[?&]hemma_idle=0/.test(location.search);
   // The tablet navbar's own test, so one dashboard reads the same under either.
   var TABLET = window.matchMedia
-    ? window.matchMedia('(hover: none) and (pointer: coarse) and (min-width: 600px)')
+    ? window.matchMedia('(pointer: coarse) and (min-width: 600px), (hover: none) and (min-width: 600px)')
     : null;
 
   var last = Date.now();
@@ -12746,8 +14975,9 @@ window.hemmaMenuGlass = {
     var busy = typeof window._hemmaNavBusy === 'function' && window._hemmaNavBusy();
     var away = norm(location.pathname) !== norm(home);
     if (!home || (!away && !busy)) return bump();
-    // Never pull the view out from under someone reading a popup.
+    // Never pull the view out from under someone reading a popup, nor from under the screensaver.
     if (window.hemmaPopup && window.hemmaPopup.surface) return bump();
+    if (window.hemmaSaver && window.hemmaSaver.on) return bump();
     if (Date.now() - last < mins * 60000) return;
     if (busy && typeof window._hemmaNavReset === 'function') window._hemmaNavReset();
     if (away) {
@@ -12762,6 +14992,159 @@ window.hemmaMenuGlass = {
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) check();
   });
+})();
+
+// Safari drops decoded images from a tab left in the background and does not always draw them again on return, so the room photos
+// and icons go blank until a reload. Back after a minute or more, each is handed its image afresh.
+// Back to a tab Safari paused, Home Assistant reconnects and replays every change at once, and the dashboard visibly catches up.
+// It stays on screen and updates in place; only the animations rest until the updates go quiet, so nothing jumps.
+// The top-right pill's buttons in Minimal: no glass glow on a tap, just a brief dim.
+(function () {
+  if (window._hemmaPillPress) return;
+  window._hemmaPillPress = true;
+  document.addEventListener('pointerdown', function (e) {
+    if (!document.documentElement.classList.contains('hemma-hv')) return;
+    var path = e.composedPath();
+    for (var i = 0; i < path.length; i++) {
+      var n = path[i], t = n && n._config && n._config.template;
+      if (t && [].concat(t).some(function (x) { return /hemma_(notifications|settings|assist)_button/.test(x); })) {
+        if (n.animate) n.animate([{ opacity: 1 }, { opacity: 0.55, offset: 0.25 }, { opacity: 1 }], { duration: 320, easing: 'ease-out' });
+        return;
+      }
+    }
+  }, true);
+})();
+
+// Home Assistant's toasts are dark with accent-colored buttons; in light Minimal the accent is dark ink, so the toast turns light to match.
+(function () {
+  if (window._hemmaToast) return;
+  window._hemmaToast = true;
+  var CSS = '.toast{background-color:var(--hemma-toast-bg,#2a2a2d)!important;color:var(--hemma-toast-ink,#fff)!important;box-shadow:var(--hemma-toast-shadow,var(--wa-shadow-l))!important;}'
+    + '::slotted(ha-button),::slotted(ha-icon-button){--wa-color-on-normal:var(--hemma-toast-ink,var(--primary-color));--wa-color-brand-on-normal:var(--hemma-toast-ink,var(--primary-color));--wa-color-on-quiet:var(--hemma-toast-ink,var(--primary-color));--wa-color-brand-on-quiet:var(--hemma-toast-ink,var(--primary-color));--wa-color-fill-quiet:var(--hemma-toast-hover,var(--wa-color-neutral-fill-quiet));--wa-color-brand-fill-quiet:var(--hemma-toast-hover,var(--wa-color-brand-fill-quiet));color:var(--hemma-toast-ink,inherit);}';
+  var dress = function () {
+    var ha = document.querySelector('home-assistant'), nm = ha && ha.shadowRoot && ha.shadowRoot.querySelector('notification-manager');
+    var t = nm && nm.shadowRoot && nm.shadowRoot.querySelector('ha-toast');
+    if (!t || !t.shadowRoot || t.shadowRoot.getElementById('hemma-toast')) return;
+    var st = document.createElement('style');
+    st.id = 'hemma-toast';
+    st.textContent = CSS;
+    t.shadowRoot.appendChild(st);
+  };
+  window.addEventListener('hass-notification', function () { setTimeout(dress, 0); setTimeout(dress, 300); }, true);
+  setInterval(dress, 4000);
+})();
+
+// iOS often reloads the app's page after a while in the background; that reload is a return, not a launch, so the dashboard shows as it was left.
+(function () {
+  if (window._hemmaReturn) return;
+  window._hemmaReturn = true;
+  window._hemmaAnimSetup = true;
+  var K = 'hemma_bg_at', back = false;
+  try { var at = Number(sessionStorage.getItem(K) || 0); back = !!at && Date.now() - at < 864e5; sessionStorage.removeItem(K); } catch (_) {}
+  window._hemmaFromBg = back;
+  window._hemmaLastPath = location.pathname;
+  var hidAt = 0, leaving = false;
+  var drop = function () { try { sessionStorage.removeItem(K); } catch (_) {} };
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { hidAt = 0; drop(); return; }
+    window._hemmaFromBg = true;
+    if (leaving) { drop(); return; }
+    hidAt = Date.now();
+    try { sessionStorage.setItem(K, String(hidAt)); } catch (_) {}
+  });
+  // A refresh hides the page on its way out, before or after pagehide; only a page already in the background counts as a return.
+  window.addEventListener('pagehide', function () { leaving = true; if (!hidAt || Date.now() - hidAt < 1500) drop(); });
+  window.addEventListener('location-changed', function () {
+    if (location.pathname !== window._hemmaLastPath) window._hemmaFromBg = false;
+    window._hemmaLastPath = location.pathname;
+  });
+  if (!back || !document.getAnimations) return;
+  var ENTER = /^(hemmaFadeIn|hemmaFadeInRight|titleFadeIn|heroNameFade|hemmaRoomParallax)$/, t0 = Date.now();
+  var skip = setInterval(function () {
+    if (Date.now() - t0 > 2500) { clearInterval(skip); return; }
+    var all = document.getAnimations(), st = [document];
+    for (var i = 0; i < st.length && i < 4000; i++) st[i].querySelectorAll('*').forEach(function (n) { if (n.shadowRoot) { st.push(n.shadowRoot); all = all.concat(n.shadowRoot.getAnimations ? n.shadowRoot.getAnimations() : []); } });
+    all.forEach(function (an) { if (ENTER.test(an.animationName || '')) { try { an.finish(); } catch (_) {} } });
+  }, 150);
+})();
+
+(function () {
+  if (window._hemmaSettle) return;
+  window._hemmaSettle = true;
+  var hiddenAt = document.hidden ? Date.now() : 0, busy = false;
+  var css = document.createElement('style');
+  css.textContent = 'html.hemma-settling *, html.hemma-settling *::before, html.hemma-settling *::after { transition: none !important; animation-duration: 0s !important; animation-delay: 0s !important; }';
+  document.head.appendChild(css);
+  var settle = function () {
+    var ha = document.querySelector('home-assistant');
+    if (!ha || busy) return;
+    busy = true;
+    var root = document.documentElement, t0 = Date.now(), last = ha.hass, quiet = Date.now();
+    root.classList.add('hemma-settling');
+    var watch = setInterval(function () {
+      var h = ha.hass;
+      if (h !== last) { last = h; quiet = Date.now(); }
+      var ready = h && h.connected !== false;
+      var waited = Date.now() - t0;
+      if (waited < 450 || (!(ready && Date.now() - quiet > 400) && waited < 3000)) return;
+      clearInterval(watch);
+      // One more frame so whatever the last update changed is laid out before it shows.
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        root.classList.remove('hemma-settling');
+        busy = false;
+      }); });
+    }, 50);
+  };
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt > 60000) settle();
+    hiddenAt = 0;
+  });
+  window.hemmaSettle = settle;
+})();
+
+(function () {
+  if (window._hemmaWake) return;
+  window._hemmaWake = true;
+  var hiddenAt = document.hidden ? Date.now() : 0;
+  var wake = function () {
+    var stack = [document], n = 0, stamp = Date.now();
+    while (stack.length && n < 20000) {
+      var root = stack.pop();
+      var els = root.querySelectorAll ? root.querySelectorAll('*') : [];
+      for (var i = 0; i < els.length; i++, n++) {
+        var el = els[i];
+        if (el.shadowRoot) stack.push(el.shadowRoot);
+        // Only Hemma's own files and inline images: a camera picture's address carries an access token that has expired by the time the tab comes back.
+        if (el.tagName === 'IMG') {
+          if (el.src && el.getBoundingClientRect().width && (/^data:/.test(el.src) || /\/hemma_(assets|scripts)\//.test(el.src)) && !/token=/.test(el.src)) { var src = el.src; el.removeAttribute('src'); el.src = src; }
+          continue;
+        }
+        var cs = null;
+        if (el.tagName === 'HA-CARD') {
+          cs = getComputedStyle(el);
+          var h = cs.getPropertyValue('--hero-img').trim();
+          if (/url\(/.test(h)) el.style.setProperty('--hero-img', h.replace(/(\.jpg)(#w\d+)?/g, '$1#w' + stamp));
+        }
+        if (el.style && /\/hemma_assets\//.test(el.style.backgroundImage)) el.style.backgroundImage = el.style.backgroundImage.replace(/(\.jpg)(#w\d+)?/g, '$1#w' + stamp);
+        if (el.getBoundingClientRect().width === 0) continue;
+        cs = cs || getComputedStyle(el);
+        var m = cs.webkitMaskImage || cs.maskImage;
+        if (m && m !== 'none' && /url\(/.test(m)) {
+          (function (e) {
+            e.style.setProperty('-webkit-mask-image', 'none'); e.style.setProperty('mask-image', 'none');
+            requestAnimationFrame(function () { e.style.removeProperty('-webkit-mask-image'); e.style.removeProperty('mask-image'); });
+          })(el);
+        }
+      }
+    }
+  };
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt > 60000) setTimeout(wake, 400);
+    hiddenAt = 0;
+  });
+  window.hemmaWake = wake;
 })();
 
 // The mobile filter, per device. It lives in an input_select so the button-card
@@ -13174,7 +15557,7 @@ window.hemmaMenuGlass = {
   };
 
   var OPENING = { door: 1, window: 1, garage_door: 1, opening: 1, gate: 1, garage: 1 };
-  // One security device in words, as Apple Home's Security tile reads it, and whether it needs a look.
+  // One security device in words, and whether it needs a look.
   window.hemmaSecurityWord = function (hass, id) {
     var st = hass && hass.states && hass.states[id], d = String(id || '').split('.')[0];
     var s = String((st && st.state) || '').toLowerCase(), dc = String((st && st.attributes && st.attributes.device_class) || '').toLowerCase();

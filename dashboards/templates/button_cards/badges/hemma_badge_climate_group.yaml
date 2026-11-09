@@ -33,7 +33,7 @@ hemma_badge_climate_group:
           [[[
             return entity?.state === 'climate'
               ? 'var(--badge-active-color, rgba(255,255,255,0.85))'
-              : 'var(--badge-background, rgba(10,12,14,0.65))';
+              : 'var(--hemma-badge-bg, var(--badge-background, rgba(10,12,14,0.65)))';
           ]]]
       - display: >
           [[[
@@ -48,11 +48,11 @@ hemma_badge_climate_group:
           ]]]
       - --badge-title-color: >
           [[[
-            return entity?.state === 'climate' ? 'rgba(0,0,0,0.85)' : 'var(--primary-text-color)';
+            return entity?.state === 'climate' ? 'rgba(0,0,0,0.85)' : 'var(--hemma-badge-title-color, var(--primary-text-color))';
           ]]]
       - --badge-sub-color: >
           [[[
-            return entity?.state === 'climate' ? 'rgba(0,0,0,0.6)' : 'var(--secondary-text-color)';
+            return entity?.state === 'climate' ? 'rgba(0,0,0,0.6)' : 'var(--hemma-badge-sub-color, var(--secondary-text-color))';
           ]]]
       - --hemma-fan-animation: >
           [[[
@@ -163,7 +163,20 @@ hemma_badge_climate_group:
       const hasSensor = !!(variables.temp_sensor || variables.humidity_sensor || variables.quality_sensor);
       const show = enabled && hasSensor;
 
+      const URL = window.hemmaIconUrl('fan');
       return `:host{display:${show ? 'inline-block' : 'none'} !important;order:var(--hemma-badge-order-climate,1);}
+        #img-cell, .img-cell{ position: relative; }
+        #img-cell #icon, .img-cell #icon{ color: transparent !important; opacity: 0 !important; }
+        #img-cell::before, .img-cell::before{
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-color: var(--hemma-badge-icon-color) !important;
+          -webkit-mask: url('${URL}') no-repeat center / auto 82%;
+          mask: url('${URL}') no-repeat center / auto 82%;
+          transform-origin: center;
+          animation: var(--hemma-fan-animation, none);
+        }
         @keyframes hemma-fan-spin {
           from { transform: rotate(0deg); }
           to   { transform: rotate(360deg); }
@@ -178,7 +191,5 @@ hemma_badge_climate_group:
           --paper-item-icon-color: var(--hemma-badge-icon-color) !important;
           --state-icon-color: var(--hemma-badge-icon-color) !important;
           --card-mod-icon-color: var(--hemma-badge-icon-color) !important;
-          transform-origin: center !important;
-          animation: var(--hemma-fan-animation, none) !important;
         }`;
     ]]]

@@ -10,9 +10,16 @@ hemma_lock:
     show_toggle: true
     icon_locked: lock-fill
     icon_unlocked: lock-open-fill
+    open_doors: |
+      [[[
+        const m = variables.door_sensors || {};
+        const ids = [...new Set([].concat(variables.locks || [], entity ? [entity.entity_id] : []).filter(Boolean))];
+        return [...new Set(ids.flatMap((id) => [].concat(m[id] || [])))].filter((s) => states[s]?.state === 'on').length;
+      ]]]
 
   entity_picture: |
     [[[
+      if (variables.open_doors) return window.hemmaIconUrl('door-open');
       if (entity.state === 'unlocked') return window.hemmaIconUrl(variables.icon_unlocked || 'lock-open-fill');
       if (entity.state === 'unlocking') return window.hemmaIconUrl('lock-unlocking-fill');
       return window.hemmaIconUrl(variables.icon_locked || 'lock-fill');
@@ -21,6 +28,11 @@ hemma_lock:
   state_display: |
     [[[
       if (!entity) return "";
+      const n = variables.open_doors;
+      if (n) {
+        const T = window._hemmaT || ((k, en, v) => String(en).replace(/\{(\w+)\}/g, (x, p) => (v && p in v ? String(v[p]) : x)));
+        return n > 1 ? T('locks.n_doors_open', '{n} Doors Open', { n }) : T('locks.door_open', 'Door Open');
+      }
       // Switching HA's language swaps localize while the new strings are
       // still loading, and formatEntityState throws for that window.
       try { return hass.formatEntityState(entity) || entity.state; }
@@ -48,6 +60,30 @@ hemma_lock:
     entity: '[[[ return entity?.entity_id ]]]'
 
   state:
+    - operator: template
+      value: "[[[ return variables.open_doors > 0; ]]]"
+      styles:
+        card:
+          - "--hemma-active-overlay-opacity": "1"
+          - --hemma-entity-overlay-tint: var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))
+          - "--hemma-active-overlay-dur": "0s"
+          - --hemma-entity-top-gradient: none
+          - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
+          - --hemma-icon-color-current: "var(--hemma-popup-primary-color, #00c3d0)"
+          - --hemma-icon-svg-url: "[[[ return `url('${window.hemmaIconUrl('door-open')}')`; ]]]"
+          - --hemma-icon-use-mask: "1"
+          - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
+        name:
+          - color: var(--hemma-entity-name-active, var(--primary-text-color))
+        state:
+          - color: var(--hemma-entity-state-active-color)
+        img_cell:
+          - opacity: "1 !important"
+          - filter: none !important
+          - background: "var(--hemma-popup-primary-color, #00c3d0) !important"
+        entity_picture:
+          - opacity: "1 !important"
+          - filter: none !important
     - value: unlocked
       styles:
         card:
@@ -81,6 +117,7 @@ hemma_lock:
       - --hemma-icon-mask-scale: 63.6%
       - --hemma-icon-mask-image: |
           [[[
+            if (variables.open_doors) return `url('${window.hemmaIconUrl('door-open')}')`;
             if (entity.state === 'unlocked') return `url('${window.hemmaIconUrl(variables.icon_unlocked || 'lock-open-fill')}')`;
             if (entity.state === 'unlocking') return `url('${window.hemmaIconUrl('lock-unlocking-fill')}')`;
             return `url('${window.hemmaIconUrl(variables.icon_locked || 'lock-fill')}')`;

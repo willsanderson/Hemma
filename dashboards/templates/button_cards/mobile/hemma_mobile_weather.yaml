@@ -6,6 +6,7 @@ hemma_mobile_weather:
   show_label: false
   show_entity_picture: false
   full_width: true
+  triggers_update: all
   tap_action: {action: none}
 
   hold_action: {action: none}
@@ -87,6 +88,7 @@ hemma_mobile_weather:
       to   { opacity: 1; transform: translateY(0); }
     }
     #name { animation: titleFadeIn 0.3s ease-out both; }
+    #hvdate { animation: titleFadeIn 0.3s ease-out backwards; }
     ha-card.button-card-main {
       align-items: stretch !important;
       justify-content: flex-start !important;
@@ -105,6 +107,20 @@ hemma_mobile_weather:
           show_notifications: '[[[ return variables.show_notifications !== false ]]]'
           show_edit: '[[[ return !!variables.hemma_ui_managed ]]]'
           show_assist: '[[[ return variables.show_assist !== false ]]]'
+
+    hvdate: |
+      [[[
+        if (!document.documentElement.classList.contains('hemma-hv') || !window.hemmaDate) return '';
+        const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const x = window.hemmaWxLine && window.hemmaWxLine(hass, variables.weather_entity || (window.hemmaWx && window.hemmaWx(variables, 'entity')), variables.weather_temp_sensor);
+        const ic = x && x.file ? `<img alt="" src="/hemma_assets/weather/${x.file}-fill.svg?v=2" onload="window.hemmaWxFit&&window.hemmaWxFit(this,this.nextElementSibling)" style="width:26px;height:22px;flex:none;object-fit:contain;opacity:.6;filter:var(--hv-wx-filter, brightness(0) invert(1))">` : '';
+        const wid = String(variables.weather_entity || (window.hemmaWx && window.hemmaWx(variables, 'entity')) || '').replace(/[^\w.]/g, '');
+        const go = `event.stopPropagation();if(Date.now()-(this._wxAt||0)>700){this._wxAt=Date.now();this.dispatchEvent(new CustomEvent('hass-more-info',{detail:{entityId:'${wid}'},bubbles:true,composed:true}))}`;
+        const tap = wid ? ` role="button" ontouchend="event.preventDefault();${go}" onclick="${go}"` : '';
+        const wx = x ? `<span class="hvw"${tap} style="display:inline-flex;align-items:center;gap:7px;height:40px;cursor:pointer;-webkit-tap-highlight-color:transparent">${ic}<b style="font-weight:600;color:var(--hv-ink, #fff)">${x.t}°</b></span>` : '';
+        return wx;
+      ]]]
+    hvwx: "[[[ return ''; ]]]"
 
     weather:
       card:
@@ -134,17 +150,30 @@ hemma_mobile_weather:
       - text-align: left
       - justify-items: start
     name:
-      - font-size: "var(--hero-room-name-size-current, clamp(38px, 4vw + 2px, 64px))"
+      - font-size: |
+          [[[
+            if (!document.documentElement.classList.contains("hemma-hv")) return "var(--hero-room-name-size-current, clamp(38px, 4vw + 2px, 64px))";
+            const f = states['input_select.hemma_mobile_filter']?.state ?? 'all';
+            const t = f === 'all' && window.hemmaGreeting ? String(window.hemmaGreeting(hass, states, variables)).replace(/&amp;/g, '&').replace(/&lt;/g, '<') : '';
+            if (!t) return "34px";
+            // Longer names step down to fit one line rather than wrapping under the weather.
+            const c = (window._hemmaGreetCtx = window._hemmaGreetCtx || document.createElement('canvas').getContext('2d'));
+            c.font = '700 34px ' + (getComputedStyle(document.body).fontFamily || '-apple-system, system-ui');
+            const w = c.measureText(t).width * 1.02, room = Math.max(200, window.innerWidth - 32);
+            return Math.max(24, Math.min(34, Math.floor(34 * room / w))) + "px";
+          ]]]
       - font-weight: "700"
-      - color: "#ffffff"
-      - opacity: "0.9"
-      - letter-spacing: "-2px"
-      - line-height: "1.2"
+      - color: '[[[ return document.documentElement.classList.contains("hemma-hv") ? "var(--hv-ink, #fff)" : "#ffffff"; ]]]'
+      - opacity: '[[[ return document.documentElement.classList.contains("hemma-hv") ? "1" : "0.9"; ]]]'
+      - letter-spacing: '[[[ return document.documentElement.classList.contains("hemma-hv") ? "-0.5px" : "-2px"; ]]]'
+      - line-height: '[[[ return document.documentElement.classList.contains("hemma-hv") ? "40px" : "1.2"; ]]]'
       - text-align: left
-      - overflow: visible
+      - overflow: '[[[ return document.documentElement.classList.contains("hemma-hv") ? "hidden" : "visible"; ]]]'
+      - text-overflow: ellipsis
       - padding: 0
       - margin: 0
-      - max-width: "calc(100% - 145px)"
+      - max-width: calc(100% - 145px)
+      - white-space: '[[[ return document.documentElement.classList.contains("hemma-hv") ? "nowrap" : "normal"; ]]]'
     custom_fields:
       notifications:
         - display: >
@@ -160,6 +189,24 @@ hemma_mobile_weather:
         - overflow: visible
         - pointer-events: auto
 
+      hvdate:
+        - display: none
+        - position: absolute
+        - top: "calc(var(--hemma-mobile-chrome-top, 0px) + 4px)"
+        - left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px))"
+        - height: 40px
+        - line-height: 40px
+        - font-size: 22px
+        - font-weight: 600
+        - white-space: nowrap
+        - color: var(--hv-ink, #fff)
+      hvwx:
+        - display: '[[[ return document.documentElement.classList.contains("hemma-hv") ? "block" : "none"; ]]]'
+        - position: absolute
+        - top: "calc(52px + var(--hemma-mobile-chrome-drop, 4px) + 52px)"
+        - left: "max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px))"
+        - right: "var(--hemma-rail-left, 16px)"
+        - color: var(--hv-ink, #fff)
       weather:
         - display: >
             [[[
@@ -167,7 +214,8 @@ hemma_mobile_weather:
               return f === 'all' ? 'block' : 'none';
             ]]]
         - position: absolute
-        - top: "calc(52px + var(--hemma-mobile-chrome-drop, 4px) + var(--hero-room-name-size-current, 38px) * 0.6)"
+        - top: '[[[ return document.documentElement.classList.contains("hemma-hv") ? "calc(52px + var(--hemma-mobile-chrome-drop, 4px) + 20px)" : "calc(52px + var(--hemma-mobile-chrome-drop, 4px) + var(--hero-room-name-size-current, 38px) * 0.6)"; ]]]'
         - transform: translateY(-50%)
         - right: "var(--hemma-rail-left, 16px)"
         - z-index: 1
+        - color: var(--hv-ink, #ffffff)

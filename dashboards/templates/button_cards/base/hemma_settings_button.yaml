@@ -181,6 +181,26 @@ hemma_settings_button:
         menu.style.left = Math.round(Math.max(12, Math.min(r.right - w, window.innerWidth - w - 12))) + 'px';
         if (window.hemmaMenuGlass) window.hemmaMenuGlass.enter(menu);
 
+        const yielded = [];
+        if (window.innerWidth >= 768) {
+          const mt = parseFloat(menu.style.top) || 0, ml = parseFloat(menu.style.left) || 0;
+          const mb = { top: mt, left: ml, bottom: mt + menu.offsetHeight, right: ml + w };
+          for (let up = host, i = 0; up && i < 8; i++) {
+            const rn = up.getRootNode && up.getRootNode();
+            const nps = rn && rn.querySelectorAll ? rn.querySelectorAll('#now_playing') : [];
+            if (nps.length) {
+              nps.forEach(function (np) {
+                const bc = np.querySelector('button-card'), el = (bc && bc.shadowRoot && bc.shadowRoot.querySelector('#np_main')) || np;
+                const q = el.getBoundingClientRect();
+                if (!el.animate || !q.width || q.bottom < mb.top || q.top > mb.bottom || q.right < mb.left || q.left > mb.right) return;
+                yielded.push(el.animate([{ opacity: 1, filter: 'blur(0px)' }, { opacity: 0.3, filter: 'blur(10px)' }], { duration: 320, easing: 'cubic-bezier(0.32, 0.72, 0, 1)', fill: 'forwards' }));
+              });
+              break;
+            }
+            up = rn && rn.host;
+          }
+        }
+
         const onKey = function (e) { if (e.key === 'Escape') menu._close(); };
         const onAway = function (e) {
           const t = e.composedPath ? e.composedPath()[0] : e.target;
@@ -188,6 +208,7 @@ hemma_settings_button:
         };
         menu._close = function () {
           lift(false);
+          yielded.splice(0).forEach(function (an) { const done = function () { an.cancel(); }; an.reverse(); an.finished.then(done, done); });
           window.removeEventListener('keydown', onKey, true);
           document.removeEventListener('pointerdown', onAway, true);
           window.removeEventListener('scroll', menu._close, true);
@@ -255,7 +276,7 @@ hemma_settings_button:
       place-items: center !important;
       width: var(--hemma-chrome-btn-size, 34px) !important;
       height: var(--hemma-chrome-btn-size, 34px) !important;
-      color: #fff !important;
+      color: var(--hemma-chrome-ink, #fff) !important;
       pointer-events: auto !important;
     }
 

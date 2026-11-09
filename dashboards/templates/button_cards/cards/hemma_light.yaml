@@ -13,11 +13,9 @@ hemma_light:
 
   icon_tap_action:
     action: call-service
-    service: script.turn_on
+    service: hemma.light_smart_toggle
     service_data:
-      entity_id: script.hemma_light_smart_toggle
-      variables:
-        light_entity: '[[[ return entity?.entity_id ]]]'
+      light_entity: '[[[ return entity?.entity_id ]]]'
 
   state_display: >
     [[[
@@ -54,15 +52,10 @@ hemma_light:
     mobile_filter_category: lights
     icon: light
     show_toggle: false
-    toggle_service: script.turn_on
+    toggle_service: hemma.light_smart_toggle
     toggle_service_data: |
       [[[
-        return {
-          entity_id: 'script.hemma_light_smart_toggle',
-          variables: {
-            light_entity: entity.entity_id
-          }
-        };
+        return { light_entity: entity.entity_id };
       ]]]
 
   styles:

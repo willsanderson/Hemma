@@ -20,7 +20,7 @@ hemma_plex_recently_added:
 
   hold_action:
     action: more-info
-    entity: sensor.plex_recently_added_count
+    entity: sensor.recently_added_movies
 
   state_display: |
     [[[

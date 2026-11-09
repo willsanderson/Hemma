@@ -148,6 +148,7 @@
   document.addEventListener('touchend',   (e) => { _touchActive = e.touches.length > 0; }, { passive: true, capture: true });
   document.addEventListener('touchcancel',(e) => { _touchActive = e.touches.length > 0; }, { passive: true, capture: true });
   let _activeOverlay = null;
+  const _overlaysAll = new Set();
 
   function _findChromePill(root) {
     const walk = (node, depth) => {
@@ -192,7 +193,7 @@
 
   function _hideChromePill() {
     const host = _pinnedPill?.host;
-    if (!host) return;
+    if (!host || document.documentElement.classList.contains('hemma-hv')) return;
     host.style.transition = 'opacity 200ms ease-out, filter 200ms ease-out';
     host.style.filter = 'blur(8px)';
     host.style.opacity = '0';
@@ -202,6 +203,7 @@
   function _showChromePill() {
     const host = _pinnedPill?.host;
     if (!host) return;
+    if (document.documentElement.classList.contains('hemma-hv') && host.style.opacity !== '0') return;
     host.style.transition = 'none';
     host.style.transformOrigin = '50% 30%';
     host.style.transform = 'scale(0.93) translateY(20px)';
@@ -496,6 +498,7 @@
         _dashHeader.scrollEl?.removeEventListener('scroll', _dashHeader.onScroll);
         document.removeEventListener('touchmove', _dashHeader.onScroll, true);
       } catch (_) {}
+      _dashHeader.grad?._bandsOff?.();
       _dashHeader.grad?.remove();
       _dashHeader.veil?.remove();
       _dashHeader.edge?.remove();
@@ -669,8 +672,41 @@
       title.style.pointerEvents = 'none';
     };
 
+    // One masked blur fades sharp into blurred; stacked bands of rising strength fall off evenly instead.
+    const bands = (on) => {
+      if (!on) { grad._bandsOff?.(); return; }
+      if (grad._bands) return;
+      const stops = [[1, 72, 100], [2, 58, 88], [4, 44, 76], [8, 30, 64], [14, 16, 52], [22, 0, 40]];
+      grad._bands = stops.map(([px, a, b]) => {
+        const d = document.createElement('div');
+        const m = `linear-gradient(to bottom, #000 ${a}%, transparent ${b}%)`;
+        d.style.cssText = ['position:fixed', 'top:0', 'left:0', 'right:0', `height:${grad.style.height}`, 'z-index:110', 'pointer-events:none',
+          'transition:opacity 220ms ease-in-out', `opacity:${grad.style.opacity || 0}`, `mask-image:${m}`, `-webkit-mask-image:${m}`,
+          `backdrop-filter:blur(${px}px)${px > 8 ? ' saturate(1.2)' : ''}`, `-webkit-backdrop-filter:blur(${px}px)${px > 8 ? ' saturate(1.2)' : ''}`].join(';');
+        grad.after(d);
+        return d;
+      });
+      const sync = new MutationObserver(() => { for (const d of grad._bands || []) { d.style.opacity = grad.style.opacity; d.style.height = grad.style.height; } });
+      sync.observe(grad, { attributes: true, attributeFilter: ['style'] });
+      grad._bandsOff = () => { sync.disconnect(); (grad._bands || []).forEach((d) => d.remove()); grad._bands = null; grad._bandsOff = null; };
+    };
+    // Minimal: the iPad's veil, the dashboard color fading out under a small centered title, rather than the blurred photo strip.
+    const flat = () => {
+      const hc = document.documentElement.classList, hv = hc.contains('hemma-hv'), solid = hv && hc.contains('hv-bd-color');
+      if (hv + '|' + solid === grad._hv) return;
+      grad._hv = hv + '|' + solid;
+      const set = (el, k, v) => (hv ? el.style.setProperty(k, v) : el.style.removeProperty(k));
+      set(grad, 'background', solid ? 'var(--hv-veil, linear-gradient(var(--hv-bg) 58%, transparent))' : 'transparent');
+      set(grad, 'height', 'calc(env(safe-area-inset-top, 0px) + var(--hemma-mobile-chrome-drop, 4px) + 116px)');
+      ['backdrop-filter', '-webkit-backdrop-filter', 'mask-image', '-webkit-mask-image'].forEach((k) => (hv ? grad.style.setProperty(k, 'none') : null));
+      if (hv && !solid) { grad.style.background = 'linear-gradient(to bottom, color-mix(in oklab, var(--hv-bg) 38%, transparent) 0%, color-mix(in oklab, var(--hv-bg) 18%, transparent) 55%, color-mix(in oklab, var(--hv-bg) 0%, transparent) 100%)'; bands(true); } else bands(false);
+      if (!hv) { grad.style.backdropFilter = grad.style.webkitBackdropFilter = 'blur(22px) saturate(1.2) brightness(0.97)'; grad.style.maskImage = grad.style.webkitMaskImage = gm; grad.style.height = 'calc(env(safe-area-inset-top, 0px) + 150px)'; }
+      veil.style.display = edge.style.display = hv ? 'none' : '';
+      set(title, 'color', 'var(--hv-ink, #1c1c1e)');
+    };
     const update = () => {
       if (!grad.isConnected) return;
+      flat();
       if (_activeOverlay) { hide(); return; }
       if (_pinnedPill && _pinnedPill.host.style.opacity === '0') _showChromePill();
       let headerEl = inst._headerEl;
@@ -691,15 +727,24 @@
       const tp = Math.min(1, p / 0.45);
       if (nameEl) {
         nameEl.style.animation  = 'none'; // titleFadeIn's fill:both beats inline opacity
-        nameEl.style.opacity    = String(1 - tp); // full white at rest, like Apple's large titles
+        nameEl.style.opacity    = String(1 - tp); // full white at rest, like large titles
+        headerEl.shadowRoot.querySelectorAll('#hvdate, #hvwx').forEach((e) => { e.style.opacity = String(1 - tp); });
       }
-      const nameText = nameEl?.textContent?.trim();
+      const hvHome = document.documentElement.classList.contains('hemma-hv')
+        && (inst._hass?.states?.['input_select.hemma_mobile_filter']?.state ?? 'all') === 'all';
+      const nameText = hvHome ? _hemmaT('filter.all', 'Home') : nameEl?.textContent?.trim();
       if (nameText && title.textContent !== nameText) title.textContent = nameText;
       const cp = Math.max(0, (p - 0.55) / 0.45);
       title.style.opacity       = String(cp);
       title.style.transform     = `translateY(${(1 - cp) * 5}px)`;
       title.style.pointerEvents = cp > 0.5 ? 'auto' : 'none';
       const badgeRect = inst._badgeRowEl?.getBoundingClientRect();
+      // Minimal has no blur band to slide under, so the badge row fades on its way into the bar as everything else does.
+      const bw = inst._badgeRowEl?.parentElement;
+      if (bw) {
+        const f = hvHome && badgeRect && badgeRect.height ? Math.max(0, Math.min(1, (badgeRect.bottom - barBottom) / (badgeRect.height + 12))) : 1;
+        if (f < 1) bw.style.opacity = f.toFixed(3); else if (bw.style.opacity) bw.style.removeProperty('opacity');
+      }
       let barOn;
       if (badgeRect && badgeRect.height) {
         barOn = _dashBarOn
@@ -781,6 +826,7 @@
 
 
     connectedCallback() {
+      _overlaysAll.add(this);
       this.style.cssText = 'display:none!important;';
       if (this._config && !this._initialized && !this._initializing) this._init();
       if (this._rawHass && !this._filterOff) this.hass = this._rawHass;
@@ -789,6 +835,8 @@
     disconnectedCallback() {
       // A dashboard rebuild leaves this instance detached; still subscribed, it opens alongside its replacement and takes the badge row.
       if (this._filterOff) { this._filterOff(); this._filterOff = null; }
+      _overlaysAll.delete(this);
+      this._restoreMovedWrappers();
       if (this._blurLayerEl) _blurLayers.delete(this._blurLayerEl);
       this._blurLayerEl?.remove();
       this._overlayEl?.remove();
@@ -838,6 +886,8 @@
     set hass(v) {
       // Per device, like the row: rewrite before the overlay or its cards read it.
       this._rawHass = v;
+      // A rebuild's old row still hands hass to this detached copy; it must not resubscribe or open.
+      if (!this.isConnected) return;
       const F = window._hemmaFilter;
       if (F && !this._filterOff) {
         this._filterOff = F.onChange(() => {
@@ -861,7 +911,12 @@
       if (shouldShow !== this._showing) {
         this._showing = shouldShow;
         if (shouldShow) {
-          this._initialized ? this._animIn() : this._init().then(() => this._animIn());
+          this._initialized ? this._animIn() : this._init().then(() => { if (this.isConnected && this._showing) this._animIn(); });
+        } else if (document.documentElement.classList.contains('hemma-hv') && filter && filter !== 'all'
+          && [..._overlaysAll].some((o) => o !== this && o._config && o._config.filter_category === filter)) {
+          this._swPending = true;
+          clearTimeout(this._swT);
+          this._swT = setTimeout(() => { if (this._swPending) { this._swPending = false; this._animOut(); } }, 1500);
         } else {
           this._animOut();
         }
@@ -918,9 +973,9 @@
         position:             'fixed',
         top: '0', left: '0', right: '0', bottom: '0',
         zIndex:               '49',
-        backdropFilter:       'blur(40px)',
-        webkitBackdropFilter: 'blur(40px)',
-        background:           'rgba(0, 0, 0, 0.22)',
+        backdropFilter:       'var(--hv-ov-bf, blur(40px))',
+        webkitBackdropFilter: 'var(--hv-ov-bf, blur(40px))',
+        background:           'var(--hv-ov-bg, rgba(0, 0, 0, 0.22))',
         pointerEvents:        'none',
         display:              'none',
         transform:            'translateZ(0)',
@@ -1078,6 +1133,10 @@
       if ((this._config.sections || []).length) { this._autoSectionsDone = true; return; }
       const container = this._container;
       if (!container || !this._helpers || !this._contentEl) return;
+      if (!window.HEMMA_FILTER_CATEGORIES || !window.hemmaEntityCategory) {
+        if ((this._catWait = (this._catWait || 0) + 1) < 40) setTimeout(() => { if (this._showing) { this._ensureAutoSections(); this._sortSectionGrids(); } }, 150);
+        return;
+      }
       const roomMode = this._config.room || null;
       const rooms = [];
       let pending = null; // last seen room header
@@ -1109,7 +1168,7 @@
           pending = null;
         }
       }
-      if (!rooms.length) return;
+      if (!rooms.length && (roomMode || this._config.filter_category !== 'energy')) return;
       this._autoSectionsDone = true;
       let i = 0;
 
@@ -1125,6 +1184,13 @@
         this._appendRevealCard(camHead(roomMode ? 18 : 24), this._contentEl, 0);
         this._appendRevealCard({ type: 'custom:hemma-camera-strip', cameras: camIds }, this._contentEl, 0);
         this._camWraps = [...this._contentEl.children].slice(-2);
+      }
+      // The Energy page leads with the devices' usage, as the Mac's does.
+      if (!roomMode && this._config.filter_category === 'energy' && customElements.get('hemma-energy-card')) {
+        const head = camHead(24);
+        head.name = _hemmaT('nav.energy_devices', 'Devices');
+        this._appendRevealCard(head, this._contentEl, 0);
+        this._appendRevealCard({ type: 'custom:hemma-energy-card' }, this._contentEl, 0);
       }
 
 
@@ -1180,7 +1246,7 @@
           const buckets = new Map();
           for (const c of roomCards) {
             const cat = _cardCategory(c);
-            const key = ROOM_SECTION_LABEL[cat] ? cat : ROOM_SECTION_OTHER;
+            const key = ROOM_SECTION_ORDER.includes(cat) ? cat : ROOM_SECTION_OTHER;
             if (!buckets.has(key)) buckets.set(key, []);
             buckets.get(key).push(c);
           }
@@ -1190,7 +1256,7 @@
           const keys = ROOM_SECTION_ORDER.filter((k) => buckets.has(k));
           if (buckets.has(ROOM_SECTION_OTHER)) keys.push(ROOM_SECTION_OTHER);
           for (const key of keys) {
-            if (ROOM_SECTION_LABEL[key]) {
+            {
               this._appendRevealCard({
                 type:       'custom:button-card',
                 template:   'hemma_mobile_header',
@@ -1393,6 +1459,7 @@
 
       const { blurEl, overlayEl, scalableEls = [], headerEl, badgeRowEl, headerWrapper,
         npWrappers = [] } = args;
+      headerEl?.shadowRoot?.querySelectorAll('#hvdate, #hvwx').forEach((e) => e.style.removeProperty('opacity'));
       const scalableSet   = new Set(scalableEls);
       const npHoldSet     = new Set(npWrappers.filter(Boolean));
       const animContainer = this._container; // capture before cleanup nulls it
@@ -1739,6 +1806,10 @@
       }
       this._npSpacer?.remove();
       this._npSpacer = null;
+      if (this._subBadgesWrapper && this._contentEl && this._subBadgesWrapper.parentNode !== this._contentEl &&
+          [..._overlaysAll].some((o) => o !== this && o._contentEl && o._subBadgesWrapper === this._subBadgesWrapper && this._subBadgesWrapper.parentNode === o._contentEl)) {
+        this._subBadgesWrapper = null;
+      }
       if (this._subBadgesWrapper) {
         // Restore the dashboard's phantom-gap suppression (see _animIn).
         this._subBadgesWrapper.setAttribute('data-collapsed-spacer', '1');
@@ -1786,6 +1857,9 @@
       _hideChromePill();
       _restoreBadgeRow();
       if (prevOverlay && prevOverlay !== this) prevOverlay._restoreMovedWrappers();
+      for (const o of _overlaysAll) {
+        if (o !== this && o._contentEl && (o._npSaved || (o._subBadgesWrapper && o._subBadgesWrapper.parentNode === o._contentEl))) o._restoreMovedWrappers();
+      }
       this._restoreMovedWrappers();
       this._discoverElements();
       this._copyThemeVars(this._headerEl || this._badgeRowEl || null);
@@ -1868,12 +1942,12 @@
       titleEl.style.cssText = [
         'display:block', 'width:100%', 'box-sizing:border-box',
         `padding-bottom:${TITLE_PAD_BOT}px`,
-        `font-size:${TITLE_FONT_PX}px`, 'font-weight:700', 'color:#ffffff',
+        `font-size:${TITLE_FONT_PX}px`, 'font-weight:700', 'color:var(--hv-ink, #ffffff)',
         'letter-spacing:-0.5px', 'pointer-events:none',
         'transform-origin:left center',
       ].join(';');
       titleEl.style.setProperty('margin-top',
-        `calc(env(safe-area-inset-top, 0px) + 52px + calc(12px * var(${LANDSCAPE_PHONE_VAR}, 0)))`);
+        `calc(env(safe-area-inset-top, 0px) + 52px + var(--hv-head-dy, 0px) + calc(12px * var(${LANDSCAPE_PHONE_VAR}, 0)))`);
       titleEl.style.setProperty('padding-left',
         `calc(max(var(--hemma-measured-safe-left, 0px), var(--hemma-rail-left, 16px)) + ${LANDSCAPE_GUTTER_CALC})`);
       if (nameSrcEl && nameRect?.height) {
@@ -1935,9 +2009,15 @@
           '-webkit-backdrop-filter:blur(10px) saturate(1.2)',
           'cursor:pointer', 'z-index:61',
         ].join(';');
+        if (document.documentElement.classList.contains('hemma-hv')) {
+          back.classList.remove('hemma-back-glass');
+          back.style.backgroundImage = 'none';
+          back.style.backgroundColor = 'var(--hemma-chrome-fill, rgba(255,255,255,0.4))';
+          back.style.backdropFilter = back.style.webkitBackdropFilter = 'none';
+        }
         back.innerHTML =
           '<svg width="14" height="24" viewBox="0 0 14 24" fill="none" style="margin-right:2px">' +
-          '<path d="M12 2.5 L2.8 12 L12 21.5" stroke="#fff" stroke-width="3" ' +
+          '<path d="M12 2.5 L2.8 12 L12 21.5" stroke="var(--hv-cap-ink, var(--hemma-chrome-ink, var(--hv-ink, #fff)))" stroke-width="3" ' +
           'stroke-linecap="round" stroke-linejoin="round"/></svg>';
         back.addEventListener('click', (e) => { e.stopPropagation(); this._dismiss(); });
         this._backBtn = back;
@@ -1951,7 +2031,7 @@
         'padding-top:env(safe-area-inset-top, 0px)',
         'box-sizing:content-box',
         'display:flex', 'align-items:center', 'justify-content:center',
-        'font-size:17px', 'font-weight:600', 'color:#ffffff', 'letter-spacing:-0.2px',
+        'font-size:17px', 'font-weight:600', 'color:var(--hv-ink, #ffffff)', 'letter-spacing:-0.2px',
         'opacity:0', 'transform:translateY(5px)', 'pointer-events:none',
       ].join(';');
       compactEl.textContent = titleText;
@@ -2095,16 +2175,29 @@
         }
 
         const seamlessNp = this._config?.filter_category === 'media' && npNaturalTop != null;
+        const handOff = [..._overlaysAll].filter((o) => o !== this && o._swPending);
         overlayEl.style.transition = 'none';
         overlayEl.style.transform  = 'translateY(0)';
         overlayEl.style.clipPath   = '';
-        overlayEl.style.opacity    = seamlessNp ? '1' : '0';
+        overlayEl.style.opacity    = seamlessNp || handOff.length ? '1' : '0';
+        for (const o of handOff) {
+          o._swPending = false;
+          clearTimeout(o._swT);
+          o._animOut();
+          for (const el of [o._overlayEl, o._blurLayerEl]) {
+            if (!el) continue;
+            el.getAnimations().forEach((a) => a.cancel());
+            el.style.transition = 'none';
+            el.style.opacity = '0';
+          }
+        }
         overlayEl.style.overflowY = 'auto';
         overlayEl.style.overflowX = 'hidden';
         overlayEl.style.display   = 'block';
         overlayEl.scrollTop       = 0;
 
-        if (this._config?.filter_category === 'media' && npNaturalTop != null &&
+        // Opened from another category, Now Playing is still hidden by that filter when this measures, so it is adopted unmeasured.
+        if (this._config?.filter_category === 'media' &&
             this._npWrapper && this._subBadgesWrapper) {
           this._npSaved = {
             parent:  this._npWrapper.parentNode,
@@ -2160,13 +2253,13 @@
         }
 
         blurEl.style.transition    = 'none';
-        const seamlessSwitch       = _otherBlurUp(blurEl);
+        const seamlessSwitch       = _otherBlurUp(blurEl) || handOff.length > 0;
         blurEl.style.opacity       = seamlessSwitch ? '1' : '0';
         blurEl.style.display       = 'block';
         if (seamlessSwitch) {
           blurEl.style.background = 'transparent';
           requestAnimationFrame(() => requestAnimationFrame(() => {
-            blurEl.style.background = 'rgba(0, 0, 0, 0.22)'; // matches creation
+            blurEl.style.background = 'var(--hv-ov-bg, rgba(0, 0, 0, 0.22))';
             if (!this._showing) return;
             for (const el of _blurLayers) {
               if (el === blurEl) continue;
@@ -2401,6 +2494,13 @@
       } catch (_) {}
       // Appended last so the edge line paints above the veil.
       gradWrap.appendChild(barEdge);
+      // Minimal: the dashboard color fading out under the pinned badges, no blurred photo or edge line.
+      if (document.documentElement.classList.contains('hemma-hv')) {
+        Object.assign(grad.style, { backdropFilter: 'none', webkitBackdropFilter: 'none', maskImage: 'none', webkitMaskImage: 'none',
+          height: (badgeBottom + 44) + 'px', background: 'linear-gradient(var(--hv-bg) ' + (badgeBottom + 6) + 'px, transparent)' });
+        if (veil) veil.style.display = 'none';
+        barEdge.style.display = 'none';
+      }
 
       contentEl.insertBefore(gradWrap, contentEl.firstChild);
       this._gradientBlurEl = gradWrap;

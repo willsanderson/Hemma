@@ -392,8 +392,11 @@ hemma_now_playing:
                 if (!el) return;
                 const opts = { duration: dur, delay: delay, fill: 'both' };
                 if (pseudo) opts.pseudoElement = pseudo;
+                // The glass pseudo rests below full opacity; animating it to 1 drew its drop shadow heavier than at rest.
+                const base = pseudo ? (parseFloat(getComputedStyle(el, pseudo).opacity) || 0) : 1;
+                const frames = base < 1 ? kf.map((f) => Object.assign({}, f, { opacity: (parseFloat(f.opacity) * base).toFixed(3) })) : kf;
                 let anim;
-                try { anim = el.animate(kf, opts); } catch (e) { return; }
+                try { anim = el.animate(frames, opts); } catch (e) { return; }
                 anim.finished
                   .then(() => { try { anim.cancel(); } catch (e) {} })
                   .catch(() => {});
