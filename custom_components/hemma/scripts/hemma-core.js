@@ -3997,7 +3997,8 @@ window.hemmaMenuGlass = {
       if (data) {
         const g = document.createElement('i');
         g.className = 'side-glyph';
-        g.style.setProperty('--g', 'url("' + data + '")');
+        // Safari shares one decoded image per URL; tiles rebuilding the same icon blank this mask for a frame.
+        g.style.setProperty('--g', 'url("' + data + '%3C%21--side--%3E")');
         b.appendChild(g);
       } else if (window.HEMMA_ICONS && /^[a-z0-9_-]+$/.test(String(icon || ''))) {
         // A user's own icon in www/hemma/icons, served beside the shipped ones.
@@ -4723,7 +4724,7 @@ window.hemmaMenuGlass = {
         if (data) {
           const g = document.createElement('i');
           g.className = 'cat-glyph';
-          g.style.setProperty('--g', 'url("' + data + '")');
+          g.style.setProperty('--g', 'url("' + data + '%3C%21--side--%3E")');
           g.style.background = COLOR[c];
           b.appendChild(g);
         }
