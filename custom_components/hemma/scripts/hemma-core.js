@@ -4631,7 +4631,7 @@ window.hemmaMenuGlass = {
       page.classList.toggle('scenes', k === 'scenes');
       page.classList.toggle('home', k === 'home');
       const mini = this.shadowRoot.querySelector('.cat-mini');
-      if (mini) mini.classList.toggle('home', k === 'home');
+      if (mini) mini.classList.toggle('home', k === 'home' && !this._roomBack());
       // Overview on a desktop runs smaller; the tablet keeps its touch sizes.
       page.classList.toggle('compact', this._compact());
       // A room has its sensors where Home has its badges, from the phone's chip row for that room.
@@ -7421,6 +7421,8 @@ window.hemmaMenuGlass = {
       const room = this._roomBack();
       if (this._catPage) this._catPage.classList.toggle('backable', room);
       const want = !!(this._cat && this._catPage && (this._cat !== 'home' || room));
+      const mini = this.shadowRoot.querySelector('.cat-mini');
+      if (mini && this._cat) mini.classList.toggle('home', !want);
       // A tap on back hides it for good: until the page it leads to has landed, the old page still says it wants one.
       if (this._backGone) { if (want) { b.classList.remove('on'); return; } this._backGone = false; }
       if (want && !this._backPlaced && !this._backWait && this.classList.contains('hv')) {
