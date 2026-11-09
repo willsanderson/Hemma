@@ -769,6 +769,19 @@ window.hemmaMenuGlass = {
       }, ms);
     });
   }
+  function redrawForScheme() {
+    var st2 = [document];
+    for (var i = 0; i < st2.length && i < 3000; i++) {
+      var all = st2[i].querySelectorAll ? st2[i].querySelectorAll('*') : [];
+      for (var j = 0; j < all.length; j++) {
+        var n = all[j];
+        // button-card skips a plain requestUpdate when no entity changed.
+        if (n.tagName === 'BUTTON-CARD' && n._config && typeof n.requestUpdate === 'function') { try { n.requestUpdate('_config', null); } catch (e) {} }
+        if (n.shadowRoot) st2.push(n.shadowRoot);
+      }
+    }
+  }
+  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { setTimeout(redrawForScheme, 250); }); } catch (e) {}
   function uncover() {
     var cov = document.getElementById('hemma-hv-cover');
     if (cov) requestAnimationFrame(function () { requestAnimationFrame(function () { cov.remove(); }); });
