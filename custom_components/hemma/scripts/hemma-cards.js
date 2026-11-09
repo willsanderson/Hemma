@@ -2208,8 +2208,8 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     }
     .pt .car, .pdet .again { display: none; }
     @media (min-width: 769px) {
-      :host .wrap.plant .ptiles { flex: none; display: block; max-height: none; margin: 14px 0 0; padding: 2px 0; border-radius: var(--hemma-pop-tile-r, 20px); background: var(--hv-tile, rgba(var(--hv-pd, 0,0,0),0.2)); overflow: hidden; }
-      :host .wrap.plant .pt { width: 100%; display: flex; align-items: center; gap: 10px; padding: 0 14px 0 16px; min-height: 46px; border-radius: 0; background: none; }
+      :host .wrap.plant .ptiles { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; max-height: none; margin: 14px 0 0; padding: 2px 0; border-radius: var(--hemma-pop-tile-r, 20px); background: var(--hv-tile, rgba(var(--hv-pd, 0,0,0),0.2)); overflow: hidden; }
+      :host .wrap.plant .pt { width: 100%; display: flex; align-items: center; gap: 10px; padding: 0 14px 0 16px; flex: 0 1 48px; min-height: 36px; border-radius: 0; background: none; }
       :host .wrap.plant .pt + .pt::before { content: ""; position: absolute; left: 44px; right: 0; top: 0; height: 1px; background: rgba(var(--hv-pk, 255,255,255),0.08); }
       :host .wrap.plant .pt .top { flex: 1; gap: 12px; font-size: 15px; color: var(--hv-pi, #fff); }
       :host .wrap.plant .pt .top i { width: 18px; height: 18px; }
