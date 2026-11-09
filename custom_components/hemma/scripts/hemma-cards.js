@@ -2208,14 +2208,14 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     }
     .pt .car, .pdet .again { display: none; }
     @media (min-width: 769px) {
-      :host .wrap.plant .ptiles { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; max-height: none; margin: 20px 0 0; padding: 0; border-radius: var(--hemma-pop-tile-r, 20px); background: var(--hv-tile, rgba(var(--hv-pd, 0,0,0),0.2)); overflow: hidden; }
+      :host .wrap.plant .ptiles { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 0; max-height: none; margin: 20px 0 0; padding: 0; border-radius: var(--hemma-pop-tile-r, 20px); background: var(--hv-tile, rgba(var(--hv-pd, 0,0,0),0.2)); overflow: hidden; }
       :host .wrap.plant .pt { width: 100%; display: flex; align-items: center; gap: 10px; padding: 0 14px 0 16px; flex: 0 1 48px; min-height: 36px; border-radius: 0; background: none; }
-      :host .wrap.plant .pt + .pt::before { content: ""; position: absolute; left: 44px; right: 0; top: 0; height: 1px; background: rgba(var(--hv-pk, 255,255,255),0.08); }
+      :host .wrap.plant .pt + .pt::before { content: ""; position: absolute; left: 46px; right: 33px; top: 0; height: 1px; background: rgba(var(--hv-pk, 255,255,255),0.08); }
       :host .wrap.plant .pt .top { flex: 1; gap: 12px; font-size: 15px; color: var(--hv-pi, #fff); }
       :host .wrap.plant .pt .top i { width: 18px; height: 18px; }
       :host .wrap.plant .pt strong { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
       :host .wrap.plant .pt strong em { font-size: 12px; font-weight: 500; }
-      :host .wrap.plant .pt.bad strong, :host .wrap.plant .pt.bad strong em { color: var(--hv-pw-ink, var(--hemma-color-orange, #FF9230)); }
+      :host .wrap.plant .pt.bad strong, :host .wrap.plant .pt.bad strong em { color: var(--hemma-color-orange, #FF9230); }
       :host .wrap.plant .pt :is(.rng, .w) { display: none; }
       :host .wrap.plant .pt .car { display: block; flex: none; width: 7px; height: 12px; margin-left: 2px; background: rgba(var(--hv-pk2, 235,235,245),0.35); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 12'%3E%3Cpath d='M1 1l5 5-5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 12'%3E%3Cpath d='M1 1l5 5-5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; }
       :host .wrap.plant .ptiles > .pt:last-child:nth-child(odd) { width: 100%; justify-self: stretch; }
