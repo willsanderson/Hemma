@@ -5262,7 +5262,6 @@ const saverXfade = (el, bg) => {
     };
     paint(tone, toneN);
     let CX = 0, CY = 0, secR = 0, sweep = null, cornerA = 0;
-    // Classic's dial is warped so the 2, 4, 8 and 10 o'clock ticks land in the screen's corners; the hands follow the same map.
     const warp = (deg) => {
       if (!cornerA) return deg;
       const d = ((deg % 360) + 360) % 360, q = Math.floor(d / 90), t = d - q * 90, C = cornerA;
@@ -5313,7 +5312,7 @@ const saverXfade = (el, bg) => {
       let out = `<rect class="fbg" width="${W}" height="${H}"/>`;
       if (classic) {
         const m = Math.min(W, H) * 0.04, hw = W / 2 - m, hh = H / 2 - m;
-        cornerA = Math.atan2(hw, hh) * 180 / Math.PI;
+        cornerA = 0;
         const k = Math.min(hw, hh), R = matchMedia('(hover: hover) and (pointer: fine)').matches ? 10 : Math.min(W, H) < 600 ? 55 : 18, rr = Math.max(R - m, k * 0.04);
         for (let i = 0; i < 60; i++) {
           const a = warp(i * 6) * Math.PI / 180, big = i % 5 === 0, e = edgeAt(a, hw, hh, rr), L = big ? k * 0.16 : k * 0.05, dx = Math.sin(a), dy = -Math.cos(a);
