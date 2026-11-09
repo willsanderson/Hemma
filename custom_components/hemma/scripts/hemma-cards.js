@@ -2206,6 +2206,25 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       :host .wrap.plant .pt .top { font-size: 13px; }
       :host .wrap.plant .pt strong { font-size: 24px; }
     }
+    .pt .car, .pdet .again { display: none; }
+    @media (min-width: 769px) {
+      :host .wrap.plant .ptiles { flex: none; display: block; max-height: none; margin: 14px 0 0; padding: 2px 0; border-radius: var(--hemma-pop-tile-r, 20px); background: var(--hv-tile, rgba(var(--hv-pd, 0,0,0),0.2)); overflow: hidden; }
+      :host .wrap.plant .pt { width: 100%; display: flex; align-items: center; gap: 10px; padding: 0 14px 0 16px; min-height: 46px; border-radius: 0; background: none; }
+      :host .wrap.plant .pt + .pt::before { content: ""; position: absolute; left: 44px; right: 0; top: 0; height: 1px; background: rgba(var(--hv-pk, 255,255,255),0.08); }
+      :host .wrap.plant .pt .top { flex: 1; gap: 12px; font-size: 15px; color: var(--hv-pi, #fff); }
+      :host .wrap.plant .pt .top i { width: 18px; height: 18px; }
+      :host .wrap.plant .pt strong { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+      :host .wrap.plant .pt strong em { font-size: 12px; font-weight: 500; }
+      :host .wrap.plant .pt.bad strong, :host .wrap.plant .pt.bad strong em { color: var(--hv-pw-ink, var(--hemma-color-orange, #FF9230)); }
+      :host .wrap.plant .pt :is(.rng, .w) { display: none; }
+      :host .wrap.plant .pt .car { display: block; flex: none; width: 7px; height: 12px; margin-left: 2px; background: rgba(var(--hv-pk2, 235,235,245),0.35); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 12'%3E%3Cpath d='M1 1l5 5-5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 12'%3E%3Cpath d='M1 1l5 5-5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; }
+      :host .wrap.plant .ptiles > .pt:last-child:nth-child(odd) { width: 100%; justify-self: stretch; }
+      :host .wrap.plant .pai.res .ps { -webkit-line-clamp: 2; }
+      :host .wrap.plant .pai.res .pillb { display: none; }
+      :host .wrap.plant .pai.res::after { content: ""; flex: none; width: 7px; height: 12px; margin-right: 2px; background: rgba(var(--hv-pk2, 235,235,245),0.35); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 12'%3E%3Cpath d='M1 1l5 5-5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 12'%3E%3Cpath d='M1 1l5 5-5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; }
+      :host .wrap.plant .pdet .mhd .pillb { display: none; }
+      :host .wrap.plant .pdet .again { display: block; flex: none; align-self: stretch; margin-top: 4px; }
+    }
   `;
   class HemmaPlantPanel extends HTMLElement {
     hemmaAnchor() { const el = this.shadowRoot && this.shadowRoot.querySelector('.slab'); return el ? { el, card: true } : null; }
@@ -2333,8 +2352,8 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         const [w, warn] = word(type, val);
         const ic = PLANT_ICON[type] ? ICX(PLANT_ICON[type]) : ICO(PLANT_NAMED[type] || 'plant');
         const w2 = type === 'illuminance' && badTypes[type] === 'low' ? T('plant.too_dark', 'Too dark') : w;
-        return `<button type="button" class="pt" data-id="${esc(eid)}"><span class="top">${ic}<span>${esc(NAME[type] || label(eid))}</span></span>`
-          + `<strong>${val == null ? '—' : esc(fmt(val))}${val != null && unit ? `<em>${esc(unit)}</em>` : ''}</strong>${bar(type, val)}<span class="w${warn ? ' bad' : w2 ? ' good' : ''}">${esc(w2)}</span></button>`;
+        return `<button type="button" class="pt${warn ? ' bad' : ''}" data-id="${esc(eid)}"><span class="top">${ic}<span>${esc(NAME[type] || label(eid))}</span></span>`
+          + `<strong>${val == null ? '—' : esc(fmt(val))}${val != null && unit ? `<em>${esc(unit)}</em>` : ''}</strong>${bar(type, val)}<span class="w${warn ? ' bad' : w2 ? ' good' : ''}">${esc(w2)}</span><span class="car"></span></button>`;
       }).join('') : `<div class="empty">${esc(T('plant.none_configured', 'No plant sensors configured'))}</div>`;
       if (grid._html !== html) { grid._html = html; grid.innerHTML = html; }
       this._paintAI();
@@ -2374,7 +2393,8 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         const list = (items, c, label) => (Array.isArray(items) && items.length ? `<div><span class="pk">${esc(label)}</span><ul class="${c}">${items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '');
         html = `<div class="px"><span class="pv"><i></i>${esc(head)}</span><p class="ps">${esc(r.summary)}</p></div>${btn(T('plant.ai_again', 'Check Again'))}`;
         dhtml = `<div class="mhd"><button type="button" class="back" aria-label="${esc(T('ui.back', 'Back'))}">${BACK_SVG}</button><span class="mt"><span class="pv"><i></i><span>${esc(head)}</span></span><small>${esc(T('plant.ai_footer', 'Assessment · {when}', { when }))}</small></span>${btn(T('plant.ai_again', 'Check Again'))}</div>`
-          + `<p>${esc(r.summary)}</p><div class="pcols">${list(r.points, 'pts', T('plant.ai_points', 'Observations'))}${list(r.tips, 'tips', T('plant.ai_tips', 'Care tips'))}</div>`;
+          + `<p>${esc(r.summary)}</p><div class="pcols">${list(r.points, 'pts', T('plant.ai_points', 'Observations'))}${list(r.tips, 'tips', T('plant.ai_tips', 'Care tips'))}</div>`
+          + `<button type="button" class="pillb again" data-check="1">${esc(T('plant.ai_again', 'Check Again'))}</button>`;
       } else html = row(T('plant.ai_idle', "Checks the last 7 days of readings against this plant's needs."), btn(T('plant.ai_check', 'Check Now')));
       if (box._html !== html) { box._html = html; box.innerHTML = html; }
       box.className = 'pai' + (cls ? ' res ' + cls : '');
