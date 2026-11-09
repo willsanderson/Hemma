@@ -13455,6 +13455,7 @@ window.hemmaMenuGlass = {
       + 'html.hemma-hv .hemma-nc{--hv-nc-fill:color-mix(in oklab, var(--hv-bg) 12%, #ffffff);--hv-nc-ink:#1c1c1e;--hv-nc-dim:rgba(60,60,67,0.6);}'
       + 'html.hemma-hv:not(.hv-light) .hemma-nc{--hv-nc-fill:color-mix(in oklab, var(--hv-bg) 45%, rgb(95,95,99));--hv-nc-ink:#fff;--hv-nc-dim:rgba(235,235,245,0.6);}'
       + 'html.hemma-hv.hv-ink-w .hemma-nc{--hv-nc-fill:color-mix(in oklab, var(--hv-bg) 12%, #ffffff);--hv-nc-ink:#1c1c1e;--hv-nc-dim:rgba(60,60,67,0.6);}'
+      + 'html.hemma-hv.hv-dark .hemma-nc{--hv-nc-fill:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 40%, rgb(22 22 24)) 78%, transparent);}'
       + 'html.hemma-hv.hv-ink-w .hemma-nc :is(.hemma-nc-title, .hemma-nc-empty, .hemma-nc-ghead b){color:#fff !important;}'
       + HVC + '{background:var(--hv-nc-fill) !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;box-shadow:0 0 0 0.5px rgba(0,0,0,0.08), 0 6px 20px rgba(0,0,0,0.10) !important;}'
       + HVC + '::before{display:none !important;}'
