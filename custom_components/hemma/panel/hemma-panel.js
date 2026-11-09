@@ -6353,6 +6353,8 @@ class HemmaPanel extends HTMLElement {
         :host(.phone) #save .s-short { display:inline; }
         :host(.phone) #diffs .s-long { display:none; }
         :host(.phone) #diffs .s-short { display:inline; }
+        :host(.tight) :is(#save, #diffs) .s-long { display:none; }
+        :host(.tight) :is(#save, #diffs) .s-short { display:inline; }
         /* ── the phone's nav bar ───────────────────────────────────────────
            A room is the document, and a nav bar names the document. Above this
            width the rail names it and the strip of pills is a reasonable second
@@ -13286,7 +13288,8 @@ class HemmaPanel extends HTMLElement {
     });
   }
 
-  _placeCanvasHead() {
+  _placeCanvasHead(retry) {
+    if (!retry) this.classList.remove("tight");
     const head = this.shadowRoot.querySelector(".canvashead");
     const row = this.shadowRoot.querySelector(".toprow");
     const canvas = this.shadowRoot.querySelector(".canvas");
@@ -13361,6 +13364,7 @@ class HemmaPanel extends HTMLElement {
     const left = Math.min(want, Math.round(stop - hw - 14));
     if (left !== want) head.style.setProperty("--headx", left + "px");
     const ok = left >= Math.max(start + 14, cols - 1);
+    if (!ok && !retry) { this.classList.add("tight"); this._headFit = null; return this._placeCanvasHead(true); }
     this._headFit = { sig, ok };
     if (!ok) toCanvas();
   }
