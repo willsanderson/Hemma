@@ -8271,6 +8271,9 @@ class HemmaPanel extends HTMLElement {
         .card.map .hv .mini-catpage .mc-chips + .mc-h { margin-top:calc(56px * var(--k)); }
         .card.map .mini-catpage .mc-chips.cat + .mc-h { margin-top:calc(22px * var(--pv-k, 0.593)); }
         .card.map .hv .mini-catpage .mc-duo { display:grid; align-items:start; margin-top:calc(46px * var(--k)); }
+        .card.map .miniroom:not(.hv) .mini-catpage.ov .mc-duo { display:grid; align-items:start; margin-top:calc(36px * var(--pv-k, 0.593)); }
+        .card.map .miniroom:not(.hv) .mini-catpage.ov .mc-duo > * { min-width:0; }
+        .card.map .miniroom:not(.hv) .mini-catpage.ov .mc-duo .mc-h { margin-top:0; }
         .card.map .hv .mini-catpage .mc-duo > * { min-width:0; }
         .card.map .hv .mini-catpage .mc-duo .mc-h { margin-top:0; }
         .card.map .hv .mini-catpage .mc-badges { --bl:calc(14px * var(--k)); --bv:calc(13px * var(--k)); --bcg:calc(8px * var(--k)); --bmh:calc(46px * var(--k)); }
@@ -18969,6 +18972,9 @@ class HemmaPanel extends HTMLElement {
     const hvRealW = (this._miniSize === "desktop" ? this._pvDeskW() : 1180) - (host.classList.contains("sidebar") ? 264 + (this._miniSize === "desktop" ? 15 : 20) : 22) - 22;
     const hvCols = Math.max(1, Math.floor((hvRealW + 10) / 230));
     const hvTwoW = Math.min(2 * (hvRealW - 10 * (hvCols - 1)) / hvCols + 10, 400) * scale;
+    const gCols = Math.max(1, Math.floor((hvRealW + 10) / (this._miniSize === "desktop" ? 175 : 200)));
+    const twoW = hv ? hvTwoW : Math.min(2 * (hvRealW - 10 * (gCols - 1)) / gCols + 10, 400) * scale;
+    let ovHome = false;
     let npH = null, npRow = null, camH = null, camRow = null;
     if (w) w.style.top = Math.round((titleTop + 20.5) * scale) + "px";
     // Desktop Overview: the title in the toolbar row, the forecast beside the buttons (hemma-core .cat.compact).
@@ -19121,6 +19127,7 @@ class HemmaPanel extends HTMLElement {
       return Array.isArray(kids) && kids.length ? kids : [id];
     };
     const scope = home && here && rooms[0] !== here ? String(here.name || "").trim().toLowerCase() : "";
+    ovHome = page.classList.contains("ov") && home && !scope;
     if (home && !scope) {
       // As on the dashboard, the section only shows while something plays.
       const tiles = [...host.querySelectorAll(".mz-np .mini-nptile")]
@@ -19140,7 +19147,7 @@ class HemmaPanel extends HTMLElement {
           npW = 2 * (realW * scale - 5.9 * (cols - 1)) / cols + 5.9;
         }
         if (page.classList.contains("ov")) npW = Math.min(npW, (this._miniSize === "desktop" ? 332 : 352) * scale);
-        if (hv) npW = hvTwoW;
+        if (hv || ovHome) npW = twoW;
         tiles.forEach((t) => { t.style.width = t.style.minWidth = t.style.maxWidth = npW + "px"; });
         const row = document.createElement("div");
         row.className = "mc-np";
@@ -19171,16 +19178,17 @@ class HemmaPanel extends HTMLElement {
         cw = Math.min(cw, (this._miniSize === "desktop" ? 332 : 352) * scale);
       }
       if (hv) cw = home && !scope ? hvTwoW : 440 * scale;
+      else if (ovHome) cw = twoW;
       const row = this._camRow(camIds, "mc-cams");
       row.style.setProperty("--cam-w", cw + "px");
       if (page.classList.contains("ov")) { row.style.setProperty("--cam-h", (hv && !(home && !scope) ? 200 : 140) * scale + "px"); row.style.setProperty("--cam-ar", "auto"); }
       page.appendChild(row);
       camH = ch; camRow = row;
     }
-    if (hv && home && !scope && (npRow || camRow)) {
+    if ((hv || ovHome) && home && !scope && (npRow || camRow)) {
       const duo = document.createElement("div");
       duo.className = "mc-duo";
-      duo.style.gridTemplateColumns = "repeat(2, " + hvTwoW.toFixed(2) + "px)";
+      duo.style.gridTemplateColumns = "repeat(2, " + twoW.toFixed(2) + "px)";
       duo.style.columnGap = (10 * scale).toFixed(2) + "px";
       [[npH, npRow], [camH, camRow]].forEach(([h, r]) => {
         if (!r) return;
