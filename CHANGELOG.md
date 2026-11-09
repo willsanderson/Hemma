@@ -52,6 +52,9 @@ Hemma's biggest update yet: setup without YAML, a second style, Minimal, alongsi
 - **On a Mac with the sidebar closed, a category page's back button sits below the clock** instead of on top of it.
 - **On the iPad, content blurs as it scrolls under the top bar in Safari too.** With Minimal on a photo, it fades under blur alone, with no color tint.
 - **A swipe up or down that starts on a scene tile scrolls the page.**
+- **Light and dark mode follow your device as it changes**, with no refresh.
+- **The sidebar's Climate and Lights icons no longer blink** in Safari when a page loads or you switch rooms.
+- **In Overview with the sidebar open, a room's small title sits beside the back button** as you scroll.
 - **A refresh shows the dashboard all at once.** The top right buttons and the iPad's tab bar no longer appear ahead of the page.
 
 - **Glass badges on a Mac match Minimal's height**, 44 points like the sidebar's Home pill, with their text a point larger.
@@ -104,12 +107,14 @@ Hemma's biggest update yet: setup without YAML, a second style, Minimal, alongsi
 - **The Plex popup fits without scrolling** on every device.
 - **The Updates popup on phones** matches the Mac and iPad, with Update All at the bottom.
 - **Phone popups are sized like iPhone controls**: tall rounded sliders, the title and status in the same place on every popup, and smaller phones shrink the slider so nothing overlaps.
-- **Plants.** A compact popup with the plant's readings, and an Assessment card that checks the last week of readings against the plant's needs using Home Assistant's AI Task and says what to do. Tap it and it grows over the readings to show the full advice. Choose the AI under AI for assessments in Hemma Studio; without one, the card stays hidden.
+- **Plants.** A compact popup with the plant's readings, and on Mac and iPad they're one list, with any reading out of range in orange and each row opening its sensor's details. An Assessment card that checks the last week of readings against the plant's needs using Home Assistant's AI Task and says what to do. Tap it and it grows over the readings to show the full advice, with Check Again at the bottom. Choose the AI under AI for assessments in Hemma Studio; without one, the card stays hidden.
 - **The Now Playing tile's shadow stays put** when its waveform turns on or off.
 - **The full-screen player slides up cleanly in Safari**, without a half-drawn band at the bottom.
 
 ### Hemma Studio
 
+- **The sidebar entry is called Hemma Studio.**
+- **The Stacked screensaver's preview shows the weather**, as it does on the dashboard.
 - **Hemma Studio's Appearance settings are simpler.** Background picks the color and shows its light and dark shades side by side, Match Now Playing sits right under it, and Wallpaper (your room photos) only appears when the style uses photos. Studio's preview matches the dashboard in Minimal, including the one-tile Now Playing.
 - **The screensaver's Preview button uses your settings**, so you can try each Background color from Studio.
 - **Hemma Studio:** the line above the greeting can show the date and weather together, and on phones each Background color in the dropdown shows its day and night shades.
