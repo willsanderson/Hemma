@@ -147,7 +147,7 @@ hemma_scene_row:
         - overflow-y: |
             [[[ return variables.layout === 'grid' ? 'visible' : 'hidden'; ]]]
         - touch-action: |
-            [[[ return variables.layout === 'grid' ? 'auto' : 'pan-x'; ]]]
+            [[[ return variables.layout === 'grid' ? 'auto' : 'pan-x pan-y'; ]]]
         - overscroll-behavior-x: contain
         - scrollbar-width: none
         - "-ms-overflow-style": none
