@@ -1,6 +1,9 @@
 {
   "domain": "hemma",
   "name": "Hemma",
+  "after_dependencies": [
+    "recorder"
+  ],
   "codeowners": [
     "@willsanderson"
   ],
