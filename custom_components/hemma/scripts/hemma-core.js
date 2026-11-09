@@ -8675,6 +8675,7 @@ window.hemmaMenuGlass = {
             top: calc(var(--hemma-nav-row-center, 66px) + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
             transform: translateY(-50%); --hemma-chrome-btn-size: 34px;
           }
+          .cat-chrome > :is(.cap-rim, .cap-rim-in) { position: absolute; pointer-events: none; }
           @media (pointer: coarse) { .cat-chrome { --hemma-bell-count-top: 0px; --hemma-bell-count-right: 1px; } }
           :host(.hv) .cat-chrome { --hemma-bell-count-top: 1.5px; --hemma-bell-count-right: 2.5px; --hemma-settings-ink: var(--hv-cap-ink, var(--hemma-chrome-ink, #111)); }
           .cat-chrome > :not(.sep) { flex: none; width: var(--hemma-chrome-btn-size); height: var(--hemma-chrome-btn-size); }
