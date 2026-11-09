@@ -6792,7 +6792,7 @@ class HemmaPanel extends HTMLElement {
           --tbl:12px;
           --hfill:24%;
           --chrome-btn:18.9px; --chrome-btn-gap:6.7px;
-          --chrome-top-btn:26.1px;
+          --chrome-top-btn:32.95px;
           --nav-lift:8.5px;
         }
         .card.map.size-tablet {
@@ -19876,7 +19876,7 @@ class HemmaPanel extends HTMLElement {
     q(".mini-name").textContent = this._room === 0 && V.hero_title === "greeting"
       ? _studioGreeting(this._hass) : (room.name || room.path || _sx("Room"));
     wx.classList.toggle("wxline", !dateUp);
-    if (hv && this._miniSize === "desktop" && !this._ovOn(V)) {
+    if (hv && this._miniSize !== "phone" && !this._ovOn(V)) {
       const fw = Object.assign(document.createElement("div"), { className: "hv-date fwx" });
       if (deg != null) fw.appendChild(Object.assign(document.createElement("b"), { textContent: Math.round(deg) + "°" }));
       let fc = "";
