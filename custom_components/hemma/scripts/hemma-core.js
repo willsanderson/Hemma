@@ -8576,7 +8576,7 @@ window.hemmaMenuGlass = {
           :host(.hv:not(.hvp)) .cat-bg { background: var(--hv-bg, #49575c); -webkit-backdrop-filter: none; backdrop-filter: none; }
           :host(.hv:not(.base)) .cat-bg { background: color-mix(in oklab, var(--hv-bg, #49575c) 40%, transparent); -webkit-backdrop-filter: blur(40px) saturate(1.1); backdrop-filter: blur(40px) saturate(1.1); }
           :host(.hv) .cat-bg.show { transition: left .48s cubic-bezier(0.32, 0.72, 0, 1); }
-          :host(.hvp) { --hv-veil: var(--hv-veil-photo); --hv-veil-bf: blur(28px) saturate(1.2); --hv-veil-mask: linear-gradient(to bottom, #000 55%, transparent); --hv-veil-mask-d: linear-gradient(to bottom, #000 60%, transparent); }
+          :host(.hvp) { --hv-veil: none; --hv-veil-bf: blur(28px) saturate(1.2); --hv-veil-mask: linear-gradient(to bottom, #000 55%, transparent); --hv-veil-mask-d: linear-gradient(to bottom, #000 60%, transparent); }
           .cat-photo { position: fixed; inset: 0; z-index: 37; overflow: hidden; pointer-events: none; }
           .cat {
             z-index: 40; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
