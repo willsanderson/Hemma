@@ -6426,8 +6426,11 @@ window.hemmaMenuGlass = {
         }
         n.classList.toggle('pushed', pushed);
       });
+      const low = !pushed && this._variant !== 'tablet' && !['hv', 'base', 'compact'].some((c) => this.classList.contains(c));
+      if (this._sideBack) this._sideBack.classList.toggle('low', low);
       const page = this._catPage;
       if (!page) return;
+      page.classList.toggle('low', low);
       clearTimeout(this._liftT);
       if (instant) { page.classList.add('now'); page.classList.toggle('lifted', lift); requestAnimationFrame(() => requestAnimationFrame(() => { page.classList.remove('now'); this._hvBackPos(); })); }
       else if (page.classList.contains('lifted') !== lift) { this._liftAt = performance.now() + 700; this._liftT = setTimeout(() => {
@@ -8549,6 +8552,8 @@ window.hemmaMenuGlass = {
             transition: opacity .28s ease, transform .4s cubic-bezier(.34,1.56,.64,1);
           }
           .side-back.on { opacity: 1; transform: none; pointer-events: auto; }
+          .side-back.low { top: calc(var(--hemma-nav-row-center, 66px) + 20px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
+          .cat.low:not(.home) .cat-in { padding-top: calc(var(--hemma-chrome-row-top-tablet, 46px) + 96px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
           /* Gone at once, never fading: the greeting arrives where it stood in the same frame and would show through it. */
           .side-back:not(.on) { transition: none; }
           .side-back svg { width: 12px; height: 20px; display: block; margin-right: 3px; }
