@@ -33,7 +33,7 @@ Hemma's biggest update yet: setup without YAML, a second style, Minimal, alongsi
 - **Opening a dashboard on a new device starts in Minimal**, without a flash of Glass first.
 - **Backdrop.** Minimal sits on your room photo with a soft blur, a gradient, or a flat color, and Light mode text chooses dark or white text by day.
 - **Separate phone choices.** Phone backdrop and Phone light mode text let the phone use its own backdrop and text color, while Mac and iPad keep theirs.
-- **At night the toolbar, tab bar and back buttons are a dark pill**, and off tiles, popups and notification cards are tuned for each text color so everything stays easy to read.
+- **At night the toolbar, tab bar, back buttons, badges and notification cards share one dark fill**, and off tiles, popups and notification cards are tuned for each text color so everything stays easy to read.
 - **Minimal fixes:** the Energy tile's icon stays neutral until it's active, popup buttons are flat in light and dark, light-mode popups use dark icons, battery percentages are easier to read, and the tab bar and buttons on iPad no longer have a hairline edge.
 
 ### Dashboard
@@ -48,6 +48,10 @@ Hemma's biggest update yet: setup without YAML, a second style, Minimal, alongsi
 - **The ... menu dims Now Playing** behind it, as Notifications do, so the two never stack.
 - **Pages open at their final width with icons already drawn**, instead of resizing or filling in after they appear.
 - **Badges no longer slide up and snap back** when a page's badge row rebuilds.
+- **A selected badge's icon takes a deeper color**, so yellow and mint read clearly on the white pill.
+- **On a Mac with the sidebar closed, a category page's back button sits below the clock** instead of on top of it.
+- **On the iPad, content blurs as it scrolls under the top bar in Safari too.** With Minimal on a photo, it fades under blur alone, with no color tint.
+- **A swipe up or down that starts on a scene tile scrolls the page.**
 
 - **Glass badges on a Mac match Minimal's height**, 44 points like the sidebar's Home pill, with their text a point larger.
 - **A new header on Mac and iPad.** The greeting sits beside a large weather reading with the condition and the day's high and low, and the badge row lines up on every page. On a Mac the date sits above the clock in the sidebar, with the greeting on the clock's line and the badges level with Home; the iPad leaves the date to its status bar.
@@ -98,7 +102,7 @@ Hemma's biggest update yet: setup without YAML, a second style, Minimal, alongsi
 - **The Plex popup fits without scrolling** on every device.
 - **The Updates popup on phones** matches the Mac and iPad, with Update All at the bottom.
 - **Phone popups are sized like iPhone controls**: tall rounded sliders, the title and status in the same place on every popup, and smaller phones shrink the slider so nothing overlaps.
-- **Plants.** A compact popup with the plant's readings, and an Assessment card that checks the last week of readings against the plant's needs using Home Assistant's AI Task and says what to do. Choose the AI under AI for assessments in Hemma Studio; without one, the card stays hidden.
+- **Plants.** A compact popup with the plant's readings, and an Assessment card that checks the last week of readings against the plant's needs using Home Assistant's AI Task and says what to do. Tap it and it grows over the readings to show the full advice. Choose the AI under AI for assessments in Hemma Studio; without one, the card stays hidden.
 - **The Now Playing tile's shadow stays put** when its waveform turns on or off.
 - **The full-screen player slides up cleanly in Safari**, without a half-drawn band at the bottom.
 
@@ -107,6 +111,7 @@ Hemma's biggest update yet: setup without YAML, a second style, Minimal, alongsi
 - **Hemma Studio's Appearance settings are simpler.** Background picks the color and shows its light and dark shades side by side, Match Now Playing sits right under it, and Wallpaper (your room photos) only appears when the style uses photos. Studio's preview matches the dashboard in Minimal, including the one-tile Now Playing.
 - **The screensaver's Preview button uses your settings**, so you can try each Background color from Studio.
 - **Hemma Studio:** the line above the greeting can show the date and weather together, and on phones each Background color in the dropdown shows its day and night shades.
+- **Studio's preview matches the dashboard more closely**: the Glass photo and its wash, the narrower margins, the Media count, the top right pill lined up with the tab bar, the weather line on the iPad, and Minimal Overview's columns.
 - **Studio's preview matches the dashboard** in both styles: the back button beside a category's title, Climate's temperature, humidity and air quality row, the selected badge's color, and badges that keep their fill on hover.
 
 ### Everything else
