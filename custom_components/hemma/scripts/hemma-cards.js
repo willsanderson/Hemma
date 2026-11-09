@@ -2208,7 +2208,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     }
     .pt .car, .pdet .again { display: none; }
     @media (min-width: 769px) {
-      :host .wrap.plant .ptiles { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; max-height: none; margin: 14px 0 0; padding: 2px 0; border-radius: var(--hemma-pop-tile-r, 20px); background: var(--hv-tile, rgba(var(--hv-pd, 0,0,0),0.2)); overflow: hidden; }
+      :host .wrap.plant .ptiles { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; max-height: none; margin: 20px 0 0; padding: 0; border-radius: var(--hemma-pop-tile-r, 20px); background: var(--hv-tile, rgba(var(--hv-pd, 0,0,0),0.2)); overflow: hidden; }
       :host .wrap.plant .pt { width: 100%; display: flex; align-items: center; gap: 10px; padding: 0 14px 0 16px; flex: 0 1 48px; min-height: 36px; border-radius: 0; background: none; }
       :host .wrap.plant .pt + .pt::before { content: ""; position: absolute; left: 44px; right: 0; top: 0; height: 1px; background: rgba(var(--hv-pk, 255,255,255),0.08); }
       :host .wrap.plant .pt .top { flex: 1; gap: 12px; font-size: 15px; color: var(--hv-pi, #fff); }
@@ -2219,7 +2219,12 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       :host .wrap.plant .pt :is(.rng, .w) { display: none; }
       :host .wrap.plant .pt .car { display: block; flex: none; width: 7px; height: 12px; margin-left: 2px; background: rgba(var(--hv-pk2, 235,235,245),0.35); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 12'%3E%3Cpath d='M1 1l5 5-5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 12'%3E%3Cpath d='M1 1l5 5-5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; }
       :host .wrap.plant .ptiles > .pt:last-child:nth-child(odd) { width: 100%; justify-self: stretch; }
-      :host .wrap.plant .pai.res .ps { -webkit-line-clamp: 2; }
+      :host .wrap.plant .pai.res { min-height: 46px; padding: 0 14px 0 16px; }
+      :host .wrap.plant .pai.res .ps { display: none; }
+      :host .wrap.plant .pt:is(:hover, :focus-visible)::before, :host .wrap.plant .pt:is(:hover, :focus-visible) + .pt::before { opacity: 0; }
+      :host .wrap.plant .wpill { margin: 2px 0 0; padding: 5px 12px; font-size: 13px; gap: 6px; }
+      :host .wrap.plant .wpill i { width: 13px; height: 13px; }
+      :host .wrap.plant .pphoto { margin-bottom: 12px; }
       :host .wrap.plant .pai.res .pillb { display: none; }
       :host .wrap.plant .pai.res::after { content: ""; flex: none; width: 7px; height: 12px; margin-right: 2px; background: rgba(var(--hv-pk2, 235,235,245),0.35); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 12'%3E%3Cpath d='M1 1l5 5-5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 12'%3E%3Cpath d='M1 1l5 5-5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; }
       :host .wrap.plant .pdet .mhd .pillb { display: none; }
