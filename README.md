@@ -69,9 +69,9 @@ Tap a tile and its popup grows out of it. Each kind of device gets its own, buil
   </picture>
 </p>
 
-## Screensavers for the wall
+## Screensavers
 
-A wall tablet left alone becomes a clock. **Today** shows the date, the weather and what's playing or your home at a glance, **Clock** fills the screen with a Classic, Numerals or Stacked face, and **Recently Added** shows your newest Plex posters. Each one takes your dashboard's colors, day and night.
+Brand new screensavers available, perfect for a wall-mounted tablet. **Today** shows the date, the weather and what's playing or your home at a glance, **Clock** fills the screen with a Classic, Numerals or Stacked face, and **Recently Added** shows your newest Plex posters. Each one takes your dashboard's colors, day and night.
 
 <p align="center">
   <picture>
