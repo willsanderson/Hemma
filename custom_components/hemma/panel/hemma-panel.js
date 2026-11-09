@@ -6605,7 +6605,7 @@ class HemmaPanel extends HTMLElement {
             rgba(255,255,255,0.75) 360deg);
         }
         :host(.phone.hvbg) .detailbar .back { background-color:rgba(255,255,255,0.16); background-image:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
-        :host(.phone.hvbg) .detailbar .back:is(:hover, :active):not(:disabled) { background-color:rgba(255,255,255,0.24); }
+        :host(.phone.hvbg) .detailbar .back:active:not(:disabled) { background-color:rgba(255,255,255,0.24); }
         :host(.phone.hvbg) .detailbar .back::before, :host(.phone.hvbg) .detailbar .back::after { display:none; }
         :host(.phone.hvbg) .detailbar .plus { background:rgba(255,255,255,0.16); box-shadow:none; }
         :host(.phone.hvbg.is-light) .detailbar :is(.back, .plus) { background-color:rgba(255,255,255,0.72); color:#1d1d1f; }
