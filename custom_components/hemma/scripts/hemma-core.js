@@ -3620,6 +3620,12 @@ window.hemmaMenuGlass = {
     getCardSize() { return 1; }
 
     connectedCallback() {
+      if (!this._bootSeen) {
+        this._bootSeen = true;
+        let ov = false;
+        try { ov = this._overview(); } catch (_) {}
+        if (ov) { this.classList.add('booting'); clearTimeout(this._bootT); this._bootT = setTimeout(() => this.classList.remove('booting'), 2500); }
+      }
       window.addEventListener('location-changed', this._onRoute, true);
       window.addEventListener('popstate', this._onRoute, true);
       window.addEventListener('resize', this._onResize);
@@ -8417,7 +8423,7 @@ window.hemmaMenuGlass = {
           .status .extra { text-transform: none; }
           .status .extra { margin-left: .9em; }
           .side.open { display: flex; pointer-events: auto; }
-          :host(.booting) :is(.side, .status) { opacity: 0; }
+          :host(.booting) :is(.side, .status, .cat-chrome, .cat-batt, .bar) { opacity: 0; }
           .side, .side * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
           .side-grip {
             position: absolute; top: 0; bottom: 0; right: -14px; width: 28px; z-index: 2;
