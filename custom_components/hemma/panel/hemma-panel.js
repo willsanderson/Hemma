@@ -8280,6 +8280,7 @@ class HemmaPanel extends HTMLElement {
         .card.map .hv .mini-catpage .mc-scene ha-icon { --mdc-icon-size:calc(24px * var(--k)); }
         .card.map .hv .mini-catpage .mc-grid {
           grid-auto-rows:calc(76px * var(--k)); gap:calc(10px * var(--k));
+          grid-template-columns:repeat(auto-fill, minmax(calc(220px * var(--k)), 1fr));
           --tn:calc(15px * var(--k)); --ts:calc(15px * var(--k)); --tc:calc(44px * var(--k));
         }
         .card.map .hv .mini-catpage .mc-grid .mtile:not(.big) { padding:0 calc(14px * var(--k)); gap:calc(12px * var(--k)); border-radius:calc(22px * var(--k)); }
