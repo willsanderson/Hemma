@@ -5453,9 +5453,7 @@ window.hemmaMenuGlass = {
       return list.length ? list : false;
     }
 
-    // HA's Energy dashboard reads the same numbers: each device's change in long-term statistics, by the hour for a day, by the day for a week or month.
-    // Drawn as a usage chart: the total first, stacked bars with a dotted grid, the scale on the right and a dashed average.
-    // A device tapped in the legend, the list or the split bar filters both cards to it, the bars easing to its share; tapping it again, All Devices or the empty chart goes back.
+    // Each device's change in long-term statistics, the same numbers Home Assistant's Energy dashboard reads.
     async _drawEnergy(row, devices) {
       // Rebuilding the cards would shrink the row for a frame, and the page scrolled up to follow it.
       if (row.offsetHeight) row.style.minHeight = row.offsetHeight + 'px';
@@ -15008,11 +15006,7 @@ window.hemmaMenuGlass = {
   });
 })();
 
-// Safari drops decoded images from a tab left in the background and does not always draw them again on return, so the room photos
-// and icons go blank until a reload. Back after a minute or more, each is handed its image afresh.
-// Back to a tab Safari paused, Home Assistant reconnects and replays every change at once, and the dashboard visibly catches up.
-// It stays on screen and updates in place; only the animations rest until the updates go quiet, so nothing jumps.
-// The top-right pill's buttons in Minimal: no glass glow on a tap, just a brief dim.
+// Safari drops decoded images from a background tab, so photos and icons are handed their images again on return.
 (function () {
   if (window._hemmaPillPress) return;
   window._hemmaPillPress = true;

@@ -1350,7 +1350,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     /* iPad and iPhone: Liquid Glass that takes the capsule's place; the pressed row lights up like a lens. */
     /* On the iPhone: near-clear glass that takes the room's color, a thin bright lens edge all round. */
     .gmenu { position: absolute; z-index: 8; min-width: 200px; padding: 7px; box-sizing: border-box; border-radius: 30px; display: grid; touch-action: none;
-      /* No white wash, which greys it: the room itself brightened about a fifth and kept its color, a dark hairline round it, light caught along the bottom and a soft glow inside the top. */
+      /* Brightened rather than washed white, which would gray it. */
       background: rgba(var(--hv-pk, 255,255,255),0.02);
       -webkit-backdrop-filter: blur(24px) saturate(1.25) brightness(1.2); backdrop-filter: blur(24px) saturate(1.25) brightness(1.2);
       box-shadow: 0 0 0 0.5px rgba(0,0,0,0.42), inset 0 -1px 0 rgba(255,255,255,0.2), inset 0 -7px 9px -7px rgba(255,255,255,0.08), inset 0 9px 11px -9px rgba(255,255,255,0.1),
@@ -5061,9 +5061,9 @@ const saverXfade = (el, bg) => {
           if (!px.length) { swap(null); return; }
           { const c0 = vibrant(d); if (c0) SAVER_ART.set(art, `rgb(${albumTop(c0).join(',')})`); }
           if (albumOn) { const c = vibrant(d); swap(c ? [albumBg(c)] : null); return; }
-          // Four hue groups, the busiest first; a grey cover gives grey clouds rather than invented color.
+          // Four hue groups, the busiest first; a gray cover stays gray.
           const bins = new Map();
-          // Hues average on the circle (red sits at both 0 and 1, and a plain mean of the two is cyan); greys stay grey.
+          // Hues average on the circle: a plain mean of red's 0 and 1 is cyan.
           px.forEach((q) => { const k = q[1] < 0.12 ? 'n' : String(Math.round(q[0] * 12) % 12); const b = bins.get(k) || { n: 0, x: 0, y: 0, s: 0 }; b.n++; b.x += Math.cos(q[0] * 2 * Math.PI); b.y += Math.sin(q[0] * 2 * Math.PI); b.s += k === 'n' ? 0 : q[1]; bins.set(k, b); });
           const top = [...bins.values()].sort((a, b) => b.n - a.n).slice(0, 4).map((b) => [((Math.atan2(b.y, b.x) / (2 * Math.PI)) + 1) % 1, b.s / b.n]);
           while (top.length < 4) top.push(top[top.length % Math.max(1, top.length)]);
@@ -7305,7 +7305,7 @@ const saverXfade = (el, bg) => {
     .rpad .rsk { bottom: 17px; }
     .rpad.play .rsk { display: grid; }
     .rpad.play .rhint { display: none; }
-    /* Volume, as the player's own two capsules: the Apple TV's volume is the phone's side buttons in Apple's app, which a web page can't use. */
+    /* Volume as two capsules: a web page can't use a phone's side buttons. */
     .rvol { flex: none; align-self: stretch; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
     .rvol:empty { display: none; }
     .rvol.mu { grid-template-columns: 1fr auto 1fr; }
@@ -7697,8 +7697,7 @@ const saverXfade = (el, bg) => {
       if (!S[me] || !(Number(S[me].attributes.supported_features) & 524288)) return [];
       return Object.keys(S).filter((id) => id.indexOf('media_player.') === 0 && S[id].state !== 'unavailable' && (Number(S[id].attributes.supported_features) & 524288) && (ents[id] || {}).platform === plat);
     }
-    // Apple's list: an Apple TV goes by its room with the tv chip, anything else by its own name with a screen; a HomePod has nothing to steer.
-    _rmDev(id) {
+        _rmDev(id) {
       const h = this._hass, reg = (h.entities || {})[id] || {}, dv = reg.device_id && (h.devices || {})[reg.device_id], x = h.states[id], a = (x && x.attributes) || {};
       const area = (h.areas || {})[reg.area_id || (dv && dv.area_id)], fn = String(a.friendly_name || id);
       const pod = /homepod/i.test((dv && dv.model) || '') || /homepod/i.test(fn);
@@ -7717,7 +7716,7 @@ const saverXfade = (el, bg) => {
       if (!s || s.state === 'unavailable' || s.state === 'unknown') return 'gone';
       const a = s.attributes;
       if (['playing', 'paused'].includes(s.state) && (a.media_title || a.media_artist || a.entity_picture || a.app_name)) return 'media';
-      // Apple Home shows an idle Apple TV as an empty player, like any speaker; a TV keeps its inputs.
+      // An idle Apple TV shows as an empty player; a TV keeps its inputs.
       const atv = ((this._hass.entities || {})[this._config.entity] || {}).platform === 'apple_tv';
       return this._tv() && !atv ? 'tv' : 'quiet';
     }
@@ -7756,10 +7755,7 @@ const saverXfade = (el, bg) => {
     }
     _transport() {
       const f = (b) => this._f(b);
-      // The remote sits left of the controls, balanced by an empty place on the right.
-      // The pair: the remote on the left, the device's apps on the right, each only where the device has it; a lone one keeps an empty place opposite.
-      // On the right, what the player can do: a speaker that groups picks where the sound plays; a TV picks its app.
-      // An Apple TV launches only apps it has listed since it last connected; a remembered list would offer apps it can't open.
+      // An Apple TV launches only apps listed since it last connected, so a remembered list would offer apps it can't open.
       const live = ((this._st() || {}).attributes || {}).source_list, atv = ((this._hass.entities || {})[this._config.entity] || {}).platform === 'apple_tv';
       // Spotify's sources are its Connect devices, so choosing one moves the music there: a speaker, not an app.
       const conn = ((this._hass.entities || {})[this._config.entity] || {}).platform === 'spotify';
@@ -9346,10 +9342,7 @@ const saverXfade = (el, bg) => {
   // A copy's icon mask decodes a frame late, so the real tile stays up until the copy has painted.
   // Opened in place the glass covers its tile, so the tile hides; sent to the middle it leaves the tile where it was.
   const hideAfterPaint = (card) => { requestAnimationFrame(() => requestAnimationFrame(() => { card.style.visibility = 'hidden'; })); };
-  // The ends of a morph are the real tile crossfading with clear glass; no copy of a tile's frost matches it.
-  // Faded on ha-card itself: opacity on the host would make it a backdrop root and switch the tile's frost off mid-fade.
-  // Landing, an opaque tile is fully in before the card leaves; a see-through one swaps with it, or the two stack darker.
-  // Two see-through layers crossfading cover less than either alone, so the copy and the tile swap on one frame.
+  // Faded on ha-card, not the host: opacity on the host makes a backdrop root and drops the tile's frost mid-fade.
   const LAND = 0.92, LAND_CARD = 0.7;
   const tileFade = (card, dur, out, late) => {
     const el = (card.shadowRoot && card.shadowRoot.querySelector('ha-card')) || card;
