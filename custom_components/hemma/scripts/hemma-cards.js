@@ -5426,6 +5426,13 @@ const saverXfade = (el, bg) => {
     svg.setAttribute('viewBox', `${bb.x - h} ${-asc - h} ${bb.width - sp + f.sw} ${asc + f.sw}`);
     return true;
   };
+  const stackWx = (hs, wid, tid) => {
+    const S = (hs && hs.states) || {}, w = wid && S[wid];
+    if (!w) return null;
+    let t = tid && S[tid] ? Number(S[tid].state) : NaN;
+    if (!isFinite(t)) t = Number((w.attributes || {}).temperature);
+    return isFinite(t) ? { t: Math.round(t), file: WXF[w.state] || '' } : null;
+  };
   const STACK_INK = new Map();
   const stackInk = (im) => {
     if (STACK_INK.has(im.src)) return STACK_INK.get(im.src);
@@ -5510,7 +5517,7 @@ const saverXfade = (el, bg) => {
       sunEl.hidden = !sunTxt;
       if (sunTxt) { const m2 = /^(.*?)\s?([AaPp]\.?[Mm]\.?)$/.exec(sunTxt); const html = (up ? SUN(true) : `<img class="sn" alt="" src="${window.hemmaIconUrl ? window.hemmaIconUrl('sunset') : '/hemma_assets/icons/sunset.svg'}">`) + '<span>' + esc(m2 ? m2[1] : sunTxt) + (m2 ? '<small>' + esc(m2[2].replace(/\./g, '').toUpperCase()) + '</small>' : '') + '</span>'; if (sunEl._h !== html) { sunEl._h = html; sunEl.innerHTML = html; } }
       const wid = saverViewVar('weather_entity') || Object.keys(hs.states).find((k) => k.indexOf('weather.') === 0);
-      const x = window.hemmaWxLine ? window.hemmaWxLine(hs, wid, saverViewVar('weather_temp_sensor')) : null, wxEl = $('.wx');
+      const x = window.hemmaWxLine ? window.hemmaWxLine(hs, wid, saverViewVar('weather_temp_sensor')) : stackWx(hs, wid, saverViewVar('weather_temp_sensor')), wxEl = $('.wx');
       wxEl.hidden = !x;
       if (x) { const html = (x.file ? `<img alt="" src="/hemma_assets/weather/${x.file}-fill.svg?v=2">` : '') + '<span>' + esc(x.t) + '°</span>'; if (wxEl._h !== html) { wxEl._h = html; wxEl.innerHTML = html; const im = wxEl.querySelector('img'); if (im) im.onload = wxFit; } }
     };
