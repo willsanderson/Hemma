@@ -8802,15 +8802,16 @@ window.hemmaMenuGlass = {
           ${ENERGY_CSS}
           .cat-veilwrap { position: sticky; top: 0; height: 0; z-index: 2; pointer-events: none; }
           .cat-veil {
-            position: absolute; top: 0; left: 0; right: 0; pointer-events: none; opacity: 0;
+            position: fixed; top: 0; left: var(--cat-left, 0px); right: 0; pointer-events: none; opacity: 0;
             height: calc(var(--hemma-chrome-row-top-tablet, 46px) + 58px + 40px + 12px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
             -webkit-backdrop-filter: var(--hv-veil-bf, var(--hemma-perf-none, blur(30px) saturate(1.3) brightness(0.72)));
             backdrop-filter: var(--hv-veil-bf, var(--hemma-perf-none, blur(30px) saturate(1.3) brightness(0.72)));
             background: var(--hv-veil, none);
             -webkit-mask-image: var(--hv-veil-mask-d, none); mask-image: var(--hv-veil-mask-d, none);
-            transition: opacity 220ms ease-in-out;
+            transition: opacity 220ms ease-in-out, left .48s cubic-bezier(0.32, 0.72, 0, 1);
           }
           .cat-veil.on { opacity: 1; }
+          .cat.pushed .cat-veil { left: var(--side-w, min(264px, 38vw)); }
           .cat-mini {
             z-index: 42; bottom: auto; pointer-events: none; opacity: 0; text-align: center;
             top: calc(var(--hemma-chrome-row-top-tablet, 46px) - 3px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px)));
