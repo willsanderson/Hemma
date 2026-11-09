@@ -2174,7 +2174,10 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     .pdet .tips li::before { background: var(--hemma-color-green, #30D158); }
     .pdet .pillb { flex: none; min-width: 0; padding: 0 12px; font-size: 14px; }
     .pdet .mt .pv span, .pdet .mt small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-    .plant.det .ptiles, .plant.det .pai { display: none; }
+    .wrap.plant, .plant .slab { position: relative; }
+    .plant.det .ptiles { opacity: 0; pointer-events: none; }
+    .plant.det .pai { visibility: hidden; }
+    .pdet.fly { position: absolute; z-index: 2; margin: 0 !important; overflow-y: auto !important; }
     @media (max-width: 768px) {
       .slab .pai, .slab .pdet { background: rgba(var(--hv-pk, 255,255,255),0.08); }
       .slab .pdet { flex: none; overflow: visible; }
@@ -2195,7 +2198,6 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       :host .wrap.plant .pt .w { font-size: 12px; margin-top: -2px; }
       :host .wrap.plant .pai { margin-top: 10px; }
       :host .wrap.plant .pdet { margin-top: 2px; }
-      :host .wrap.plant.det .pphoto, :host .wrap.plant.det .wpill { display: none; }
     }
     @media (min-width: 769px) and (pointer: coarse) {
       :host .wrap.plant { --rmax: 128px; }
@@ -2346,9 +2348,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       const res = able && !refused && r.status !== 'running' && r.status !== 'error' && !!(r.verdict && r.summary);
       if (!res) this._aiOpen = false;
       box.hidden = !able;
-      det.hidden = !this._aiOpen;
-      wrap.classList.toggle('det', !!this._aiOpen);
-      if (!able) return;
+      if (!able) { this._aiSync(false); return; }
       const btn = (label) => `<button type="button" class="pillb" data-check="1">${esc(label)}</button>`;
       const row = (text, end) => `<div class="px"><span class="pk">${esc(T('plant.ai_title', 'Assessment'))}</span><p class="ps">${esc(text)}</p></div>${end}`;
       const spin = '<span class="pspin"></span>';
@@ -2379,7 +2379,44 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       if (box._html !== html) { box._html = html; box.innerHTML = html; }
       box.className = 'pai' + (cls ? ' res ' + cls : '');
       if (det._html !== dhtml) { det._html = dhtml; det.innerHTML = dhtml; }
-      det.className = 'pdet' + (cls ? ' ' + cls : '');
+      det.className = 'pdet' + (cls ? ' ' + cls : '') + (this._aiShown ? ' fly' : '');
+      this._aiSync(!!this._aiOpen);
+    }
+    _aiSync(want) {
+      if (want === !!this._aiShown) return;
+      this._aiShown = want;
+      const root = this.shadowRoot, det = root.querySelector('.pdet'), box = root.querySelector('.pai'), grid = root.querySelector('.ptiles'), wrap = root.querySelector('.wrap');
+      if (!det || !box || !grid || !wrap) return;
+      const MS = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 440, E = 'cubic-bezier(0.32, 0.72, 0, 1)';
+      (this._aiAnims || []).forEach((a) => a.cancel());
+      const anims = this._aiAnims = [];
+      const at = (el, op) => { const r = el.getBoundingClientRect(), o = op.getBoundingClientRect(); return { top: r.top - o.top + op.scrollTop, left: r.left - o.left + op.scrollLeft, width: r.width, height: r.height }; };
+      if (want) {
+        const from = det.classList.contains('fly') ? { top: parseFloat(det.style.top), height: parseFloat(det.style.height) } : null;
+        det.hidden = false;
+        det.classList.add('fly');
+        const op = det.offsetParent || wrap, A = at(box, op), G = at(grid, op);
+        const to = { top: G.top, height: A.top + A.height - G.top };
+        Object.assign(det.style, { left: A.left + 'px', width: A.width + 'px', top: to.top + 'px', height: to.height + 'px' });
+        det.scrollTop = 0;
+        wrap.classList.add('det');
+        const start = from || { top: A.top, height: A.height };
+        anims.push(det.animate([{ top: start.top + 'px', height: start.height + 'px' }, { top: to.top + 'px', height: to.height + 'px' }], { duration: MS, easing: E }));
+        anims.push(grid.animate([{ opacity: 1 }, { opacity: 0 }], { duration: MS * 0.6, easing: 'ease' }));
+        [...det.children].forEach((k) => anims.push(k.animate([{ opacity: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1 }], { duration: MS + 160, easing: 'ease' })));
+      } else {
+        const op = det.offsetParent || wrap, A = at(box, op);
+        const from = { top: parseFloat(det.style.top) || A.top, height: parseFloat(det.style.height) || A.height };
+        wrap.classList.remove('det');
+        det.scrollTop = 0;
+        const done = () => { if (this._aiShown) return; det.hidden = true; det.classList.remove('fly'); ['left', 'width', 'top', 'height'].forEach((k) => det.style.removeProperty(k)); };
+        [...det.children].forEach((k) => anims.push(k.animate([{ opacity: 1 }, { opacity: 0, offset: 0.35 }, { opacity: 0 }], { duration: MS, easing: 'ease', fill: 'forwards' })));
+        anims.push(grid.animate([{ opacity: 0 }, { opacity: 0, offset: 0.3 }, { opacity: 1 }], { duration: MS, easing: 'ease' }));
+        const shrink = det.animate([{ top: from.top + 'px', height: from.height + 'px' }, { top: A.top + 'px', height: A.height + 'px' }], { duration: MS, easing: E, fill: 'forwards' });
+        anims.push(shrink);
+        shrink.finished.then(() => { done(); anims.forEach((a) => a.cancel()); }, () => {});
+        if (!MS) done();
+      }
     }
   }
   if (!customElements.get('hemma-plant-panel')) customElements.define('hemma-plant-panel', HemmaPlantPanel);
