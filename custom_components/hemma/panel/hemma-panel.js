@@ -8097,7 +8097,7 @@ class HemmaPanel extends HTMLElement {
         .card.map.size-desktop .miniroom:not(.hv) { --hemma-pill-fill:rgba(108,108,108,0.26); --hemma-nav-active-fill:rgba(0,0,0,0.26); }
         .card.map.size-desktop .miniroom.gink { --hemma-pill-fill:rgba(255,255,255,0.55); --hemma-nav-active-fill:rgba(255,255,255,0.88); }
         .card.map.size-desktop .miniroom:not(.ov) { --nm:36.2px; --wx:16px; }
-        .card.map.size-desktop .miniroom:not(.sidebar):not(.hv) .mini-tabs { flex:0 0 auto; margin:0 auto; padding:0.3em 0.34em; gap:0.12em; border-radius:9999px; background:var(--hemma-pill-fill); align-items:center; -webkit-backdrop-filter:blur(8px) saturate(1.3); backdrop-filter:blur(8px) saturate(1.3); }
+        .card.map.size-desktop .miniroom:not(.sidebar):not(.hv) .mini-tabs { flex:0 0 auto; margin:0 auto; padding:0.3em 0.34em; gap:0.12em; border-radius:9999px; background:var(--hemma-pill-fill); align-items:center; -webkit-backdrop-filter:blur(8px) saturate(1.3); backdrop-filter:blur(8px) saturate(1.3); box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(255,255,255,0.16), inset 0 4px 5px -4px rgba(255,255,255,0.14), inset 0 -4px 5px -4px rgba(255,255,255,0.10), inset 1.5px 0 0 var(--hemma-pill-edge, rgba(0,0,0,0.50)), inset -1.5px 0 0 var(--hemma-pill-edge, rgba(0,0,0,0.50)); }
         .card.map.size-desktop .miniroom:not(.sidebar):not(.hv) .mini-tab { padding:0.36em 0.9em; border-radius:9999px; box-shadow:none; font-weight:500; color:#fff; }
         .card.map.size-desktop .miniroom:not(.sidebar):not(.hv) .mini-tab.on { background:var(--hemma-nav-active-fill); box-shadow:none; font-weight:500; }
         .card.map.size-desktop .miniroom.gink:not(.sidebar) .mini-tab { color:#111; }
