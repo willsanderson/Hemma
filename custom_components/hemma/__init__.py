@@ -31,7 +31,7 @@ from .const import (
     DOMAIN,
     FONT_CSS,
     PANEL_ICON,
-    PANEL_TITLE,
+    SIDEBAR_TITLE,
     LEGACY_PANEL_URL,
     PANEL_URL,
     SCRIPTS_DIR,
@@ -228,7 +228,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async_register_built_in_panel(
         hass=hass,
         component_name="custom",
-        sidebar_title=PANEL_TITLE,
+        sidebar_title=SIDEBAR_TITLE,
         sidebar_icon=PANEL_ICON,
         frontend_url_path=PANEL_URL,
         require_admin=True,

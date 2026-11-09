@@ -38,6 +38,7 @@ FONT_CSS = "fonts/hanken-grotesk.css"
 # The panel keeps the url it was given in 2.0.5; only its title changed.
 PANEL_URL = "hemma-studio"
 PANEL_TITLE = "Hemma"
+SIDEBAR_TITLE = "Hemma Studio"
 PANEL_ICON = "mdi:view-dashboard-edit"
 
 # Registered at /hemma before the rename, so setup removes the old one.
