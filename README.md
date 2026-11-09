@@ -1,76 +1,138 @@
-<img width="1729" height="1383" alt="Hemma on a desktop display: a room photo, the greeting, badges and tiles" src="https://github.com/user-attachments/assets/34ea8a3f-2f33-4337-9ca9-742e1f51f664" />
-
 <div align="center">
 
-[Install](#install) · [Set up](#set-up) · [Using it](#using-it) · [Hemma Studio](#hemma-studio) · [Changelog](CHANGELOG.md)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/header-dark.webp" />
+  <img src="docs/images/header-light.webp" alt="Hemma: make Home Assistant feel like home." />
+</picture>
+
+[![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fwillsanderson%2FHemma%2Fmain%2Fcustom_components%2Fhemma%2Fmanifest.json&query=%24.version&label=version&style=flat-square&color=E07A4E&labelColor=2A2420)](https://github.com/willsanderson/Hemma/releases/latest)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.9%2B-E07A4E?style=flat-square&labelColor=2A2420&logo=homeassistant&logoColor=white)](https://www.home-assistant.io)
+[![Marketplace](https://img.shields.io/badge/Marketplace-Hemma-E07A4E?style=flat-square&labelColor=2A2420)](https://my.home-assistant.io/redirect/hacs_repository/?owner=willsanderson&repository=Hemma&category=integration)
+
+<a href="#install">Install</a>&emsp;<a href="#set-up">Set up</a>&emsp;<a href="#using-it">Using it</a>&emsp;<a href="#studio">Studio</a>&emsp;<a href="CHANGELOG.md">Changelog</a>
 
 </div>
 
-## Hemma
-
-A modern dashboard for Home Assistant that **you build without YAML**. Hemma installs as an integration, adds **Hemma Studio** to your sidebar, and sets up a dashboard for desktop, tablet and phone from your rooms and devices. You shape the rest in Studio with a live preview.
-
-Two styles: **Glass**, frosted tiles over your own room photos, and **Minimal**, a clean, flat look in a color you choose, with a deeper shade at night and an option to follow whatever is playing.
-
-## Install
-
-You need **Home Assistant 2026.9** or newer and [HACS](https://hacs.xyz).
-
-1. In HACS, add `https://github.com/willsanderson/Hemma` as a custom repository (type **Integration**) and download **Hemma**.
-2. Download **[uix](https://github.com/Lint-Free-Technology/uix)** and **[button-card](https://github.com/custom-cards/button-card)** (7.0.0 or newer) as well, if you don't have them. Use uix instead of card-mod, not both.
-3. Restart Home Assistant.
-
-## Set up
-
-1. **Add the integration.** Settings > Devices & services > **Add integration** > **Hemma**.
-2. **Open Hemma Studio** in the sidebar. It checks that uix and button-card are ready and links you to anything missing.
-3. **Follow the setup assistant.** Pick a layout and style, then your rooms. Your Home Assistant areas are the starting point, and their devices are placed in each room for you. A preview shows every tile before anything is created.
-
-That's it. Hemma creates its own helpers, registers its dashboard resources and selects its theme for you (unless you already use a theme of your own). Nothing is written to `configuration.yaml`, and if something ever goes missing, Studio offers to repair it.
-
-For the clock on your room cards, add the **Date & time** integration and enable its Time sensor. Without it, the clock simply isn't shown.
-
-## Using it
-
-| You do | Hemma does |
-|:--|:--|
-| Tap a tile | Opens its popup: a dial for lights, climate and covers, a remote for TVs, a live view for cameras |
-| Tap a badge | Opens a page with that category's tiles from every room |
-| Open the sidebar or navbar | Moves between rooms, categories and Home |
-| Open the bell | Shows what needs attention: arrivals, doorbells, locks, low batteries and updates |
-| Leave a wall tablet alone | Shows a screensaver in your dashboard's colors |
-
-On the phone, badges filter the page and each room opens as its own sheet.
-
-## Hemma Studio
-
-Rooms, tiles, badges, scenes, cameras, weather and screensavers, all set up in one place with a live preview for desktop, tablet and phone in light and dark.
-
-<img width="1582" height="833" alt="Hemma Studio with the live preview" src="https://github.com/user-attachments/assets/26743e60-1967-4d64-a395-71186ee86f16" />
-
-- **Two layouts for big screens.** Focus, a room photo with a row of tiles, or Overview, a Home screen of scenes, favorites and every room.
-- **Separate phone choices.** The phone can use its own backdrop and text color.
-- **Nothing changes until you press Save,** and updates to Hemma reach your dashboards on their own.
-- **Export and import.** Save your dashboard to a file and bring it back later, on the same Home Assistant or another one.
-
-<details>
-<summary>More pictures</summary>
 <br/>
 
-**Focus**
-<img width="1604" height="903" alt="Focus layout on a desktop" src="https://github.com/user-attachments/assets/5fae3633-edef-431b-8201-8c7856e8af17" />
+Hemma turns Home Assistant into a home screen you actually want on the wall. It builds a dashboard for your desktop, wall tablet and phone from the rooms and devices you already have, and **Hemma Studio** in the sidebar lets you shape it with a live preview. No YAML, ever.
 
-**Overview**
-<img width="1605" height="907" alt="Overview layout on a desktop" src="https://github.com/user-attachments/assets/f27d8a56-d0e4-410b-87c6-1191a6653afb" />
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.webp" />
+    <img src="docs/images/hero-light.webp" alt="Hemma on a wall tablet and a phone: a room photo with the greeting, badges and tiles." />
+  </picture>
+</p>
 
-**Light and dark**
-<img width="1525" height="904" alt="Light" src="https://github.com/user-attachments/assets/d41c2a2d-8e54-4a8c-8a48-a0a73b423367" />
-<img width="1525" height="904" alt="Dark" src="https://github.com/user-attachments/assets/c89b35ff-8481-4c12-9b72-aa82b78a44bd" />
+## Two styles, light and dark
 
-**Phone**
-<img width="850" height="600" alt="Phone layout" src="https://github.com/user-attachments/assets/beb8537b-89f5-4f1b-ac7b-85af30117b68" />
+**Glass** lays frosted tiles over your own room photos. **Minimal** is calm and flat, in a color you pick, with a deeper shade at night. Either one follows light and dark mode on its own, and both can use dark or white text by day.
 
-</details>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/styles-dark.webp" />
+    <img src="docs/images/styles-light.webp" alt="Glass and Minimal side by side on desktop displays." />
+  </picture>
+  <br/><sub>Glass on the left, Minimal on the right.</sub>
+</p>
+
+## A popup for every tile
+
+Tap a tile and its popup grows out of it. Each kind of device gets its own, built around the one control you came for.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/popups-dark.webp" />
+    <img src="docs/images/popups-light.webp" alt="Three Hemma popups: a light with its brightness capsule and colors, a thermostat dial, and Recently Added from Plex." />
+  </picture>
+</p>
+
+| Tile | Its popup |
+|:--|:--|
+| Lights and light groups | A brightness capsule, your favorite colors, and every light in the group |
+| Thermostats, fans, purifiers, humidifiers | A dial or slider, with modes as labeled tiles |
+| Media and TVs | The artwork, a full-screen player and a remote |
+| Locks, covers, vacuums | The state up top, the actions you need below |
+| Cameras | A live view and today's motion and doorbell events |
+| Energy, network, batteries, updates | Clean charts and lists, the problem first |
+| Plants | Today's readings, and an assessment of how the plant is doing |
+| Plex | Your newest movies and episodes |
+
+## Focus or Overview
+
+**Focus** gives one room the whole screen, with its photo behind it. **Overview** is a home screen of scenes, favorites and every room, with a sidebar to move between them.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/layout-dark.webp" />
+    <img src="docs/images/layout-light.webp" alt="The same Minimal dashboard switching between the Focus and Overview layouts." />
+  </picture>
+</p>
+
+## Screensavers for the wall
+
+A wall tablet left alone becomes a clock. **Today** shows the date, the weather and what's playing or your home at a glance, **Clock** fills the screen with a Classic, Numerals or Stacked face, and **Recently Added** shows your newest Plex posters. Each one takes your dashboard's colors, day and night.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/screensavers-dark.webp" />
+    <img src="docs/images/screensavers-light.webp" alt="Hemma screensavers on iPads: Today with music playing in blue and green, the Classic clock, Numerals, and Today in pink." />
+  </picture>
+</p>
+
+<a id="install"></a>
+## Install
+
+[![Open in the Marketplace](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=willsanderson&repository=Hemma&category=integration)
+
+Open the link above, or add `https://github.com/willsanderson/Hemma` as a custom repository under **Settings > Marketplace** (called HACS before Home Assistant 2026.11). Download **Hemma**, plus **[UI eXtension](https://github.com/Lint-Free-Technology/uix)** and **[button-card](https://github.com/custom-cards/button-card)** 7.0.0 or newer if you don't have them, then restart Home Assistant.
+
+You need **Home Assistant 2026.9** or newer. Use UI eXtension instead of card-mod, not both.
+
+<a id="set-up"></a>
+## Set up
+
+1. **Add the integration** under **Settings > Devices & services > Add integration > Hemma**.
+2. **Open Hemma Studio** in the sidebar. It checks that UI eXtension and button-card are ready and links you to anything missing.
+3. **Follow the setup assistant.** Pick a layout and a style, then your rooms. Your Home Assistant areas are the starting point, each area's devices land in its room, and a preview shows every tile before anything is created.
+
+Hemma creates its own helpers, registers its resources and selects its theme, unless you already use one of your own. Nothing is written to `configuration.yaml`, updates reach your dashboards on their own, and if something ever goes missing, Studio offers to repair it.
+
+<a id="using-it"></a>
+## Using it
+
+| You | Hemma |
+|:--|:--|
+| Tap a tile | Opens its popup |
+| Tap a badge | Opens that category with its tiles from every room |
+| Open the sidebar or the tab bar | Moves between rooms, categories and Home |
+| Open the bell | Shows what needs you: arrivals, doorbells, open doors, low batteries and updates |
+| Leave a wall tablet alone | Starts a screensaver in your dashboard's colors |
+
+On a phone, badges filter the page and each room opens as its own sheet.
+
+<a id="hemma-studio"></a>
+## Studio
+
+Rooms, tiles, badges, scenes, cameras, weather and screensavers, all in one place, with a live preview for desktop, tablet and phone, light and dark.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/studio-dark.webp" />
+    <img src="docs/images/studio-light.webp" alt="Studio: the Appearance settings beside a live preview of the dashboard." />
+  </picture>
+</p>
+
+- **Nothing changes until you press Save.** The preview shows every edit first.
+- **Separate phone choices.** The phone can have its own backdrop and text color.
+- **Export and import.** Save your dashboard to a file and bring it back, on the same Home Assistant or another one.
+- **Choose what a tap does,** per tile: Normal, Ask First, or View Only for a tablet you hand to a guest.
+
+## Your data
+
+- **Everything stays home.** Hemma runs inside Home Assistant, with no account, no analytics and no telemetry.
+- **AI only when you ask.** The plant assessment runs when you tap Check Now, on the AI task you set up in Home Assistant, and stays hidden if you don't have one.
+- **Online only for logos.** Integration logos come from `brands.home-assistant.io`; everything else is served by your own Home Assistant.
 
 <details>
 <summary>Everything Hemma does</summary>
@@ -92,11 +154,11 @@ Rooms, tiles, badges, scenes, cameras, weather and screensavers, all set up in o
 <summary>Upgrading from 2.3</summary>
 <br/>
 
-Update Hemma in HACS and restart Home Assistant. Your dashboards pick up the new templates automatically, so there is nothing to save.
+Update Hemma in the Marketplace and restart Home Assistant. Your dashboards pick up the new templates automatically, so there is nothing to save.
 
 Hemma 2.4 creates its helpers itself. If you copied `packages/hemma_helpers.yaml` for 2.3, Hemma takes those helpers over and you can remove the file and the `packages:` line whenever you like. The `frontend: themes:` line is no longer needed either.
 
-To try the new style, choose **Minimal** under Appearance > Style in Hemma Studio.
+To try the new style, choose **Minimal** under Appearance > Style in Studio.
 
 </details>
 
@@ -104,7 +166,7 @@ To try the new style, choose **Minimal** under Appearance > Style in Hemma Studi
 <summary>Coming from Hemma 2.0 (YAML)</summary>
 <br/>
 
-Open Hemma Studio and choose **Import from YAML**. Hemma reads your rooms, entities and badges, shows you what it found, and creates a **new** dashboard next to your original, so you can compare the two before switching.
+Open Studio and choose **Import from YAML**. Hemma reads your rooms, entities and badges, shows you what it found, and creates a **new** dashboard next to your original, so you can compare the two before switching.
 
 </details>
 
@@ -137,3 +199,5 @@ Hemma builds ordinary dashboards, so custom templates, hand-built views and per-
 #### Enjoying Hemma?
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V31RK6FB)
+
+<sub>Hemma is an independent project and is not affiliated with Home Assistant or Nabu Casa.</sub>
