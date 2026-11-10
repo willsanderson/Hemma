@@ -48,7 +48,7 @@ hemma_media:
         if (!pic) return '';
         return pic.startsWith('/') ? window.location.origin + pic : pic;
       ]]]
-    icon_never_masked: '[[[ return variables.icon === "ps5" && !document.documentElement.classList.contains("hemma-hv"); ]]]'
+    icon_never_masked: '[[[ const c = document.documentElement.classList; return variables.icon === "ps5" && !c.contains("hemma-hv") && !c.contains("hg-ink-d"); ]]]'
 
   show_last_changed: false
   show_entity_picture: true
