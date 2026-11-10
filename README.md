@@ -109,7 +109,7 @@ Hemma creates its own helpers, registers its resources and selects its theme, un
 | Tap a tile | Opens its popup |
 | Tap a badge | Opens that category with its tiles from every room |
 | Open the sidebar or the tab bar | Moves between rooms, categories and Home |
-| Open the bell | Shows what needs you: arrivals, doorbells, open doors, low batteries and updates |
+| Open the bell | Shows your notifications: arrivals, doorbells, open doors, low batteries and updates |
 | Leave a tablet idle | Starts a screensaver in your dashboard's colors |
 
 On a phone, badges filter the page and each room opens as its own sheet.
