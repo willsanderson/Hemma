@@ -11,6 +11,7 @@ Fixes for flicker after the dashboard sits idle, dark and white text in Overview
 - **Icons keep their bright colors with dark text**, the same yellow, teal and green as the tiles, instead of darker versions.
 - **The selected badge stands out with dark text**, in Glass and Minimal. It turns into a dark pill with white text and a bright icon, so you can always tell which one is selected. A room's Lights and People chips keep dark text too.
 - **White text in Overview stays readable by day.** In Minimal the photo now darkens to match when you switch text color or the device switches between light and dark, and in Glass a soft shade behind the title keeps it clear of a bright sky.
+- **Minimal with a photo fades content under the top bar again** as you scroll, and its light toolbar pill and tab bar are solid, so nothing shows through them.
 - **Foldable phones keep the phone layout** when unfolded, with two, three or four tiles across depending on the screen's width.
 - **Off tiles no longer lose their icon in Safari** when another tile with the same icon is on, such as two fans with one running.
 - **Leaving Home for a room slides cleanly**, without the page dropping for a frame.
