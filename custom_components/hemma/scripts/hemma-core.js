@@ -4002,6 +4002,7 @@ window.hemmaMenuGlass = {
     _openHaMenu() {
       const src = this._heroCardFor(this._activeIdx) || this._viewHost() || this;
       if (!this._pushed) this._closeSide();
+      if (window.hemmaLiftHaSidebar && window.hemmaLiftHaSidebar()) return;
       src.dispatchEvent(new Event('hass-toggle-menu', { bubbles: true, composed: true }));
     }
 
@@ -15113,6 +15114,58 @@ window.hemmaMenuGlass = {
     for (var i = 0; i < st.length && i < 4000; i++) st[i].querySelectorAll('*').forEach(function (n) { if (n.shadowRoot) { st.push(n.shadowRoot); all = all.concat(n.shadowRoot.getAnimations ? n.shadowRoot.getAnimations() : []); } });
     all.forEach(function (an) { if (ENTER.test(an.animationName || '')) { try { an.finish(); } catch (_) {} } });
   }, 150);
+})();
+
+// A docked HA sidebar sits under Hemma's page, and HA's menu toggle would only flip (and save) its docked/collapsed setting.
+// Instead its drawer is held in the slide-over form "Always hide" uses, until it closes; nothing is saved.
+(function () {
+  if (window.hemmaLiftHaSidebar) return;
+  var find = function () {
+    var ha = document.querySelector('home-assistant');
+    var main = ha && ha.shadowRoot && ha.shadowRoot.querySelector('home-assistant-main');
+    var dr = main && main.shadowRoot && main.shadowRoot.querySelector('ha-drawer');
+    return dr ? { ha: ha, dr: dr } : null;
+  };
+  var hold = function (dr, on) {
+    if (!dr._hemmaHeld) {
+      dr._hemmaHeld = true;
+      ['type', 'open'].forEach(function (k) {
+        var proto = Object.getPrototypeOf(dr), d = null;
+        while (proto && !(d = Object.getOwnPropertyDescriptor(proto, k))) proto = Object.getPrototypeOf(proto);
+        if (!d || !d.get) return;
+        Object.defineProperty(dr, k, {
+          configurable: true,
+          get: function () { return dr._hemmaLift ? (k === 'type' ? 'modal' : true) : d.get.call(this); },
+          set: function (v) { d.set.call(this, v); }
+        });
+      });
+    }
+    dr._hemmaLift = on;
+    dr.requestUpdate('type');
+    dr.requestUpdate('open');
+  };
+  var release = function () {
+    var f = find();
+    if (f && f.dr._hemmaLift) hold(f.dr, false);
+    window.removeEventListener('location-changed', release);
+  };
+  window.hemmaLiftHaSidebar = function () {
+    var f = find();
+    if (!f || !f.dr.requestUpdate) return false;
+    var mode = f.ha.hass && f.ha.hass.dockedSidebar;
+    if (f.dr._hemmaLift) { release(); return true; }
+    if (mode === 'always_hidden' || f.dr.type === 'modal') return false;
+    hold(f.dr, true);
+    var tries = 0;
+    var wire = function () {
+      var w = f.dr.shadowRoot && f.dr.shadowRoot.querySelector('wa-drawer');
+      if (!w) { if (++tries < 20) requestAnimationFrame(wire); return; }
+      w.addEventListener('wa-after-hide', release, { once: true });
+    };
+    requestAnimationFrame(wire);
+    window.addEventListener('location-changed', release);
+    return true;
+  };
 })();
 
 (function () {
