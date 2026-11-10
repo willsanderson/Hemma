@@ -3513,10 +3513,14 @@ window.hemmaMenuGlass = {
         clearTimeout(this._repaintT);
         this._repaintT = setTimeout(() => { this._repaintPhotos(); this._bgSync(); }, 400);
       };
-      this._onVis = () => {
-        if (document.hidden) return;
-        // Again once a room Return to Home switched to while asleep has drawn and its photo settled.
-        [300, 1200, 2500].forEach((t) => setTimeout(() => { this._repaintPhotos(); this._bgRenew(); }, t));
+      this._onVis = (e) => {
+        if (document.hidden) { this._hidAt = this._hidAt || Date.now(); return; }
+        const long = (e && e.persisted) || (this._hidAt && Date.now() - this._hidAt > 60000);
+        this._hidAt = 0;
+        clearTimeout(this._visT); clearTimeout(this._visT2);
+        if (!long) return;
+        this._visT = setTimeout(() => { this._repaintPhotos(); this._bgRenew(); }, 1200);
+        this._visT2 = setTimeout(() => this._bgSync(), 2500);
       };
     }
 
@@ -6027,7 +6031,10 @@ window.hemmaMenuGlass = {
       this._bg = null;
       this._bgSync();
       if (!this._bg || this._bg === old) { if (!this._bg) this._bg = old; return; }
-      requestAnimationFrame(() => requestAnimationFrame(() => old.remove()));
+      const url = this._bg.firstChild && this._bg.firstChild._url, im = new Image();
+      if (url) im.src = url;
+      const drop = () => requestAnimationFrame(() => requestAnimationFrame(() => old.remove()));
+      (url && im.decode ? im.decode() : Promise.resolve()).then(drop, drop);
     }
 
     // HA's switch to the room's view is the heaviest step; run on the tap, it held the first frame for a quarter second.
@@ -15147,6 +15154,12 @@ window.hemmaMenuGlass = {
   if (window._hemmaWake) return;
   window._hemmaWake = true;
   var hiddenAt = document.hidden ? Date.now() : 0;
+  // Each replacement waits until its image is decoded, so nothing is ever drawn empty in between.
+  var ready = function (url, fn) {
+    if (!url) return fn();
+    var im = new Image(); im.src = url;
+    (im.decode ? im.decode() : Promise.resolve()).then(fn, fn);
+  };
   var wake = function () {
     var stack = [document], n = 0, stamp = Date.now();
     while (stack.length && n < 20000) {
@@ -15157,23 +15170,23 @@ window.hemmaMenuGlass = {
         if (el.shadowRoot) stack.push(el.shadowRoot);
         // Only Hemma's own files and inline images: a camera picture's address carries an access token that has expired by the time the tab comes back.
         if (el.tagName === 'IMG') {
-          if (el.src && el.getBoundingClientRect().width && (/^data:/.test(el.src) || /\/hemma_(assets|scripts)\//.test(el.src)) && !/token=/.test(el.src)) { var src = el.src; el.removeAttribute('src'); el.src = src; }
+          if (el.src && el.getBoundingClientRect().width && (/^data:/.test(el.src) || /\/hemma_(assets|scripts)\//.test(el.src)) && !/token=/.test(el.src)) ready(el.src, (function (e, src) { return function () { if (e.src === src) { e.removeAttribute('src'); e.src = src; } }; })(el, el.src));
           continue;
         }
         var cs = null;
         if (el.tagName === 'HA-CARD') {
           cs = getComputedStyle(el);
           var h = cs.getPropertyValue('--hero-img').trim();
-          if (/url\(/.test(h)) el.style.setProperty('--hero-img', h.replace(/(\.jpg)(#w\d+)?/g, '$1#w' + stamp));
+          if (/url\(/.test(h)) { var nh = h.replace(/(\.jpg)(#w\d+)?/g, '$1#w' + stamp), u = /url\(["']?([^"')]+)/.exec(nh); ready(u && u[1], (function (e, v) { return function () { e.style.setProperty('--hero-img', v); }; })(el, nh)); }
         }
         if (el.style && /\/hemma_assets\//.test(el.style.backgroundImage)) el.style.backgroundImage = el.style.backgroundImage.replace(/(\.jpg)(#w\d+)?/g, '$1#w' + stamp);
         if (el.getBoundingClientRect().width === 0) continue;
         cs = cs || getComputedStyle(el);
         var m = cs.webkitMaskImage || cs.maskImage;
-        if (m && m !== 'none' && /url\(/.test(m)) {
+        if (m && m !== 'none' && /url\(/.test(m) && !el.style.translate && cs.translate === 'none') {
           (function (e) {
-            e.style.setProperty('-webkit-mask-image', 'none'); e.style.setProperty('mask-image', 'none');
-            requestAnimationFrame(function () { e.style.removeProperty('-webkit-mask-image'); e.style.removeProperty('mask-image'); });
+            e.style.translate = '0 0.01px';
+            requestAnimationFrame(function () { requestAnimationFrame(function () { e.style.removeProperty('translate'); }); });
           })(el);
         }
       }
