@@ -5114,7 +5114,7 @@ window.hemmaMenuGlass = {
       let settled = false;
       const held = (this._held && this._held.pane === prev) ? this._held : this._holdPane();
       const prevWas = held ? [held.was.find((w) => w[0] === 'position')[1], held.was.find((w) => w[0] === 'zIndex')[1]] : [prev.style.position, prev.style.zIndex];
-      if (this._headLater) { const f = this._headLater; this._headLater = null; f(); if (held) held.repin(); }
+      if (this._headLater) { const f = this._headLater; this._headLater = null; f(); }
       // The leaving page's badge or chip row, if the arriving page shows the other one, is lifted out of the flow at its place and goes with its page.
       const was = this._headWas || {};
       this._headWas = null;
@@ -5155,6 +5155,7 @@ window.hemmaMenuGlass = {
       outs.concat(ins).forEach((el) => { el.style.willChange = 'transform'; });
       // Browsers draw only what is on screen, so everything arriving is drawn where it will land while it cannot be seen; drawn mid-slide, a room's first visit froze it.
       ins.forEach((el) => { el.style.opacity = '0.003'; });
+      if (held) held.repin();
       const dir = back ? -1 : 1, SD = 480, SLIDE = 'cubic-bezier(0.3, 0, 0, 1)', V = Math.max(W, window.innerWidth || 0);
       // Each page is a window-wide sheet carrying its own photo, the very layer Overview draws (_photoBuild): the two photos ride side by side
       // across the whole window, behind the sidebar too, and the pages move the same distance, their tiles cut off at the sidebar's edge.
