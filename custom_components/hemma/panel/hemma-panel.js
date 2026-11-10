@@ -8140,7 +8140,7 @@ class HemmaPanel extends HTMLElement {
         .card.map .miniroom.gink :is(.mini-nav, .mini-tab, .mini-tabs, .mini-time, .mini-name, .mini-weather, .pbadge .plabel, .mc-title, .mc-h) { color:#111; text-shadow:none; }
         .card.map .miniroom.gink .pbadge .ptext { color:rgba(0,0,0,0.55); }
         .card.map .miniroom.gink .pbadge:not(.ghost) { background:rgba(255,255,255,0.55); }
-        .card.map .miniroom.gink :is(.mini-badges, .mc-badges) .pbadge:not(.ghost) { background:rgba(255,255,255,0.72); --hemma-color-teal:#0096B4; --hemma-color-ice:#0096B4; --hemma-color-yellow:#D99A00; --hemma-color-green:#1E9E45; --hemma-color-orange:#E07400; --hemma-color-red:#E0353A; --hemma-badge-climate-color:#0096B4; --hemma-badge-light-color:#D99A00; }
+        .card.map .miniroom.gink :is(.mini-badges, .mc-badges) .pbadge:not(.ghost) { background:rgba(255,255,255,0.72); }
         .card.map .miniroom.gink :is(.mini-badges, .mc-badges) .pbadge[data-mk="b:security"] { --hemma-color-teal:#00969F; }
         .card.map .miniroom.gink :is(.mini-badges, .mc-badges) .pbadge:not(.ghost) .pglyph:is(.neutral, .wide) { --sc:rgba(0,0,0,0.62) !important; background-color:rgba(0,0,0,0.62); }
         .card.map .miniroom:not(.gink):not(.hv) :is(.mini-badges, .mc-badges) .pbadge:not(.ghost):not(.open) { background:rgba(0,0,0,0.30); --hemma-color-teal:#6DD0F9; --hemma-color-ice:#6DD0F9; --hemma-color-yellow:#F8D849; --hemma-color-green:#65DB7C; --hemma-color-orange:#FFA552; --hemma-color-red:#FF6961; --hemma-badge-climate-color:#6DD0F9; --hemma-badge-light-color:#F8D849; }
