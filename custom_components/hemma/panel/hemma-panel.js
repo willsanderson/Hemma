@@ -8086,6 +8086,7 @@ class HemmaPanel extends HTMLElement {
         .card.map .hv.hvl :is(.mc-chips, .mp-chips) .mp-ring svg { filter:grayscale(1) brightness(0.5); }
         .card.map .hv .mini-bell .dot { background:var(--hv-ink) !important; }
         .card.map .hv .mp-pbell circle[fill="#ff4245"] { fill:var(--hv-ink); }
+        .card.map .hv.hvw .mp-pbell circle[fill="#ff4245"] { fill:#1c1c1e; }
         .card.map .hv .mini-tint { background:var(--flat); }
         .card.map .hv .mp-veil { background:transparent; }
         .card.map .hv .mp-bar, .card.map .hv .mini-catpage {
