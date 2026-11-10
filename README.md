@@ -5,6 +5,8 @@
   <img src="docs/images/header-light.webp" alt="Hemma: make Home Assistant feel like home." />
 </picture>
 
+<br/>
+
 [![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fwillsanderson%2FHemma%2Fmain%2Fcustom_components%2Fhemma%2Fmanifest.json&query=%24.version&label=version&style=flat-square&color=E07A4E&labelColor=2A2420)](https://github.com/willsanderson/Hemma/releases/latest)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.9%2B-E07A4E?style=flat-square&labelColor=2A2420&logo=homeassistant&logoColor=white)](https://www.home-assistant.io)
 [![Marketplace](https://img.shields.io/badge/Marketplace-Hemma-E07A4E?style=flat-square&labelColor=2A2420)](https://my.home-assistant.io/redirect/hacs_repository/?owner=willsanderson&repository=Hemma&category=integration)
