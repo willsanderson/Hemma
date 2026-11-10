@@ -8096,7 +8096,7 @@ class HemmaPanel extends HTMLElement {
           .mp-bartitle, .mini-side, .mc-back, .ms-close, .mp-clabel) { color:var(--hv-ink); text-shadow:none; }
         .card.map .hv :is(.mp-chev, .mp-cvalue, .ms-h) { color:var(--hv-sub); }
         .card.map .hv:not(.hvl) .mini-tab { color:#1c1c1e; }
-        .card.map .hv.hvw { --hv-off:color-mix(in oklab, color-mix(in oklab, var(--flat) 55%, rgb(64 64 68)) 56%, transparent); }
+        .card.map .hv.hvw { --hv-off:color-mix(in oklab, color-mix(in oklab, var(--flat) 50%, rgb(36 36 40)) 52%, transparent); }
         .card.map .hv .mini-badges .pbadge { --hv-ic:var(--bgl, 15px); }
         .card.map .hv .mini-badges .pbadge.ringed { padding-left:calc(var(--bgl, 15px) * 0.4); }
         .card.map .hv .mini-badges .pbi .pglyph { width:calc(var(--bgl, 15px) * 0.78); height:calc(var(--bgl, 15px) * 0.78); flex-basis:auto; }
