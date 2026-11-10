@@ -15,12 +15,12 @@
 
 <br/>
 
-Hemma turns Home Assistant into a home screen you actually want on the wall. It builds a dashboard for your desktop, wall tablet and phone from the rooms and devices you already have, and **Hemma Studio** in the sidebar lets you shape it with a live preview. No YAML, ever.
+Hemma turns Home Assistant into a home screen you actually want to look at. It builds a dashboard for your desktop, tablet and phone from the rooms and devices you already have, and **Hemma Studio** in the sidebar lets you shape it with a live preview. No YAML, ever.
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.webp" />
-    <img src="docs/images/hero-light.webp" alt="Hemma on a wall tablet and a phone: a room photo with the greeting, badges and tiles." />
+    <img src="docs/images/hero-light.webp" alt="Hemma on a tablet and a phone: a room photo with the greeting, badges and tiles." />
   </picture>
 </p>
 
@@ -71,7 +71,7 @@ Tap a tile and its popup grows out of it. Each kind of device gets its own, buil
 
 ## Screensavers
 
-Brand new screensavers available, perfect for a wall-mounted tablet. **Today** shows the date, the weather and what's playing or your home at a glance, **Clock** fills the screen with a Classic, Numerals or Stacked face, and **Recently Added** shows your newest Plex posters. Each one takes your dashboard's colors, day and night.
+Brand new screensavers available, perfect for any tablet, on a stand or mounted on the wall. **Today** shows the date, the weather and what's playing or your home at a glance, **Clock** fills the screen with a Classic, Numerals or Stacked face, and **Recently Added** shows your newest Plex posters. Each one takes your dashboard's colors, day and night.
 
 <p align="center">
   <picture>
@@ -107,7 +107,7 @@ Hemma creates its own helpers, registers its resources and selects its theme, un
 | Tap a badge | Opens that category with its tiles from every room |
 | Open the sidebar or the tab bar | Moves between rooms, categories and Home |
 | Open the bell | Shows what needs you: arrivals, doorbells, open doors, low batteries and updates |
-| Leave a wall tablet alone | Starts a screensaver in your dashboard's colors |
+| Leave a tablet idle | Starts a screensaver in your dashboard's colors |
 
 On a phone, badges filter the page and each room opens as its own sheet.
 
@@ -144,7 +144,7 @@ Rooms, tiles, badges, scenes, cameras, weather and screensavers, all in one plac
 - **Cameras** on Home, in rooms and on the Security page, with a timeline of today's motion and doorbell events.
 - **Energy** with today's total, usage by device, and Day, Week and Month.
 - **A plant assistant** that checks a plant's last week of readings against its needs and tells you what to do, using Home Assistant's AI Task when you have one set up.
-- **Screensavers** for wall tablets: Today (date, clock, weather and calendar), Clock, and Recently Added from Plex.
+- **Screensavers** for any tablet: Today (date, clock, weather and calendar), Clock, and Recently Added from Plex.
 - **Your choice of what a tap does** on each tile: Normal, Ask First, or View Only for a tablet you hand to a guest.
 - **Your language.** Hemma follows your Home Assistant language and number formats.
 
