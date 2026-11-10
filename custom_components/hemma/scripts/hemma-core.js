@@ -15124,7 +15124,7 @@ window.hemmaMenuGlass = {
     var ha = document.querySelector('home-assistant');
     var main = ha && ha.shadowRoot && ha.shadowRoot.querySelector('home-assistant-main');
     var dr = main && main.shadowRoot && main.shadowRoot.querySelector('ha-drawer');
-    return dr ? { ha: ha, dr: dr } : null;
+    return dr ? { ha: ha, main: main, dr: dr } : null;
   };
   var hold = function (dr, on) {
     if (!dr._hemmaHeld) {
@@ -15141,6 +15141,7 @@ window.hemmaMenuGlass = {
       });
     }
     dr._hemmaLift = on;
+    if (!on) dr.removeAttribute('hemma-lift');
     dr.requestUpdate('type');
     dr.requestUpdate('open');
   };
@@ -15155,6 +15156,17 @@ window.hemmaMenuGlass = {
     var mode = f.ha.hass && f.ha.hass.dockedSidebar;
     if (f.dr._hemmaLift) { release(); return true; }
     if (mode === 'always_hidden' || f.dr.type === 'modal') return false;
+    // The dashboard keeps the docked sidebar's room while the drawer slides over it, so nothing under it moves.
+    var shell = f.dr.shadowRoot && f.dr.shadowRoot.querySelector('.sidebar-shell');
+    var sw = shell ? shell.getBoundingClientRect().width : 0;
+    if (!f.main.shadowRoot.getElementById('hemma-lift-css')) {
+      var st = document.createElement('style');
+      st.id = 'hemma-lift-css';
+      st.textContent = 'ha-drawer[hemma-lift] > [slot="appContent"]{margin-inline-start:var(--hemma-lift-w,0px)!important;}';
+      f.main.shadowRoot.appendChild(st);
+    }
+    f.dr.style.setProperty('--hemma-lift-w', sw + 'px');
+    f.dr.setAttribute('hemma-lift', '');
     hold(f.dr, true);
     var tries = 0;
     var wire = function () {
