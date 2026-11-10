@@ -2176,7 +2176,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     .pdet .mt .pv span, .pdet .mt small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
     .wrap.plant, .plant .slab { position: relative; }
     .plant.det .ptiles { opacity: 0; pointer-events: none; }
-    .plant.det .pai { visibility: hidden; }
+    .plant:is(.det, .det-closing) .pai { visibility: hidden; }
     .pdet.fly { position: absolute; z-index: 2; margin: 0 !important; overflow-y: auto !important; }
     @media (max-width: 768px) {
       .slab .pai, .slab .pdet { background: rgba(var(--hv-pk, 255,255,255),0.08); }
@@ -2404,7 +2404,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       if (box._html !== html) { box._html = html; box.innerHTML = html; }
       box.className = 'pai' + (cls ? ' res ' + cls : '');
       if (det._html !== dhtml) { det._html = dhtml; det.innerHTML = dhtml; }
-      det.className = 'pdet' + (cls ? ' ' + cls : '') + (this._aiShown ? ' fly' : '');
+      det.className = 'pdet' + (cls ? ' ' + cls : '') + (this._aiShown || this._aiClosing ? ' fly' : '');
       this._aiSync(!!this._aiOpen);
     }
     _aiSync(want) {
@@ -2424,6 +2424,8 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         const to = { top: G.top, height: A.top + A.height - G.top };
         Object.assign(det.style, { left: A.left + 'px', width: A.width + 'px', top: to.top + 'px', height: to.height + 'px' });
         det.scrollTop = 0;
+        wrap.classList.remove('det-closing');
+        this._aiClosing = false;
         wrap.classList.add('det');
         const start = from || { top: A.top, height: A.height };
         det.style.overflowY = 'hidden';
@@ -2436,14 +2438,15 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         const op = det.offsetParent || wrap, A = at(box, op);
         const from = { top: parseFloat(det.style.top) || A.top, height: parseFloat(det.style.height) || A.height };
         wrap.classList.remove('det');
-        det.scrollTop = 0;
-        const done = () => { if (this._aiShown) return; det.hidden = true; det.classList.remove('fly'); ['left', 'width', 'top', 'height', 'overflow-y'].forEach((k) => det.style.removeProperty(k)); };
+        wrap.classList.add('det-closing');
+        this._aiClosing = true;
+        const done = () => { this._aiClosing = false; if (this._aiShown) return; wrap.classList.remove('det-closing'); det.hidden = true; det.classList.remove('fly'); ['left', 'width', 'top', 'height', 'overflow-y'].forEach((k) => det.style.removeProperty(k)); [...det.children].forEach((c) => c.style.removeProperty('opacity')); };
         det.style.overflowY = 'hidden';
-        anims.push(det.animate([{ opacity: 1 }, { opacity: 1, offset: 0.8 }, { opacity: 0 }], { duration: MS, easing: 'ease', fill: 'forwards' }));
+        [...det.children].forEach((c) => anims.push(c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: MS * 0.35, easing: 'ease', fill: 'forwards' })));
         anims.push(grid.animate([{ opacity: 0 }, { opacity: 0, offset: 0.3 }, { opacity: 1 }], { duration: MS, easing: 'ease' }));
         const shrink = det.animate([{ top: from.top + 'px', height: from.height + 'px' }, { top: A.top + 'px', height: A.height + 'px' }], { duration: MS, easing: E, fill: 'forwards' });
         anims.push(shrink);
-        shrink.finished.then(() => { done(); anims.forEach((a) => a.cancel()); }, () => {});
+        shrink.finished.then(() => { done(); anims.forEach((a) => a.cancel()); if (MS && !this._aiShown) box.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease' }); }, () => {});
         if (!MS) done();
       }
     }
