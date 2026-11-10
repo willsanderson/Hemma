@@ -8617,7 +8617,7 @@ window.hemmaMenuGlass = {
           :host(.hv:not(.hvp)) .cat-bg { background: var(--hv-bg, #49575c); -webkit-backdrop-filter: none; backdrop-filter: none; }
           :host(.hv:not(.base)) .cat-bg { background: color-mix(in oklab, var(--hv-bg, #49575c) 40%, transparent); -webkit-backdrop-filter: blur(40px) saturate(1.1); backdrop-filter: blur(40px) saturate(1.1); }
           :host(.hv) .cat-bg.show { transition: left .48s cubic-bezier(0.32, 0.72, 0, 1); }
-          :host(.hvp) { --hv-veil: var(--hv-veil-photo); --hv-veil-bf: blur(28px) saturate(1.2); --hv-veil-mask: linear-gradient(to bottom, #000 55%, transparent); --hv-veil-mask-d: linear-gradient(to bottom, #000 60%, transparent); }
+          :host(.hvp) { --hv-veil: none; --hv-veil-bf: blur(28px) saturate(1.2); --hv-veil-mask: linear-gradient(to bottom, #000 70%, transparent); --hv-veil-mask-d: linear-gradient(to bottom, #000 70%, transparent); --hv-veil-h: calc(env(safe-area-inset-top, 0px) + 200px + var(--hemma-nav-header-offset, var(--hemma-header-offset, 0px))); }
           .cat-photo { position: fixed; inset: 0; z-index: 37; overflow: hidden; pointer-events: none; }
           :host(:not(.hv)) .cat-pbox::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: var(--hemma-ov-top, linear-gradient(to bottom, rgba(20, 20, 22, 0.36) 0%, rgba(20, 20, 22, 0.16) 28%, rgba(20, 20, 22, 0) 52%)); }
           .cat {
