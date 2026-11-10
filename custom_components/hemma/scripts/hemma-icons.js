@@ -140,4 +140,9 @@
   window.hemmaIconUrl = function (name) {
     return window.HEMMA_ICONS[name] || `/hemma_assets/icons/${name}.svg`;
   };
+  // Safari shares one decoded image per URL, so a mask reusing a tile <img> URL blanks when that tile redraws.
+  window.hemmaMaskUrl = function (name) {
+    const u = window.hemmaIconUrl(name);
+    return `url('${u}${u.startsWith('data:') ? '%3C%21--mask--%3E' : ''}')`;
+  };
 })();

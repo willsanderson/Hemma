@@ -70,7 +70,7 @@ hemma_lock:
           - --hemma-entity-top-gradient: none
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
           - --hemma-icon-color-current: "var(--hemma-popup-primary-color, #00c3d0)"
-          - --hemma-icon-svg-url: "[[[ return `url('${window.hemmaIconUrl('door-open')}')`; ]]]"
+          - --hemma-icon-svg-url: "[[[ return window.hemmaMaskUrl('door-open'); ]]]"
           - --hemma-icon-use-mask: "1"
           - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
         name:
@@ -93,7 +93,7 @@ hemma_lock:
           - --hemma-entity-top-gradient: none
           - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
           - --hemma-icon-color-current: "var(--hemma-popup-primary-color, #00c3d0)"
-          - --hemma-icon-svg-url: "[[[ return `url('${window.hemmaIconUrl(variables.icon_unlocked || 'lock-open-fill')}')`; ]]]"
+          - --hemma-icon-svg-url: "[[[ return window.hemmaMaskUrl(variables.icon_unlocked || 'lock-open-fill'); ]]]"
           - --hemma-icon-use-mask: "1"
           - --hemma-icon-circle-bg: var(--hemma-icon-color-current)
         name:
@@ -117,10 +117,10 @@ hemma_lock:
       - --hemma-icon-mask-scale: 63.6%
       - --hemma-icon-mask-image: |
           [[[
-            if (variables.open_doors) return `url('${window.hemmaIconUrl('door-open')}')`;
-            if (entity.state === 'unlocked') return `url('${window.hemmaIconUrl(variables.icon_unlocked || 'lock-open-fill')}')`;
-            if (entity.state === 'unlocking') return `url('${window.hemmaIconUrl('lock-unlocking-fill')}')`;
-            return `url('${window.hemmaIconUrl(variables.icon_locked || 'lock-fill')}')`;
+            if (variables.open_doors) return window.hemmaMaskUrl('door-open');
+            if (entity.state === 'unlocked') return window.hemmaMaskUrl(variables.icon_unlocked || 'lock-open-fill');
+            if (entity.state === 'unlocking') return window.hemmaMaskUrl('lock-unlocking-fill');
+            return window.hemmaMaskUrl(variables.icon_locked || 'lock-fill');
           ]]]
     img_cell:
       - color: var(--hemma-entity-name-active, var(--primary-text-color)) !important

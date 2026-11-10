@@ -151,7 +151,7 @@ hemma_motion:
 
   styles:
     card:
-      - --hemma-icon-mask-image: "[[[ return `url('${window.hemmaIconUrl('person-walking-motion')}')`; ]]]"
+      - --hemma-icon-mask-image: "[[[ return window.hemmaMaskUrl('person-walking-motion'); ]]]"
     state:
       - color: |
           [[[

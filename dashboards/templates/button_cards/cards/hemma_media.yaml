@@ -190,8 +190,8 @@ hemma_media:
       - --hemma-icon-mask-image: |
           [[[
             const icon = variables.icon;
-            if (icon === 'ps5') return `url('${window.hemmaIconUrl(document.documentElement.classList.contains('hemma-hv') ? 'playstation' : variables.is_active ? 'ps5' : 'ps5_off')}')`;
-            return `url('${window.hemmaIconUrl(icon || 'speaker')}')`;
+            if (icon === 'ps5') return window.hemmaMaskUrl(document.documentElement.classList.contains('hemma-hv') ? 'playstation' : variables.is_active ? 'ps5' : 'ps5_off');
+            return window.hemmaMaskUrl(icon || 'speaker');
           ]]]
       - --hemma-media-icon-bg: |
           [[[

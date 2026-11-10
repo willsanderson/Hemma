@@ -888,7 +888,7 @@ hemma_entity:
           ]]]
       - --hemma-icon-mask-image: |
           [[[
-            return `url('${window.hemmaIconUrl(variables.icon || 'default')}')`;
+            return window.hemmaMaskUrl(variables.icon || 'default');
           ]]]
       - --hemma-icon-mask-active: |
           [[[

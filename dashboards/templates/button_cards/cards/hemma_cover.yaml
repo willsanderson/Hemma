@@ -50,8 +50,8 @@ hemma_cover:
                   ? window.hemmaCoverKind(entity?.attributes?.device_class, entity?.entity_id)
                   : { open: 'curtain-open', closed: 'curtain-closed' };
                 return ['open', 'opening'].includes(s)
-                  ? `url('${window.hemmaIconUrl(variables.icon_open || k.open)}')`
-                  : `url('${window.hemmaIconUrl(variables.icon_closed || k.closed)}')`;
+                  ? window.hemmaMaskUrl(variables.icon_open || k.open)
+                  : window.hemmaMaskUrl(variables.icon_closed || k.closed);
               ]]]
           - --hemma-icon-use-mask: "1"
           - --hemma-icon-color-current: "var(--hemma-popup-primary-color, #00c3d0)"
@@ -72,6 +72,6 @@ hemma_cover:
               ? window.hemmaCoverKind(entity?.attributes?.device_class, entity?.entity_id)
               : { open: 'curtain-open', closed: 'curtain-closed' };
             return ['open', 'opening'].includes(s)
-              ? `url('${window.hemmaIconUrl(variables.icon_open || k.open)}')`
-              : `url('${window.hemmaIconUrl(variables.icon_closed || k.closed)}')`;
+              ? window.hemmaMaskUrl(variables.icon_open || k.open)
+              : window.hemmaMaskUrl(variables.icon_closed || k.closed);
           ]]]
