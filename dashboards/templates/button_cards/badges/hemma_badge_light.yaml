@@ -90,13 +90,13 @@ hemma_badge_light:
       - --badge-title-color: >
           [[[
             return entity?.state === 'on'
-              ? 'var(--primary-text-color)'
+              ? 'var(--hemma-badge-title-color, var(--primary-text-color))'
               : 'var(--badge-title-inactive)';
           ]]]
       - --badge-sub-color: >
           [[[
             return entity?.state === 'on'
-              ? 'var(--secondary-text-color)'
+              ? 'var(--hemma-badge-sub-color, var(--secondary-text-color))'
               : 'color-mix(in oklab, var(--secondary-text-color) 70%, transparent)';
           ]]]
       - --hemma-icon-color: >

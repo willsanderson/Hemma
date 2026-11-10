@@ -39,11 +39,11 @@ hemma_badge_energy_group:
           ]]]
       - --badge-title-color: >
           [[[
-            return states[variables.row_entity]?.state === 'energy' ? 'rgba(0,0,0,0.85)' : 'var(--hemma-badge-title-color, var(--primary-text-color))';
+            return states[variables.row_entity]?.state === 'energy' ? 'var(--badge-active-title, rgba(0,0,0,0.85))' : 'var(--hemma-badge-title-color, var(--primary-text-color))';
           ]]]
       - --badge-sub-color: >
           [[[
-            return states[variables.row_entity]?.state === 'energy' ? 'rgba(0,0,0,0.6)' : 'var(--hemma-badge-sub-color, var(--secondary-text-color))';
+            return states[variables.row_entity]?.state === 'energy' ? 'var(--badge-active-sub, rgba(0,0,0,0.6))' : 'var(--hemma-badge-sub-color, var(--secondary-text-color))';
           ]]]
       # A bare yellow glyph washes out on the white selected pill; deepen it there.
       - --hemma-badge-energy-medium-color: >
@@ -98,7 +98,7 @@ hemma_badge_energy_group:
         !['false','0','no','off','disabled'].includes(String(ev).trim().toLowerCase());
       const URL = window.hemmaIconUrl('energy');
 
-      return `:host{display:${enabled ? 'inline-block' : 'none'} !important;order:var(--hemma-badge-order-energy,6);}${states[variables.row_entity]?.state === 'energy' ? 'ha-card{--hemma-badge-tone-yellow:#D99A00;--hemma-badge-climate-color:#0096B4;--hemma-badge-temp-very-cold-color:#3A6FE0;--hemma-badge-temp-cool-color:#0096B4;--hemma-badge-temp-comfortable-color:#1E9E45;--hemma-badge-temp-warm-color:#D99A00;--hemma-badge-temp-hot-color:#E07400;--hemma-badge-temp-very-hot-color:#E0353A;--hemma-badge-presence-home-color:#1E9E45;--hemma-badge-presence-away-color:#D99A00;--hemma-badge-security-color:#00969F;--hemma-badge-energy-color:#1E9E45;--hemma-badge-energy-low-color:#1E9E45;--hemma-badge-energy-medium-color:#D99A00;--hemma-badge-energy-high-color:#E07400;--hemma-badge-energy-very-high-color:#E0353A;}' : ''}
+      return `:host{display:${enabled ? 'inline-block' : 'none'} !important;order:var(--hemma-badge-order-energy,6);}${states[variables.row_entity]?.state === 'energy' ? 'ha-card{--hemma-badge-tone-yellow:var(--hemma-sel-badge-tone-yellow, #D99A00);--hemma-badge-climate-color:var(--hemma-sel-badge-climate-color, #0096B4);--hemma-badge-temp-very-cold-color:var(--hemma-sel-badge-temp-very-cold-color, #3A6FE0);--hemma-badge-temp-cool-color:var(--hemma-sel-badge-temp-cool-color, #0096B4);--hemma-badge-temp-comfortable-color:var(--hemma-sel-badge-temp-comfortable-color, #1E9E45);--hemma-badge-temp-warm-color:var(--hemma-sel-badge-temp-warm-color, #D99A00);--hemma-badge-temp-hot-color:var(--hemma-sel-badge-temp-hot-color, #E07400);--hemma-badge-temp-very-hot-color:var(--hemma-sel-badge-temp-very-hot-color, #E0353A);--hemma-badge-presence-home-color:var(--hemma-sel-badge-presence-home-color, #1E9E45);--hemma-badge-presence-away-color:var(--hemma-sel-badge-presence-away-color, #D99A00);--hemma-badge-security-color:var(--hemma-sel-badge-security-color, #00969F);--hemma-badge-energy-color:var(--hemma-sel-badge-energy-color, #1E9E45);--hemma-badge-energy-low-color:var(--hemma-sel-badge-energy-low-color, #1E9E45);--hemma-badge-energy-medium-color:var(--hemma-sel-badge-energy-medium-color, #D99A00);--hemma-badge-energy-high-color:var(--hemma-sel-badge-energy-high-color, #E07400);--hemma-badge-energy-very-high-color:var(--hemma-sel-badge-energy-very-high-color, #E0353A);}' : ''}
         #img-cell, .img-cell{ position: relative; }
 
         #img-cell #icon, .img-cell #icon{

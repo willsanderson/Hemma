@@ -59,14 +59,14 @@ hemma_badge_presence:
           [[[
             const s = String(entity?.state || '').toLowerCase().replace(/_/g, ' ');
             return (s === 'home' || s === 'just arrived')
-              ? 'var(--primary-text-color)'
+              ? 'var(--hemma-badge-title-color, var(--primary-text-color))'
               : 'var(--badge-title-inactive)';
           ]]]
       - --badge-sub-color: >
           [[[
             const s = String(entity?.state || '').toLowerCase().replace(/_/g, ' ');
             return (s === 'home' || s === 'just arrived')
-              ? 'var(--secondary-text-color)'
+              ? 'var(--hemma-badge-sub-color, var(--secondary-text-color))'
               : 'color-mix(in oklab, var(--secondary-text-color) 70%, transparent)';
           ]]]
     icon:
