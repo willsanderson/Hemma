@@ -12,6 +12,9 @@ Fixes for flicker after the dashboard sits idle, dark and white text in Overview
 - **The selected badge stands out with dark text**, in Glass and Minimal. It turns into a dark pill with white text and a bright icon, so you can always tell which one is selected. A room's Lights and People chips keep dark text too.
 - **White text in Overview stays readable by day.** In Minimal the photo now darkens to match when you switch text color or the device switches between light and dark, and in Glass a soft shade behind the title keeps it clear of a bright sky.
 - **Minimal's light toolbar pill and tab bar are solid**, so tiles scrolling under them no longer show through.
+- **The Home Assistant button always opens HA's sidebar**, even when that browser has the sidebar docked (for example on a second address like homeassistant.local). It slides in over the dashboard without changing your sidebar setting, and a docked sidebar no longer shows behind Hemma's.
+- **The dashboard appears in one piece on load**, back button included.
+- **Minimal with white text in light mode:** tiles that are off look like darker tinted glass, the notification badge matches dark text, and Home Assistant's own pages use white text instead of dark text on slate.
 - **Foldable phones keep the phone layout** when unfolded, with two, three or four tiles across depending on the screen's width.
 - **Off tiles no longer lose their icon in Safari** when another tile with the same icon is on, such as two fans with one running.
 - **Leaving Home for a room slides cleanly**, without the page dropping for a frame.
