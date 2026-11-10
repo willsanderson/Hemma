@@ -2,12 +2,15 @@
 
 ## 2.4.1
 
-Fixes for Glass with dark text, the selected badge, foldable phones and a few Safari glitches.
+Fixes for flicker after the dashboard sits idle, dark and white text in Overview, the selected badge, foldable phones and a few Safari glitches.
 
 **After updating, restart Home Assistant.** If a dashboard looks unchanged, clear your browser's cache (in the iOS app, clear the app's cache).
 
+- **No more flicker when you come back to the dashboard.** After the dashboard sat in the background, Hemma refreshed its photos and icons in a way that made them blink. Each one is now ready before it's swapped in, so nothing flashes.
 - **Glass with dark text now reads right in Overview.** The room photo is lighter, and the weather, thermostat numbers, media icons and Now Playing turn dark to match. Studio's preview matches.
-- **The selected badge stands out with dark text.** It turns into a dark pill with white text and a bright icon, so you can always tell which one is selected. A room's Lights and People chips keep dark text too.
+- **Icons keep their bright colors with dark text**, the same yellow, teal and green as the tiles, instead of darker versions.
+- **The selected badge stands out with dark text**, in Glass and Minimal. It turns into a dark pill with white text and a bright icon, so you can always tell which one is selected. A room's Lights and People chips keep dark text too.
+- **White text in Overview stays readable by day.** In Minimal the photo now darkens to match when you switch text color or the device switches between light and dark, and in Glass a soft shade behind the title keeps it clear of a bright sky.
 - **Foldable phones keep the phone layout** when unfolded, with two, three or four tiles across depending on the screen's width.
 - **Off tiles no longer lose their icon in Safari** when another tile with the same icon is on, such as two fans with one running.
 - **Leaving Home for a room slides cleanly**, without the page dropping for a frame.
