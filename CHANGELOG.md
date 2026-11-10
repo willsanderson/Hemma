@@ -1,8 +1,21 @@
 # Changelog
 
+## 2.4.1
+
+Fixes for Glass with dark text, the selected badge, foldable phones and a few Safari glitches.
+
+**After updating, restart Home Assistant.** If a dashboard looks unchanged, clear your browser's cache (in the iOS app, clear the app's cache).
+
+- **Glass with dark text now reads right in Overview.** The room photo is lighter, and the weather, thermostat numbers, media icons and Now Playing turn dark to match. Studio's preview matches.
+- **The selected badge stands out with dark text.** It turns into a dark pill with white text and a bright icon, so you can always tell which one is selected. A room's Lights and People chips keep dark text too.
+- **Foldable phones keep the phone layout** when unfolded, with two, three or four tiles across depending on the screen's width.
+- **Off tiles no longer lose their icon in Safari** when another tile with the same icon is on, such as two fans with one running.
+- **Leaving Home for a room slides cleanly**, without the page dropping for a frame.
+- **The plant popup's advice closes smoothly** and the readings stay in place.
+
 ## 2.4.0
 
-Hemma's biggest update yet: setup without YAML, a second style, Minimal, alongside Glass, new popups for every tile, three screensavers for wall-mounted iPads, and a redrawn Energy page.
+Hemma's biggest update yet: setup without YAML, a second style, Minimal, alongside Glass, new popups for every tile, three screensavers for your tablet, and a redrawn Energy page.
 
 **After updating, restart Home Assistant.** Your dashboards pick up the new templates on their own, so there's nothing to save. If a dashboard looks unchanged, clear your browser's cache (in the iOS app, clear the app cache).
 
