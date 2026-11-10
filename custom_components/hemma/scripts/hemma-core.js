@@ -5390,9 +5390,13 @@ window.hemmaMenuGlass = {
           if (page && performance.now() - t0 < 1200) {
             if (!this._pageDrawn(page) || !this._sceneIconsDrawn(page)) { requestAnimationFrame(wait); return; }
             if (this._sortSig == null) { this._sortSoon('fill'); if (this._sortSig == null) { requestAnimationFrame(wait); return; } }
+            const backWanted = this.classList.contains('hv') && this._cat && (this._cat !== 'home' || this._roomBack());
+            if (backWanted && !this._backPlaced) { this._syncBack(); requestAnimationFrame(wait); return; }
           }
           boot.style.removeProperty('opacity');
           clearTimeout(this._bootT);
+          const bk = this._sideBack;
+          if (bk) { bk.style.transition = 'none'; requestAnimationFrame(() => requestAnimationFrame(() => bk.style.removeProperty('transition'))); }
           this.classList.remove('booting');
         };
         wait();
