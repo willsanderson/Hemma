@@ -196,6 +196,7 @@ Hemma builds ordinary dashboards, so custom templates, hand-built views and per-
 - **[Homio](https://github.com/iamtherufus/Homio)** by [@iamtherufus](https://github.com/iamtherufus), the original concept and base implementation.
 - **[@SH1FT-W](https://github.com/SH1FT-W)**, for finding and fixing more of Hemma's rough edges than anyone, and for [Casora](https://github.com/SH1FT-W/casora), whose ideas several 2.4 features build on.
 - Built and maintained by [@willsanderson](https://github.com/willsanderson).
+- Developed with [Claude Code](https://claude.com/claude-code). Every feature is my design, every change is tested on real phones, tablets and desktops, and a release ships only after the automated test suite passes.
 
 [MIT](LICENSE)
 
