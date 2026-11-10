@@ -8053,7 +8053,7 @@ class HemmaPanel extends HTMLElement {
         }
         .card.map .hv.hvl {
           --hv-ink:#111; --hv-sub:rgba(0,0,0,0.55); --hv-off:rgba(255,255,255,0.48); --hv-chrome:rgba(255,255,255,0.8); --pv-cap:#111; --pv-rim:rgba(0,0,0,0.04);
-          --hv-bi-bg:rgba(255,255,255,0.88); --hv-bi-ink:#1c1c1e; --hv-bi-sel:#fff; --hv-bi-sel-ink:#1c1c1e; --hv-bi-sel-sub:rgba(60,60,67,0.6); --hv-np:rgba(255,255,255,0.5); --hv-wx:brightness(0);
+          --hv-bi-bg:rgba(255,255,255,0.88); --hv-bi-ink:#1c1c1e; --hv-bi-sel:rgba(28,28,30,0.88); --hv-bi-sel-ink:#fff; --hv-bi-sel-sub:rgba(255,255,255,0.7); --hv-np:rgba(255,255,255,0.5); --hv-wx:brightness(0);
           --hv-side:rgba(255,255,255,0.16); --hv-side-on:rgba(255,255,255,0.6);
           --hv-name:rgba(0,0,0,0.85); --hv-state:rgba(0,0,0,0.55); --hv-scene-icon:rgba(0,0,0,0.85);
           --hemma-nav-active-fill:color-mix(in oklab, var(--flat) 40%, transparent); --hemma-pill-divider:rgba(0,0,0,0.16); --hemma-pill-fill:var(--hv-chrome);
