@@ -227,7 +227,7 @@ class HemmaSmartRow extends HTMLElement {
       this.addEventListener('card-visibility-changed', this._onVisChange);
     }
     if (!this._initialized || !this._wrappers.length) return;
-    if (isDesktop()) this.scrollTo({ left: 0, behavior: 'instant' });
+    if (!this._scrollMode && isDesktop()) this.scrollTo({ left: 0, behavior: 'instant' });
     if (!this._probed) { this._probed = true; setTimeout(() => this._probe(), 900); }
 
     const inactive = this._config.cards.map((_, i) => i)
@@ -421,7 +421,7 @@ class HemmaSmartRow extends HTMLElement {
     const DUR  = 220;
     const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
 
-    const horizontal = isDesktop();
+    const horizontal = !this._scrollMode && isDesktop();
     const gap = horizontal
       ? (parseFloat(getComputedStyle(this._container).columnGap) || 0)
       : 0;
@@ -653,6 +653,19 @@ class HemmaSmartRow extends HTMLElement {
     });
   }
 
+  _tagPhone(card, tries = 0) {
+    // Tiles pick their phone look from the screen size; on a wide screen the row has to hand it to them.
+    const found = [];
+    const walk = (el, depth) => {
+      if (!el || depth > 6) return;
+      if (el.tagName === 'BUTTON-CARD') { found.push(el); return; }
+      for (const c of [...(el.shadowRoot ? el.shadowRoot.children : []), ...el.children]) walk(c, depth + 1);
+    };
+    walk(card, 0);
+    found.forEach((b) => b.classList.add('hemma-phone'));
+    if (!found.length && tries < 40) requestAnimationFrame(() => { if (card.isConnected || tries < 5) this._tagPhone(card, tries + 1); });
+  }
+
   _scheduleLargeFill(wrapper) {
     const run = () => this._stampLargeFill(wrapper);
     requestAnimationFrame(run);
@@ -733,6 +746,7 @@ class HemmaSmartRow extends HTMLElement {
           this._hiddenState[i] = true;
         }
         if (card) wrapper.appendChild(card);
+        if (card && this._scrollMode && this._sortEnabled && !isRawCard(this._config.cards[i])) this._tagPhone(card);
         container.appendChild(wrapper);
         return wrapper;
       });
@@ -792,6 +806,7 @@ class HemmaSmartRow extends HTMLElement {
       }
       wrapper.style.setProperty('--hemma-init-play', 'paused');
       if (card) wrapper.appendChild(card);
+      if (card && this._scrollMode && this._sortEnabled && !isRawCard(cfg)) this._tagPhone(card);
       container.appendChild(wrapper);
 
       this._cards.push(card);
@@ -989,13 +1004,13 @@ class HemmaSmartRow extends HTMLElement {
 
     if (!animate || window._hemmaNoFilterAnim) {
       newOrder.forEach((origIdx, pos) => { this._wrappers[origIdx].style.order = pos; });
-      if (isDesktop()) this.scrollTo({ left: 0, behavior: 'instant' });
+      if (!this._scrollMode && isDesktop()) this.scrollTo({ left: 0, behavior: 'instant' });
       return;
     }
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       newOrder.forEach((origIdx, pos) => { this._wrappers[origIdx].style.order = pos; });
-      if (isDesktop()) this.scrollTo({ left: 0, behavior: 'instant' });
+      if (!this._scrollMode && isDesktop()) this.scrollTo({ left: 0, behavior: 'instant' });
       return;
     }
 
@@ -1003,7 +1018,7 @@ class HemmaSmartRow extends HTMLElement {
     newOrder.forEach((origIdx, pos) => { this._wrappers[origIdx].style.order = pos; });
     const lastRects = this._wrappers.map(w => w.getBoundingClientRect());
 
-    if (isDesktop() && this.scrollLeft > 10) {
+    if (!this._scrollMode && isDesktop() && this.scrollLeft > 10) {
       this.scrollTo({ left: 0, behavior: 'smooth' });
     }
 
@@ -1108,11 +1123,10 @@ class HemmaSmartRow extends HTMLElement {
         scroll-snap-align: start;
       }
 
-      /* Phones reach this row only through the mobile dashboard, so portrait
-         and landscape share one in-flow scrolling layout. */
-      @media (max-width: 767px) and (orientation: portrait),
+      /* The mobile dashboard scrolls at any size, so a foldable opening or a window widening keeps it in flow. */
+      @media ${this._scrollMode ? 'all' : `(max-width: 767px) and (orientation: portrait),
              (max-height: 500px) and (orientation: portrait),
-             (max-height: 600px) and (orientation: landscape) {
+             (max-height: 600px) and (orientation: landscape)`} {
         :host {
           position: relative;
           z-index: auto;
@@ -1126,7 +1140,9 @@ class HemmaSmartRow extends HTMLElement {
         }
         #container {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: ${this._scrollMode && this._sortEnabled
+            ? 'repeat(auto-fill, minmax(min(180px, calc((100% - 8px) / 2)), 1fr))'
+            : 'repeat(2, minmax(0, 1fr))'};
           align-content: start;
           gap: 8px;
           padding: ${this._rowPadding || '0'};
@@ -1180,9 +1196,9 @@ class HemmaSmartRow extends HTMLElement {
       }
 
       /* Landscape has enough width for a third column of entity cards. */
-      @media (max-height: 600px) and (orientation: landscape) {
+      ${this._scrollMode ? '' : `@media (max-height: 600px) and (orientation: landscape) {
         #container { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      }
+      }`}
     `;
   }
 }

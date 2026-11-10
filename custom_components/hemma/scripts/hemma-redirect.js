@@ -33,10 +33,10 @@
     const pair = pairFor(hass, path);
     if (!pair) return;
 
-    const wantMobile = MOBILE_MQ.matches;
-    if (wantMobile === pair.onMobile) return;
+    // A phone dashboard stays put when the screen widens, as an unfolded foldable does.
+    if (pair.onMobile || !MOBILE_MQ.matches) return;
 
-    const target = '/' + (wantMobile ? pair.mobile : pair.desktop) + '/home';
+    const target = '/' + pair.mobile + '/home';
     if (path === target) return;
     window.history.replaceState(null, '', target);
     window.dispatchEvent(new Event('location-changed'));

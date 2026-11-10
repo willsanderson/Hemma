@@ -248,6 +248,30 @@ hemma_entity:
       }
     }
 
+    /* A phone row tags its tiles, so a wide screen like an unfolded foldable keeps the phone look. */
+    :host(.hemma-phone) ha-card {
+      --hemma-height-mq: 100%;
+      --hemma-icon-circle-size: 42px;
+      --hemma-tile-areas-mq: "i n" "i s";
+      --hemma-tile-cols-mq: auto minmax(0, 1fr);
+      --hemma-tile-rows-mq: auto auto;
+      --hemma-tile-gap-mq: 1px 10px;
+      --hemma-tile-name-mb-mq: 0px;
+      --hemma-tile-align-content-mq: center;
+      --hemma-tile-icon-align-mq: center;
+      --hemma-tile-icon-mt-mq: 0px;
+      --hemma-tile-icon-mt-lg: 0px;
+      --hemma-tile-extras-mq: none;
+      --hemma-tile-radius-mq: var(--hemma-tile-radius-phone, 26px);
+      --hemma-tile-radius-lg: var(--hemma-tile-radius-phone, 26px);
+      --hemma-tile-state-inset-mq: calc(42px + 10px);
+      --hemma-box-shadow-mq: var(--hemma-tile-glass-rim, inset 0 1px 0 -0.5px rgba(255,255,255,0.10), 0 2px 8px rgba(0,0,0,0.10));
+      --hemma-progress-icon-ratio: 0.8;
+      --hemma-entity-active-tint-current: var(--hemma-entity-active-tint-mobile, var(--hemma-entity-active-tint, rgba(255,255,255,1)));
+    }
+    :host(.hemma-phone) { --ha-card-border-radius: var(--hemma-tile-radius-phone, 26px); }
+    :host(.hemma-phone) #img-cell ha-icon { --mdc-icon-size: 24px !important; }
+
     :host(.hemma-compact) ha-card {
       --hemma-height-mq: 100%;
       --hemma-icon-circle-size: 42px;
