@@ -3680,6 +3680,7 @@ window.hemmaMenuGlass = {
 
     disconnectedCallback() {
       if (this._themeMo) this._themeMo.disconnect();
+      if (window.hemmaTuckHaSidebar) window.hemmaTuckHaSidebar(false);
       window.removeEventListener('location-changed', this._onRoute, true);
       window.removeEventListener('popstate', this._onRoute, true);
       window.removeEventListener('resize', this._onResize);
@@ -7784,6 +7785,7 @@ window.hemmaMenuGlass = {
       });
 
       this._activeIdx = bestIdx;
+      if (window.hemmaTuckHaSidebar) window.hemmaTuckHaSidebar(bestIdx >= 0);
       const prev = this._shownIdx;
       this._prevShown = prev;
       this._shownIdx = bestIdx;
@@ -15149,6 +15151,21 @@ window.hemmaMenuGlass = {
     var f = find();
     if (f && f.dr._hemmaLift) hold(f.dr, false);
     window.removeEventListener('location-changed', release);
+  };
+  // On Hemma's own dashboards a docked HA sidebar is taken out of the layout, as "Always hide" would; HA's pages keep it.
+  window.hemmaTuckHaSidebar = function (on) {
+    var f = find(), sr = f && f.dr.shadowRoot;
+    if (!sr) { if (on) setTimeout(function () { window.hemmaTuckHaSidebar(on); }, 300); return; }
+    // An adopted sheet: the drawer re-renders its whole shadow root when it changes form, which would drop a <style>.
+    if (!f.dr._hemmaTuckSheet && sr.adoptedStyleSheets) {
+      try {
+        var sh = new CSSStyleSheet();
+        sh.replaceSync(':host([hemma-tuck]:not([type="modal"])) .sidebar-shell{display:none!important;}:host([hemma-tuck]:not([type="modal"])) .app-content{padding-inline-start:0!important;transition:none!important;}');
+        sr.adoptedStyleSheets = sr.adoptedStyleSheets.concat([sh]);
+        f.dr._hemmaTuckSheet = sh;
+      } catch (_) {}
+    }
+    f.dr.toggleAttribute('hemma-tuck', !!on);
   };
   window.hemmaLiftHaSidebar = function () {
     var f = find();
