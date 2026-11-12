@@ -102,6 +102,9 @@ hemma_settings_button:
         ];
         // A YAML dashboard isn't Hemma Studio's to edit.
         if (variables.hemma_ui_managed === false) ITEMS.splice(1, 1);
+        if (!PHONE && window._hemmaSaverSet && window._hemmaSaverSet()) {
+          ITEMS.push({ label: T("menu.screensaver", "Start Screensaver"), icon: "mdi:clock-outline", run: function () { if (window._hemmaSaverNow) window._hemmaSaverNow(); } });
+        }
 
         // Hemma hides HA's own menu button; on a tablet or desktop this is the way back to it.
         if (!PHONE) {

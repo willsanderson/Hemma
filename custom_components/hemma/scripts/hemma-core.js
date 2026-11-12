@@ -287,6 +287,12 @@ window.hemmaMenuGlass = {
     if (++tries < 20) setTimeout(tick, tries < 6 ? 250 : 1500);
   })();
   window.addEventListener('hass-drawer-opened', apply, true);
+  // Home Assistant's menus take their fill from the card color, which Minimal keeps see-through for its glass cards.
+  document.addEventListener('wa-show', function (e) {
+    var el = e.composedPath ? e.composedPath()[0] : e.target;
+    if (!el || !el.tagName || el.tagName !== 'HA-DROPDOWN' || !document.documentElement.classList.contains('hemma-hv')) return;
+    el.style.setProperty('--wa-color-surface-raised', 'var(--hemma-menu-solid)', 'important');
+  }, true);
   window.addEventListener('location-changed', apply, true);
 })();
 
@@ -561,6 +567,7 @@ window.hemmaMenuGlass = {
     + '--hemma-mobile-hero-tint-top:transparent!important;--hemma-mobile-hero-tint-bot:transparent!important;--hemma-mobile-hero-mesh-a:transparent!important;--hemma-mobile-hero-mesh-b:transparent!important;'
     + '--hemma-mobile-hero-c-handoff:transparent!important;--hemma-mobile-hero-c-upper:transparent!important;--hemma-mobile-hero-c-mid:transparent!important;--hemma-mobile-hero-c-lower:transparent!important;--hemma-mobile-hero-c-base:transparent!important;}'
     + 'html.hemma-hv:not(.hv-light){--card-background-color:rgba(255,255,255,0.12)!important;--ha-color-fill-neutral-quiet-resting:rgba(255,255,255,0.18)!important;--hemma-dialog-bg:color-mix(in oklab, var(--hv-bg) 45%, rgb(34,36,38))!important;--ha-dialog-background:var(--hemma-dialog-bg)!important;--ha-dialog-surface-background:var(--hemma-dialog-bg)!important;--ha-dialog-surface-backdrop-filter:none!important;--mdc-theme-surface:var(--hemma-dialog-bg)!important;--hemma-perf-dialog-fill:var(--hemma-dialog-bg)!important;--ha-color-on-primary-loud:#1c1c1e!important;--text-primary-color:#1c1c1e!important;--mdc-theme-on-primary:#1c1c1e!important;}'
+    + 'html.hemma-hv{--hemma-menu-solid:color-mix(in oklab, var(--hv-bg) 26%, rgb(40,42,45));}html.hemma-hv.hv-light{--hemma-menu-solid:color-mix(in oklab, var(--hv-bg) 8%, #fff);}'
     + 'html.hemma-hv.hv-light{--card-background-color:rgba(255,255,255,0.4)!important;--ha-color-fill-neutral-quiet-resting:rgba(255,255,255,0.6)!important;--hv-upill-bg:#1c1c1e;--hv-upill-ink:#fff;--hv-hi-bg:#1c1c1e;--hv-hi-ink:#fff;--hv-hov-bg:#000;--hv-hov-op:.05;--state-media_player-active-color:#1c1c1e!important;--state-media_player-on-color:#1c1c1e!important;--md-slider-active-track-color:#1c1c1e;--md-slider-handle-color:#1c1c1e;--md-slider-focus-handle-color:#1c1c1e;--md-slider-hover-handle-color:#1c1c1e;--md-slider-pressed-handle-color:#1c1c1e;--hv-seg-th:#fff;--hv-seg-on:#1c1c1e;--hv-seg-sh:0 0.5px 1.5px rgba(0,0,0,0.08);--hv-pw-ink:#1c1c1e;--hv-gauge-b:.5;--button-card-box-shadow-active:0 0.5px 1.5px rgba(0,0,0,0.08)!important;--button-card-box-shadow-active-mobile:0 0.5px 1.5px rgba(0,0,0,0.08)!important;--hv-bi-bg:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 80%, transparent);--hv-bi-sel:rgba(28,28,30,0.88);--hv-bi-sel-ink:#fff;--hv-bi-sel-sub:rgba(255,255,255,0.7);--hv-bi-ink:#1c1c1e;--hv-sel-bg:#fff;--hv-sel-ink:#1c1c1e;--hv-sel-sub:rgba(60,60,67,0.6);--hv-sel-c:rgba(0,0,0,0.08);--hv-sel-sh:0 0.5px 1.5px rgba(0,0,0,0.08);--md-menu-container-color:color-mix(in oklab, var(--hv-bg) 12%, rgb(252,252,253))!important;--md-sys-color-surface-container:color-mix(in oklab, var(--hv-bg) 12%, rgb(252,252,253))!important;--md-sys-color-on-surface:#1c1c1e!important;--md-sys-color-on-surface-variant:rgba(60,60,67,0.7)!important;--md-menu-item-label-text-color:#1c1c1e!important;--mdc-select-fill-color:rgba(0,0,0,0.05)!important;--mdc-select-ink-color:#1c1c1e!important;--mdc-select-label-ink-color:rgba(60,60,67,0.7)!important;--hemma-chrome-fill-hover:rgba(255,255,255,0.75)!important;--hv-caret:rgba(0,0,0,0.42);--hv-np-c1:rgba(255,255,255,0.5);--hv-np-c2:rgba(255,255,255,0.5);--hv-np-ink:#1c1c1e;--hv-np-sub2:rgba(60,60,67,0.6);--hv-np-track2:rgba(0,0,0,0.12);--hv-np-fill:#1c1c1e;--hv-np-glyph:#1c1c1e;--hv-wx-filter:brightness(0);--badge-title-inactive:rgba(0,0,0,0.72)!important;--hv-en-card:rgba(255,255,255,0.42);--hv-en-ink:#1c1c1e;--hv-en-sub:rgba(60,60,67,0.78);--hv-en-line:rgba(0,0,0,0.1);--hv-en-seg:rgba(0,0,0,0.06);--hv-en-sth:#fff;--hv-en-grid:rgba(0,0,0,0.16);--hv-en-hi:rgba(0,0,0,0.05);--hemma-dialog-bg:color-mix(in oklab, var(--hv-bg) 70%, rgb(248,247,245))!important;--ha-dialog-background:var(--hemma-dialog-bg)!important;--ha-dialog-surface-background:var(--hemma-dialog-bg)!important;--ha-dialog-surface-backdrop-filter:none!important;--mdc-theme-surface:var(--hemma-dialog-bg)!important;--hemma-perf-dialog-fill:var(--hemma-dialog-bg)!important;--mdc-theme-on-surface:#1c1c1e!important;--state-icon-color:#1c1c1e!important;'
     + '--hemma-puck-num-off:#fff;--hv-icon-off-light:rgba(0,0,0,0.72);--hemma-bell-filter:brightness(0) opacity(0.86);--hemma-assist-filter:brightness(0) opacity(0.86);--hemma-nav-underline:rgba(17,17,17,0.85);--hemma-toggle-off-color:rgba(0,0,0,0.7);--hemma-settings-ink:#1c1c1e;--hemma-bell-badge:#1c1c1e;--hemma-bell-badge-ink:#fff;'
     + '--hv-ink:#111;--hv-sub:rgba(0,0,0,0.55);'
@@ -584,7 +591,7 @@ window.hemmaMenuGlass = {
     + 'html.hemma-hv.hv-bd-gradient{--hv-before-fill:transparent;}html.hemma-hv.hv-bd-gradient body{background:transparent!important;}'
     + '@media (max-width: 767px){html.hemma-hv:not(.hv-bd-color){--hv-before-fill:transparent;}html.hemma-hv:not(.hv-bd-color) body{background:transparent!important;}}'
     + 'html.hemma-hv.hv-light{--hemma-badge-bg:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 80%, transparent)!important;--hv-bg-solid:linear-gradient(color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2), color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2))!important;}'
-    + 'html.hemma-hv.hv-light.hv-ov:not(.hv-bd-gradient):not(.hv-bd-color){--hv-bg-solid:linear-gradient(color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2) 88%, transparent), color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2) 88%, transparent))!important;}'
+    + 'html.hemma-hv.hv-light.hv-ov:not(.hv-bd-gradient):not(.hv-bd-color){--hv-bg-solid:linear-gradient(color-mix(in oklab, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2), color-mix(in oklab, var(--hv-alb) 20%, #f8f6f2) var(--hv-alb-k)) 88%, transparent), color-mix(in oklab, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 14%, #f8f6f2), color-mix(in oklab, var(--hv-alb) 20%, #f8f6f2) var(--hv-alb-k)) 88%, transparent))!important;}'
     + 'html.hemma-hv{--hemma-tile-glass-rim:inset 0 0 0 0.5px rgba(255,255,255,0.05)!important;--hemma-tile-glass-rim-desktop:inset 0 0 0 0.5px rgba(255,255,255,0.05)!important;--hemma-badge-glass-rim:inset 0 0 0 0.5px rgba(255,255,255,0.12)!important;}'
     + 'html.hemma-hv.hv-light{--hv-np-bg:linear-gradient(135deg, color-mix(in oklab, color-mix(in oklab, var(--hv-np-c1) 22%, #fff) 94%, transparent), color-mix(in oklab, color-mix(in oklab, var(--hv-np-c2) 22%, #fff) 94%, transparent))!important;}'
     + 'html.hemma-hv:not(.hv-light){--hv-bi-bg:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 58%, transparent)!important;}'
@@ -609,7 +616,7 @@ window.hemmaMenuGlass = {
     + 'html.hemma-hv.hv-ha.hv-ha:not(.hv-dark):not(.hv-ink-w){--primary-color:#1c1c1e!important;--text-primary-color:#fff!important;}'
     + 'html.hemma-hv{--hv-photo-wash:radial-gradient(60% 45% at 0% 58%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 30%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 10%, transparent) 55%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 0%, transparent) 85%), linear-gradient(to top, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 22%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 8%, transparent) 50%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 0%, transparent) 80%), linear-gradient(color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 34%, transparent), color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 34%, transparent));}'
     + 'html.hemma-hv.hv-dark{--hv-photo-wash:radial-gradient(60% 45% at 0% 58%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 40%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 14%, transparent) 55%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 0%, transparent) 85%), linear-gradient(to top, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 12%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 4%, transparent) 50%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 0%, transparent) 80%), linear-gradient(color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 16%, transparent), color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 16%, transparent));}'
-    + 'html.hemma-hv.hv-light{--hv-photo-wash:linear-gradient(to bottom, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 12%, #fbf8f2) 60%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 12%, #fbf8f2) 50%, transparent) 40%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 12%, #fbf8f2) 64%, transparent) 75%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 12%, #fbf8f2) 79%, transparent) 100%);}'
+    + 'html.hemma-hv.hv-light{--hv-wash-c:color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 12%, #fbf8f2), color-mix(in oklab, var(--hv-alb) 20%, #fbf8f2) var(--hv-alb-k));--hv-photo-wash:linear-gradient(to bottom, color-mix(in oklab, var(--hv-wash-c) 60%, transparent) 0%, color-mix(in oklab, var(--hv-wash-c) 50%, transparent) 40%, color-mix(in oklab, var(--hv-wash-c) 64%, transparent) 75%, color-mix(in oklab, var(--hv-wash-c) 79%, transparent) 100%);}'
     + 'html.hemma-hv.hv-ink-w{--hv-photo-wash:radial-gradient(38% 24% at 0% 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 30%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 0%, transparent) 100%), radial-gradient(58% 52% at 0% 42%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 44%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 18%, transparent) 55%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 0%, transparent) 100%), linear-gradient(to top, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 18%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 0%, transparent) 70%), linear-gradient(color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 18%, transparent), color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 10%, #fff) 18%, transparent));}'
     + '@media (max-width: 767px){html.hemma-hv.hv-ink-w{--hv-photo-wash:linear-gradient(to bottom, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 24%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 15%, transparent) 45%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 20%, transparent) 100%);}html.hemma-hv.hemma-hv.hv-ink-w:not(.hv-bd-gradient):not(.hv-bd-color){--hv-off:rgba(255,255,255,0.12)!important;--hemma-glass-background:rgba(255,255,255,0.12)!important;}}'
     + 'html.hemma-hv.hv-ov:not(.hv-light){--hv-photo-top:linear-gradient(to bottom, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 34%, transparent) 0%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 20%, transparent) 22%, color-mix(in oklab, color-mix(in oklab, var(--hv-bg) 55%, rgb(20 20 22)) 0%, transparent) 42%);}'
@@ -627,6 +634,7 @@ window.hemmaMenuGlass = {
   var st = null, cur = '', cfg = { on: false, dark: false, white: false, key: '', rest: '' }, album = null, art = '', artAt = 0, tick = 0;
   // One color behind the whole dashboard, eased as a registered property so a song change fades rather than jumps.
   try { if (window.CSS && CSS.registerProperty) CSS.registerProperty({ name: '--hv-bg', syntax: '<color>', inherits: true, initialValue: '#97a9ae' }); } catch (e) {}
+  try { CSS.registerProperty({ name: '--hv-alb', syntax: '<color>', inherits: true, initialValue: '#fbf8f2' }); CSS.registerProperty({ name: '--hv-alb-k', syntax: '<percentage>', inherits: true, initialValue: '0%' }); } catch (e) {}
   try { ['--hv-np-c1', '--hv-np-c2'].forEach(function (n) { CSS.registerProperty({ name: n, syntax: '<color>', inherits: true, initialValue: 'rgba(0, 0, 0, 0.22)' }); }); } catch (e) {}
   var hex = function (c) { return '#' + c; };
   // The Now Playing tile wears its own cover's color (the screensaver's Artwork Color pick), blending between songs.
@@ -731,10 +739,12 @@ window.hemmaMenuGlass = {
     }
     var c = A ? 'rgb(' + A.join(',') + ')' : hex(base);
     if (mode === 'boot') h.style.transition = 'none';
-    else if (mode === 'slow') h.style.transition = '--hv-bg 12s cubic-bezier(.45, 0, .55, 1)';
+    else if (mode === 'slow') h.style.transition = ['--hv-bg', '--hv-alb', '--hv-alb-k'].map(function (k) { return k + ' 12s cubic-bezier(.45, 0, .55, 1)'; }).join(', ');
     else if (c !== lastC && h.style.transition) h.style.removeProperty('transition');
     lastC = c;
     h.style.setProperty('--hv-bg', c);
+    if (bgAlbum) h.style.setProperty('--hv-alb', 'rgb(' + bgAlbum.join(',') + ')');
+    h.style.setProperty('--hv-alb-k', bgAlbum ? '100%' : '0%');
     try { localStorage.setItem('hemma_hv_bg', c); } catch (e) {}
     var rgb0 = A || rgbHex(base), cream = [248, 246, 242];
     var light = !dark && !white ? 'rgb(' + rgb0.map(function (v, i) { return Math.round(v * 0.14 + cream[i] * 0.86); }).join(',') + ')' : '';
@@ -808,7 +818,7 @@ window.hemmaMenuGlass = {
     var was = h.classList.contains('hemma-hv') + '|' + h.classList.contains('hv-light');
     if (on && !st) { st = document.createElement('style'); st.id = 'hemma-hv-style'; st.textContent = FLAT + '@media (max-width: 767px), (max-height: 500px){html.hemma-hv{--hemma-badge-icon-override:36px;--hv-bi-size:36px;--hv-bi-pill:44px;--hv-head-dy:0px;--hv-bi-in-o:22%;--hv-bi-in-h:22%;}}@media (min-width: 768px) and (hover: hover) and (pointer: fine){html.hemma-hv{--hv-h1:40px;--hv-h1-lh:46px;--hemma-chrome-row-center-desktop:48px !important;}html.hemma-hv.hemma-hv-lock{--hemma-chrome-row-center-desktop:60px !important;}}@media (min-width: 768px) and (max-height: 1400px) and (hover: none){html.hemma-hv{--hv-h1:40px;--hv-h1-lh:46px;}}html.hemma-hv body{background:var(--hv-bg)!important;}html.hemma-hv{background:var(--hv-bg)!important;transition:--hv-bg 6s ease;--lovelace-background:transparent!important;--view-background:transparent!important;}'; (document.head || h).appendChild(st); }
     h.classList.toggle('hemma-hv', !!on);
-    if (!on) { metaC = ''; appTheme(''); ['--hv-veil', '--hv-bg-solid', '--hv-bg'].forEach(function (k) { h.style.removeProperty(k); }); }
+    if (!on) { metaC = ''; appTheme(''); ['--hv-veil', '--hv-bg-solid', '--hv-bg', '--hv-alb', '--hv-alb-k'].forEach(function (k) { h.style.removeProperty(k); }); }
     h.classList.toggle('hv-light', !!(on && light));
     if (was !== h.classList.contains('hemma-hv') + '|' + h.classList.contains('hv-light')) redrawCards();
   }
@@ -5972,6 +5982,11 @@ window.hemmaMenuGlass = {
             grain: d.backgroundImage && d.backgroundImage !== 'none' ? pick(d, ['backgroundImage', 'backgroundSize', 'backgroundRepeat', 'backgroundPosition', 'opacity', 'mixBlendMode']) : null,
           };
           this._bgRecipe.after.backgroundImage = this._bgRecipe.after.backgroundImage.replace(/url\([^)]*\)/g, 'url()');
+          // Minimal's wash follows the cover, so it is kept as var() here; the computed value would freeze it.
+          const hero = card.style.getPropertyValue('--hero-img');
+          let dep = 0, cut = -1;
+          for (let i = 0, b = this._bgRecipe.after.backgroundImage; i < b.length; i++) { if (b[i] === '(') dep++; else if (b[i] === ')') dep--; else if (b[i] === ',' && !dep) { cut = i; break; } }
+          this._bgRecipe.live = cut > 0 && /var\(--hv-photo-wash\)/.test(hero) ? this._bgRecipe.after.backgroundImage.slice(0, cut) + ', ' + hero.replace(/url\([^)]*\)/g, 'url()') : null;
         }
       }
       return this._bgRecipe || null;
@@ -5987,7 +6002,7 @@ window.hemmaMenuGlass = {
         borderRadius: rc.radius, overflow: 'hidden', isolation: 'isolate', pointerEvents: 'none' });
       const img = box.appendChild(document.createElement('div'));
       Object.assign(img.style, rc.after, { position: 'absolute', inset: '0' });
-      img.style.backgroundImage = rc.after.backgroundImage.replace(/url\([^)]*\)/g, 'url("' + ph.url + '")');
+      img.style.backgroundImage = (rc.live || rc.after.backgroundImage).replace(/url\([^)]*\)/g, 'url("' + ph.url + '")');
       img.style.backgroundPosition = rc.after.backgroundPosition.split(',').map((p, i) => (i ? ph.pos : p)).join(',');
       if (rc.grain) { const g = box.appendChild(document.createElement('div')); Object.assign(g.style, rc.grain, { position: 'absolute', inset: '0' }); }
       box._key = [ph.url, ph.pos, JSON.stringify(rc).replace(/-?\d+\.\d+/g, (n) => (+n).toFixed(2))].join('|');
@@ -9656,6 +9671,9 @@ window.hemmaMenuGlass = {
       /* The status bar's room is inside the content, so a panel's list can scroll up under it and one veil covers both (--hemma-stage-top). */
       :host([stage]) .content { padding-top: env(safe-area-inset-top, 0px); --hemma-stage-top: env(safe-area-inset-top, 0px); }
       :host([stage][closing]) .surface { animation: none; }
+      /* A phone stage has no glass, so Minimal's solid player color goes on the content, which reaches under both bars and morphs with the popup. */
+      :host([stage][solid]) .surface { padding-bottom: 0; }
+      :host([stage][solid]) .content { padding-bottom: env(safe-area-inset-bottom, 0px); --hemma-stage-solid: none; background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.3) 100%), rgb(var(--hemma-popup-solid)); }
       :host([stage]) .glass, :host([stage]) .rim, :host([stage]) .grab { display: none; }
       /* Blur and dim animate as values, never through opacity: iOS shows a fading backdrop-filter as all or nothing. */
       :host([stage]) .scrim {

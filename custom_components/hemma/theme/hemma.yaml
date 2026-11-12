@@ -4,6 +4,18 @@
 Hemma:
   modes:
     light:
+      # Switches on light pages: the shared values are see-through whites for dark, which leave the off thumb invisible.
+      switch-unchecked-button-color: '#ffffff'
+      switch-unchecked-track-color: 'rgba(120,120,128,0.32)'
+      switch-unchecked-color: 'rgba(120,120,128,0.32)'
+      ha-switch-background-color: 'rgba(120,120,128,0.18)'
+      ha-switch-background-color-hover: 'rgba(120,120,128,0.26)'
+      ha-switch-border-color: 'rgba(120,120,128,0.32)'
+      ha-switch-thumb-background-color: '#ffffff'
+      ha-switch-thumb-background-color-hover: '#ffffff'
+      ha-switch-thumb-border-color: 'rgba(0,0,0,0.08)'
+      ha-switch-thumb-border-color-hover: 'rgba(0,0,0,0.1)'
+      ha-switch-thumb-box-shadow: '0 1px 3px rgba(0,0,0,0.22)'
       # ------------------------------------------------------------------------
       # Surfaces, backgrounds, text
       # ------------------------------------------------------------------------

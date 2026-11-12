@@ -145,4 +145,14 @@
     const u = window.hemmaIconUrl(name);
     return `url('${u}${u.startsWith('data:') ? '%3C%21--mask--%3E' : ''}')`;
   };
+  // Tiles that drew before this file finished failed on the missing helpers above, and their error cards never retry; ask Home Assistant to rebuild them.
+  const rebuild = () => {
+    const out = [], walk = (r) => r.querySelectorAll('*').forEach((n) => {
+      if (n.tagName === 'HUI-ERROR-CARD' && /hemma(Mask|Icon)Url/.test(String((n._config || {}).message || ''))) out.push(n);
+      if (n.shadowRoot) walk(n.shadowRoot);
+    });
+    walk(document);
+    out.forEach((n) => n.dispatchEvent(new Event('ll-rebuild', { bubbles: true, composed: true })));
+  };
+  [0, 800, 2500, 6000].forEach((t) => setTimeout(rebuild, t));
 })();

@@ -74,12 +74,23 @@ Tap a tile and its popup grows out of it. Each kind of device gets its own, buil
 
 ## Screensavers
 
-Brand new screensavers available, perfect for any tablet, on a stand or mounted on the wall. **Today** shows the date, the weather and what's playing or your home at a glance, **Clock** fills the screen with a Classic, Numerals or Stacked face, and **Recently Added** shows your newest Plex posters. Each one takes your dashboard's colors, day and night.
+Eight screensavers for any tablet, on a stand or mounted on the wall, each in your dashboard's colors or the colors of what's playing, day and night.
+
+- **Today:** the date, a clock, the weather, and your calendar or home at a glance. Tap the lights row to dim them from the screensaver.
+- **Clock:** Numerals, Classic or Stacked.
+- **Now Playing:** the full-screen player for whatever's on.
+- **Recently Added:** your newest Plex posters.
+- **Rooms:** your room photos, full screen.
+- **Week:** the days ahead with the forecast and your calendar.
+- **Calendar:** the month, with today's date drawn large behind it.
+- **Cameras:** every camera in one grid. Tap one for its live feed.
+
+Pick one, or let them take turns with the ones you choose.
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/screensavers-dark.webp" />
-    <img src="docs/images/screensavers-light.webp" alt="Hemma screensavers on iPads: Today with music playing in blue and green, the Classic clock, Numerals, and Today in pink." />
+    <img src="docs/images/screensavers-light.webp" alt="Nine Hemma screensavers on iPads: Today with music playing, the Stacked clock, Now Playing, Recently Added, Rooms, Calendar, Week, the Classic clock and Cameras." />
   </picture>
 </p>
 
@@ -147,9 +158,9 @@ Rooms, tiles, badges, scenes, cameras, weather and screensavers, all in one plac
 - **Cameras** on Home, in rooms and on the Security page, with a timeline of today's motion and doorbell events.
 - **Energy** with today's total, usage by device, and Day, Week and Month.
 - **A plant assistant** that checks a plant's last week of readings against its needs and tells you what to do, using Home Assistant's AI Task when you have one set up.
-- **Screensavers** for any tablet: Today (date, clock, weather and calendar), Clock, and Recently Added from Plex.
+- **Screensavers** for any tablet: Today, Clock, Now Playing, Recently Added, Rooms, Week, Calendar and Cameras, with light control from Today.
 - **Your choice of what a tap does** on each tile: Normal, Ask First, or View Only for a tablet you hand to a guest.
-- **Your language.** Hemma follows your Home Assistant language and number formats.
+- **Your language.** Hemma comes in English, Swedish and German, and follows your Home Assistant language and number formats.
 
 </details>
 
@@ -177,9 +188,9 @@ Open Studio and choose **Import from YAML**. Hemma reads your rooms, entities an
 <summary>Translating Hemma</summary>
 <br/>
 
-Hemma's text lives in one file per language in `custom_components/hemma/translations/dashboard/`. Copy `en.json` to your language code (like `de.json`) and change only the text on the right. Keep the name on the left, anything in braces like `{n}`, and any `%` signs. Lines starting with `studio.` are Hemma Studio; the rest is the dashboard. Anything you leave out shows in English.
+Hemma's text lives in one file per language in `custom_components/hemma/translations/dashboard/`. Copy `en.json` to your language code (like `fr.json`) and change only the text on the right. Keep the name on the left, anything in braces like `{n}`, and any `%` signs. Lines starting with `studio.` are Hemma Studio; the rest is the dashboard. Anything you leave out shows in English.
 
-`python3 tools/i18ncheck.py --missing de` lists what a language still needs. To share a translation, open a pull request with your file.
+`python3 tools/i18ncheck.py --missing fr` lists what a language still needs. To share a translation or improve an existing one, open a pull request with your file.
 
 </details>
 
@@ -198,7 +209,7 @@ Hemma builds ordinary dashboards, so custom templates, hand-built views and per-
 - Built and maintained by [@willsanderson](https://github.com/willsanderson).
 - Developed with [Claude Code](https://claude.com/claude-code). Every feature is my design, every change is tested on real phones, tablets and desktops, and a release ships only after the automated test suite passes.
 
-[MIT](LICENSE)
+[GPL-3.0](LICENSE). Versions up to 2.4.1 were released under MIT; see [NOTICE](NOTICE).
 
 #### Enjoying Hemma?
 

@@ -1490,7 +1490,7 @@ const SECTIONS = [
         when: (vars) => vars.hemma_screensaver_style === "face",
         options: ["", "classic", "stacked"], optionLabels: { "": "Numerals", classic: "Classic", stacked: "Stacked" } },
       { key: "__sv_bg", label: "Background", type: "select", auto: true, scope: "dashboard",
-        when: (vars) => !vars.hemma_screensaver_style || vars.hemma_screensaver_style === "clock" || vars.hemma_screensaver_style === "face",
+        when: (vars) => !vars.hemma_screensaver_style || ["clock", "face", "week"].includes(vars.hemma_screensaver_style),
         options: (vars) => vars.hemma_style === "homeview" ? ["", "gray", "sand", "sage", "blue", "rose", "lavender", "sea", "clay", "plum", "honey", "black"] : ["", "sand", "sage", "blue", "rose", "lavender", "sea", "clay", "plum", "honey", "black"],
         // Match Dashboard shows the dashboard's own color, light and dark, as Appearance has it.
         swatches: (vars) => { const k = (vars.hemma_hv_color === "album" ? vars.hemma_hv_rest : vars.hemma_hv_color) || ""; return { ...SW_LIGHT, "": vars.hemma_style === "homeview" ? (SW_LIGHT[k] || SW_LIGHT[""]) : SW_LIGHT[""], gray: SW_LIGHT[""], black: "#000" }; },
@@ -1510,8 +1510,13 @@ const SECTIONS = [
       { key: "hemma_screensaver_np", label: "While music plays", type: "select", auto: true, scope: "dashboard",
         when: (vars) => saverIsClock(vars.hemma_screensaver_style),
         options: ["", "keep"], optionLabels: { "": "Show Now Playing", keep: "Keep widget" } },
+      { key: "hemma_screensaver_week_days", label: "Days", type: "select", auto: true, scope: "dashboard",
+        when: (vars) => vars.hemma_screensaver_style === "week",
+        options: ["", "5"], optionLabels: { "": "7 days", "5": "5 days" } },
+      { key: "hemma_screensaver_cameras", label: "Cameras", type: "list", domains: ["camera"], auto: true, scope: "dashboard", empty: "All cameras",
+        when: (vars) => vars.hemma_screensaver_style === "cameras" || (Array.isArray(vars.hemma_screensaver_cycle) ? vars.hemma_screensaver_cycle.includes("cameras") : !!vars.hemma_screensaver_rotate) },
       { key: "hemma_screensaver_calendars", label: "Calendars", type: "list", domains: ["calendar"], auto: true, scope: "dashboard", empty: "All calendars",
-        when: (vars) => saverIsClock(vars.hemma_screensaver_style) && !vars.hemma_screensaver_idle },
+        when: (vars) => (saverIsClock(vars.hemma_screensaver_style) && !vars.hemma_screensaver_idle) || vars.hemma_screensaver_style === "week" },
       { key: "hemma_screensaver", label: "Start screensaver", type: "select", auto: true, scope: "dashboard", reveals: true,
         options: ["", "0.5", "1", "2", "5", "10", "15"],
         optionLabels: { "": "Off", "0.5": "After 30 seconds", "1": "After 1 minute", "2": "After 2 minutes", "5": "After 5 minutes", "10": "After 10 minutes", "15": "After 15 minutes" } },
@@ -1524,6 +1529,8 @@ const SECTIONS = [
         when: (vars) => !!vars.hemma_screensaver,
         options: ["", "1", "2", "5", "15", "30", "60"],
         optionLabels: { "": "Off", "1": "Every minute", "2": "Every 2 minutes", "5": "Every 5 minutes", "15": "Every 15 minutes", "30": "Every 30 minutes", "60": "Every hour" } },
+      { key: "hemma_screensaver_cycle", label: "Cycle Through", type: "savercycle", auto: true, scope: "dashboard",
+        when: (vars) => !!vars.hemma_screensaver && !!vars.hemma_screensaver_rotate },
       { key: "hemma_screensaver_transition", label: "Transition", type: "select", auto: true, scope: "dashboard",
         when: (vars) => !!vars.hemma_screensaver && !!vars.hemma_screensaver_rotate,
         options: ["", "slide"], optionLabels: { "": "Fade", slide: "Slide" } },
@@ -2597,13 +2604,31 @@ const mdiList = () => {
 };
 const SAVER_BG = { "": "#97a9ae", sand: "#c8b9a2", sage: "#a3b29a", blue: "#93a7c2", rose: "#c6a9ad", lavender: "#afa9c9", sea: "#90b7b6", clay: "#cea796", plum: "#c0a0b4", honey: "#cab992", black: "#000" };
 const saverIsClock = (k) => !k || k === "clock" || k === "clock_photo";
+const SAVER_STYLES = [["", "Today"], ["face", "Clock"], ["np", "Now Playing"], ["recent", "Recently Added"], ["photos", "Rooms"], ["week", "Week"], ["calendar", "Calendar"], ["cameras", "Cameras"]];
+const saverMockNew = (k, bg) => {
+  const box = (inner, b) => `<div style="position:absolute;inset:0;background:${b};font-family:-apple-system,system-ui,sans-serif;color:#111;text-align:left">${inner}</div>`;
+  if (k === "photos") return box(`<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.3),rgba(0,0,0,0) 40%,rgba(0,0,0,0) 62%,rgba(0,0,0,.45))"></div><div style="position:absolute;left:0;right:0;top:20px;text-align:center;color:#fff"><div style="font-size:11px;font-weight:700">Monday <span style="opacity:.7">November 10</span></div><div style="font-size:62px;font-weight:700;letter-spacing:-.045em;line-height:.95">3:15</div></div><div style="position:absolute;left:18px;bottom:16px;font-size:17px;font-weight:700;color:#fff">Living Room</div><div style="position:absolute;right:18px;bottom:16px;font-size:17px;font-weight:600;color:#fff">72°</div>`, "linear-gradient(170deg,#c9b8a3 0%,#8d7a66 46%,#4d4237 47%,#6b5a49 100%)");
+  if (k === "week") { let c = ""; for (let i = 0; i < 7; i++) c += `<div style="position:absolute;left:${16 + i * 41.5}px;top:70px;width:38px;height:${i ? 92 : 100}px;border-radius:8px;${i ? "" : "background:rgba(255,255,255,.3);"}"><div style="font-size:7px;font-weight:700;margin:7px 0 0 5px;opacity:.6">${["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"][i]}</div><div style="font-size:19px;font-weight:700;margin-left:5px">${10 + i}</div>${i % 3 !== 2 ? `<div style="margin:10px 4px 0 5px;height:16px;border-left:2px solid ${["#30D158", "#0A84FF", "#FF9F0A", "#BF5AF2"][i % 4]}"></div>` : ""}</div>`;
+    return box(`<div style="position:absolute;left:18px;top:18px;font-size:24px;font-weight:700;letter-spacing:-.03em">This Week</div><div style="position:absolute;right:18px;top:18px;font-size:24px;font-weight:700;letter-spacing:-.03em">3:15</div>${c}`, bg); }
+  if (k === "calendar") {
+    let g = "";
+    "SMTWTFS".split("").forEach((d, i) => { g += `<text x="${73.6 + i * 28.8}" y="52">${d}</text>`; });
+    for (let i = 0; i < 42; i++) { const n = i < 30 ? i + 1 : i - 29, o = i >= 30; if (i === 10) continue; g += `<text x="${73.6 + (i % 7) * 28.8}" y="${73.5 + Math.floor(i / 7) * 21.5}"${o ? ' fill="#c1d7fc"' : ""}>${n}</text>`; }
+    return `<svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%;font-family:-apple-system,system-ui,sans-serif"><rect width="320" height="200" fill="#ebebeb"/><text x="160" y="170" text-anchor="middle" font-size="152" font-weight="330" fill="#ea5f59" stroke="#ea5f59" stroke-width="6" stroke-linejoin="round" letter-spacing="-4">11</text><g font-size="13" font-weight="600" fill="#2861f6" text-anchor="middle" style="mix-blend-mode:multiply">${g}</g><circle cx="${73.6 + 3 * 28.8}" cy="${69 + 21.5}" r="10.2" fill="#0a234f"/><text x="${73.6 + 3 * 28.8}" y="${73.5 + 21.5}" text-anchor="middle" font-size="13" font-weight="650" fill="#fff">11</text><g font-size="13" font-weight="560" fill="#ea5f59"><text x="63" y="27">November 2026</text><text x="257" y="27" text-anchor="end">8:41</text></g></svg>`;
+  }
+  if (k === "np") return box(`<div style="position:absolute;inset:-20px;background:radial-gradient(60% 70% at 30% 30%,#ff5e7e,transparent),radial-gradient(60% 70% at 75% 70%,#7b4dff,transparent),#2a1640;filter:blur(18px)"></div><div style="position:absolute;left:50%;top:26px;width:96px;height:96px;margin-left:-48px;border-radius:10px;background:linear-gradient(150deg,#ffb36b,#ff4f8b 55%,#6b3cff);box-shadow:0 12px 24px -10px rgba(0,0,0,.6)"></div><div style="position:absolute;left:70px;right:70px;top:134px;color:#fff"><div style="font-size:12px;font-weight:700">Song Title</div><div style="font-size:10px;opacity:.7">Artist</div><div style="margin-top:8px;height:3px;border-radius:2px;background:rgba(255,255,255,.3)"><div style="width:40%;height:100%;border-radius:2px;background:#fff"></div></div></div>`, "#2a1640");
+  if (k === "cameras") return box(`<div style="position:absolute;inset:3px;display:grid;grid-template:1fr 1fr / 1fr 1fr;gap:2px;border-radius:8px;overflow:hidden">${["#5d6a73,#2c343a", "#8a7b66,#40372c", "#6f7d6a,#2f3a2c", "#57606f,#262b33"].map((g) => `<div style="background:linear-gradient(160deg,${g})"></div>`).join("")}</div><div style="position:absolute;right:12px;top:9px;font-size:13px;font-weight:600;color:#fff">3:15</div>`, "#000");
+  return null;
+};
 const saverMock = (k0, tint, face, faceBg) => {
   const k = !k0 ? "clock" : k0;
+  const nk = saverMockNew(k, SW_LIGHT[faceBg === "gray" ? "" : faceBg] || SW_LIGHT[""]);
+  if (nk) return nk;
   if (k === "face" && face === "stacked") {
     const bg = SW_LIGHT[faceBg === "gray" ? "" : faceBg] || SW_LIGHT[""];
     return `<svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%;font-family:-apple-system,system-ui,sans-serif"><rect width="320" height="200" fill="color-mix(in oklab, ${bg} 76%, #000)"/>`
       + `<g fill="#fff" font-weight="700"><text x="18" y="30" font-size="13">THU 4</text><text x="18" y="182" font-size="13">72°</text></g>`
-      + `<g fill="#fff" stroke="#fff" stroke-width="5.9" stroke-linejoin="round" paint-order="stroke" font-weight="500" text-anchor="end" style="font-stretch:50%;letter-spacing:9px" font-size="104"><text x="311" y="94">10</text><text x="311" y="184">:44</text></g></svg>`;
+      + `<g fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" font-weight="300" text-anchor="end" style="font-stretch:50%;letter-spacing:7px" font-size="104"><text x="311" y="94">10</text><text x="311" y="184">:44</text></g></svg>`;
   }
   if (k === "face") {
     const cls = face === "classic", bg = SW_LIGHT[faceBg === "gray" ? "" : faceBg] || SW_LIGHT[""], cx = 160, cy = 100;
@@ -5272,6 +5297,16 @@ class HemmaPanel extends HTMLElement {
 
         .combo > input { border-radius:13px; }
         .svh { display:grid; gap:18px; padding:4px 0 18px; }
+        .svc { display:grid; gap:8px; padding:6px 0 14px; }
+        .svch { display:flex; justify-content:space-between; align-items:baseline; padding:0 4px; font-size:13px; font-weight:600; opacity:.7; }
+        .svch .svall { border:0; background:none; padding:0; font:inherit; font-weight:600; color:var(--hemma-color-teal, #00C3D0); cursor:pointer; opacity:1; }
+        .svcl { display:grid; border-radius:16px; overflow:hidden; background:rgba(255,255,255,0.06); }
+        .svci { display:flex; align-items:center; gap:14px; border:0; background:none; color:inherit; font:inherit; text-align:left; padding:8px 16px 8px 12px; cursor:pointer; -webkit-tap-highlight-color:transparent; position:relative; }
+        .svci + .svci::before { content:""; position:absolute; left:82px; right:0; top:0; height:0.5px; background:rgba(255,255,255,0.12); }
+        .svct { position:relative; flex:none; width:56px; height:35px; border-radius:6px; overflow:hidden; box-shadow:0 0 0 0.5px rgba(255,255,255,0.14); }
+        .svct .svmock { position:absolute; left:0; top:0; width:320px; height:200px; transform-origin:0 0; }
+        .svcn { flex:1; font-size:15px; opacity:.55; } .svci.on .svcn { opacity:1; }
+        .svck { width:20px; height:20px; color:var(--hemma-color-teal, #00C3D0); visibility:hidden; } .svci.on .svck { visibility:visible; }
         .svbig { position:relative; justify-self:center; width:min(100%, 360px); aspect-ratio:16 / 10; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px -12px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.12); }
         .svmock { position:absolute; left:0; top:0; width:320px; height:200px; transform-origin:0 0; pointer-events:none; }
         .svpv { position:absolute; inset:0; margin:auto; width:max-content; height:32px; transform:none !important; padding:0 16px; border:0; border-radius:16px; background:rgba(40,40,42,0.72);
@@ -8696,6 +8731,7 @@ class HemmaPanel extends HTMLElement {
             inset 1px 0 0 rgba(0,0,0,0.11), inset -1px 0 0 rgba(0,0,0,0.11),
             0 10px 26px rgba(0,0,0,0.18);
         }
+        :host(:not(.phone)) .psheet-panel { left:calc(50% - min(280px, 50vw - 16px)); right:auto; width:min(560px, calc(100vw - 32px)); top:max(48px, 9vh); max-height:min(640px, 78vh); }
         .psheet-head { display:flex; align-items:center; gap:12px; padding:12px 10px 8px 18px; }
         .psheet-title {
           flex:1 1 auto; min-width:0; font-size:17px; font-weight:600; letter-spacing:-0.01em;
@@ -14326,19 +14362,45 @@ class HemmaPanel extends HTMLElement {
           return;
         }
 
+        if (f.type === "savercycle") {
+          row.remove();
+          const svEsc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+          const keyOf = (k) => k || "clock", all = SAVER_STYLES.map(([k]) => keyOf(k));
+          const box = document.createElement("div");
+          box.className = "svc";
+          const paint = () => {
+            const raw = room.variables[f.key], on = Array.isArray(raw) && raw.length ? raw : all;
+            const V0 = room.variables || {}, tint = String(V0.hemma_screensaver_bg || ""), fbg = (/^(album|artwork)$/.test(tint) ? V0.hemma_screensaver_bg_rest : tint) || (V0.hemma_style === "homeview" ? ((V0.hemma_hv_color === "album" ? V0.hemma_hv_rest : V0.hemma_hv_color) || "") : "");
+            box.innerHTML = `<div class="svch"><span>${svEsc(_sx(f.label))}</span><button type="button" class="svall">${svEsc(_sx("Select All"))}</button></div><div class="svcl">`
+              + SAVER_STYLES.map(([k, l]) => `<button type="button" class="svci${on.includes(keyOf(k)) ? " on" : ""}" data-k="${keyOf(k)}"><span class="svct"><span class="svmock">${saverMock(k, tint, V0.hemma_screensaver_face, fbg)}</span></span><span class="svcn">${svEsc(_sx(l))}</span><svg class="svck" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`).join("") + "</div>";
+            box.querySelectorAll(".svci").forEach((b) => { b.onclick = () => {
+              const next = new Set(on);
+              if (next.has(b.dataset.k)) { if (next.size > 1) next.delete(b.dataset.k); } else next.add(b.dataset.k);
+              const list = all.filter((k) => next.has(k));
+              setVar(f.key, list.length === all.length ? undefined : list, f);
+              paint();
+            }; });
+            const sa = box.querySelector(".svall"); if (sa) sa.onclick = () => { setVar(f.key, undefined, f); paint(); };
+            box.querySelectorAll(".svmock").forEach((m) => { m.style.transform = "scale(" + (56 / 320) + ")"; });
+          };
+          paint();
+          fs.appendChild(box);
+          return;
+        }
+
         if (f.type === "saverhero") {
           row.remove();
-          const styles = [["", "Today"], ["face", "Clock"], ["recent", "Recently Added"]];
+          const styles = SAVER_STYLES;
           const box = document.createElement("div");
           box.className = "svh";
           const svEsc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
           let paint = () => {
-            const raw = String(room.variables[f.key] || ""), sel = raw === "clock" ? "" : raw, tint = String(room.variables.hemma_screensaver_bg || "");
+            const raw = String(room.variables[f.key] || ""), sel = raw === "clock" ? "" : raw === "words" ? "face" : raw, tint = String(room.variables.hemma_screensaver_bg || "");
             const V0 = room.variables || {}, fbg = (/^(album|artwork)$/.test(tint) ? V0.hemma_screensaver_bg_rest : tint) || (V0.hemma_style === "homeview" ? ((V0.hemma_hv_color === "album" ? V0.hemma_hv_rest : V0.hemma_hv_color) || "") : "");
             box.innerHTML = `<div class="svbig"><div class="svmock">${saverMock(sel, tint, room.variables.hemma_screensaver_face, fbg)}</div><button type="button" class="svpv">${svEsc(_sx("Preview"))}</button></div>`
               + `<div class="svgrid">${styles.map(([k, l]) => `<button type="button" class="svopt${k === sel ? " on" : ""}" data-k="${k}"><span class="svthumb"><span class="svmock">${saverMock(k, tint, room.variables.hemma_screensaver_face, fbg)}</span></span><span class="svlab">${svEsc(_sx(l))}</span></button>`).join("")}</div>`;
             const pv = box.querySelector(".svpv");
-            if (pv) pv.onclick = () => { const V = room.variables || {}, dash = V.hemma_style === "homeview" ? ((V.hemma_hv_color === "album" ? V.hemma_hv_rest : V.hemma_hv_color) || "gray") : ""; this._saverPreview({ style: sel || "clock", face: V.hemma_screensaver_face || "", bg: tint || dash, idle: V.hemma_screensaver_idle || "", np: V.hemma_screensaver_np || "", cals: V.hemma_screensaver_calendars || [], rabg: V.hemma_screensaver_ra_bg || "", rest: V.hemma_screensaver_bg_rest || dash, every: parseFloat(room.variables.hemma_screensaver_every) || 6, dark: 0 }); };
+            if (pv) pv.onclick = () => { const V = room.variables || {}, dash = V.hemma_style === "homeview" ? ((V.hemma_hv_color === "album" ? V.hemma_hv_rest : V.hemma_hv_color) || "gray") : ""; this._saverPreview({ views: (this._raw || {}).views, cams: V.hemma_screensaver_cameras || null, wdays: parseFloat(V.hemma_screensaver_week_days) || 7, style: sel || "clock", face: V.hemma_screensaver_face || "", bg: tint || dash, idle: V.hemma_screensaver_idle || "", np: V.hemma_screensaver_np || "", cals: V.hemma_screensaver_calendars || [], rabg: V.hemma_screensaver_ra_bg || "", rest: V.hemma_screensaver_bg_rest || dash, every: parseFloat(room.variables.hemma_screensaver_every) || 6, dark: 0 }); };
             box.querySelectorAll(".svopt").forEach((b) => { b.onclick = () => { setVar(f.key, b.dataset.k, f); this._syncPreview(); paint(); syncWhen(); }; });
           };
           const fit = () => box.querySelectorAll(".svmock").forEach((m) => { const w = m.parentNode.clientWidth; if (w) m.style.transform = "scale(" + (w / 320) + ")"; });
@@ -16131,6 +16193,8 @@ class HemmaPanel extends HTMLElement {
       closeMenu(menu);
     };
 
+    // iPad's keyboard pans the whole page and leaves an inline list stranded, so touch screens pick from the sheet the phone uses.
+    const sheetPick = !fixed && (isPhone(this) || window.matchMedia('(hover: none) and (pointer: coarse)').matches);
     const place = () => {
       const r = input.getBoundingClientRect();
       const vv = window.visualViewport;
@@ -16329,15 +16393,15 @@ class HemmaPanel extends HTMLElement {
       input.onblur = () => { if (!isPhone(this)) setTimeout(close, 120); };
     } else {
       input.value = pretty(current);
-      if (isPhone(this)) input.readOnly = true;
+      if (sheetPick) input.readOnly = true;
       input.onfocus = () => {
-        if (isPhone(this)) { input.blur(); return; }
+        if (sheetPick) { input.blur(); return; }
         input.readOnly = false;
         input.value = current;
         open();
       };
       input.onclick = () => {
-        if (!isPhone(this)) return;
+        if (!sheetPick) return;
         this._pickSheet(iconMode ? {
           title: rowLabel(), list, current, free: false, label: show,
           glyph: (o) => iconUrl(o === ICON_DEFAULT && iconFallback ? iconFallback : o),
@@ -16352,13 +16416,13 @@ class HemmaPanel extends HTMLElement {
         setTimeout(close, 120);
         input.placeholder = _sx(placeholder || "");
         const typed = input.value.trim();
-        if (!typed && current && isPhone(this)) { input.value = pretty(current); return; }
+        if (!typed && current && sheetPick) { input.value = pretty(current); return; }
         if (typed !== current && typed !== pretty(current)) commit(typed);
         else input.value = pretty(current);
       };
     }
 
-    if (isPhone(this)) {
+    if (isPhone(this) || sheetPick) {
       input.tabIndex = -1;
       input.style.pointerEvents = "none";
       wrap.style.cursor = "pointer";

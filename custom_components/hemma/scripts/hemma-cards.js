@@ -387,10 +387,13 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     .page.list.scrolled .lhd::before { opacity: 1; }
     .lst::-webkit-scrollbar { display: none; }
     .lhd b { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lsec { padding: 14px 6px 2px; font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: rgba(var(--hv-pk2, 235,235,245),0.6); }
+    .lsec:first-child { padding-top: 2px; }
     .lr { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 8px 10px; box-sizing: border-box; border-radius: var(--hemma-pop-tile-r, 20px); background: rgba(var(--hv-pd, 0,0,0),0.2); }
     .lr .tg { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: grid; place-items: center; background: rgba(var(--hv-pk, 255,255,255),0.08); color: rgba(var(--hv-pk, 255,255,255),0.45); -webkit-tap-highlight-color: transparent;
       transition: background-color .4s ease, color .4s ease; }
     .lr.on .tg { background: color-mix(in srgb, var(--lc) 24%, transparent); color: var(--lc); }
+    .lr.sc { background: #fff; } .lr.sc .tg { background: rgba(120,120,128,0.12); color: rgba(60,60,67,0.45); } .lr.sc.on .tg { background: var(--lci, var(--lc)); color: #fff; } .lr.sc .pl { background: rgba(120,120,128,0.16); }
     .lr .tg i { width: 18px; height: 18px; display: block; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
     .lr .nm { flex: 1; min-width: 0; border: 0; background: none; color: inherit; font: inherit; padding: 0; text-align: left; cursor: pointer; display: grid; gap: 1px; }
     .lr b { font-size: 14.5px; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -593,10 +596,29 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         }, { passive: true });
       }
       const S = this._hass.states;
-      const ids = this._ids();
-      if (lst.childElementCount !== ids.length) {
+      let ids = this._ids();
+      const secs = [], top = Array.isArray(this._config.lights) && this._config.lights.length ? [] : memsOf(S, this._config.entity);
+      if (top.some((g) => memsOf(S, g).length)) {
+        const used = new Set(), title = (g) => {
+          const a = CAMS.areaOf(this._hass, g), f = ((S[g] || {}).attributes || {}).friendly_name || '';
+          return a || (f && !/^lights?$/i.test(f.trim()) ? f : g.split('.')[1].replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()));
+        };
+        top.forEach((g) => {
+          const leaves = unitsOf(S, g).filter((id) => ids.includes(id) && !used.has(id));
+          if (!leaves.length) return;
+          leaves.forEach((id) => used.add(id));
+          const grp = memsOf(S, g).length > 0, last = secs[secs.length - 1];
+          if (!grp && last && !last.name) last.ids.push(...leaves); else secs.push({ name: grp ? title(g) : '', ids: leaves });
+        });
+        ids = secs.flatMap((x) => x.ids);
+      }
+      const secKey = secs.map((x) => x.name + ':' + x.ids.length).join('|');
+      if (lst.querySelectorAll('.lr').length !== ids.length || lst._secKey !== secKey) {
         lst.textContent = '';
+        lst._secKey = secKey;
+        const heads = new Map(secs.filter((x) => x.name).map((x) => [x.ids[0], x.name]));
         ids.forEach((id) => {
+          if (heads.has(id)) { const hd = document.createElement('div'); hd.className = 'lsec'; hd.textContent = heads.get(id); lst.appendChild(hd); }
           const r = document.createElement('div');
           r.className = 'lr';
           r.innerHTML = `<button type="button" class="tg"><i style="--i:url('${esc(iconUrl('light'))}')"></i></button>`
@@ -649,11 +671,14 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       }
       const lc = this.shadowRoot.querySelector('.lhd .lc');
       if (lc) { const on = ids.filter((id) => S[id] && S[id].state === 'on').length; lc.textContent = on ? T('lights.n_on', '{n} On', { n: on }) : T('lights.all_off', 'All Off'); }
-      [...lst.children].forEach((r, i) => {
+      [...lst.querySelectorAll('.lr')].forEach((r, i) => {
         const s = S[ids[i]];
         if (!s || (r._hold && Date.now() < r._hold) || (r._was && s.last_updated === r._was && Date.now() - r._wasAt < 10000)) return;
         const v = pctOf(s);
-        r.style.setProperty('--lc', lightColor(s));
+        const lcv = lightColor(s), ch = (String(lcv).match(/\d+/g) || []).map(Number), dc = document.documentElement.classList;
+        r.style.setProperty('--lc', lcv);
+        r.style.setProperty('--lci', ch.length >= 3 && Math.min(ch[0], ch[1], ch[2]) > 165 ? '#ffb340' : lcv);
+        r.classList.toggle('sc', dc.contains('hemma-hv') && dc.contains('hv-light') && !dc.contains('hv-ink-w'));
         r.querySelector('b').textContent = s.attributes.friendly_name || ids[i];
         r.querySelector('.v').textContent = s.state === 'on' ? T('lights.on_pct', 'On · {n}%', { n: v }) : (this._hass.formatEntityState ? this._hass.formatEntityState(s) : s.state);
         r.classList.toggle('on', s.state === 'on');
@@ -4125,12 +4150,12 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         :host(.saver) .slab.rc { position: absolute; inset: 0; min-height: 0; border-radius: 0; }
         :host(.saver) .slab.rc .rtrack { top: var(--ss-top, 120px); }
         :host(.saver) .slab.rc { --rc-mt: calc(var(--ss-top, 120px) + var(--rch, 309px) + 30px); }
-        :host(.saver) .rc .po.rcard .art { border-radius: 18px; box-shadow: 0 40px 90px -30px rgba(0,0,0,0.9); }
+        :host(.saver) .rc .po.rcard .art { border-radius: 18px; box-shadow: 0 30px 70px -28px rgba(0,0,0,0.6); }
         :host(.saver) .rc .rmeta b { font-size: 34px; font-weight: 700; letter-spacing: -0.012em; line-height: 1.15; -webkit-line-clamp: 1; } :host(.saver) .rc .rmeta span { font-size: 17px; font-weight: 600; color: rgba(255,255,255,0.78); margin-top: 6px; } :host(.saver) .rc .rmeta small { font-size: 15px; font-weight: 500; margin-top: 4px; color: rgba(255,255,255,0.5); }
         :host(.saver) .rc .rmeta small .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--hemma-color-orange, #FF9F0A); margin-right: 8px; vertical-align: 2px; }
-        :host(.saver) .rc .rdk { background: radial-gradient(70% 60% at 50% 45%, rgba(0,0,0,0.4), rgba(0,0,0,0.72)); }
+        :host(.saver) .rc .rdk { background: radial-gradient(75% 65% at 50% 42%, rgba(0,0,0,0.16), rgba(0,0,0,0.5)); } :host(.saver:not(.flat)) .rc .rw { opacity: 1; filter: brightness(1.15) saturate(1.15); }
         :host(.saver.flat) .rc .rw { display: none; }
-        :host(.saver.flat) .slab.rc { background-color: var(--flat, #2c2c2e); transition: background-color 1s ease; }
+        :host(.saver.flat) .slab.rc { background-color: oklch(from var(--npflat, var(--flat, #2c2c2e)) 0.6 min(c, 0.13) h); transition: background-color 1s ease; }
         :host(.saver.flat) .rc .rdk { background: radial-gradient(120% 90% at 50% 20%, rgba(255,255,255,0.16), rgba(255,255,255,0) 55%), radial-gradient(120% 80% at 50% 100%, rgba(0,0,0,0.3), rgba(0,0,0,0) 60%); } :host(.saver) .rc .rmeta small svg { width: 16px; height: 16px; }
         :host(.saver) .rc .rdots { top: auto; bottom: max(24px, env(safe-area-inset-bottom, 0px)); }
         /* As a screensaver the details take the whole screen: the fanart behind everything, the poster large on the left, the words at TV size. */
@@ -4141,7 +4166,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         .rc .rdet .bdrop.wait { opacity: 0; transition: none; }
         :host(.saver) .rc .rdet .bdrop::after { background: linear-gradient(90deg, rgba(0,0,0,0.74) 0%, rgba(0,0,0,0.5) 48%, rgba(0,0,0,0.08) 85%), linear-gradient(0deg, rgba(0,0,0,0.55), rgba(0,0,0,0) 50%); }
         :host(.saver) .rc .rdet .hero { display: block; margin: 0; }
-        :host(.saver) .rc .rdet .pst { position: fixed; left: 72px; top: calc(var(--dt) + 4px); transform: none; width: min(28vw, 340px); height: auto; aspect-ratio: 2 / 3; border-radius: 18px; background-size: cover; box-shadow: 0 40px 90px -30px rgba(0,0,0,0.9); }
+        :host(.saver) .rc .rdet .pst { position: fixed; left: 72px; top: calc(var(--dt) + 4px); transform: none; width: min(28vw, 340px); height: auto; aspect-ratio: 2 / 3; border-radius: 18px; background-size: cover; box-shadow: 0 30px 70px -28px rgba(0,0,0,0.6); }
         :host(.saver) .rc .rdet .hx { gap: 12px; }
         :host(.saver) .rc .rdet .t1 { font-size: 56px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; -webkit-line-clamp: 3; }
         :host(.saver) .rc .rdet .meta { font-size: 22px; white-space: normal; }
@@ -4451,8 +4476,9 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       g.className = 'rfly';
       g.style.cssText = `position:absolute;z-index:5;left:${(b.left - r0.left) / k}px;top:${(b.top - r0.top) / k}px;width:${b.width / k}px;height:${b.height / k}px;border-radius:12px;background:${getComputedStyle(from).backgroundImage} center / cover no-repeat;box-shadow:0 22px 40px -16px rgba(0,0,0,0.85);pointer-events:none;transform-origin:0 0;`;
       rc.appendChild(g);
-      const sx = a.width / b.width, sy = a.height / b.height;
-      const an = g.animate([{ transform: `translate(${(a.left - b.left) / k}px, ${(a.top - b.top) / k}px) scale(${sx}, ${sy})`, borderRadius: `${14 / sx}px / ${14 / sy}px` }, { transform: 'none', borderRadius: '12px' }], { duration: dur, easing: EASE });
+      const sx = a.width / b.width, sy = a.height / b.height, sh = getComputedStyle(to).boxShadow, sh0 = getComputedStyle(from).boxShadow;
+      const shAt = (v, f) => !v || v === 'none' ? 'none' : v.replace(/(-?[\d.]+)px/g, (m, n) => (Number(n) / f).toFixed(2) + 'px');
+      const an = g.animate([{ transform: `translate(${(a.left - b.left) / k}px, ${(a.top - b.top) / k}px) scale(${sx}, ${sy})`, borderRadius: `${14 / sx}px / ${14 / sy}px`, boxShadow: shAt(sh0 !== 'none' ? sh0 : sh, sy) }, { transform: 'none', borderRadius: '12px', boxShadow: sh || 'none' }], { duration: dur, easing: EASE });
       from.style.visibility = 'hidden'; to.style.visibility = 'hidden';
       an.finished.then(() => { g.remove(); from.style.visibility = ''; to.style.visibility = ''; }, () => { g.remove(); from.style.visibility = ''; to.style.visibility = ''; });
       return an;
@@ -4522,7 +4548,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       const tok = ++wt; wsrc = src;
       blurred(src, (to) => {
         if (tok !== wt) return;
-        if (this._config.flat) { try { const p1 = document.createElement('canvas'); p1.width = p1.height = 1; const g = p1.getContext('2d'); g.drawImage(to, 0, 0, 1, 1); const d = g.getImageData(0, 0, 1, 1).data; const l = 0.3 * d[0] + 0.59 * d[1] + 0.11 * d[2], m = (c) => Math.max(0, Math.min(255, (l + (c - l) * 0.6) * 0.8)) | 0; slab.style.setProperty('--flat', `rgb(${m(d[0])},${m(d[1])},${m(d[2])})`); } catch (_) {} }
+        if (this._config.flat) { try { const p1 = document.createElement('canvas'); p1.width = p1.height = 40; const g = p1.getContext('2d'); g.drawImage(to, 0, 0, 40, 40); const v = palVibrant(g.getImageData(0, 0, 40, 40).data); const d = g.getImageData(20, 20, 1, 1).data; const c = v ? albumTop(v) : [d[0], d[1], d[2]]; slab.style.setProperty('--flat', `rgb(${c.join(',')})`); } catch (_) {} }
         const x = cv.getContext('2d');
         let from = null;
         if (fade && cv.width === to.width && cv.height === to.height && cv._shown) { from = document.createElement('canvas'); from.width = cv.width; from.height = cv.height; from.getContext('2d').drawImage(cv, 0, 0); }
@@ -4648,6 +4674,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
   const saverCss = `
     :host { position: fixed; inset: 0; z-index: 2147483080; display: block; background: #000; color: #fff; font-family: var(--primary-font-family, var(--hemma-font, -apple-system, system-ui, sans-serif)); -webkit-user-select: none; user-select: none; }
     .clock { position: absolute; z-index: 5; left: max(36px, env(safe-area-inset-left, 0px)); top: max(30px, calc(env(safe-area-inset-top, 0px) + 12px)); pointer-events: none; text-shadow: 0 2px 20px rgba(0,0,0,0.35); }
+    :host(.flat) .clock, :host(.flat) .lbl { text-shadow: none; }
     .clock b { display: block; font-size: 64px; font-weight: 700; letter-spacing: -0.025em; line-height: 1; font-variant-numeric: tabular-nums; }
     .clock small { display: block; margin-top: 8px; font-size: 22px; font-weight: 700; color: #fff; }
     .clock small span { color: rgba(235,235,245,0.55); }
@@ -4693,27 +4720,36 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     if (o.dark > 0) SAVER.darkT = setTimeout(() => { const d = sr.querySelector('.dark'); if (d) d.classList.add('on'); }, o.dark * 60000);
     if (!o.instant && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, easing: 'ease-out' });
   };
-  const SAVER_KEYS = ['layer', 'opts', 'npv', 'clock', 'mini', 'pill', 'shift', 'wx', 'fc', 'cal', 'adv', 'darkT', 'unfit', 'key'];
+  const SAVER_KEYS = ['layer', 'opts', 'npv', 'clock', 'mini', 'pill', 'shift', 'wx', 'fc', 'cal', 'adv', 'tint', 'darkT', 'unfit', 'key'];
   const saverTake = () => { const st = {}; SAVER_KEYS.forEach((k) => { st[k] = SAVER[k]; SAVER[k] = null; }); return st; };
   const saverPut = (st) => { SAVER_KEYS.forEach((k) => { SAVER[k] = st[k]; }); };
   const saverEnd = (st) => {
-    ['clock', 'mini', 'shift', 'wx', 'fc', 'cal', 'adv'].forEach((k) => clearInterval(st[k]));
+    ['clock', 'mini', 'shift', 'wx', 'fc', 'cal', 'adv', 'tint'].forEach((k) => clearInterval(st[k]));
     clearTimeout(st.darkT);
     if (st.unfit) st.unfit();
     if (st.key) document.removeEventListener('keydown', st.key, true);
   };
   const saverKeep = () => { if (SAVER.opts && !SAVER.opts.preview) try { localStorage.setItem('hemma_saver_on', JSON.stringify(Object.assign({}, SAVER.opts, { instant: true, at: location.pathname.split('/')[1] || '' }))); } catch (_) {} };
-  const SAVER_ORDER = ['clock', 'face', 'recent'];
+  const SAVER_ORDER = ['clock', 'face', 'np', 'recent', 'photos', 'week', 'calendar', 'cameras'];
   const saverKind = (s) => (!s || s === 'clock_photo' ? 'clock' : s === 'cards' ? 'recent' : s);
   const SAVER_FACES = ['', 'classic', 'stacked'];
   const saverSwipe = (layer) => {
     let g = null, swiped = 0;
-    const faces = saverKind(SAVER.opts && SAVER.opts.style) === 'face';
+    const kind0 = saverKind(SAVER.opts && SAVER.opts.style), rooms = kind0 === 'photos' && layer._rooms > 1;
+    const faces = kind0 === 'face' || rooms;
     const size = (ax) => ax === 'y' ? innerHeight : innerWidth;
     const tr = (ax, v) => ax === 'y' ? '0 ' + v + 'px' : v + 'px 0';
-    const mine = (e) => e.composedPath().some((n) => n.classList && (n.classList.contains('rdet') || n.classList.contains('mini') || (n.classList.contains('slab') && n.classList.contains('detail'))));
+    const mine = (e) => e.composedPath().some((n) => n.classList && (n.classList.contains('rdet') || n.classList.contains('mini') || (n.classList.contains('slab') && n.classList.contains('detail')) || n.classList.contains('ls')));
     // Sideways moves through the screensavers; up and down through Clock's faces.
     const build = (dir, ax) => {
+      if (ax === 'y' && rooms) {
+        const cur = saverTake();
+        try { window.hemmaSaver._open(Object.assign({}, cur.opts, { room: (layer._room + dir + layer._rooms) % layer._rooms, instant: true })); } catch (_) {}
+        const nb = SAVER.layer ? { layer: SAVER.layer, st: saverTake() } : null;
+        saverPut(cur);
+        if (nb) { nb.layer.style.pointerEvents = 'none'; nb.layer.style.translate = tr(ax, dir * size(ax)); }
+        return nb;
+      }
       const list = ax === 'y' ? SAVER_FACES : SAVER_ORDER;
       const at = ax === 'y' ? SAVER_FACES.indexOf((SAVER.opts && SAVER.opts.face) || '') : SAVER_ORDER.indexOf(saverKind(SAVER.opts && SAVER.opts.style));
       for (let k = 1; k < list.length; k++) {
@@ -4772,6 +4808,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         const old = saverTake();
         saverEnd(old);
         saverPut(s.nb.st);
+        if (s.nb.layer._room != null && SAVER.rot) SAVER.rot.room = s.nb.layer._room;
         saverKeep();
         saverSwipe(s.nb.layer);
         saverRotate();
@@ -4801,6 +4838,15 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
   const saverRotPlan = () => {
     const o = SAVER.opts || {}, cur = saverKind(o.style), R = SAVER.rot || (SAVER.rot = {});
     if (R.f == null) R.f = Math.max(0, SAVER_FACES.indexOf(o.face || '')) + (cur === 'face' ? 1 : 0);
+    const pick = Array.isArray(o.cycle) && o.cycle.length ? SAVER_ORDER.filter((k) => o.cycle.includes(k)) : null;
+    if (pick && pick.length) {
+      const at = pick.indexOf(cur);
+      return pick.map((_, k) => pick[(at + 1 + k) % pick.length]).filter((k, i) => k !== cur || i === pick.length - 1).map((k) => {
+        if (k !== 'face') return { style: k };
+        const face = SAVER_FACES[R.f % SAVER_FACES.length]; R.f++;
+        return { style: 'face', face };
+      });
+    }
     if (cur !== 'face') {
       R.prev = cur;
       const face = SAVER_FACES[R.f % SAVER_FACES.length];
@@ -4819,12 +4865,12 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       if (!cur) return;
       const rp = sr && sr.querySelector('hemma-recent-panel'), open = rp && rp.shadowRoot && rp.shadowRoot.querySelector('.slab.detail');
       if (document.hidden || cur.style.translate || open) return saverRotate(30000);
-      if (sr && sr.querySelector('.dark.on')) return saverRotate();
+      if (sr && (sr.querySelector('.dark.on') || sr.querySelector('.ls') || sr.querySelector('.cz'))) return saverRotate();
       // Recently Added finishes its round of posters first, moving on where it would start over.
       if (rp && rp._ssTick && !rp._raOnWrap && !rp._raDone && rp.shadowRoot.querySelectorAll('.rdots i').length > 1) { rp._raOnWrap = () => { rp._raDone = true; if (SAVER.layer === cur) saverRotate(1); }; return; }
       const plan = saverRotPlan(), old = saverTake();
       for (const step of plan) {
-        try { window.hemmaSaver._open(Object.assign({}, old.opts, step, { instant: true })); } catch (_) {}
+        try { window.hemmaSaver._open(Object.assign({}, old.opts, step, { instant: true, room: undefined, rot: true })); } catch (_) {}
         if (SAVER.layer) break;
       }
       if (!SAVER.layer) { saverPut(old); return saverRotate(); }
@@ -5007,6 +5053,202 @@ const saverXfade = (el, bg) => {
   `;
   const WXF = { sunny: 'clear-day', 'clear-night': 'clear-night', partlycloudy: 'partly-cloudy-day', cloudy: 'cloudy', overcast: 'cloudy', rainy: 'rain', pouring: 'rain', snowy: 'snow', 'snowy-rainy': 'sleet', hail: 'hail', lightning: 'thunderstorms', 'lightning-rainy': 'thunderstorms-rain', fog: 'fog', windy: 'wind', 'windy-variant': 'wind', exceptional: 'weather-mixed' };
   const wxIcon = (c) => `/hemma_assets/weather/${WXF[c] || 'cloudy'}-fill.svg?v=2`;
+  const LS_CSS = `
+    .ls { position: absolute; inset: 0; z-index: 12; overflow: hidden; touch-action: none; font-family: -apple-system, system-ui, sans-serif; background: #ededef; color: #1c1c1e; -webkit-user-select: none; user-select: none; }
+    .ls.off { background: #2a2a2c; color: #f2f2f7; }
+    .ls .l-lit { position: absolute; inset: 0; background: var(--c, #ffc65c); color: #fff; clip-path: inset(calc(100% - var(--lsp, 0%)) 0 0 0); pointer-events: none; }
+    .ls .l-bulb { position: absolute; left: 50%; top: 24%; width: 30px; height: 52px; margin-left: -15px; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+    .ls.off .l-bulb { opacity: .55; }
+    .ls .l-pct { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-46%); text-align: center; font-weight: 200; font-size: min(27vh, 220px); letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .ls .l-pct small { font-size: .36em; font-weight: 300; margin-left: .06em; opacity: .8; vertical-align: .95em; }
+    .ls .l-bar { position: absolute; left: 0; right: 0; top: max(26px, calc(env(safe-area-inset-top, 0px) + 14px)); height: 48px; }
+    .ls .l-nm { position: absolute; left: 0; right: 0; top: 4px; text-align: center; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; pointer-events: none; }
+    .ls .l-nm span { display: block; font-size: 16px; font-weight: 500; opacity: .6; }
+    .ls .l-ck { position: absolute; right: max(34px, env(safe-area-inset-right, 0px)); top: 12px; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; }
+    .ls .l-x { position: absolute; left: max(24px, env(safe-area-inset-left, 0px)); top: 0; width: 48px; height: 48px; border: 0; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,0.72); color: #1c1c1e; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .ls.off .l-x { background: rgba(255,255,255,0.14); color: #f2f2f7; }
+    .ls .l-x svg { width: 18px; height: 18px; }
+    .ls .l-chips { position: absolute; left: 0; right: 0; bottom: max(36px, calc(env(safe-area-inset-bottom, 0px) + 20px)); display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; padding: 0 24px; }
+    .ls .l-chips button { height: 40px; padding: 0 18px; border: 0; border-radius: 20px; font: 600 15px -apple-system, system-ui, sans-serif; background: rgba(255,255,255,0.72); color: #1c1c1e; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .ls.off .l-chips button { background: rgba(255,255,255,0.14); color: #f2f2f7; }
+    .ls .l-chips .l-cb { width: 40px; padding: 0; background: conic-gradient(from 200deg, #ff3b30, #ff9500, #ffcc00, #34c759, #0a84ff, #bf5af2, #ff375f, #ff3b30); box-shadow: inset 0 0 0 3px rgba(255,255,255,0.85); }
+    .ls .l-chips .l-bk { width: 40px; padding: 0; display: grid; place-items: center; } .ls .l-chips .l-bk svg { width: 16px; height: 16px; }
+    .ls .l-chips .l-sw { width: 40px; padding: 0; background: var(--s); box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.12); }
+    .ls .l-chips .l-sw.on { box-shadow: 0 0 0 2.5px #fff, 0 0 0 4px rgba(0,0,0,0.35); }
+    .ls .l-chips button.on { background: #1c1c1e; color: #fff; } .ls.off .l-chips button.on { background: #f2f2f7; color: #1c1c1e; }
+    .ls .l-ui { position: absolute; inset: 0; pointer-events: none; } .ls .l-ui > * { pointer-events: auto; } .ls .l-ui .l-bar { pointer-events: none; } .ls .l-ui .l-x { pointer-events: auto; }
+  `;
+  const LS_X = '<svg viewBox="0 0 18 18"><path d="M3 3l12 12M15 3 3 15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  const lsColor = (st) => {
+    const a = (st && st.attributes) || {};
+    if (Array.isArray(a.rgb_color) && a.color_mode !== 'color_temp') return `rgb(${a.rgb_color.join(',')})`;
+    const k = Number(a.color_temp_kelvin) || (a.color_temp ? 1e6 / a.color_temp : 0);
+    if (!k) return '#ffc65c';
+    const t = Math.max(0, Math.min(1, (k - 2200) / 3800));
+    return `color-mix(in oklab, #ffc65c ${Math.round((1 - t) * 100)}%, #f3f1ea)`;
+  };
+  const saverLights = (sr, row) => {
+    try { CSS.registerProperty({ name: '--lsp', syntax: '<percentage>', inherits: true, initialValue: '0%' }); } catch (_) {}
+    if (sr.querySelector('.ls')) return;
+    const hs = CAMS.hassNow(), lang = hs.language || undefined, S = hs.states, reg = hs.entities || {};
+    const areaName = (id) => {
+      const r = reg[id];
+      if (!r) return null;
+      const aid = r.area_id || (r.device_id ? (((hs.devices || {})[r.device_id]) || {}).area_id : null);
+      return aid ? ((((hs.areas || {})[aid]) || {}).name || null) : null;
+    };
+    const ids = Object.keys(S).filter((k) => k.indexOf('light.') === 0 && !(S[k].attributes || {}).entity_id && S[k].state !== 'unavailable' && !(reg[k] && (reg[k].hidden || reg[k].hidden_by)));
+    const expand = (id, seen = new Set()) => {
+      if (seen.has(id) || !S[id]) return [];
+      seen.add(id);
+      const m = (S[id].attributes || {}).entity_id;
+      return Array.isArray(m) ? [...new Set(m.flatMap((x) => expand(x, seen)))] : [id];
+    };
+    const ll = saverLL(), views = (ll && ll.views) || [], groupOf = (v) => ((((v.cards || [])[0]) || {}).variables || {}).light_group_entity;
+    const slug = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const nameOf = (v) => { const t = String(v.title || v.path || ''), a = Object.values(hs.areas || {}).find((x) => slug(x.name) === slug(t) || slug(x.area_id) === slug(t)); return a ? a.name : t.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()); };
+    const homeV = views.find((v) => (v.path || '') === 'home'), allG = homeV && groupOf(homeV);
+    const roomScopes = views.filter((v) => v !== homeV && groupOf(v) && S[groupOf(v)]).map((v) => [nameOf(v), [groupOf(v)], expand(groupOf(v))]).slice(0, 6);
+    let scopes, litNow;
+    if (roomScopes.length || (allG && S[allG])) {
+      const every = allG && S[allG] ? expand(allG) : [...new Set(roomScopes.flatMap((r) => r[2]))];
+      litNow = every.filter((k) => S[k] && S[k].state === 'on');
+      scopes = [[T('saver.lights_all', 'All'), litNow.length ? litNow : (allG && S[allG] ? [allG] : every), litNow.length ? litNow : every]].concat(roomScopes);
+    } else {
+      const rooms = new Map();
+      ids.forEach((k) => { const a = areaName(k); if (!a) return; if (!rooms.has(a)) rooms.set(a, []); rooms.get(a).push(k); });
+      litNow = ids.filter((k) => S[k].state === 'on');
+      scopes = [[T('saver.lights_all', 'All'), litNow.length ? litNow : ids, litNow.length ? litNow : ids]].concat([...rooms.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(0, 6).map(([n, l]) => [n, l, l]));
+    }
+    let si = 0;
+    if (litNow.length) { const hit = scopes.slice(1).filter((sc) => litNow.every((k) => sc[2].includes(k))); if (hit.length === 1) si = scopes.indexOf(hit[0]); }
+    const icon = window.hemmaIconUrl ? window.hemmaIconUrl('light') : '';
+    if (!sr.querySelector('style.lscss')) { const st = document.createElement('style'); st.className = 'lscss'; st.textContent = LS_CSS; sr.appendChild(st); }
+    const box = document.createElement('div');
+    box.className = 'ls';
+    const face = `<i class="l-bulb" style="--i:url('${icon}')"></i><div class="l-pct"></div>`;
+    box.innerHTML = face + `<div class="l-lit">${face}</div><div class="l-ui"><div class="l-bar"><button type="button" class="l-x" aria-label="${esc(T('a11y.close', 'Close'))}">${LS_X}</button><div class="l-nm"></div><div class="l-ck"></div></div><div class="l-chips"></div></div>`;
+    sr.appendChild(box);
+    const $$ = (q) => box.querySelectorAll(q);
+    let pct = 0, sent = -1, sendT = 0, idleT = 0, memo = 80, lastAt = 0, pick = false, swi = -1, favs = [];
+    const favMemo = {};
+    const loadFavs = () => {
+      const st = CAMS.hassNow().states, t = target(), col = (k) => ((st[k].attributes || {}).supported_color_modes || []).some((m) => m !== 'onoff' && m !== 'brightness');
+      const lit = t.filter((k) => st[k] && st[k].state === 'on'), lead = lit.find(col) || t.find((k) => st[k] && col(k)) || lit[0] || t[0];
+      favs = favMemo[lead] || defaultFavs(st[lead]);
+      if (favMemo[lead] || !lead || !hs.callWS) return;
+      hs.callWS({ type: 'config/entity_registry/get', entity_id: lead }).then((e) => {
+        const f = e && e.options && e.options.light && e.options.light.favorite_colors;
+        favMemo[lead] = Array.isArray(f) && f.length ? f : defaultFavs(st[lead]);
+        if (pick && target().includes(lead)) { favs = favMemo[lead]; paint(); }
+      }).catch(() => {});
+    };
+    const target = () => scopes[si][2], sendTo = () => scopes[si][1];
+    const read = () => {
+      const st = CAMS.hassNow().states, on = target().filter((k) => st[k] && st[k].state === 'on');
+      const b = on.map((k) => Number((st[k].attributes || {}).brightness)).filter((v) => v > 0);
+      return { on, p: on.length ? (b.length ? Math.max(1, Math.round(b.reduce((x, y) => x + y, 0) / b.length / 2.55)) : 100) : 0, c: on.length ? lsColor(st[on[0]]) : '#ffc65c' };
+    };
+    const paint = () => {
+      box.classList.toggle('off', pct <= 0);
+      box.style.setProperty('--lsp', Math.max(0, pct) + '%');
+      $$('.l-pct').forEach((n) => { n.innerHTML = pct > 0 ? `${pct}<small>%</small>` : esc(T('state.off', 'Off')); });
+      const n = target().filter((k) => CAMS.hassNow().states[k].state === 'on').length;
+      box.querySelector('.l-nm').innerHTML = `${esc(scopes[si][0])}<span>${esc(n === 1 ? T('saver.light_on_one', '1 light on') : n ? T('saver.lights_on', '{n} lights on', { n }) : T('saver.lights_off', 'All lights off'))}</span>`;
+      box.querySelector('.l-ck').textContent = new Date().toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AaPp]\.?\s?[Mm]\.?$/, '');
+      box.querySelector('.l-chips').innerHTML = pick ? `<button type="button" class="l-bk" aria-label="${esc(T('ui.back', 'Back'))}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg></button>` + favs.map((f, i) => `<button type="button" class="l-sw${i === swi ? ' on' : ''}" data-w="${i}" style="--s:${favCss(f)}" aria-label="${esc(T('lights.favorite', 'Favorite {n}', { n: i + 1 }))}"></button>`).join('')
+        : (scopes.length > 2 ? scopes.map((s, i) => `<button type="button" data-i="${i}"${i === si ? ' class="on"' : ''}>${esc(s[0])}</button>`).join('') : '') + `<button type="button" class="l-cb" aria-label="${esc(T('lights.color', 'Color'))}"></button>`;
+    };
+    const sync = () => { const r = read(); pct = r.p; if (pct) memo = pct; box.style.setProperty('--c', r.c); paint(); };
+    const send = (now) => {
+      clearTimeout(sendT);
+      const go = () => {
+        if (pct === sent) return;
+        sent = pct; lastAt = Date.now();
+        const ent = sendTo();
+        if (!ent.length) return;
+        CAMS.hassNow().callService('light', pct > 0 ? 'turn_on' : 'turn_off', pct > 0 ? { entity_id: ent, brightness_pct: pct } : { entity_id: ent }).catch(() => {});
+      };
+      if (now) go(); else sendT = setTimeout(go, 250);
+    };
+    const poke = () => { clearTimeout(idleT); idleT = setTimeout(close, 10000); };
+    const E = 'cubic-bezier(0.32, 0.72, 0, 1)', SK = () => parseFloat(getComputedStyle(sr.host).getPropertyValue('--k')) || 1;
+    const ic0 = row.querySelector('i') || row, rr = ic0.getBoundingClientRect(), hr = sr.host.getBoundingClientRect();
+    const cx = rr.left + rr.width / 2 - hr.left, cy = rr.top + rr.height / 2 - hr.top, rad = Math.hypot(Math.max(cx, hr.width - cx), Math.max(cy, hr.height - cy));
+    const from = `circle(${rr.width / 2}px at ${cx}px ${cy}px)`, full = `circle(${rad}px at ${cx}px ${cy}px)`;
+    let closing = false;
+    function close() {
+      if (closing) return;
+      closing = true;
+      clearTimeout(idleT); send(true);
+      const p0 = pct;
+      box.animate([{ '--lsp': p0 + '%' }, { '--lsp': '0%' }], { duration: 260, easing: 'ease-in', fill: 'forwards' });
+      const st0 = sr.querySelector('.stg');
+      if (st0) st0.animate([{ transform: `translate(-50%, -50%) scale(${SK() * 0.95})`, opacity: 0.5 }, { transform: `translate(-50%, -50%) scale(${SK()})`, opacity: 1 }], { duration: 520, delay: 120, easing: E });
+      box.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(1.06)' }], { duration: 380, delay: 120, easing: 'cubic-bezier(0.4, 0, 0.6, 1)', fill: 'forwards' }).finished.then(() => box.remove(), () => box.remove());
+    }
+    sync();
+    const goal = pct;
+    box.style.setProperty('--lsp', '0%');
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      box.animate([{ opacity: 0, transform: 'scale(1.06)' }, { opacity: 1, transform: 'none' }], { duration: 420, easing: E });
+      const st1 = sr.querySelector('.stg');
+      if (st1) st1.animate([{ transform: `translate(-50%, -50%) scale(${SK()})`, opacity: 1 }, { transform: `translate(-50%, -50%) scale(${SK() * 0.95})`, opacity: 0.5 }], { duration: 420, easing: E });
+      setTimeout(() => { if (closing) return; box.animate([{ '--lsp': '0%' }, { '--lsp': goal + '%' }], { duration: 520, easing: E }); box.style.setProperty('--lsp', goal + '%'); }, 300);
+    } else box.style.setProperty('--lsp', goal + '%');
+    poke();
+    let g = null;
+    box.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      g = { y: e.clientY, x: e.clientX, p: pct, moved: false, id: e.pointerId };
+      try { box.setPointerCapture(e.pointerId); } catch (_) {}
+      poke();
+    });
+    box.addEventListener('pointermove', (e) => {
+      if (!g || e.pointerId !== g.id) return;
+      const dy = e.clientY - g.y;
+      if (!g.moved && Math.abs(dy) < 6) return;
+      g.moved = true;
+      const H = box.clientHeight || innerHeight;
+      pct = Math.max(0, Math.min(100, Math.round(g.p - dy / H * 130)));
+      if (pct) memo = pct;
+      paint(); send(); poke();
+    });
+    const up = (e) => {
+      if (!g || e.pointerId !== g.id) return;
+      const s = g;
+      g = null;
+      if (s.moved) { send(true); return; }
+      pct = pct > 0 ? 0 : memo;
+      paint(); send(true);
+    };
+    box.addEventListener('pointerup', up);
+    box.addEventListener('pointercancel', (e) => { if (g && e.pointerId === g.id) { g = null; send(true); } });
+    box.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (e.target.closest('.l-x')) { close(); return; }
+      if (e.target.closest('.l-cb')) { pick = true; swi = -1; loadFavs(); paint(); poke(); return; }
+      if (e.target.closest('.l-bk')) { pick = false; paint(); poke(); return; }
+      const w = e.target.closest('.l-sw');
+      if (w) {
+        swi = Number(w.dataset.w); const sw = favs[swi];
+        if (!sw) return;
+        box.style.setProperty('--c', favCss(sw));
+        if (pct <= 0) pct = memo;
+        sent = pct; lastAt = Date.now(); pick = false; paint(); poke();
+        const ent = sendTo();
+        if (ent.length) CAMS.hassNow().callService('light', 'turn_on', Object.assign({ entity_id: ent, brightness_pct: pct }, sw)).catch(() => {});
+        return;
+      }
+      const c = e.target.closest('.l-chips button');
+      if (c) { si = Number(c.dataset.i) || 0; sent = -1; swi = -1; sync(); poke(); }
+    });
+    const live = setInterval(() => {
+      if (!box.isConnected) { clearInterval(live); return; }
+      if (!g && Date.now() - lastAt > 3000) { const r = read(); if (r.p !== pct) { pct = r.p; if (pct) memo = pct; box.style.setProperty('--c', r.c); paint(); } }
+      else paint();
+    }, 2000);
+  };
   const saverClock = (o) => {
     const h = CAMS.hassNow(), lang = h.language || undefined;
     const layer = document.createElement('div');
@@ -5103,9 +5345,7 @@ const saverXfade = (el, bg) => {
     };
     const cals = (Array.isArray(o.cals) && o.cals.length ? o.cals : Object.keys(h.states)).filter((k) => k.indexOf('calendar.') === 0 && h.states[k]);
     const idle = (o.idle === 'forecast' ? '' : o.idle) || (cals.length ? 'calendar' : 'glance'), keep = o.np === 'keep';
-    // Built in rather than fetched: Safari drops masked images while the screen sits idle, which left an empty circle.
-    const SVI = { 'calendar': "data:image/svg+xml,%3Csvg version=%221.1%22 xmlns=%22http://www.w3.org/2000/svg%22 xmlns:xlink=%22http://www.w3.org/1999/xlink%22 viewBox=%220 0 19.4607 17.999%22%3E%3Cg%3E%3Crect height=%2217.999%22 opacity=%220%22 width=%2219.4607%22 x=%220%22 y=%220%22/%3E%3Cpath d=%22M3.06359 17.999L16.3971 17.999C18.4456 17.999 19.4607 16.9776 19.4607 14.9665L19.4607 3.04922C19.4607 1.03808 18.4456 0.0166814 16.3971 0.0166814L3.06359 0.0166814C1.02753 0.0166814 0 1.03386 0 3.04922L0 14.9665C0 16.9819 1.02753 17.999 3.06359 17.999ZM2.9229 16.418C2.05114 16.418 1.57069 15.9582 1.57069 15.0554L1.57069 5.85362C1.57069 4.95081 2.05114 4.48896 2.9229 4.48896L16.5274 4.48896C17.3907 4.48896 17.8921 4.95081 17.8921 5.85362L17.8921 15.0554C17.8921 15.9582 17.3907 16.418 16.5274 16.418ZM7.81623 7.99219L8.38943 7.99219C8.74005 7.99219 8.84777 7.88446 8.84777 7.54631L8.84777 6.9731C8.84777 6.63706 8.74005 6.52933 8.38943 6.52933L7.81623 6.52933C7.47807 6.52933 7.37034 6.63706 7.37034 6.9731L7.37034 7.54631C7.37034 7.88446 7.47807 7.99219 7.81623 7.99219ZM11.0712 7.99219L11.6444 7.99219C11.9847 7.99219 12.0903 7.88446 12.0903 7.54631L12.0903 6.9731C12.0903 6.63706 11.9847 6.52933 11.6444 6.52933L11.0712 6.52933C10.7206 6.52933 10.6129 6.63706 10.6129 6.9731L10.6129 7.54631C10.6129 7.88446 10.7206 7.99219 11.0712 7.99219ZM14.3138 7.99219L14.887 7.99219C15.2273 7.99219 15.3453 7.88446 15.3453 7.54631L15.3453 6.9731C15.3453 6.63706 15.2273 6.52933 14.887 6.52933L14.3138 6.52933C13.9632 6.52933 13.8576 6.63706 13.8576 6.9731L13.8576 7.54631C13.8576 7.88446 13.9632 7.99219 14.3138 7.99219ZM4.57367 11.1849L5.14687 11.1849C5.49749 11.1849 5.60522 11.0793 5.60522 10.7411L5.60522 10.1679C5.60522 9.82977 5.49749 9.72204 5.14687 9.72204L4.57367 9.72204C4.23341 9.72204 4.11533 9.82977 4.11533 10.1679L4.11533 10.7411C4.11533 11.0793 4.23341 11.1849 4.57367 11.1849ZM7.81623 11.1849L8.38943 11.1849C8.74005 11.1849 8.84777 11.0793 8.84777 10.7411L8.84777 10.1679C8.84777 9.82977 8.74005 9.72204 8.38943 9.72204L7.81623 9.72204C7.47807 9.72204 7.37034 9.82977 7.37034 10.1679L7.37034 10.7411C7.37034 11.0793 7.47807 11.1849 7.81623 11.1849ZM11.0712 11.1849L11.6444 11.1849C11.9847 11.1849 12.0903 11.0793 12.0903 10.7411L12.0903 10.1679C12.0903 9.82977 11.9847 9.72204 11.6444 9.72204L11.0712 9.72204C10.7206 9.72204 10.6129 9.82977 10.6129 10.1679L10.6129 10.7411C10.6129 11.0793 10.7206 11.1849 11.0712 11.1849ZM14.3138 11.1849L14.887 11.1849C15.2273 11.1849 15.3453 11.0793 15.3453 10.7411L15.3453 10.1679C15.3453 9.82977 15.2273 9.72204 14.887 9.72204L14.3138 9.72204C13.9632 9.72204 13.8576 9.82977 13.8576 10.1679L13.8576 10.7411C13.8576 11.0793 13.9632 11.1849 14.3138 11.1849ZM4.57367 14.3797L5.14687 14.3797C5.49749 14.3797 5.60522 14.272 5.60522 13.9338L5.60522 13.3606C5.60522 13.0225 5.49749 12.9169 5.14687 12.9169L4.57367 12.9169C4.23341 12.9169 4.11533 13.0225 4.11533 13.3606L4.11533 13.9338C4.11533 14.272 4.23341 14.3797 4.57367 14.3797ZM7.81623 14.3797L8.38943 14.3797C8.74005 14.3797 8.84777 14.272 8.84777 13.9338L8.84777 13.3606C8.84777 13.0225 8.74005 12.9169 8.38943 12.9169L7.81623 12.9169C7.47807 12.9169 7.37034 13.0225 7.37034 13.3606L7.37034 13.9338C7.37034 14.272 7.47807 14.3797 7.81623 14.3797ZM11.0712 14.3797L11.6444 14.3797C11.9847 14.3797 12.0903 14.272 12.0903 13.9338L12.0903 13.3606C12.0903 13.0225 11.9847 12.9169 11.6444 12.9169L11.0712 12.9169C10.7206 12.9169 10.6129 13.0225 10.6129 13.3606L10.6129 13.9338C10.6129 14.272 10.7206 14.3797 11.0712 14.3797Z%22 fill=%22white%22 fill-opacity=%220.85%22/%3E%3C/g%3E%3C/svg%3E", 'lock-fill': "data:image/svg+xml,%3Csvg version=%221.1%22 xmlns=%22http://www.w3.org/2000/svg%22 xmlns:xlink=%22http://www.w3.org/1999/xlink%22 viewBox=%22-0.4904 -0.7084 17.3286 25.0301%22%3E%3Cg%3E%3Crect height=%2225.0301%22 opacity=%220%22 width=%2217.3286%22 x=%22-0.4904%22 y=%22-0.7084%22/%3E%3Cpath d=%22M2.63672 22.9922L13.3594 22.9922C15.082 22.9922 15.9961 22.0547 15.9961 20.2031L15.9961 12.1289C15.9961 10.2773 15.082 9.35156 13.3594 9.35156L2.63672 9.35156C0.914062 9.35156 0 10.2773 0 12.1289L0 20.2031C0 22.0547 0.914062 22.9922 2.63672 22.9922ZM2.05078 10.2539L3.91406 10.2539L3.91406 6.29297C3.91406 3.33984 5.80078 1.76953 7.99219 1.76953C10.1836 1.76953 12.0938 3.33984 12.0938 6.29297L12.0938 10.2539L13.9453 10.2539L13.9453 6.55078C13.9453 2.14453 11.0625 0 7.99219 0C4.93359 0 2.05078 2.14453 2.05078 6.55078Z%22 fill=%22white%22 fill-opacity=%220.85%22/%3E%3C/g%3E%3C/svg%3E", 'light': "data:image/svg+xml,%3Csvg version=%221.1%22 xmlns=%22http://www.w3.org/2000/svg%22 xmlns:xlink=%22http://www.w3.org/1999/xlink%22 viewBox=%22-0.4809 -0.8399 16.9931 29.6759%22%3E%3Cg%3E%3Crect height=%2229.6759%22 opacity=%220%22 width=%2216.9931%22 x=%22-0.4809%22 y=%22-0.8399%22/%3E%3Cpath d=%22M4.13672 23.8711L11.5547 23.8711C11.9414 23.8711 12.2344 23.5664 12.2344 23.1797C12.2344 22.8047 11.9414 22.5 11.5547 22.5L4.13672 22.5C3.75 22.5 3.44531 22.8047 3.44531 23.1797C3.44531 23.5664 3.75 23.8711 4.13672 23.8711ZM7.83984 27.2695C9.65625 27.2695 11.168 26.3789 11.2852 25.0312L4.40625 25.0312C4.48828 26.3789 6.01172 27.2695 7.83984 27.2695Z%22 fill=%22white%22 fill-opacity=%220.5%22/%3E%3Cpath d=%22M0 7.21875C0 11.7188 2.96484 12.832 3.44531 20.6484C3.46875 21.0703 3.72656 21.3398 4.17188 21.3398L11.5078 21.3398C11.9648 21.3398 12.2109 21.0703 12.2461 20.6484C12.7266 12.832 15.6797 11.7188 15.6797 7.21875C15.6797 3.17578 12.2227 0 7.83984 0C3.45703 0 0 3.17578 0 7.21875Z%22 fill=%22white%22/%3E%3C/g%3E%3C/svg%3E", 'temp-medium': "data:image/svg+xml,%3Csvg version=%221.1%22 xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%223.4 -0.9 9.6 21.3%22%3E%3Cpath d=%22M8.1976 19.5321C10.7921 19.5321 12.9029 17.4171 12.9029 14.8165C12.9029 13.4466 12.3341 12.2406 11.2669 11.2838C11.1358 11.159 11.1212 11.1214 11.1212 10.9195L11.1212 3.17242C11.1212 1.30509 9.92596-3.55271e-15 8.1976-3.55271e-15C6.45678-3.55271e-15 5.25118 1.30509 5.25118 3.17242L5.25118 10.9195C5.25118 11.1214 5.23661 11.159 5.10547 11.2838C4.03825 12.2406 3.46947 13.4466 3.46947 14.8165C3.46947 17.4171 5.57206 19.5321 8.1976 19.5321ZM8.1976 18.0588C6.41338 18.0588 4.95525 16.6007 4.95525 14.8165C4.95525 13.7471 5.48032 12.7836 6.38996 12.1667C6.64762 11.9963 6.74942 11.836 6.74942 11.4829L6.74942 3.22418C6.74942 2.18992 7.32916 1.49824 8.1976 1.49824C9.03288 1.49824 9.62297 2.18992 9.62297 3.22418L9.62297 11.4829C9.62297 11.836 9.72477 11.9963 9.99278 12.1667C10.8921 12.7836 11.4171 13.7471 11.4171 14.8165C11.4171 16.6007 9.95901 18.0588 8.1976 18.0588ZM8.18725 16.8858C9.33406 16.8858 10.2523 15.9675 10.2523 14.8061C10.2523 14.0145 9.80566 13.3518 9.14292 12.9945C8.86456 12.8428 8.77523 12.7389 8.77523 12.3317L8.77523 7.71856C8.77523 7.30544 8.51144 7.03743 8.18725 7.03743C7.86096 7.03743 7.59717 7.30544 7.59717 7.71856L7.59717 12.3317C7.59717 12.7389 7.49748 12.8428 7.21912 12.9945C6.56673 13.3518 6.12004 14.0145 6.12004 14.8061C6.12004 15.9675 7.03833 16.8858 8.18725 16.8858Z%22 fill=%22white%22/%3E%3C/svg%3E", 'bell': "data:image/svg+xml,%3Csvg version=%221.1%22 xmlns=%22http://www.w3.org/2000/svg%22 xmlns:xlink=%22http://www.w3.org/1999/xlink%22 viewBox=%22-3.3 -2.23 25 25%22%3E%3Cg%3E%3Crect height=%2220.5437%22 opacity=%220%22 width=%2218.4229%22 x=%220%22 y=%220%22/%3E%3Cpath d=%22M1.47543 16.6424L16.9475 16.6424C17.8737 16.6424 18.4229 16.1635 18.4229 15.4526C18.4229 14.4764 17.4285 13.594 16.5856 12.7342C15.9341 12.0595 15.7647 10.6748 15.687 9.54722C15.6176 5.80108 14.6249 3.21563 12.03 2.27402C11.6589 1.00683 10.6561 0 9.21145 0C7.76889 0 6.76398 1.00683 6.39286 2.27402C3.79797 3.21563 2.80531 5.80108 2.72553 9.54722C2.6582 10.6748 2.48053 12.0595 1.8394 12.7342C0.986124 13.594 2.22045e-15 14.4764 2.22045e-15 15.4526C2.22045e-15 16.1635 0.54919 16.6424 1.47543 16.6424ZM9.21145 20.5416C10.8722 20.5416 12.0697 19.3398 12.2051 17.9655L6.21781 17.9655C6.34282 19.3398 7.55284 20.5416 9.21145 20.5416Z%22 fill=%22white%22 fill-opacity=%221%22/%3E%3C/g%3E%3C/svg%3E" };
-    const ico = (n) => `<i><b style="--i:url(&quot;${SVI[n] || (window.hemmaIconUrl ? window.hemmaIconUrl(n) : '')}&quot;)"></b></i>`;
+    const ico = (n) => `<i><b style="--i:url(&quot;${window.hemmaIconUrl ? window.hemmaIconUrl(n) : ''}&quot;)"></b></i>`;
     const glance = () => {
       const S = CAMS.hassNow().states, ids = Object.keys(S), on = (d, f) => ids.filter((k) => k.indexOf(d + '.') === 0 && f(S[k]));
       const lights = on('light', (x) => x.state === 'on' && !(x.attributes || {}).entity_id).length;
@@ -5119,7 +5359,7 @@ const saverXfade = (el, bg) => {
       let notes = 0;
       try { notes = window._hemmaNotify ? window._hemmaNotify.rows.length : 0; } catch (_) {}
       rows.push(['bell', alerts ? T('saver.alerts', '{n} alerts', { n: alerts }) : notes === 1 ? T('saver.notification_one', '1 notification') : notes ? T('saver.notifications', '{n} notifications', { n: notes }) : T('security.no_alerts', 'No Alerts')]);
-      $('.gl').innerHTML = rows.map(([i, t]) => `<div>${ico(i)}<span>${esc(t)}</span></div>`).join('');
+      $('.gl').innerHTML = rows.map(([i, t]) => `<div data-k="${i}">${ico(i)}<span>${esc(t)}</span></div>`).join('');
     };
     const h12 = new Intl.DateTimeFormat(lang, { hour: 'numeric' }).resolvedOptions().hour12;
     const clk = (d) => h12 ? String(d.getHours() % 12 || 12) + (d.getMinutes() ? ':' + String(d.getMinutes()).padStart(2, '0') : '') : d.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' });
@@ -5151,14 +5391,21 @@ const saverXfade = (el, bg) => {
         media();
       });
     };
+    let mediaSeen = false;
     const media = () => {
       const hs = CAMS.hassNow(), src = saverNP(), md = $('.md');
       const show = src && !keep ? '' : idle === 'calendar' && !cals.length ? 'glance' : idle;
       if (!src) saverGlow('');
-      md.hidden = !src || keep;
-      $('.fc').hidden = show !== 'forecast' || !fc;
-      $('.cal').hidden = show !== 'calendar' || !cal;
-      $('.gl').hidden = show !== 'glance';
+      const want = [[md, !src || keep], [$('.fc'), show !== 'forecast' || !fc], [$('.cal'), show !== 'calendar' || !cal], [$('.gl'), show !== 'glance']];
+      const still = !mediaSeen || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      mediaSeen = true;
+      const going = want.filter(([el, h]) => h && !el.hidden && !el._out), coming = want.filter(([el, h]) => !h && (el.hidden || el._out));
+      if (still || (!going.length && !coming.length)) want.forEach(([el, h]) => { if (!el._out) el.hidden = h; });
+      else {
+        const E = 'cubic-bezier(0.32, 0.72, 0, 1)';
+        going.forEach(([el]) => { el._out = el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(10px) scale(.98)' }], { duration: 280, easing: 'ease-in', fill: 'forwards' }); el._out.finished.then(() => { el.hidden = true; el._out.cancel(); el._out = null; }, () => {}); });
+        coming.forEach(([el]) => { if (el._out) { el._out.cancel(); el._out = null; } setTimeout(() => { el.hidden = false; el.animate([{ opacity: 0, transform: 'translateY(16px) scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 640, easing: E, fill: 'backwards' }); }, going.length ? 260 : 0); });
+      }
       $('.stg').classList.toggle('wide', show === 'calendar');
       if (show === 'glance') glance();
       if (!src) return;
@@ -5174,6 +5421,7 @@ const saverXfade = (el, bg) => {
     $('.md .ar').onclick = (e) => { e.stopPropagation(); saverOpenNP($('.md')._src, $('.md .ar')); };
     $('.gl').onclick = (e) => {
       const row = e.target.closest && e.target.closest('.gl > div');
+      if (row && row.dataset.k === 'light') { e.stopPropagation(); saverLights(sr, row); return; }
       if (!row || row !== $('.gl').lastElementChild || !window._hemmaNotify || !window._hemmaNotify.rows.length) return;
       e.stopPropagation();
       saverNotes(sr, row);
@@ -5439,7 +5687,7 @@ const saverXfade = (el, bg) => {
     const m = s.offsetWidth;
     s.remove();
     stackFace = n < w * 0.85 && w !== m
-      ? { family: '-apple-system', weight: 500, stretch: '50%', sw: 5.7 }
+      ? { family: '-apple-system', weight: 300, stretch: '50%', sw: 4 }
       : { family: '"Hemma Fredoka"', weight: 600, stretch: '75%', sw: 0 };
     return stackFace;
   };
@@ -5585,6 +5833,134 @@ const saverXfade = (el, bg) => {
     fit();
     tick();
     artwork();
+  };
+  const saverArtRgb = (art, cb) => {
+    if (SAVER_ART.has(art)) { cb(SAVER_ART.get(art)); return; }
+    const im = new Image();
+    if (!(String(art).startsWith('/') || String(art).startsWith(location.origin))) im.crossOrigin = 'anonymous';
+    im.onload = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = c.height = 40;
+        const x = c.getContext('2d'); x.drawImage(im, 0, 0, 40, 40);
+        const v = palVibrant(x.getImageData(0, 0, 40, 40).data), rgb = v ? `rgb(${albumTop(v).join(',')})` : null;
+        SAVER_ART.set(art, rgb); cb(rgb);
+      } catch (_) { cb(null); }
+    };
+    im.onerror = () => cb(null);
+    im.src = art;
+  };
+  // Calendar, as HomeView's: the month with today's date drawn huge behind it; the dates multiply over the numeral so the ones it crosses turn navy.
+  const saverCal = (o) => {
+    const h = CAMS.hassNow(), lang = (h || {}).language || undefined;
+    const layer = document.createElement('div');
+    layer.className = 'hemma-saver';
+    const sr = layer.attachShadow({ mode: 'open' });
+    const cl = document.documentElement.classList, night = o.bg === 'black' || (cl.contains('hemma-hv') && !cl.contains('hv-light') && !cl.contains('hv-ink-w'));
+    if (night) layer.classList.add('dk');
+    const FF = '-apple-system, system-ui, "Helvetica Neue", sans-serif';
+    sr.innerHTML = `<style>${saverCss}
+      :host { --cb: #ebebeb; --cd: #2861f6; --co: #c1d7fc; --cr: #ea5f59; --cn: #ea5f59; --ct: #0a234f; --cx: #fff; --cm: multiply; background: var(--ca, var(--cb)); transition: background-color 1.5s ease; font-family: ${FF}; }
+      :host(.dk) { --cb: #1c1c1e; --cd: #5e8eff; --co: #3e4d70; --cr: #ff6961; --cn: #7d2b28; --ct: #f2f2f7; --cx: #1c1c1e; --cm: screen; }
+      .cw { position: absolute; inset: 0; }
+      .cv { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }
+      .cv text { fill: var(--cn); stroke: var(--cn); stroke-linejoin: round; }
+      .cg { position: absolute; inset: 0; mix-blend-mode: var(--cm); }
+      .cg div { position: absolute; transform: translate(-50%, -50%); line-height: 1; font-weight: 570; color: var(--cd); font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .cg .o { color: var(--co); } .cg .w { font-weight: 610; }
+      .ch { position: absolute; display: flex; justify-content: space-between; line-height: 1; font-weight: 560; letter-spacing: -.005em; color: var(--cr); white-space: nowrap; }
+      .ct { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; display: grid; place-items: center; line-height: 1; font-weight: 650; background: var(--ct); color: var(--cx); }
+    </style><div class="cw"><svg class="cv"></svg><div class="cg"></div><div class="ch"><span></span><span></span></div><div class="ct"></div></div>${MINI_HTML}<div class="dark"></div>`;
+    const $ = (q) => sr.querySelector(q);
+    const clockTxt = (d) => d.toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AaPp]\.?\s?[Mm]\.?$/, '');
+    const first = () => {
+      const f = h && h.locale && h.locale.first_weekday, m = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+      if (f in m) return m[f];
+      try { const L = new Intl.Locale(lang || navigator.language), i = L.getWeekInfo ? L.getWeekInfo() : L.weekInfo; if (i && i.firstDay) return i.firstDay % 7; } catch (_) {}
+      return 0;
+    };
+    const fw = first();
+    let key = '';
+    const draw = (force) => {
+      const W = layer.clientWidth || innerWidth, H = layer.clientHeight || innerHeight, now = new Date();
+      const hd = $('.ch');
+      hd.lastElementChild.textContent = clockTxt(now);
+      const dk = now.toDateString() + W + 'x' + H;
+      if (!force && dk === key) return;
+      key = dk;
+      const pt = H > W * 1.1;
+      const k = pt ? W / 696 : Math.min(H / 694, W / 880);
+      const cp = (pt ? 83.7 : 100) * k, p = (pt ? Math.max(74.5, Math.min(110, (H / k - 304) / 6)) : 74.5) * k, fs = 45 * k;
+      const top0 = (H - (123.5 * k + 6 * p)) / 2, wc = top0 + 104.5 * k, gx = W / 2, c1 = gx - 3 * cp;
+      Object.assign(hd.style, { left: (c1 - 36 * k) + 'px', right: (W - gx - 3 * cp - 33 * k) + 'px', top: (top0 - fs * 0.135) + 'px', fontSize: (fs * 0.98) + 'px' });
+      hd.firstElementChild.textContent = now.toLocaleDateString(lang, { month: 'long', year: 'numeric' });
+      const y = now.getFullYear(), mo = now.getMonth(), td = now.getDate();
+      const lead = (new Date(y, mo, 1).getDay() - fw + 7) % 7, start = new Date(y, mo, 1 - lead);
+      let html = '';
+      for (let i = 0; i < 7; i++) { const d = new Date(start); d.setDate(start.getDate() + i); html += `<div class="w" style="left:${c1 + i * cp}px;top:${wc + fs * 0.02}px;font-size:${fs}px">${esc(d.toLocaleDateString(lang, { weekday: 'narrow' }))}</div>`; }
+      let tp = null;
+      for (let i = 0; i < 42; i++) {
+        const d = new Date(start); d.setDate(start.getDate() + i);
+        const x = c1 + (i % 7) * cp, yy = wc + (1 + Math.floor(i / 7)) * p, out = d.getMonth() !== mo;
+        if (!out && d.getDate() === td) { tp = [x, yy]; continue; }
+        html += `<div class="${out ? 'o' : ''}" style="left:${x}px;top:${yy}px;font-size:${fs}px">${d.getDate()}</div>`;
+      }
+      $('.cg').innerHTML = html;
+      const D = 0.955 * Math.min(p, cp * 0.89), ct = $('.ct');
+      Object.assign(ct.style, { left: tp[0] + 'px', top: tp[1] + 'px', width: D + 'px', height: D + 'px', fontSize: fs + 'px' });
+      const str = String(td), cv = document.createElement('canvas').getContext('2d');
+      cv.font = `650 ${fs}px ${FF}`;
+      const q = cv.measureText(str);
+      const ix = (q.actualBoundingBoxRight - q.actualBoundingBoxLeft) / 2, iy = (q.actualBoundingBoxAscent - q.actualBoundingBoxDescent) / 2, by = (q.fontBoundingBoxAscent - q.fontBoundingBoxDescent) / 2;
+      ct.innerHTML = `<span style="display:block;transform:translate(${(q.width / 2 - ix).toFixed(2)}px,${(iy - by).toFixed(2)}px)">${td}</span>`;
+      cv.font = `330 100px ${FF}`;
+      const m = cv.measureText(str), inkH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent, inkW = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+      if (!inkH) return;
+      const nt = wc + p - 0.477 * p, nb = wc + 5 * p + 0.678 * p, Ht = nb - nt, sw = 0.055 * Ht, F = (Ht - sw) / inkH * 100;
+      const xc = str.length === 1 ? gx - 0.082 * Ht : gx, x0 = xc - inkW * F / 200 + m.actualBoundingBoxLeft * F / 100, base = nt + sw / 2 + m.actualBoundingBoxAscent * F / 100;
+      $('.cv').innerHTML = `<text x="${x0}" y="${base}" font-family='${FF}' font-weight="330" font-size="${F}" stroke-width="${sw}">${str}</text>`;
+    };
+    let artFor = null;
+    const artwork = () => {
+      if (o.bg !== 'artwork' && o.bg !== 'album') return;
+      const src = saverNP(), art = src && src.playing ? src.art || '' : '';
+      if (art === artFor) return;
+      artFor = art;
+      const use = (rgb) => { if (rgb) layer.style.setProperty('--ca', night ? `oklch(from ${rgb} 0.26 min(c, 0.05) h)` : `oklch(from ${rgb} 0.9 min(c, 0.07) h)`); else layer.style.removeProperty('--ca'); };
+      if (!art) { use(null); return; }
+      saverArtRgb(art, (rgb) => { if (artFor === art) use(rgb); });
+    };
+    SAVER.clock = setInterval(() => { draw(); artwork(); }, 2000);
+    artwork();
+    if (window.ResizeObserver) new ResizeObserver(() => draw(true)).observe(layer);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => draw(true));
+    saverDrift([[$('.cw')]]);
+    saverMini(sr);
+    saverMount(layer, sr, o, (n) => n.classList.contains('mini'));
+    draw(true);
+  };
+  // Now Playing as a screensaver: the full-screen player itself, hosted in a screensaver layer so rotation, swipes and waking work as for the others.
+  const saverNowPlaying = (o) => {
+    const src = saverNP();
+    if (!src) return o.rot ? undefined : saverClock(Object.assign({}, o, { style: 'clock' }));
+    const layer = document.createElement('div');
+    layer.className = 'hemma-saver';
+    const sr = layer.attachShadow({ mode: 'open' });
+    sr.innerHTML = `<style>${saverCss} :host { background: #111; }</style><div class="dark"></div>`;
+    const panel = document.createElement('hemma-media-panel');
+    panel.setConfig({ full: true, entity: src.entity, kind: src.kind === 'player' ? null : (src.kind || null), src });
+    sr.insertBefore(panel, sr.querySelector('.dark'));
+    panel.hass = CAMS.hassNow();
+    SAVER.clock = setInterval(() => { const hs = CAMS.hassNow(); if (hs && hs !== panel._hass) panel.hass = hs; }, 500);
+    saverDrift([[panel]]);
+    saverMount(layer, sr, o, () => true);
+    let busy = false;
+    layer.addEventListener('pointerdown', () => { const R = panel.shadowRoot; busy = !!(R && R.querySelector('.wrap.rem, .spk, .gmenu')); }, true);
+    layer.addEventListener('click', (e) => {
+      if (busy) return;
+      const t = e.composedPath()[0];
+      if (t && t.closest && t.closest('.rpage, .spk, .gmenu')) return;
+      if (t === panel || (t && t.classList && ['wrap', 'slab', 'glow', 'dark'].some((c) => t.classList.contains(c)))) window.hemmaSaver.stop();
+    });
   };
   // Recently Added as HomeView's media page: the screen takes the poster's color, the poster centered with its title, the other new titles in a row below.
   const CARDS_CSS = `
@@ -5807,11 +6183,328 @@ const saverXfade = (el, bg) => {
     });
   };
 
+  const SVX_CSS = `
+    :host { background: var(--sbg, #97a9ae); color: var(--ink); --ink: #111; --sub: #3d4a50; --hi: #fff; --line: rgba(0,0,0,0.12); --fill: rgba(255,255,255,0.28); transition: background-color 2.5s ease; }
+    :host(.dk) { --ink: #fff; --sub: rgba(235,235,245,0.62); --hi: #FF9F0A; --line: rgba(255,255,255,0.14); --fill: rgba(255,255,255,0.1); }
+    .stg { position: absolute; left: 50%; top: 50%; width: 1180px; height: 820px; transform: translate(-50%, -50%) scale(var(--k, 1)); font-family: -apple-system, system-ui, sans-serif; }
+    :host(.pt) .stg { width: 820px; height: 1180px; }
+    .num { font-variant-numeric: tabular-nums; }
+    .dte { font-size: 32px; font-weight: 700; letter-spacing: -0.01em; } .dte span { color: var(--sub); }
+    .wi { display: inline-block; width: 1em; height: 1em; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; vertical-align: -0.12em; }
+    .ph { position: absolute; inset: 0; overflow: hidden; background: #000; }
+    .ph i { position: absolute; inset: -4%; background: var(--p) center / cover no-repeat; animation: svx-pan 120s ease-in-out infinite alternate; transition: opacity 1.6s ease; }
+    @keyframes svx-pan { from { transform: scale(1.02) translate(-1.2%, 0.6%); } to { transform: scale(1.1) translate(1.2%, -0.8%); } }
+    @media (prefers-reduced-motion: reduce) { .ph i { animation: none; } }
+    .sh { position: absolute; inset: 0; opacity: .7; background: linear-gradient(180deg, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.12) 26%, rgba(0,0,0,0) 42%), linear-gradient(0deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.16) 24%, rgba(0,0,0,0) 40%); }
+    .ph::after { content: ""; position: absolute; inset: 0; background: var(--tn, transparent); opacity: .3; transition: background-color 1.5s ease; pointer-events: none; }
+    .pho { color: #fff; }
+    .pho .top { position: absolute; left: 0; right: 0; top: 54px; text-align: center; text-shadow: 0 2px 24px rgba(0,0,0,0.25); }
+    .pho .dte span { color: rgba(255,255,255,0.68); }
+    .pho .tm { font-size: 176px; font-weight: 700; letter-spacing: -0.045em; line-height: .92; margin-top: 2px; }
+    .pho .foot { position: absolute; left: 72px; right: 72px; bottom: 58px; display: flex; justify-content: space-between; align-items: flex-end; text-shadow: 0 2px 18px rgba(0,0,0,0.3); }
+    .pho .rm .k { font-size: 17px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; opacity: .78; }
+    .pho .rm .n { font-size: 46px; font-weight: 700; letter-spacing: -0.02em; margin-top: 4px; }
+    .pho .px { text-align: right; } .pho .px .t { font-size: 46px; font-weight: 600; letter-spacing: -0.02em; display: flex; align-items: center; gap: 12px; justify-content: flex-end; } .pho .px .wi { width: 40px; height: 40px; }
+    .pho .px .d { font-size: 21px; font-weight: 500; opacity: .85; margin-top: 4px; }
+    .pho .dots { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); display: flex; gap: 9px; }
+    .pho .dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.45); } .pho .dots i.on { background: #fff; }
+    .pho .top { transition: top .6s cubic-bezier(.32, .72, 0, 1); } .pho.np .top { top: 100px; }
+    :host(.pt) .pho .top { top: 110px; } :host(.pt) .pho.np .top { top: 150px; } :host(.pt) .pho .tm { font-size: 200px; } :host(.pt) .pho .foot { bottom: 90px; }
+    .wk .hd { position: absolute; left: 76px; right: 76px; top: 58px; display: flex; justify-content: space-between; align-items: baseline; }
+    .wk .hd h1 { font-size: 64px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; margin: 0; }
+    .wk .hd p { font-size: 24px; font-weight: 600; color: var(--sub); margin: 10px 0 0; }
+    .wk .hd .tm { font-size: 64px; font-weight: 700; letter-spacing: -0.035em; line-height: 1; }
+    .wk .gr { position: absolute; left: 60px; right: 60px; top: 0; bottom: 0; padding-top: 70px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-content: center; align-items: stretch; }
+    .wk .d { padding: 20px 16px 30px; border-radius: 26px; min-width: 0; display: flex; flex-direction: column; position: relative; }
+    .wk .d + .d::before { content: ""; position: absolute; left: 0; top: 20px; bottom: 20px; width: 1px; background: var(--line); }
+    .wk .d.td { background: var(--fill); } .wk .d.td::before, .wk .d.td + .d::before { display: none; }
+    .wk .wd { font-size: 19px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sub); } .wk .td .wd { color: var(--ink); }
+    .wk .n { font-size: 62px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; margin-top: 2px; }
+    .wk .fx { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 23px; font-weight: 600; white-space: nowrap; } .wk .fx .wi { width: 27px; height: 27px; flex: none; } .wk .fx span { color: var(--sub); }
+    .wk .ev { margin-top: 22px; display: flex; flex-direction: column; gap: 16px; }
+    .wk .e { padding-left: 11px; position: relative; } .wk .e::before { content: ""; position: absolute; left: 0; top: 3px; bottom: 3px; width: 3.5px; border-radius: 2px; background: var(--c); }
+    .wk .e b { font-size: 21px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: break-word; hyphens: auto; -webkit-hyphens: auto; }
+    .wk .e span { display: block; font-size: 18px; font-weight: 500; color: var(--sub); margin-top: 1px; }
+    .wk .no { margin-top: 22px; font-size: 18px; font-weight: 500; color: var(--sub); }
+    .wk.d5 .gr { grid-template-columns: repeat(5, minmax(0, 1fr)); } .wk.d5 .e b { -webkit-line-clamp: 3; font-size: 23px; } .wk.d5 .n { font-size: 68px; }
+    :host(.pt) .wk.d5 .gr { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(5, minmax(0, 1fr)); }
+    :host(.pt) .wk .hd { left: 64px; right: 64px; top: 70px; }
+    :host(.pt) .wk .gr { left: 40px; right: 40px; top: 230px; bottom: 50px; padding-top: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(7, minmax(0, 1fr)); align-content: stretch; }
+    :host(.pt) .wk .d { flex-direction: row; align-items: center; padding: 0 24px; }
+    :host(.pt) .wk .d + .d::before { left: 24px; right: 24px; top: 0; bottom: auto; width: auto; height: 1px; }
+    :host(.pt) .wk .dh { width: 92px; flex: none; } :host(.pt) .wk .fx { width: 130px; flex: none; margin: 0; }
+    :host(.pt) .wk .ev, :host(.pt) .wk .no { margin: 0; flex: 1; min-width: 0; flex-direction: row; gap: 40px; align-items: center; }
+    :host(.pt) .wk .e { flex: 0 1 auto; max-width: 300px; min-width: 0; } :host(.pt) .wk .e b { -webkit-line-clamp: 1; }
+    .cm { position: absolute; inset: 6px; display: grid; gap: 4px; border-radius: 24px; overflow: hidden; background: #000; }
+    .cm.n1 { grid-template: 1fr / 1fr; } .cm.n2 { grid-template: 1fr / 1fr 1fr; }
+    .cm.n3 { grid-template: 1fr 1fr / 1.9fr 1fr; } .cm.n3 .c:first-child { grid-row: 1 / 3; }
+    .cm.n4 { grid-template: 1fr 1fr / 1fr 1fr; } .cm.n5, .cm.n6 { grid-template: 1fr 1fr / 1fr 1fr 1fr; }
+    :host(.pt) .cm.n2 { grid-template: 1fr 1fr / 1fr; } :host(.pt) .cm.n3 { grid-template: 1.9fr 1fr / 1fr 1fr; } :host(.pt) .cm.n3 .c:first-child { grid-row: auto; grid-column: 1 / 3; }
+    :host(.pt) .cm.n5, :host(.pt) .cm.n6 { grid-template: 1fr 1fr 1fr / 1fr 1fr; }
+    .cm .c { position: relative; overflow: hidden; background: #111 center / cover no-repeat; }
+    .cm .c img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border: 0; } .cm .c img:not([src]) { display: none; }
+    .cm .c::after { content: ""; position: absolute; inset: auto 0 0; height: 34%; background: linear-gradient(0deg, rgba(0,0,0,0.42), rgba(0,0,0,0)); }
+    .cm .lb { position: absolute; left: 18px; bottom: 15px; z-index: 1; font-size: 17px; font-weight: 600; color: #fff; text-shadow: 0 1px 10px rgba(0,0,0,0.35); }
+    .cz { position: absolute; z-index: 3; overflow: hidden; background: #111; cursor: pointer; }
+    .cz img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border: 0; }
+    .cz .feed { position: absolute; inset: 0; opacity: 0; transition: opacity .5s ease; } .cz .feed.on { opacity: 1; }
+    .cz .lb { position: absolute; z-index: 1; left: 18px; bottom: 15px; font-size: 17px; font-weight: 600; color: #fff; text-shadow: 0 1px 10px rgba(0,0,0,0.35); font-family: -apple-system, system-ui, sans-serif; }
+    .chome { position: absolute; z-index: 4; left: max(30px, env(safe-area-inset-left, 0px)); top: max(22px, calc(env(safe-area-inset-top, 0px) + 10px)); height: 46px; padding: 0 18px 0 14px; border: 0; border-radius: 23px; display: flex; align-items: center; gap: 8px; color: #fff; font: 600 17px -apple-system, system-ui, sans-serif; cursor: pointer; -webkit-tap-highlight-color: transparent;
+      background: rgba(255,255,255,0.16); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4); box-shadow: inset 0 0.5px 0 rgba(255,255,255,0.45), inset 0 0 0 0.5px rgba(255,255,255,0.18), 0 6px 18px -8px rgba(0,0,0,0.5); }
+    .chome:active { background: rgba(255,255,255,0.26); }
+    .chome i { width: 19px; height: 19px; background: #fff; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+    .ctm { position: absolute; z-index: 4; top: max(32px, calc(env(safe-area-inset-top, 0px) + 20px)); right: max(40px, env(safe-area-inset-right, 0px)); font-size: 34px; line-height: 1; font-weight: 600; letter-spacing: -0.02em; color: #fff; text-shadow: 0 1px 14px rgba(0,0,0,0.45); font-family: -apple-system, system-ui, sans-serif; }
+  `;
+  const SVX_TONES = ['#30D158', '#0A84FF', '#FF9F0A', '#BF5AF2', '#FF375F', '#64D2FF'];
+  const SVX_C = { ev: null, evKey: '', fc: null, fcKey: '' };
+  const svxCals = (h, o) => (Array.isArray(o.cals) && o.cals.length ? o.cals : Object.keys(h.states)).filter((k) => k.indexOf('calendar.') === 0 && h.states[k]);
+  const svxForecast = (hs, wid) => {
+    if (!wid || !hs || !hs.connection) return Promise.resolve(null);
+    return hs.connection.sendMessagePromise({ type: 'call_service', domain: 'weather', service: 'get_forecasts', service_data: { type: 'daily' }, target: { entity_id: wid }, return_response: true })
+      .then((r) => { const f = (((r && r.response) || {})[wid] || {}).forecast || null; if (f) { SVX_C.fc = f; SVX_C.fcKey = wid; } return f; }).catch(() => null);
+  };
+  const svxEvents = (hs, cals) => {
+    if (!cals.length || !hs || !hs.callApi) return Promise.resolve([]);
+    const a = new Date(); a.setHours(0, 0, 0, 0);
+    const b = new Date(a); b.setDate(b.getDate() + 7);
+    return Promise.all(cals.map((id, ci) => hs.callApi('GET', `calendars/${id}?start=${encodeURIComponent(a.toISOString())}&end=${encodeURIComponent(b.toISOString())}`).then((l) => (l || []).map((e) => Object.assign(e, { _c: ci }))).catch(() => []))).then((all) => {
+      const seen = new Set();
+      const evs = [].concat(...all).map((e) => ({ name: e.summary || '', day: !!(e.start && e.start.date && !e.start.dateTime), a: new Date((e.start && (e.start.dateTime || e.start.date + 'T00:00')) || 0), b: new Date((e.end && (e.end.dateTime || e.end.date + 'T00:00')) || 0), c: SVX_TONES[e._c % SVX_TONES.length] }))
+        .filter((e) => { const k = e.name + '|' + +e.a; if (seen.has(k)) return false; seen.add(k); return true; }).sort((x, y) => x.a - y.a);
+      SVX_C.ev = evs; SVX_C.evKey = cals.join();
+      return evs;
+    });
+  };
+  const svxWarm = (o) => {
+    const h = CAMS.hassNow();
+    if (!h || !(o && o.rotate > 0) || (Array.isArray(o.cycle) && o.cycle.length && !o.cycle.includes('week'))) return;
+    svxEvents(h, svxCals(h, o));
+    svxForecast(h, saverViewVar('weather_entity') || Object.keys(h.states).find((k) => k.indexOf('weather.') === 0));
+  };
+  const saverX = (o) => {
+    const h = CAMS.hassNow(), lang = h.language || undefined, kind = o.style;
+    const layer = document.createElement('div');
+    layer.className = 'hemma-saver';
+    const sr = layer.attachShadow({ mode: 'open' });
+    const cl = document.documentElement.classList, night = o.bg === 'black' || (cl.contains('hemma-hv') && !cl.contains('hv-light') && !cl.contains('hv-ink-w'));
+    const ck0 = (o.bg === 'artwork' || o.bg === 'album' ? o.rest : o.bg) || '';
+    const dashKey = window._hemmaHV && window._hemmaHV.key ? window._hemmaHV.key() : null;
+    const ck = ck0 === '' || ck0 === 'black' ? (dashKey && dashKey !== 'gray' ? dashKey : '') : ck0 === 'gray' ? '' : ck0;
+    const pal = window._hemmaHV && window._hemmaHV.palette ? window._hemmaHV.palette() : null;
+    const NIGHTS = { '': '#49575c', sand: '#5b564e', sage: '#4c5944', blue: '#44556d', rose: '#654d51', lavender: '#56506a', sea: '#395c5b', clay: '#684e42', plum: '#664b5c', honey: '#5c543f' };
+    const tone = pal ? '#' + (pal.light[ck || 'gray'] || pal.light.gray) : (CLOCK_BG[ck] || CLOCK_BG['']);
+    const toneN = pal ? '#' + (pal.dark[ck || 'gray'] || pal.dark.gray) : (NIGHTS[ck] || NIGHTS['']);
+    layer.style.setProperty('--sbg', kind === 'photos' || kind === 'cameras' ? '#000' : night ? toneN : tone);
+    if (night || kind === 'photos' || kind === 'cameras') layer.classList.add('dk');
+    const pane = { photos: 'pho', week: 'wk', cameras: 'cmw' }[kind];
+    sr.innerHTML = `<style>${saverCss}${SVX_CSS}</style>${kind === 'photos' ? '<div class="ph"></div><div class="sh"></div>' : ''}${kind === 'cameras' ? `<div class="cm"></div><button type="button" class="chome"><i style="--i:url('${window.hemmaIconUrl ? window.hemmaIconUrl('home') : ''}')"></i>${esc(T('nav.home', 'Home'))}</button><div class="ctm num"></div>` : `<div class="stg ${pane}"></div>`}${MINI_HTML}<div class="dark"></div>`;
+    const $ = (q) => sr.querySelector(q), stg = $('.stg');
+    if (stg) stg.lang = String(lang || 'en');
+    if (kind !== 'cameras') stageFit(sr);
+    const h12 = new Intl.DateTimeFormat(lang, { hour: 'numeric' }).resolvedOptions().hour12;
+    const clockTxt = (d) => d.toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AaPp]\.?\s?[Mm]\.?$/, '');
+    const dateTwo = (d) => `${esc(d.toLocaleDateString(lang, { weekday: 'long' }))} <span>${esc(d.toLocaleDateString(lang, { month: 'long', day: 'numeric' }))}</span>`;
+    const wid = saverViewVar('weather_entity') || Object.keys(h.states).find((k) => k.indexOf('weather.') === 0);
+    let fc = null, evs = null;
+    const wxNow = () => {
+      const hs = CAMS.hassNow(), w = wid && hs.states[wid];
+      if (!w) return null;
+      const line = window.hemmaWxLine ? window.hemmaWxLine(hs, wid, saverViewVar('weather_temp_sensor')) : null;
+      const a = w.attributes || {}, t = line ? line.t : a.temperature != null ? Math.round(a.temperature) : null;
+      let cond = w.state;
+      try { cond = hs.formatEntityState ? hs.formatEntityState(w) : w.state; } catch (_) {}
+      const f0 = fc && fc[0];
+      return { t, icon: wxIcon(w.state), cond, hl: f0 && f0.temperature != null ? `H:${Math.round(f0.temperature)}° L:${Math.round(f0.templow != null ? f0.templow : f0.temperature)}°` : '' };
+    };
+    const forecast = () => {
+      const hs = CAMS.hassNow();
+      if (!wid || !hs.connection) return;
+      svxForecast(hs, wid).then((f) => { if (f) { fc = f; draw(); } });
+    };
+    const cals = svxCals(h, o);
+    if (SVX_C.evKey === cals.join()) evs = SVX_C.ev;
+    if (SVX_C.fcKey === wid) fc = SVX_C.fc;
+    const calendar = () => { svxEvents(CAMS.hassNow(), cals).then((e) => { evs = e; draw(); }); };
+    const rooms = () => {
+      const c = saverLL() || (Array.isArray(o.views) ? { views: o.views } : null), dk = !!(h.themes && h.themes.darkMode), out = [], seen = new Set();
+      for (const v of (c && c.views) || []) {
+        const V = (((v.cards || [])[0]) || {}).variables || {};
+        if (!V.image) continue;
+        const base = String(V.image), pick = dk ? (V.image_night || base + '-night') : base;
+        const url = /^(\/|https?:)/.test(pick) ? pick : `/hemma_assets/rooms/${pick}.jpg`;
+        if (seen.has(url)) continue;
+        seen.add(url);
+        const t = String(v.title || V.title || v.path || ''), slug = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const area = Object.values(h.areas || {}).find((a) => slug(a.name) === slug(t) || slug(a.area_id) === slug(t));
+        const name = area ? area.name : t.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        out.push({ name, url, home: (v.path || '') === 'home' });
+      }
+      return out;
+    };
+    const ROOMS = kind === 'photos' ? rooms() : [];
+    if (kind === 'photos' && !ROOMS.length) { const p = saverPhoto(); if (p) ROOMS.push({ name: '', url: p }); }
+    if (kind === 'photos' && !ROOMS.length) return;
+    const roomSolo = !(o.rotate > 0) || (Array.isArray(o.cycle) && o.cycle.length === 1 && o.cycle[0] === 'photos');
+    let ri = -1;
+    const photo = () => {
+      ri = (ri + 1) % ROOMS.length;
+      const r = ROOMS[ri], box = $('.ph'), im = new Image();
+      im.onload = () => {
+        const el = document.createElement('i');
+        el.style.setProperty('--p', `url("${r.url.replace(/"/g, '%22')}")`);
+        el.style.opacity = box.children.length ? '0' : '1';
+        box.appendChild(el);
+        requestAnimationFrame(() => { el.style.opacity = '1'; });
+        [...box.children].slice(0, -1).forEach((old) => setTimeout(() => old.remove(), 1800));
+        draw();
+      };
+      im.src = r.url;
+    };
+    let last = '';
+    const put = (html) => { if (html !== last) { last = html; stg.innerHTML = html; } };
+    const draw = () => {
+      const d = new Date(), x = wxNow();
+      if (kind === 'photos') {
+        const r = ROOMS[Math.max(0, ri)] || {};
+        put(`<div class="top"><div class="dte">${dateTwo(d)}</div><div class="tm num">${esc(clockTxt(d))}</div></div>`
+          + `<div class="foot"><div class="rm">${r.name ? `${r.home ? '' : `<div class="k">${esc(T('nav.home', 'Home'))}</div>`}<div class="n">${esc(r.name)}</div>` : ''}</div>`
+          + (x && x.t != null ? `<div class="px"><div class="t"><i class="wi" style="--i:url('${x.icon}')"></i>${x.t}°</div><div class="d">${esc([x.cond, x.hl].filter(Boolean).join(' · '))}</div></div>` : '') + '</div>'
+          + (ROOMS.length > 1 && roomSolo ? `<div class="dots">${ROOMS.map((_, i) => `<i${i === ri ? ' class="on"' : ''}></i>`).join('')}</div>` : ''));
+      } else if (kind === 'week') {
+        const d0 = new Date(d); d0.setHours(0, 0, 0, 0);
+        let n = 0, cols = '';
+        const ND = o.wdays === 5 ? 5 : 7;
+        stg.classList.toggle('d5', ND === 5);
+        for (let i = 0; i < ND; i++) {
+          const a = new Date(d0); a.setDate(a.getDate() + i);
+          const b = new Date(a); b.setDate(b.getDate() + 1);
+          const day = (evs || []).filter((e) => e.a < b && e.b > a && (i || e.day || e.b > d)).slice(0, 4);
+          n += day.length;
+          const f = (fc || []).find((z) => { const t = new Date(z.datetime); return t >= a && t < b; });
+          cols += `<div class="d${i ? '' : ' td'}"><div class="dh"><div class="wd">${esc(i ? a.toLocaleDateString(lang, { weekday: 'short' }).replace(/\.$/, '') : T('saver.today', 'Today'))}</div><div class="n num">${a.getDate()}</div></div>`
+            + `<div class="fx">${f ? `<i class="wi" style="--i:url('${wxIcon(f.condition)}')"></i>${Math.round(f.temperature)}°<span>${f.templow != null ? Math.round(f.templow) + '°' : ''}</span>` : ''}</div>`
+            + (day.length ? `<div class="ev">${day.map((e) => `<div class="e" style="--c:${e.c}"><b>${esc(e.name)}</b><span>${esc(e.day ? T('saver.all_day_one', 'All day') : e.a.toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' }))}</span></div>`).join('')}</div>` : `<div class="no">${esc(T('saver.nothing_planned', 'Nothing planned'))}</div>`) + '</div>';
+        }
+        put(`<div class="hd"><div><h1>${esc(T('saver.this_week', 'This Week'))}</h1><p>${esc(evs ? (n === 1 ? T('saver.event_one', '1 event') : T('saver.events', '{n} events', { n })) : '')}</p></div><div class="tm num">${esc(clockTxt(d))}</div></div><div class="gr">${cols}</div>`);
+      }
+    };
+    const cams = () => {
+      const hs = CAMS.hassNow(), own = Array.isArray(o.cams) ? o.cams.filter((id) => hs.states[id]) : [], ids = (own.length ? own : CAMS.list(hs, CAMS.settings())).slice(0, 6), box = $('.cm');
+      if (!box) return;
+      box.className = 'cm n' + Math.max(1, ids.length);
+      if (box.children.length !== ids.length) box.innerHTML = ids.map((id) => `<div class="c" data-id="${esc(id)}"><img><div class="lb">${esc(((hs.states[id] || {}).attributes || {}).friendly_name || id)}</div></div>`).join('');
+      [...box.children].forEach((c) => {
+        const st = hs.states[c.dataset.id], pic = st && st.attributes && st.attributes.entity_picture;
+        if (!pic || (c._held && Date.now() - c._held < 60000)) return;
+        const im = new Image(), url = pic + (pic.indexOf('?') < 0 ? '?' : '&') + '_t=' + Date.now();
+        im.onload = () => { const el = c.querySelector('img'); if (el) el.src = url; const z = $('.cz'); if (z && z.dataset.id === c.dataset.id) z.querySelector('img').src = url; };
+        im.src = url;
+      });
+      $('.ctm').textContent = clockTxt(new Date());
+    };
+    if (kind === 'cameras') {
+      if (!(Array.isArray(o.cams) && o.cams.some((id) => h.states[id])) && !CAMS.list(h, CAMS.settings()).length) return;
+      cams();
+      SAVER.clock = setInterval(cams, 5000);
+      const E = 'cubic-bezier(0.32, 0.72, 0, 1)';
+      const rectOf = (el) => { const r = el.getBoundingClientRect(), H = sr.host.getBoundingClientRect(); return { left: r.left - H.left + 'px', top: r.top - H.top + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: '0px' }; };
+      const full = () => ({ left: '6px', top: '6px', width: (sr.host.clientWidth - 12) + 'px', height: (sr.host.clientHeight - 12) + 'px', borderRadius: '24px' });
+      $('.cm').addEventListener('click', (e) => {
+        const c = e.target.closest && e.target.closest('.c');
+        if (!c || $('.cz')) return;
+        e.stopPropagation();
+        const img = c.querySelector('img'), z = document.createElement('div');
+        z.className = 'cz'; z.dataset.id = c.dataset.id;
+        z.innerHTML = `<img${img && img.getAttribute('src') ? ` src="${esc(img.getAttribute('src'))}"` : ''}><div class="lb">${esc(c.querySelector('.lb').textContent)}</div>`;
+        Object.assign(z.style, full());
+        sr.insertBefore(z, $('.ctm'));
+        const solo = $('.cm').children.length < 2;
+        if (!solo) z.animate([rectOf(c), full()], { duration: 460, easing: E });
+        CAMS.live(CAMS.hassNow(), c.dataset.id, true).then((lv) => {
+          if (!z.isConnected || !lv || !lv.el) return;
+          z.insertBefore(lv.el, z.querySelector('.lb'));
+          let n = 0;
+          const wait = setInterval(() => {
+            const v = CAMS.videoIn(lv.el);
+            if (!z.isConnected || ++n > 60) { clearInterval(wait); return; }
+            if (v && v.readyState >= 2) { clearInterval(wait); for (let n = v.parentNode; n && n !== lv.el; n = n.host || n.parentNode) if (n.style) Object.assign(n.style, { display: 'block', position: 'absolute', inset: '0', width: '100%', height: '100%' });
+            Object.assign(v.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', objectFit: 'cover', maxHeight: 'none' }); lv.el.classList.add('on'); }
+          }, 250);
+        });
+        z.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          const f = z.querySelector('.feed'), v = f && CAMS.videoIn(f);
+          if (v && v.readyState >= 2 && v.videoWidth) {
+            try {
+              const cv = document.createElement('canvas'); cv.width = v.videoWidth; cv.height = v.videoHeight;
+              cv.getContext('2d').drawImage(v, 0, 0);
+              const url = cv.toDataURL('image/jpeg', 0.85);
+              [z.querySelector('img'), c.querySelector('img')].forEach((im) => { if (im) im.src = url; });
+              c._held = Date.now();
+            } catch (_) {}
+          }
+          if (f) f.classList.remove('on');
+          if (solo) { setTimeout(() => z.remove(), 500); return; }
+          const back = z.animate([full(), rectOf(c)], { duration: 400, easing: E, fill: 'forwards' });
+          back.finished.then(() => z.remove(), () => z.remove());
+        });
+      });
+    } else {
+      if (kind === 'photos') {
+        const wash = (c) => layer.style.setProperty('--tn', c || tone);
+        let artFor = null;
+        const artwork = () => {
+          const src = (o.bg === 'artwork' || o.bg === 'album') && saverNP(), art = src && src.playing ? src.art || '' : '';
+          if (art === artFor) return;
+          artFor = art;
+          const use = (rgb) => wash(rgb && `oklch(from ${rgb} 0.8 min(c, 0.1) h)`);
+          if (!art) { use(null); return; }
+          if (SAVER_ART.has(art)) { use(SAVER_ART.get(art)); return; }
+          const im = new Image();
+          if (!(String(art).startsWith('/') || String(art).startsWith(location.origin))) im.crossOrigin = 'anonymous';
+          im.onload = () => {
+            if (artFor !== art) return;
+            try {
+              const c = document.createElement('canvas'); c.width = c.height = 40;
+              const x = c.getContext('2d'); x.drawImage(im, 0, 0, 40, 40);
+              const v = palVibrant(x.getImageData(0, 0, 40, 40).data), rgb = v ? `rgb(${albumTop(v).join(',')})` : null;
+              SAVER_ART.set(art, rgb); use(rgb);
+            } catch (_) { use(null); }
+          };
+          im.onerror = () => use(null);
+          im.src = art;
+        };
+        artwork(); SAVER.tint = setInterval(artwork, 2000);
+        if (!roomSolo && ROOMS.length > 1) {
+          const R = SAVER.rot || (SAVER.rot = {});
+          let at = o.room;
+          if (at == null) {
+            if (!R.bag || !R.bag.length) { R.bag = ROOMS.map((_, i) => i).sort(() => Math.random() - 0.5); if (R.bag[0] === R.room && R.bag.length > 1) R.bag.push(R.bag.shift()); }
+            at = R.room = R.bag.shift();
+          }
+          at = ((at % ROOMS.length) + ROOMS.length) % ROOMS.length;
+          layer._room = at; layer._rooms = ROOMS.length;
+          ri = at - 1;
+          photo();
+        } else { photo(); SAVER.adv = setInterval(photo, 20000); }
+      }
+      draw();
+      SAVER.clock = setInterval(draw, 10000);
+      forecast(); SAVER.fc = setInterval(forecast, 30 * 60000);
+      if (kind === 'week') { calendar(); SAVER.cal = setInterval(calendar, 5 * 60000); }
+    }
+    if (stg) saverDrift([[stg]]);
+    saverMini(sr);
+    const mi = $('.mini');
+    if (stg && mi) { const np = () => stg.classList.toggle('np', mi.classList.contains('on')); np(); new MutationObserver(np).observe(mi, { attributes: true, attributeFilter: ['class'] }); }
+    saverMount(layer, sr, o, (n) => n.classList.contains('mini') || n.classList.contains('c') || n.classList.contains('cz'));
+  };
   window.hemmaSaver = {
     get on() { return !!SAVER.layer; },
     start(opts) {
       if (SAVER.layer) return;
       if (!(opts && opts.instant)) SAVER.rot = null;
+      try { svxWarm(opts); } catch (_) {}
       this._open(opts);
       if (SAVER.layer && SAVER.opts && SAVER.opts.swipe) saverSwipe(SAVER.layer);
       if (SAVER.layer) saverRotate();
@@ -5819,17 +6512,22 @@ const saverXfade = (el, bg) => {
     _open(opts) {
       const h = CAMS.hassNow();
       if (!h) return;
+      if (opts && (opts.style === 'words' || opts.face === 'words')) opts = Object.assign({}, opts, opts.style === 'words' ? { style: 'face', face: '' } : { face: '' });
       SAVER.opts = opts || {};
       if (!SAVER.opts.preview) try { localStorage.setItem('hemma_saver_on', JSON.stringify(Object.assign({}, SAVER.opts, { instant: true, at: location.pathname.split('/')[1] || '' }))); } catch (_) {}
       const o = Object.assign({}, opts || {});
       if (!o.style || o.style === 'clock' || o.style === 'clock_photo') o.style = 'clock';
       if (o.style === 'cards') o.style = 'recent';
       if (o.style === 'clock' || o.style === 'clock_photo') return saverClock(o);
+      if (o.style === 'np') return saverNowPlaying(o);
+      if (o.style === 'calendar') return saverCal(o);
       if (o.style === 'face' && o.face === 'stacked') return saverStack(o);
+      if (['photos', 'week', 'cameras'].includes(o.style)) return saverX(o);
       if (o.style === 'face') return saverFace(o);
       if (o.style === 'cards') return saverCards(o);
       const layer = document.createElement('div');
       layer.className = 'hemma-saver';
+      if (o.rabg === 'color') layer.classList.add('flat');
       const sr = layer.attachShadow({ mode: 'open' });
       sr.innerHTML = `<style>${saverCss}</style><div class="clock"><b></b><small></small></div><div class="lbl"><b>${(() => { const l = T('saver.new_media', 'New Media'), k = l.indexOf(' '); return k > 0 ? esc(l.slice(0, k)) + ' <span>' + esc(l.slice(k + 1)) + '</span>' : esc(l); })()}</b><small></small></div><div class="mini" role="button" aria-label="${esc(T('now_playing.title', 'Now Playing'))}"><i class="gx gd"></i><i class="gx gs"></i><i class="gx gt"></i><i class="gx gb"></i><span class="ma"></span><svg class="dots" width="29" height="4.6" viewBox="0 0 25 4"><circle cx="1.60" cy="2" r="1.6" style="--o:1;--o2:1.00;--dl:0.00s"/><circle cx="5.96" cy="2" r="1.6" style="--o:0.8;--o2:1.00;--dl:0.17s"/><circle cx="10.32" cy="2" r="1.6" style="--o:0.62;--o2:1.00;--dl:0.34s"/><circle cx="14.68" cy="2" r="1.6" style="--o:0.47;--o2:0.97;--dl:0.51s"/><circle cx="19.04" cy="2" r="1.6" style="--o:0.35;--o2:0.85;--dl:0.68s"/><circle cx="23.40" cy="2" r="1.6" style="--o:0.26;--o2:0.76;--dl:0.85s"/></svg></div><div class="dark"></div>`;
       const panel = document.createElement('hemma-recent-panel');
@@ -5882,8 +6580,18 @@ const saverXfade = (el, bg) => {
       // Against burn-in on wall tablets: what stays put drifts a few points every minute, and after a while the screen goes dark until touched.
       saverDrift([[sr.querySelector('.clock'), sr.querySelector('.lbl')], [panel]]);
       if (o.dark > 0) SAVER.darkT = setTimeout(() => sr.querySelector('.dark').classList.add('on'), o.dark * 60000);
-      tick();
-      SAVER.clock = setInterval(tick, 10000);
+      let artFor = null;
+      const artwork = () => {
+        if (o.rabg !== 'color') return;
+        const src = saverNP(), art = src && src.playing ? src.art || '' : '';
+        if (art === artFor) return;
+        artFor = art;
+        const use = (rgb) => { if (rgb) panel.style.setProperty('--npflat', rgb); else panel.style.removeProperty('--npflat'); };
+        if (!art) { use(null); return; }
+        saverArtRgb(art, (rgb) => { if (artFor === art) use(rgb); });
+      };
+      tick(); artwork();
+      SAVER.clock = setInterval(() => { tick(); artwork(); }, 2000);
       // Only the posters, their dots and an open poster's page are the screensaver's own; a tap anywhere else wakes the dashboard.
       layer.addEventListener('click', (e) => {
         const path = e.composedPath();
@@ -5951,7 +6659,7 @@ const saverXfade = (el, bg) => {
         if (!ll || ll.editMode || !ll.config) return null;
         for (const v of ll.config.views || []) {
           const V = (((v.cards || [])[0]) || {}).variables || {};
-          if (V.hemma_screensaver !== undefined && V.hemma_screensaver !== '' && V.hemma_screensaver !== null) return { swipe: V.hemma_screensaver_swipe === true, slide: V.hemma_screensaver_transition === 'slide', rotate: parseFloat(V.hemma_screensaver_rotate) || 0, style: V.hemma_screensaver_style || '', face: V.hemma_screensaver_face || '', bg: V.hemma_screensaver_bg || '', idle: V.hemma_screensaver_idle || '', np: V.hemma_screensaver_np || '', rest: V.hemma_screensaver_bg_rest || '', rabg: V.hemma_screensaver_ra_bg || '', cals: V.hemma_screensaver_calendars || [], mins: parseFloat(V.hemma_screensaver) || 0, where: V.hemma_screensaver_on || '', every: parseFloat(V.hemma_screensaver_every) || 6, dark: V.hemma_screensaver_dark === undefined || V.hemma_screensaver_dark === '' ? 60 : parseFloat(V.hemma_screensaver_dark) || 0 };
+          if (V.hemma_screensaver !== undefined && V.hemma_screensaver !== '' && V.hemma_screensaver !== null) return { swipe: V.hemma_screensaver_swipe === true, slide: V.hemma_screensaver_transition === 'slide', rotate: parseFloat(V.hemma_screensaver_rotate) || 0, style: V.hemma_screensaver_style || '', face: V.hemma_screensaver_face || '', bg: V.hemma_screensaver_bg || '', idle: V.hemma_screensaver_idle || '', np: V.hemma_screensaver_np || '', rest: V.hemma_screensaver_bg_rest || '', rabg: V.hemma_screensaver_ra_bg || '', cals: V.hemma_screensaver_calendars || [], cycle: Array.isArray(V.hemma_screensaver_cycle) ? V.hemma_screensaver_cycle : null, cams: Array.isArray(V.hemma_screensaver_cameras) ? V.hemma_screensaver_cameras : null, wdays: parseFloat(V.hemma_screensaver_week_days) || 7, mins: parseFloat(V.hemma_screensaver) || 0, where: V.hemma_screensaver_on || '', every: parseFloat(V.hemma_screensaver_every) || 6, dark: V.hemma_screensaver_dark === undefined || V.hemma_screensaver_dark === '' ? 60 : parseFloat(V.hemma_screensaver_dark) || 0 };
         }
       } catch (_) {}
       return null;
@@ -5973,12 +6681,15 @@ const saverXfade = (el, bg) => {
     }
     const armed = (c) => !!(c && c.mins) && (c.where === 'all' ? !window.matchMedia('(max-width: 768px)').matches : window.matchMedia('(pointer: coarse) and (min-width: 769px)').matches);
     window._hemmaSaverArmed = () => armed(cfgOf());
+    const optsOf = (c) => ({ swipe: c.swipe, slide: c.slide, rotate: c.rotate, style: c.style, face: c.face, every: c.every, dark: c.dark, bg: c.bg, rest: c.rest, idle: c.idle, np: c.np, cals: c.cals, cycle: c.cycle, cams: c.cams, wdays: c.wdays, rabg: c.rabg });
+    window._hemmaSaverNow = () => { const c = cfgOf(); if (!c || SAVER.layer) return false; window.hemmaSaver.start(optsOf(c)); return true; };
+    window._hemmaSaverSet = () => !!cfgOf();
     setInterval(() => {
       if (SAVER.layer || document.hidden) return;
       const c = cfgOf();
       if (!armed(c)) return;
       if ((window.hemmaPopup && window.hemmaPopup.surface) || window.hemmaMediaFull && window.hemmaMediaFull.open_ || camHost().querySelector('hemma-camera-view, hemma-camera-page, .hemma-remote-layer')) { SAVER.last = Date.now(); return; }
-      if (Date.now() - SAVER.last >= c.mins * 60000) window.hemmaSaver.start({ swipe: c.swipe, slide: c.slide, rotate: c.rotate, style: c.style, face: c.face, every: c.every, dark: c.dark, bg: c.bg, rest: c.rest, idle: c.idle, np: c.np, cals: c.cals, rabg: c.rabg });
+      if (Date.now() - SAVER.last >= c.mins * 60000) window.hemmaSaver.start(optsOf(c));
     }, 5000);
     // Hemma Studio's Preview opens the dashboard with ?hemma_saver=<style> to start one at once.
     const want = new URLSearchParams(location.search).get('hemma_saver'), bgWant = new URLSearchParams(location.search).get('hemma_saver_bg'), idleWant = new URLSearchParams(location.search).get('hemma_saver_idle'), calsWant = new URLSearchParams(location.search).get('hemma_saver_cals');
@@ -7183,7 +7894,7 @@ const saverXfade = (el, bg) => {
     play: '<svg class="g1" viewBox="0 0 19.6289 19.6992"><path fill="currentColor" d="M2.13281 17.9766C2.13281 19.1367 2.80078 19.6875 3.59766 19.6875C3.94922 19.6875 4.3125 19.5703 4.67578 19.3828L18.3281 11.4023C19.3008 10.8398 19.6289 10.4531 19.6289 9.84375C19.6289 9.22266 19.3008 8.84766 18.3281 8.28516L4.67578 0.304688C4.3125 0.105469 3.94922 0 3.59766 0C2.80078 0 2.13281 0.550781 2.13281 1.71094Z"/></svg>',
     pause: '<svg class="g1" viewBox="0 0 14.6484 19.3945"><path fill="currentColor" d="M1.55859 19.3828L4.23047 19.3828C5.25 19.3828 5.78906 18.8438 5.78906 17.8125L5.78906 1.55859C5.78906 0.480469 5.25 0 4.23047 0L1.55859 0C0.539062 0 0 0.527344 0 1.55859L0 17.8125C0 18.8438 0.539062 19.3828 1.55859 19.3828ZM10.0781 19.3828L12.7383 19.3828C13.7695 19.3828 14.2969 18.8438 14.2969 17.8125L14.2969 1.55859C14.2969 0.480469 13.7695 0 12.7383 0L10.0781 0C9.04688 0 8.50781 0.527344 8.50781 1.55859L8.50781 17.8125C8.50781 18.8438 9.04688 19.3828 10.0781 19.3828Z"/></svg>',
     vlo: '<svg viewBox="0 0 13.9014 17.2299"><path fill="currentColor" d="M10.5281 17.2299C11.171 17.2299 11.6271 16.7673 11.6271 16.1286L11.6271 1.16128C11.6271 0.532909 11.171 0.00824052 10.5074 0.00824052C10.0512 0.00824052 9.74405 0.207415 9.23838 0.679929L5.08577 4.58583C5.02749 4.64411 4.93393 4.68149 4.84017 4.68149L2.0437 4.68149C0.720424 4.68149-4.44089e-16 5.40192-4.44089e-16 6.81835L-4.44089e-16 10.4512C-4.44089e-16 11.8552 0.720424 12.586 2.0437 12.586L4.84017 12.586C4.93393 12.586 5.02749 12.6151 5.08577 12.6734L9.23838 16.6182C9.6923 17.041 10.0697 17.2299 10.5281 17.2299Z"/></svg>',
-    vhi: '<svg viewBox="0 0 26.2108 18.8725"><path fill="currentColor" d="M22.3936 18.7193C22.7356 18.9701 23.2142 18.8727 23.4732 18.479C25.1861 16.0094 26.2108 12.8789 26.2108 9.43C26.2108 5.98114 25.155 2.86098 23.4732 0.381048C23.2142-0.0230309 22.7356-0.110057 22.3936 0.140671C22.0352 0.391399 21.9792 0.851452 22.2506 1.25764C23.7584 3.48684 24.7126 6.29819 24.7126 9.43C24.7126 12.5515 23.7584 15.3835 22.2506 17.6024C21.9792 18.0085 22.0352 18.4686 22.3936 18.7193Z"/><path fill="currentColor" d="M18.7319 16.1336C19.0946 16.374 19.5401 16.2994 19.8033 15.9181C21.0515 14.2072 21.7911 11.8373 21.7911 9.43C21.7911 7.02273 21.0618 4.63214 19.8033 2.94187C19.5401 2.5606 19.0946 2.48604 18.7319 2.72642C18.3713 2.9689 18.3071 3.42474 18.5931 3.83093C19.6675 5.33719 20.2721 7.35224 20.2721 9.43C20.2721 11.5078 19.6468 13.5125 18.5931 15.0291C18.3175 15.4353 18.3713 15.8911 18.7319 16.1336Z"/><path fill="currentColor" d="M15.1118 13.5935C15.4434 13.8131 15.8993 13.7468 16.1625 13.3677C16.9101 12.3771 17.3631 10.9278 17.3631 9.43C17.3631 7.93218 16.9101 6.49324 16.1625 5.49234C15.8993 5.11319 15.4434 5.04686 15.1118 5.27689C14.7223 5.55043 14.656 6.02907 14.9606 6.43526C15.5325 7.21095 15.8442 8.29294 15.8442 9.43C15.8442 10.5671 15.5221 11.6387 14.9606 12.4247C14.6663 12.8413 14.7223 13.3096 15.1118 13.5935Z"/><path fill="currentColor" d="M1.98904 13.4073L4.77918 13.4073C4.87082 13.4073 4.95192 13.4364 5.01232 13.4947L9.42258 17.4395C9.88474 17.852 10.2539 18.0512 10.7226 18.0512C11.3449 18.0512 11.8237 17.5886 11.8237 16.9499L11.8237 1.98258C11.8237 1.3542 11.3449 0.827425 10.7019 0.827425C10.2332 0.827425 9.92826 1.04117 9.42258 1.50122L5.01232 5.40712C4.95192 5.4654 4.87082 5.49033 4.77918 5.49033L1.98904 5.49033C0.651188 5.49033-4.44089e-16 6.17066-4.44089e-16 7.5892L-4.44089e-16 11.3251C-4.44089e-16 12.7333 0.663649 13.4073 1.98904 13.4073ZM2.05114 11.9836C1.69339 11.9836 1.51894 11.8174 1.51894 11.4472L1.51894 7.45464C1.51894 7.09267 1.69339 6.91611 2.05114 6.91611L5.17864 6.91611C5.42805 6.91611 5.61708 6.87873 5.84349 6.66478L10.0115 2.8852C10.0594 2.84149 10.1113 2.80813 10.1717 2.80813C10.2404 2.80813 10.2944 2.86008 10.2944 2.94329L10.2944 15.9228C10.2944 16.0185 10.2404 16.0705 10.1739 16.0705C10.1198 16.0705 10.0678 16.0455 10.0136 15.9851L5.84349 12.2349C5.61919 12.0355 5.42805 11.9836 5.17864 11.9836Z"/></svg>',
+    vhi: '<svg viewBox="0 0 26.2108 18.8725"><path fill="currentColor" d="M22.3936 18.7193C22.7356 18.9701 23.2142 18.8727 23.4732 18.479C25.1861 16.0094 26.2108 12.8789 26.2108 9.43C26.2108 5.98114 25.155 2.86098 23.4732 0.381048C23.2142-0.0230309 22.7356-0.110057 22.3936 0.140671C22.0352 0.391399 21.9792 0.851452 22.2506 1.25764C23.7584 3.48684 24.7126 6.29819 24.7126 9.43C24.7126 12.5515 23.7584 15.3835 22.2506 17.6024C21.9792 18.0085 22.0352 18.4686 22.3936 18.7193Z"/><path fill="currentColor" d="M18.7319 16.1336C19.0946 16.374 19.5401 16.2994 19.8033 15.9181C21.0515 14.2072 21.7911 11.8373 21.7911 9.43C21.7911 7.02273 21.0618 4.63214 19.8033 2.94187C19.5401 2.5606 19.0946 2.48604 18.7319 2.72642C18.3713 2.9689 18.3071 3.42474 18.5931 3.83093C19.6675 5.33719 20.2721 7.35224 20.2721 9.43C20.2721 11.5078 19.6468 13.5125 18.5931 15.0291C18.3175 15.4353 18.3713 15.8911 18.7319 16.1336Z"/><path fill="currentColor" d="M15.1118 13.5935C15.4434 13.8131 15.8993 13.7468 16.1625 13.3677C16.9101 12.3771 17.3631 10.9278 17.3631 9.43C17.3631 7.93218 16.9101 6.49324 16.1625 5.49234C15.8993 5.11319 15.4434 5.04686 15.1118 5.27689C14.7223 5.55043 14.656 6.02907 14.9606 6.43526C15.5325 7.21095 15.8442 8.29294 15.8442 9.43C15.8442 10.5671 15.5221 11.6387 14.9606 12.4247C14.6663 12.8413 14.7223 13.3096 15.1118 13.5935Z"/><path fill="currentColor" d="M1.98904 13.4073L4.77918 13.4073C4.87082 13.4073 4.95192 13.4364 5.01232 13.4947L9.42258 17.4395C9.88474 17.852 10.2539 18.0512 10.7226 18.0512C11.3449 18.0512 11.8237 17.5886 11.8237 16.9499L11.8237 1.98258C11.8237 1.3542 11.3449 0.827425 10.7019 0.827425C10.2332 0.827425 9.92826 1.04117 9.42258 1.50122L5.01232 5.40712C4.95192 5.4654 4.87082 5.49033 4.77918 5.49033L1.98904 5.49033C0.651188 5.49033-4.44089e-16 6.17066-4.44089e-16 7.5892L-4.44089e-16 11.3251C-4.44089e-16 12.7333 0.663649 13.4073 1.98904 13.4073Z"/></svg>',
     power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0"/></svg>',
     vdn: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 9v6h4l5 5V4L8 9zm11 2h6v2h-6z"/></svg>',
     b10: '<svg class="g10" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11.2 4.3A11.5 11.5 0 1 1 4.4 12"/><path d="M12.6 1.2 9.4 4.6l3.6 2.6"/><text x="15" y="20.4" text-anchor="middle" fill="currentColor" stroke="none" font-size="12.5" font-weight="600" font-family="-apple-system, system-ui, sans-serif">10</text></svg>',
@@ -7595,7 +8306,7 @@ const saverXfade = (el, bg) => {
       .wrap.med.wash .det { background: rgba(var(--hv-pk, 255,255,255),0.07); border-radius: 14px; padding: 0 14px; }
     }
     .det { display: grid; }
-    .wrap.med.solid { background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.3) 100%), rgb(var(--hv-med-c)) !important; color: #fff;
+    .wrap.med.solid { background: var(--hemma-stage-solid, linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.3) 100%), rgb(var(--hv-med-c))) !important; color: #fff;
       --hv-pi: #fff; --hv-pk: 255,255,255; --hv-pk2: 235,235,245; --hv-pd: 0,0,0; --hv-btn-c: rgba(255,255,255,0.2); --primary-text-color: #fff; --secondary-text-color: rgba(255,255,255,0.72); }
     .wrap.med.solid .glow { display: none !important; }
     .wrap.med.solid > .slab { background: none !important; box-shadow: none !important; }

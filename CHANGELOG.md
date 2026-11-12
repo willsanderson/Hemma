@@ -1,5 +1,63 @@
 # Changelog
 
+## 2.5.0
+
+Five new screensavers, light control right from the screensaver, a choice of which screensavers take turns, and German.
+
+**After updating, restart Home Assistant.** Your dashboards pick up the changes on their own, so there's nothing to save. If a dashboard looks unchanged, clear your browser's cache (in the iOS app, clear the app's cache).
+
+### New screensavers
+
+Five new styles join Today, Clock and Recently Added. Pick them in Hemma Studio's Screensaver section.
+
+- **Rooms** shows your room photos full screen with a slow pan, the time, the weather and the room's name. On its own it moves to the next room every 20 seconds. When screensavers take turns, each visit shows a different room, so your rooms are spread through the rotation, and you can swipe up or down to move between rooms. A soft wash of your Background color, or the artwork's color while music plays, ties the photos to the other screensavers.
+- **Now Playing** fills the screen with the full-screen player for whatever is playing, artwork, controls and all. When screensavers take turns it joins in only while something plays; on its own, it shows Today when nothing is playing.
+- **Week** lays out the next 7 or 5 days with the forecast and your calendar events. Choose the days and which calendars to show in Studio. On a portrait iPad the days become rows.
+- **Calendar** shows the month with today's date drawn large behind it, in the style of a classic wall calendar. Dates the numeral crosses turn dark so they stay easy to read, it switches to a dark version at night, and with Artwork Color on it takes on the color of what's playing. On a portrait iPad the rows grow taller to fill the screen.
+- **Cameras** shows every camera as a snapshot that refreshes every few seconds, in a grid that sizes itself to how many you have. Tap a camera to bring it full screen with the live feed; tap again to return to the grid with a fresh snapshot. It shows every camera automatically, or pick which ones in Studio. A Home button in the corner takes you back to the dashboard.
+
+### Light control from Today
+
+On the Today screensaver with Home at a glance, tap the lights row to turn the whole screen into a brightness slider in your lights' color, like a wall panel.
+
+- **Drag anywhere** to dim, or tap to turn the lights off and on.
+- **Rooms** use each room's light group from Studio, and All controls every light that's on.
+- **Color**: tap the color button for your light's favorite colors, the same ones as in its popup.
+- It opens and closes with a soft depth fade, and closes on its own after 10 seconds.
+
+### Screensaver improvements
+
+- **Start a screensaver any time** from the ••• menu at the top right, for when a tap wakes the dashboard by accident.
+- **Choose which screensavers take turns.** With Rotate screensavers on, Cycle Through lists every style with a checkmark, so only the ones you pick are shown.
+- **Stacked clock** has lighter, narrower digits, closer to Apple's.
+- **Today** fades its list out and brings Now Playing in smoothly when music starts.
+- The Now Playing pill sits in the same place on every screensaver.
+- Calendar events and the forecast are ready before a screensaver slides in, instead of appearing after.
+- **Recently Added** is brighter: Poster color takes the poster's main color the same way Artwork Color does, or the album's color while music plays, Backdrop is lighter, and the poster keeps its shadow as it slides into its details.
+
+### German
+
+Hemma now comes in German, the dashboard and Hemma Studio both. It turns on by itself when your Home Assistant language is set to German. This first version was written without a native speaker, so if something reads oddly, a pull request to `custom_components/hemma/translations/dashboard/de.json` is very welcome.
+
+### Minimal
+
+- **Lights grouped by room** in a light group's list, with the room name above each section.
+- **Clearer light lists in light mode with dark text**: each light sits on a white row with a solid color circle and a white bulb, so pale and warm-white lamps are easy to see.
+- **Match Now Playing on a photo backdrop**: the room photo and the Overview sidebar take on a soft tint of the cover art, the same way Color and Gradient backdrops do.
+
+### Fixes
+
+- **Tiles that showed an error on load** now fix themselves. When Hemma's icons finished loading after the dashboard had drawn, some tiles showed "ButtonCardJSTemplateError" until you refreshed, most often on phones.
+- **Phone media popup:** a playing media player no longer stops short of the status bar and the home indicator in Minimal.
+- **Home Assistant's menus** in Minimal are solid instead of see-through.
+- **Home Assistant's switches** in light mode show a white knob on a gray track instead of white on white.
+- **The full-screen player's volume icons** match: both speakers are filled, as in Apple's player.
+- **README images** no longer show a light edge around the popup corners in dark mode.
+
+### License
+
+Starting with 2.5.0, Hemma is licensed under the GNU General Public License v3. Hemma stays free and open source; anyone who builds on its code from now on shares their changes under the same terms. Versions up to 2.4.1 remain under the MIT License, and the credits for Homio and Casora are kept in NOTICE.
+
 ## 2.4.1
 
 Fixes for flicker after the dashboard sits idle, dark and white text in Overview, the selected badge, foldable phones and a few Safari glitches.
