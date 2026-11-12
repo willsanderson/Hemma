@@ -29,9 +29,11 @@ On the Today screensaver with Home at a glance, tap the lights row to turn the w
 
 - **Start a screensaver any time** from the ••• menu at the top right, for when a tap wakes the dashboard by accident.
 - **Choose which screensavers take turns.** With Rotate screensavers on, Cycle Through lists every style with a checkmark, so only the ones you pick are shown.
-- **Stacked clock** has lighter, narrower digits, closer to Apple's.
+- **Stacked clock** digits are lighter and narrower, closer to Apple's.
 - **Today** fades its list out and brings Now Playing in smoothly when music starts.
 - The Now Playing pill sits in the same place on every screensaver.
+- **Artwork backgrounds match everywhere.** With Artwork Color, every screensaver with a background color uses Today's soft gradient of the cover's color. With Color Clouds, they all show the cover's colors as clouds that drift slowly across the whole screen, not just Today, and Recently Added's Poster color does too. Both blend slowly into the next song's colors, and pick the right color straight away after the dashboard reloads.
+- **Stacked clock** has a light version by day, with dark digits on the same background as the other clocks.
 - Calendar events and the forecast are ready before a screensaver slides in, instead of appearing after.
 - **Recently Added** is brighter: Poster color takes the poster's main color the same way Artwork Color does, or the album's color while music plays, Backdrop is lighter, and the poster keeps its shadow as it slides into its details.
 
@@ -47,6 +49,7 @@ Hemma now comes in German, the dashboard and Hemma Studio both. It turns on by i
 
 ### Fixes
 
+- **Color Clouds on Today** no longer draws a dark line along the bottom of the screen while the Now Playing pill is showing.
 - **Tiles that showed an error on load** now fix themselves. When Hemma's icons finished loading after the dashboard had drawn, some tiles showed "ButtonCardJSTemplateError" until you refreshed, most often on phones.
 - **Phone media popup:** a playing media player no longer stops short of the status bar and the home indicator in Minimal.
 - **Home Assistant's menus** in Minimal are solid instead of see-through.

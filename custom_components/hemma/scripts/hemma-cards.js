@@ -4156,6 +4156,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         :host(.saver) .rc .rdk { background: radial-gradient(75% 65% at 50% 42%, rgba(0,0,0,0.16), rgba(0,0,0,0.5)); } :host(.saver:not(.flat)) .rc .rw { opacity: 1; filter: brightness(1.15) saturate(1.15); }
         :host(.saver.flat) .rc .rw { display: none; }
         :host(.saver.flat) .slab.rc { background-color: oklch(from var(--npflat, var(--flat, #2c2c2e)) 0.6 min(c, 0.13) h); transition: background-color 1s ease; }
+        :host(.saver.flat.clouds) .slab.rc { background-color: transparent; }
         :host(.saver.flat) .rc .rdk { background: radial-gradient(120% 90% at 50% 20%, rgba(255,255,255,0.16), rgba(255,255,255,0) 55%), radial-gradient(120% 80% at 50% 100%, rgba(0,0,0,0.3), rgba(0,0,0,0) 60%); } :host(.saver) .rc .rmeta small svg { width: 16px; height: 16px; }
         :host(.saver) .rc .rdots { top: auto; bottom: max(24px, env(safe-area-inset-bottom, 0px)); }
         /* As a screensaver the details take the whole screen: the fanart behind everything, the poster large on the left, the words at TV size. */
@@ -4668,9 +4669,16 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
   if (!customElements.get('hemma-recent-panel')) customElements.define('hemma-recent-panel', HemmaRecentPanel);
   // Recently Added as a screensaver: full screen, moving on by itself, the time in the corner. Tapping a poster opens its details as in the popup; any other tap goes back to the dashboard.
   const SAVER = { layer: null, last: Date.now() };
-  const SAVER_GLOWS = new Map();
-  // The artwork's color, shared by every screensaver, so moving between them never starts over from the default.
-  const SAVER_ART = new Map();
+  try { window.CSS.registerProperty({ name: '--agk', syntax: '<number>', inherits: true, initialValue: '0' }); } catch (_) {}
+  // Kept on the device too, so a reloaded dashboard paints the artwork's color at once instead of the default first.
+  const keptMap = (key, max) => {
+    const m = new Map(), set = m.set.bind(m);
+    try { (JSON.parse(localStorage.getItem(key) || '[]') || []).forEach(([k, v]) => set(k, v)); } catch (_) {}
+    m.set = (k, v) => { m.delete(k); set(k, v); while (m.size > max) m.delete(m.keys().next().value); try { localStorage.setItem(key, JSON.stringify([...m])); } catch (_) {} return m; };
+    return m;
+  };
+  const SAVER_GLOWS = keptMap('hemma_saver_glows', 24);
+  const SAVER_ART = keptMap('hemma_saver_art', 48);
   const saverCss = `
     :host { position: fixed; inset: 0; z-index: 2147483080; display: block; background: #000; color: #fff; font-family: var(--primary-font-family, var(--hemma-font, -apple-system, system-ui, sans-serif)); -webkit-user-select: none; user-select: none; }
     .clock { position: absolute; z-index: 5; left: max(36px, env(safe-area-inset-left, 0px)); top: max(30px, calc(env(safe-area-inset-top, 0px) + 12px)); pointer-events: none; text-shadow: 0 2px 20px rgba(0,0,0,0.35); }
@@ -4943,6 +4951,13 @@ const saverXfade = (el, bg) => {
     ids.slice(0, 10).forEach((e, i) => { V['show_media_player_' + (i + 1)] = true; V['media_player_' + (i + 1)] = e; });
     return V;
   };
+  const SAVER_BOOT = Date.now();
+  const saverArtNow = () => {
+    const src = saverNP();
+    if (src && src.playing && src.art) { if (SAVER.npArt !== src.art || Date.now() - (SAVER.npAt || 0) > 60000) { SAVER.npArt = src.art; SAVER.npAt = Date.now(); try { localStorage.setItem('hemma_saver_np', JSON.stringify({ a: src.art, t: Date.now() })); } catch (_) {} } return src.art; }
+    if (!src && Date.now() - SAVER_BOOT < 15000) { try { const l = JSON.parse(localStorage.getItem('hemma_saver_np') || 'null'); if (l && l.a && Date.now() - l.t < 1800000) return l.a; } catch (_) {} }
+    return '';
+  };
   const saverNP = () => { const hs = CAMS.hassNow(); try { SAVER.npv = SAVER.npv || saverNPVars(); const l = window._hemmaNPSources ? window._hemmaNPSources(hs.states, SAVER.npv) : []; return l.find((r) => r && r.entity && r.kind !== 'activity' && r.playing) || l.find((r) => r && r.entity && r.kind !== 'activity') || null; } catch (_) { return null; } };
   // Spotify's pick: the cover's colors ranked as Android's Palette ranks a Vibrant swatch (a vivid mid-tone, weighted by how much of the cover it fills), then Dark Vibrant, Muted, Dark Muted.
   const hslOf = (r, g, b) => { r /= 255; g /= 255; b /= 255; const M = Math.max(r, g, b), m = Math.min(r, g, b), l = (M + m) / 2; let h = 0, s = 0; if (M !== m) { const d = M - m; s = l > 0.5 ? d / (2 - M - m) : d / (M + m); h = M === r ? (g - b) / d + (g < b ? 6 : 0) : M === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6; } return [h, s, l]; };
@@ -4991,19 +5006,66 @@ const saverXfade = (el, bg) => {
   // The stage is drawn at the iPad's 1180 by 820 and scaled to fit the screen, so the layout holds on any size.
   const stageFit = (sr) => { const f = () => { const pt = innerHeight > innerWidth * 1.1, k = pt ? Math.min(innerWidth / 820, innerHeight / 1180) : Math.min(innerWidth / 1180, innerHeight / 820); sr.host.classList.toggle('pt', pt); sr.host.style.setProperty('--k', k); }; f(); addEventListener('resize', f); SAVER.unfit = () => removeEventListener('resize', f); };
   const CLOCK_BG = { '': '#97a9ae', sand: '#c8b9a2', sage: '#a3b29a', blue: '#93a7c2', rose: '#c6a9ad', lavender: '#afa9c9', sea: '#90b7b6', clay: '#cea796', plum: '#c0a0b4', honey: '#cab992', black: '#000' };
-  const CLOCK_CSS = `
-    .bg { position: absolute; inset: 0; background: #97a9ae; }
+  const CLOUD_CSS = `
     .glows { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
     .glay { position: absolute; inset: 0; }
     .gfill { position: absolute; inset: 0; }
-    .gb { position: absolute; left: 50%; top: 50%; width: 130vmax; height: 130vmax; margin: -65vmax 0 0 -65vmax; border-radius: 50%; animation: var(--gn) var(--gd) ease-in-out infinite alternate; }
-    .g1 { --gn: hg1; --gd: 140s; } .g2 { --gn: hg2; --gd: 170s; } .g3 { --gn: hg3; --gd: 155s; } .g4 { --gn: hg4; --gd: 190s; }
-    @keyframes hg1 { 0% { transform: translate(-38vw, -34vh) scale(1); } 50% { transform: translate(-8vw, -14vh) scale(1.15); } 100% { transform: translate(-26vw, 12vh) scale(.95); } }
-    @keyframes hg2 { 0% { transform: translate(34vw, 30vh) scale(1.1); } 50% { transform: translate(18vw, -12vh) scale(.9); } 100% { transform: translate(40vw, 8vh) scale(1.2); } }
-    @keyframes hg3 { 0% { transform: translate(-20vw, 40vh) scale(.9); } 50% { transform: translate(-36vw, 18vh) scale(1.1); } 100% { transform: translate(-6vw, 30vh) scale(1); } }
-    @keyframes hg4 { 0% { transform: translate(36vw, -38vh) scale(1); } 50% { transform: translate(14vw, -24vh) scale(1.2); } 100% { transform: translate(42vw, -8vh) scale(.9); } }
-    @media (prefers-reduced-motion: reduce) { .gb { animation: none; } }
-    .bg.photo { inset: -120px; background: var(--ph) center / cover no-repeat; filter: blur(60px) saturate(1.3) brightness(.62); }
+    .gcb { position: absolute; left: 50%; top: 50%; width: 120vmax; height: 120vmax; margin: -60vmax 0 0 -60vmax; border-radius: 50%; animation: var(--gn) var(--gd) ease-in-out infinite alternate; will-change: transform; }
+    .g1 { --gn: hg1; --gd: 84s; } .g2 { --gn: hg2; --gd: 97s; } .g3 { --gn: hg3; --gd: 91s; } .g4 { --gn: hg4; --gd: 106s; }
+    @keyframes hg1 { 0% { transform: translate(-40vw, -35vh) scale(1); } 33% { transform: translate(30vw, -20vh) scale(1.15); } 66% { transform: translate(20vw, 35vh) scale(.95); } 100% { transform: translate(-35vw, 25vh) scale(1.1); } }
+    @keyframes hg2 { 0% { transform: translate(35vw, 30vh) scale(1.1); } 33% { transform: translate(-30vw, 25vh) scale(.9); } 66% { transform: translate(-25vw, -30vh) scale(1.15); } 100% { transform: translate(30vw, -25vh) scale(1); } }
+    @keyframes hg3 { 0% { transform: translate(-25vw, 35vh) scale(.9); } 33% { transform: translate(-35vw, -30vh) scale(1.1); } 66% { transform: translate(30vw, -35vh) scale(1); } 100% { transform: translate(25vw, 30vh) scale(1.15); } }
+    @keyframes hg4 { 0% { transform: translate(35vw, -35vh) scale(1); } 33% { transform: translate(30vw, 35vh) scale(1.2); } 66% { transform: translate(-30vw, 30vh) scale(.9); } 100% { transform: translate(-35vw, -25vh) scale(1.05); } }
+    @media (prefers-reduced-motion: reduce) { .gcb { animation: none; } }
+  `;
+  // Color Clouds: the cover's busiest hues as soft clouds drifting over the background, crossfading over 9 seconds when the music changes.
+  const saverClouds = (host, dark) => {
+    let cur = null;
+    const born = performance.now();
+    const swap = (art, cols, first) => {
+      if (cur !== art) return;
+      const old = [...host.children], lay = document.createElement('div');
+      lay.className = 'glay';
+      if (cols) lay.innerHTML = cols.map((c, i) => `<i class="gcb g${i + 1}" style="background:radial-gradient(circle, ${c} 0%, ${c.replace('hsl(', 'hsla(').replace(')', ' / 0.55)')} 38%, ${c.replace('hsl(', 'hsla(').replace(')', ' / 0)')} 72%)"></i>`).join('');
+      host.appendChild(lay);
+      if (first) { old.forEach((n) => n.remove()); return; }
+      lay.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 9000, easing: 'ease-in-out' });
+      old.forEach((n) => n.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 9000, easing: 'ease-in-out', fill: 'forwards' }).finished.then(() => n.remove(), () => n.remove()));
+    };
+    return (art) => {
+      if (art === cur) return;
+      const first = cur === null || (!cur && performance.now() - born < 2500), key = 'cl|' + art + '|' + (dark ? 1 : 0);
+      cur = art;
+      if (!art) { swap(art, null, first); return; }
+      if (SAVER_GLOWS.has(key)) { swap(art, SAVER_GLOWS.get(key), first); return; }
+      const im = new Image();
+      if (!(String(art).startsWith('/') || String(art).startsWith(location.origin))) im.crossOrigin = 'anonymous';
+      im.onload = () => {
+        try {
+          const c = document.createElement('canvas'); c.width = c.height = 40;
+          const x = c.getContext('2d'); x.drawImage(im, 0, 0, 40, 40);
+          const d = x.getImageData(0, 0, 40, 40).data, bins = new Map();
+          for (let i = 0; i < d.length; i += 4) {
+            const q = hslOf(d[i], d[i + 1], d[i + 2]);
+            if (q[2] <= 0.1 || q[2] >= 0.92) continue;
+            const k = q[1] < 0.12 ? 'n' : String(Math.round(q[0] * 12) % 12), b = bins.get(k) || { n: 0, x: 0, y: 0, s: 0 };
+            b.n++; b.x += Math.cos(q[0] * 2 * Math.PI); b.y += Math.sin(q[0] * 2 * Math.PI); b.s += k === 'n' ? 0 : q[1]; bins.set(k, b);
+          }
+          if (!bins.size) { swap(art, null, first); return; }
+          const top = [...bins.values()].sort((a, b) => b.n - a.n).slice(0, 4).map((b) => [((Math.atan2(b.y, b.x) / (2 * Math.PI)) + 1) % 1, b.s / b.n]);
+          while (top.length < 4) top.push(top[top.length % Math.max(1, top.length)]);
+          const cols = top.map(([hh, ss]) => `hsl(${Math.round(hh * 360)} ${Math.round(Math.min(0.6, ss * 1.2) * 100)}% ${dark ? 34 : 66}%)`);
+          SAVER_GLOWS.set(key, cols);
+          swap(art, cols, first);
+        } catch (_) { swap(art, null, first); }
+      };
+      im.onerror = () => swap(art, null, first);
+      im.src = art;
+    };
+  };
+  const CLOCK_CSS = `
+    .bg { position: absolute; inset: 0; background: #97a9ae; }
+${CLOUD_CSS}    .bg.photo { inset: -120px; background: var(--ph) center / cover no-repeat; filter: blur(60px) saturate(1.3) brightness(.62); }
     .stg { position: absolute; left: 50%; top: 50%; width: 1180px; height: 820px; transform: translate(-50%, -50%) scale(var(--k, 1)); color: var(--ink); }
     :host { --ink: #111; --sub: #3d4a50; --hi: #fff; --sec: #fff; --pill: rgba(0,0,0,0.12); }
     :host(.dk) { --ink: #fff; --sub: rgba(235,235,245,0.62); --sec: #FF9F0A; --pill: rgba(255,255,255,0.16); }
@@ -5088,7 +5150,7 @@ const saverXfade = (el, bg) => {
     return `color-mix(in oklab, #ffc65c ${Math.round((1 - t) * 100)}%, #f3f1ea)`;
   };
   const saverLights = (sr, row) => {
-    try { CSS.registerProperty({ name: '--lsp', syntax: '<percentage>', inherits: true, initialValue: '0%' }); } catch (_) {}
+    try { window.CSS.registerProperty({ name: '--lsp', syntax: '<percentage>', inherits: true, initialValue: '0%' }); } catch (_) {}
     if (sr.querySelector('.ls')) return;
     const hs = CAMS.hassNow(), lang = hs.language || undefined, S = hs.states, reg = hs.entities || {};
     const areaName = (id) => {
@@ -5312,7 +5374,7 @@ const saverXfade = (el, bg) => {
         const old = [...host.children], lay = document.createElement('div');
         lay.className = 'glay';
         if (cols && albumOn) lay.innerHTML = `<i class="gfill" style="background:${cols[0]}"></i>`;
-        else if (cols) lay.innerHTML = cols.map((c, i) => `<i class="gb g${i + 1}" style="background:radial-gradient(circle, ${c} 0%, ${c.replace('hsl(', 'hsla(').replace(')', ' / 0.55)')} 38%, ${c.replace('hsl(', 'hsla(').replace(')', ' / 0)')} 72%)"></i>`).join('');
+        else if (cols) lay.innerHTML = cols.map((c, i) => `<i class="gcb g${i + 1}" style="background:radial-gradient(circle, ${c} 0%, ${c.replace('hsl(', 'hsla(').replace(')', ' / 0.55)')} 38%, ${c.replace('hsl(', 'hsla(').replace(')', ' / 0)')} 72%)"></i>`).join('');
         host.appendChild(lay);
         if (first) return;
         lay.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 9000, easing: 'ease-in-out' });
@@ -5395,7 +5457,7 @@ const saverXfade = (el, bg) => {
     const media = () => {
       const hs = CAMS.hassNow(), src = saverNP(), md = $('.md');
       const show = src && !keep ? '' : idle === 'calendar' && !cals.length ? 'glance' : idle;
-      if (!src) saverGlow('');
+      if (!src) saverGlow(saverArtNow());
       const want = [[md, !src || keep], [$('.fc'), show !== 'forecast' || !fc], [$('.cal'), show !== 'calendar' || !cal], [$('.gl'), show !== 'glance']];
       const still = !mediaSeen || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       mediaSeen = true;
@@ -5516,8 +5578,9 @@ const saverXfade = (el, bg) => {
     const tone = pal ? '#' + (pal.light[ck || 'gray'] || pal.light.gray) : (CLOCK_BG[ck] || CLOCK_BG['']);
     const toneN = pal ? '#' + (pal.dark[ck || 'gray'] || pal.dark.gray) : (NIGHTS[ck] || NIGHTS['']);
     const classic = o.face === 'classic';
-    sr.innerHTML = `<style>${saverCss}
+    sr.innerHTML = `<style>${saverCss}${CLOUD_CSS}
       .fc { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+      :host { background-color: var(--fbg); background-image: linear-gradient(180deg, transparent, rgb(0 0 0 / calc(var(--agk) * 0.11))); transition: background-color 9s ease-in-out, --agk 9s ease-in-out; } :host(.ag) { --agk: 1; } .fc .fbg { fill: transparent !important; }
       .fc .fbg { fill: var(--fbg); } .fc .fink { fill: var(--fink); } .fc .ftk { stroke: var(--fink); } .fc .fsub { stroke: var(--fsub); }
       .fc .fbg, .fc .fink, .shw .fsc, .shw .fdot { transition: fill 2.5s ease; } .fc .ftk, .fc .fsub { transition: stroke 2.5s ease; }
       :host(.nofade) :is(.fc *, .shw *) { transition: none !important; }
@@ -5525,7 +5588,7 @@ const saverXfade = (el, bg) => {
       .hl { position: absolute; pointer-events: none; will-change: transform; } .hl svg { display: block; overflow: visible; }
       .shw svg { display: block; overflow: visible; } .shw .fsc { fill: var(--fsc); } .shw .fdot { fill: var(--fdot); }
       .mini { top: max(24px, calc(env(safe-area-inset-top, 0px) + 12px)); }
-    </style><svg class="fc"></svg><div class="shw"></div><div class="mini" role="button" aria-label="${esc(T('now_playing.title', 'Now Playing'))}"><i class="gx gd"></i><i class="gx gs"></i><i class="gx gt"></i><i class="gx gb"></i><span class="ma"></span><svg class="dots" width="29" height="4.6" viewBox="0 0 25 4"><circle cx="1.60" cy="2" r="1.6" style="--o:1;--o2:1.00;--dl:0.00s"/><circle cx="5.96" cy="2" r="1.6" style="--o:0.8;--o2:1.00;--dl:0.17s"/><circle cx="10.32" cy="2" r="1.6" style="--o:0.62;--o2:1.00;--dl:0.34s"/><circle cx="14.68" cy="2" r="1.6" style="--o:0.47;--o2:0.97;--dl:0.51s"/><circle cx="19.04" cy="2" r="1.6" style="--o:0.35;--o2:0.85;--dl:0.68s"/><circle cx="23.40" cy="2" r="1.6" style="--o:0.26;--o2:0.76;--dl:0.85s"/></svg></div><div class="dark"></div>`;
+    </style><div class="glows"></div><svg class="fc"></svg><div class="shw"></div><div class="mini" role="button" aria-label="${esc(T('now_playing.title', 'Now Playing'))}"><i class="gx gd"></i><i class="gx gs"></i><i class="gx gt"></i><i class="gx gb"></i><span class="ma"></span><svg class="dots" width="29" height="4.6" viewBox="0 0 25 4"><circle cx="1.60" cy="2" r="1.6" style="--o:1;--o2:1.00;--dl:0.00s"/><circle cx="5.96" cy="2" r="1.6" style="--o:0.8;--o2:1.00;--dl:0.17s"/><circle cx="10.32" cy="2" r="1.6" style="--o:0.62;--o2:1.00;--dl:0.34s"/><circle cx="14.68" cy="2" r="1.6" style="--o:0.47;--o2:0.97;--dl:0.51s"/><circle cx="19.04" cy="2" r="1.6" style="--o:0.35;--o2:0.85;--dl:0.68s"/><circle cx="23.40" cy="2" r="1.6" style="--o:0.26;--o2:0.76;--dl:0.85s"/></svg></div><div class="dark"></div>`;
     const svg = sr.querySelector('.fc'), shw = sr.querySelector('.shw');
     // Day and night shades of the Background color, or of the artwork while something plays.
     const paint = (day, dark) => {
@@ -5633,11 +5696,13 @@ const saverXfade = (el, bg) => {
     let artFor = null;
     const artwork = () => {
       if (!npOn) return;
-      const src = saverNP(), art = src && src.playing ? src.art || '' : '';
+      const art = saverArtNow();
+      if (o.bg === 'artwork') { (layer._cl || (layer._cl = saverClouds(sr.querySelector('.glows'), night)))(art); return; }
       if (art === artFor) return;
       artFor = art;
+      layer.classList.toggle('ag', false);
       if (!art) { paint(tone, toneN); return; }
-      const use = (rgb) => rgb ? paint(`oklch(from ${rgb} 0.8 min(c, 0.1) h)`, `oklch(from ${rgb} 0.4 min(c, 0.05) h)`) : paint(tone, toneN);
+      const use = (rgb) => { layer.classList.toggle('ag', !!rgb); if (rgb) paint(`oklch(from ${rgb} 0.8 min(c, 0.1) h)`, `oklch(from ${rgb} 0.4 min(c, 0.05) h)`); else paint(tone, toneN); };
       if (SAVER_ART.has(art)) { use(SAVER_ART.get(art)); return; }
       const im = new Image();
       if (!(String(art).startsWith('/') || String(art).startsWith(location.origin))) im.crossOrigin = 'anonymous';
@@ -5650,7 +5715,7 @@ const saverXfade = (el, bg) => {
           if (!v) { SAVER_ART.set(art, null); paint(tone, toneN); return; }
           const rgb = `rgb(${albumTop(v).join(',')})`;
           SAVER_ART.set(art, rgb);
-          paint(`oklch(from ${rgb} 0.8 min(c, 0.1) h)`, `oklch(from ${rgb} 0.4 min(c, 0.05) h)`);
+          use(rgb);
         } catch (_) { paint(tone, toneN); }
       };
       im.onerror = () => paint(tone, toneN);
@@ -5693,7 +5758,7 @@ const saverXfade = (el, bg) => {
   };
   const stackLine = (b, txt) => {
     const f = stackFont(), sp = f.sw + 3;
-    b.innerHTML = `<svg><text y="0" font-family='${f.family}' font-weight="${f.weight}" font-size="100" letter-spacing="${sp}" style="font-stretch:${f.stretch}" fill="#fff" stroke="#fff" stroke-width="${f.sw}" stroke-linejoin="round" paint-order="stroke">${esc(txt)}</text></svg>`;
+    b.innerHTML = `<svg><text y="0" font-family='${f.family}' font-weight="${f.weight}" font-size="100" letter-spacing="${sp}" style="font-stretch:${f.stretch}" fill="currentColor" stroke="currentColor" stroke-width="${f.sw}" stroke-linejoin="round" paint-order="stroke">${esc(txt)}</text></svg>`;
     const svg = b.firstChild, t = svg.firstChild, bb = t.getBBox();
     if (!bb.width) return false;
     const x = document.createElement('canvas').getContext('2d');
@@ -5733,6 +5798,7 @@ const saverXfade = (el, bg) => {
     const sr = layer.attachShadow({ mode: 'open' });
     const cl = document.documentElement.classList, night = o.bg === 'black' || (cl.contains('hemma-hv') && !cl.contains('hv-light') && !cl.contains('hv-ink-w'));
     const npOn = o.bg === 'artwork' || o.bg === 'album';
+    if (night) layer.classList.add('dk');
     const ck0 = (npOn ? o.rest : o.bg) || '';
     const dashKey = window._hemmaHV && window._hemmaHV.key ? window._hemmaHV.key() : null;
     const ck = ck0 === '' || ck0 === 'black' ? (dashKey && dashKey !== 'gray' ? dashKey : '') : ck0 === 'gray' ? '' : ck0;
@@ -5740,8 +5806,9 @@ const saverXfade = (el, bg) => {
     const day = pal ? '#' + (pal.light[ck || 'gray'] || pal.light.gray) : (CLOCK_BG[ck] || CLOCK_BG['']);
     const dark = pal ? '#' + (pal.dark[ck || 'gray'] || pal.dark.gray) : '#49575c';
     const SUN = (up) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 17a7 7 0 0 1 14 0"/><path d="M2 20h20M12 4v3M4.9 9.6l1.8 1.4M19.1 9.6l-1.8 1.4"/><path d="${up ? 'M9 6.5 12 3.5 15 6.5' : 'M9 4.5 12 7.5 15 4.5'}"/></svg>`;
-    sr.innerHTML = `<style>${saverCss}
-      :host { background: var(--sbg); color: #fff; transition: background-color 2.5s ease; }
+    sr.innerHTML = `<style>${saverCss}${CLOUD_CSS}
+      :host { background-color: var(--sbg); background-image: linear-gradient(180deg, transparent, rgb(0 0 0 / calc(var(--agk) * 0.11))); color: #111; transition: background-color 9s ease-in-out, --agk 9s ease-in-out; }
+      :host(.ag) { --agk: 1; }
       :host(.nofade) { transition: none; }
       .st-t { position: absolute; right: var(--sm); top: 50%; transform: translateY(-50%); display: grid; justify-items: end; gap: var(--sg); }
       .st-t b { display: flex; height: var(--sh); }
@@ -5750,12 +5817,12 @@ const saverXfade = (el, bg) => {
       .st-i.top { top: var(--sm); } .st-i.bot { bottom: var(--sm); }
       .st-i div { display: flex; align-items: center; gap: .3em; white-space: nowrap; }
       .st-i svg, .st-i img { height: 1em; width: auto; flex: none; }
-      .st-i img { filter: brightness(0) invert(1); }
+      .st-i img { filter: brightness(0); } :host(.dk) { color: #fff; } :host(.dk) .st-i img { filter: brightness(0) invert(1); }
       .st-i img.sn { height: 1.05em; }
       .st-i small { font-size: .62em; font-weight: 700; margin-left: .05em; }
-    </style><div class="st-i top"><div class="dt"></div><div class="sun"></div></div><div class="st-t"><b class="hh"></b><b class="mm"></b></div><div class="st-i bot"><div class="wx"></div></div>${MINI_HTML}<div class="dark"></div>`;
+    </style><div class="glows"></div><div class="st-i top"><div class="dt"></div><div class="sun"></div></div><div class="st-t"><b class="hh"></b><b class="mm"></b></div><div class="st-i bot"><div class="wx"></div></div>${MINI_HTML}<div class="dark"></div>`;
     const $ = (q) => sr.querySelector(q);
-    const paint = (d, n) => layer.style.setProperty('--sbg', night ? n : `color-mix(in oklab, ${d} 76%, #000)`);
+    const paint = (d, n) => { layer.classList.toggle('ag', d !== day); layer.style.setProperty('--sbg', night ? n : d); };
     paint(day, dark);
     const fit = () => {
       const W = layer.clientWidth || innerWidth, H = layer.clientHeight || innerHeight, m = Math.round(Math.min(W, H) * 0.06);
@@ -5800,11 +5867,12 @@ const saverXfade = (el, bg) => {
     let artFor = null;
     const artwork = () => {
       if (!npOn) return;
-      const src = saverNP(), art = src && src.playing ? src.art || '' : '';
+      const art = saverArtNow();
+      if (o.bg === 'artwork') { (layer._cl || (layer._cl = saverClouds(sr.querySelector('.glows'), night)))(art); return; }
       if (art === artFor) return;
       artFor = art;
       if (!art) { paint(day, dark); return; }
-      if (SAVER_ART.has(art)) { const r0 = SAVER_ART.get(art); if (r0) paint(`oklch(from ${r0} 0.62 min(c, 0.1) h)`, `oklch(from ${r0} 0.4 min(c, 0.05) h)`); else paint(day, dark); return; }
+      if (SAVER_ART.has(art)) { const r0 = SAVER_ART.get(art); if (r0) paint(`oklch(from ${r0} 0.8 min(c, 0.1) h)`, `oklch(from ${r0} 0.4 min(c, 0.05) h)`); else paint(day, dark); return; }
       const im = new Image();
       if (!(String(art).startsWith('/') || String(art).startsWith(location.origin))) im.crossOrigin = 'anonymous';
       im.onload = () => {
@@ -5816,7 +5884,7 @@ const saverXfade = (el, bg) => {
           if (!v) { SAVER_ART.set(art, null); paint(day, dark); return; }
           const rgb = `rgb(${albumTop(v).join(',')})`;
           SAVER_ART.set(art, rgb);
-          paint(`oklch(from ${rgb} 0.62 min(c, 0.1) h)`, `oklch(from ${rgb} 0.4 min(c, 0.05) h)`);
+          paint(`oklch(from ${rgb} 0.8 min(c, 0.1) h)`, `oklch(from ${rgb} 0.4 min(c, 0.05) h)`);
         } catch (_) { paint(day, dark); }
       };
       im.onerror = () => paint(day, dark);
@@ -5858,8 +5926,9 @@ const saverXfade = (el, bg) => {
     const cl = document.documentElement.classList, night = o.bg === 'black' || (cl.contains('hemma-hv') && !cl.contains('hv-light') && !cl.contains('hv-ink-w'));
     if (night) layer.classList.add('dk');
     const FF = '-apple-system, system-ui, "Helvetica Neue", sans-serif';
-    sr.innerHTML = `<style>${saverCss}
-      :host { --cb: #ebebeb; --cd: #2861f6; --co: #c1d7fc; --cr: #ea5f59; --cn: #ea5f59; --ct: #0a234f; --cx: #fff; --cm: multiply; background: var(--ca, var(--cb)); transition: background-color 1.5s ease; font-family: ${FF}; }
+    sr.innerHTML = `<style>${saverCss}${CLOUD_CSS}
+      :host { --cb: #ebebeb; --cd: #2861f6; --co: #c1d7fc; --cr: #ea5f59; --cn: #ea5f59; --ct: #0a234f; --cx: #fff; --cm: multiply; background-color: var(--ca, var(--cb)); background-image: linear-gradient(180deg, transparent, rgb(0 0 0 / calc(var(--agk) * 0.11))); transition: background-color 9s ease-in-out, --agk 9s ease-in-out; font-family: ${FF}; }
+      :host(.ag) { --agk: 1; }
       :host(.dk) { --cb: #1c1c1e; --cd: #5e8eff; --co: #3e4d70; --cr: #ff6961; --cn: #7d2b28; --ct: #f2f2f7; --cx: #1c1c1e; --cm: screen; }
       .cw { position: absolute; inset: 0; }
       .cv { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }
@@ -5869,7 +5938,7 @@ const saverXfade = (el, bg) => {
       .cg .o { color: var(--co); } .cg .w { font-weight: 610; }
       .ch { position: absolute; display: flex; justify-content: space-between; line-height: 1; font-weight: 560; letter-spacing: -.005em; color: var(--cr); white-space: nowrap; }
       .ct { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; display: grid; place-items: center; line-height: 1; font-weight: 650; background: var(--ct); color: var(--cx); }
-    </style><div class="cw"><svg class="cv"></svg><div class="cg"></div><div class="ch"><span></span><span></span></div><div class="ct"></div></div>${MINI_HTML}<div class="dark"></div>`;
+    </style><div class="glows"></div><div class="cw"><svg class="cv"></svg><div class="cg"></div><div class="ch"><span></span><span></span></div><div class="ct"></div></div>${MINI_HTML}<div class="dark"></div>`;
     const $ = (q) => sr.querySelector(q);
     const clockTxt = (d) => d.toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AaPp]\.?\s?[Mm]\.?$/, '');
     const first = () => {
@@ -5890,7 +5959,7 @@ const saverXfade = (el, bg) => {
       const pt = H > W * 1.1;
       const k = pt ? W / 696 : Math.min(H / 694, W / 880);
       const cp = (pt ? 83.7 : 100) * k, p = (pt ? Math.max(74.5, Math.min(110, (H / k - 304) / 6)) : 74.5) * k, fs = 45 * k;
-      const top0 = (H - (123.5 * k + 6 * p)) / 2, wc = top0 + 104.5 * k, gx = W / 2, c1 = gx - 3 * cp;
+      const top0 = (H - (123.5 * k + 6 * p)) / 2 + 14 * k, wc = top0 + 104.5 * k, gx = W / 2, c1 = gx - 3 * cp;
       Object.assign(hd.style, { left: (c1 - 36 * k) + 'px', right: (W - gx - 3 * cp - 33 * k) + 'px', top: (top0 - fs * 0.135) + 'px', fontSize: (fs * 0.98) + 'px' });
       hd.firstElementChild.textContent = now.toLocaleDateString(lang, { month: 'long', year: 'numeric' });
       const y = now.getFullYear(), mo = now.getMonth(), td = now.getDate();
@@ -5915,17 +5984,19 @@ const saverXfade = (el, bg) => {
       cv.font = `330 100px ${FF}`;
       const m = cv.measureText(str), inkH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent, inkW = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
       if (!inkH) return;
-      const nt = wc + p - 0.477 * p, nb = wc + 5 * p + 0.678 * p, Ht = nb - nt, sw = 0.055 * Ht, F = (Ht - sw) / inkH * 100;
+      const nt0 = wc + p - 0.477 * p, nb = wc + 5 * p + 0.678 * p, Hf = nb - nt0, fit = Math.min(1, 7 * cp / ((Hf * 0.945) / inkH * inkW + 0.055 * Hf));
+      const Ht = Hf * fit, nt = nt0 + (Hf - Ht) / 2, sw = 0.055 * Ht, F = (Ht - sw) / inkH * 100;
       const xc = str.length === 1 ? gx - 0.082 * Ht : gx, x0 = xc - inkW * F / 200 + m.actualBoundingBoxLeft * F / 100, base = nt + sw / 2 + m.actualBoundingBoxAscent * F / 100;
       $('.cv').innerHTML = `<text x="${x0}" y="${base}" font-family='${FF}' font-weight="330" font-size="${F}" stroke-width="${sw}">${str}</text>`;
     };
     let artFor = null;
     const artwork = () => {
       if (o.bg !== 'artwork' && o.bg !== 'album') return;
-      const src = saverNP(), art = src && src.playing ? src.art || '' : '';
+      const art = saverArtNow();
+      if (o.bg === 'artwork') { (layer._cl || (layer._cl = saverClouds(sr.querySelector('.glows'), night)))(art); return; }
       if (art === artFor) return;
       artFor = art;
-      const use = (rgb) => { if (rgb) layer.style.setProperty('--ca', night ? `oklch(from ${rgb} 0.26 min(c, 0.05) h)` : `oklch(from ${rgb} 0.9 min(c, 0.07) h)`); else layer.style.removeProperty('--ca'); };
+      const use = (rgb) => { if (rgb) { layer.style.setProperty('--ca', night ? `oklch(from ${rgb} 0.26 min(c, 0.05) h)` : `oklch(from ${rgb} 0.9 min(c, 0.07) h)`); layer.classList.add('ag'); } else { layer.style.removeProperty('--ca'); layer.classList.remove('ag'); } };
       if (!art) { use(null); return; }
       saverArtRgb(art, (rgb) => { if (artFor === art) use(rgb); });
     };
@@ -6184,7 +6255,8 @@ const saverXfade = (el, bg) => {
   };
 
   const SVX_CSS = `
-    :host { background: var(--sbg, #97a9ae); color: var(--ink); --ink: #111; --sub: #3d4a50; --hi: #fff; --line: rgba(0,0,0,0.12); --fill: rgba(255,255,255,0.28); transition: background-color 2.5s ease; }
+    :host(.ag) { --agk: 1; }
+    :host { background-color: var(--sbg, #97a9ae); background-image: linear-gradient(180deg, transparent, rgb(0 0 0 / calc(var(--agk) * 0.11))); color: var(--ink); --ink: #111; --sub: #3d4a50; --hi: #fff; --line: rgba(0,0,0,0.12); --fill: rgba(255,255,255,0.28); transition: background-color 9s ease-in-out, --agk 9s ease-in-out; }
     :host(.dk) { --ink: #fff; --sub: rgba(235,235,245,0.62); --hi: #FF9F0A; --line: rgba(255,255,255,0.14); --fill: rgba(255,255,255,0.1); }
     .stg { position: absolute; left: 50%; top: 50%; width: 1180px; height: 820px; transform: translate(-50%, -50%) scale(var(--k, 1)); font-family: -apple-system, system-ui, sans-serif; }
     :host(.pt) .stg { width: 820px; height: 1180px; }
@@ -6223,7 +6295,7 @@ const saverXfade = (el, bg) => {
     .wk .fx { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 23px; font-weight: 600; white-space: nowrap; } .wk .fx .wi { width: 27px; height: 27px; flex: none; } .wk .fx span { color: var(--sub); }
     .wk .ev { margin-top: 22px; display: flex; flex-direction: column; gap: 16px; }
     .wk .e { padding-left: 11px; position: relative; } .wk .e::before { content: ""; position: absolute; left: 0; top: 3px; bottom: 3px; width: 3.5px; border-radius: 2px; background: var(--c); }
-    .wk .e b { font-size: 21px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: break-word; hyphens: auto; -webkit-hyphens: auto; }
+    .wk .e b { font-size: 21px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: break-word; hyphens: manual; -webkit-hyphens: manual; }
     .wk .e span { display: block; font-size: 18px; font-weight: 500; color: var(--sub); margin-top: 1px; }
     .wk .no { margin-top: 22px; font-size: 18px; font-weight: 500; color: var(--sub); }
     .wk.d5 .gr { grid-template-columns: repeat(5, minmax(0, 1fr)); } .wk.d5 .e b { -webkit-line-clamp: 3; font-size: 23px; } .wk.d5 .n { font-size: 68px; }
@@ -6297,7 +6369,7 @@ const saverXfade = (el, bg) => {
     layer.style.setProperty('--sbg', kind === 'photos' || kind === 'cameras' ? '#000' : night ? toneN : tone);
     if (night || kind === 'photos' || kind === 'cameras') layer.classList.add('dk');
     const pane = { photos: 'pho', week: 'wk', cameras: 'cmw' }[kind];
-    sr.innerHTML = `<style>${saverCss}${SVX_CSS}</style>${kind === 'photos' ? '<div class="ph"></div><div class="sh"></div>' : ''}${kind === 'cameras' ? `<div class="cm"></div><button type="button" class="chome"><i style="--i:url('${window.hemmaIconUrl ? window.hemmaIconUrl('home') : ''}')"></i>${esc(T('nav.home', 'Home'))}</button><div class="ctm num"></div>` : `<div class="stg ${pane}"></div>`}${MINI_HTML}<div class="dark"></div>`;
+    sr.innerHTML = `<style>${saverCss}${SVX_CSS}${CLOUD_CSS}</style>${kind === 'week' ? '<div class="glows"></div>' : ''}${kind === 'photos' ? '<div class="ph"></div><div class="sh"></div>' : ''}${kind === 'cameras' ? `<div class="cm"></div><button type="button" class="chome"><i style="--i:url('${window.hemmaIconUrl ? window.hemmaIconUrl('home') : ''}')"></i>${esc(T('nav.home', 'Home'))}</button><div class="ctm num"></div>` : `<div class="stg ${pane}"></div>`}${MINI_HTML}<div class="dark"></div>`;
     const $ = (q) => sr.querySelector(q), stg = $('.stg');
     if (stg) stg.lang = String(lang || 'en');
     if (kind !== 'cameras') stageFit(sr);
@@ -6385,7 +6457,7 @@ const saverXfade = (el, bg) => {
             + `<div class="fx">${f ? `<i class="wi" style="--i:url('${wxIcon(f.condition)}')"></i>${Math.round(f.temperature)}°<span>${f.templow != null ? Math.round(f.templow) + '°' : ''}</span>` : ''}</div>`
             + (day.length ? `<div class="ev">${day.map((e) => `<div class="e" style="--c:${e.c}"><b>${esc(e.name)}</b><span>${esc(e.day ? T('saver.all_day_one', 'All day') : e.a.toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' }))}</span></div>`).join('')}</div>` : `<div class="no">${esc(T('saver.nothing_planned', 'Nothing planned'))}</div>`) + '</div>';
         }
-        put(`<div class="hd"><div><h1>${esc(T('saver.this_week', 'This Week'))}</h1><p>${esc(evs ? (n === 1 ? T('saver.event_one', '1 event') : T('saver.events', '{n} events', { n })) : '')}</p></div><div class="tm num">${esc(clockTxt(d))}</div></div><div class="gr">${cols}</div>`);
+        put(`<div class="hd"><div><h1>${esc(T('saver.this_week', 'This Week'))}</h1></div><div class="tm num">${esc(clockTxt(d))}</div></div><div class="gr">${cols}</div>`);
       }
     };
     const cams = () => {
@@ -6454,7 +6526,7 @@ const saverXfade = (el, bg) => {
         const wash = (c) => layer.style.setProperty('--tn', c || tone);
         let artFor = null;
         const artwork = () => {
-          const src = (o.bg === 'artwork' || o.bg === 'album') && saverNP(), art = src && src.playing ? src.art || '' : '';
+          const art = (o.bg === 'artwork' || o.bg === 'album') ? saverArtNow() : '';
           if (art === artFor) return;
           artFor = art;
           const use = (rgb) => wash(rgb && `oklch(from ${rgb} 0.8 min(c, 0.1) h)`);
@@ -6491,7 +6563,21 @@ const saverXfade = (el, bg) => {
       draw();
       SAVER.clock = setInterval(draw, 10000);
       forecast(); SAVER.fc = setInterval(forecast, 30 * 60000);
-      if (kind === 'week') { calendar(); SAVER.cal = setInterval(calendar, 5 * 60000); }
+      if (kind === 'week') {
+        calendar(); SAVER.cal = setInterval(calendar, 5 * 60000);
+        let artFor = null;
+        const artwork = () => {
+          if (o.bg !== 'artwork' && o.bg !== 'album') return;
+          const art = saverArtNow();
+          if (o.bg === 'artwork') { (layer._cl || (layer._cl = saverClouds(sr.querySelector('.glows'), night)))(art); return; }
+          if (art === artFor) return;
+          artFor = art;
+          const use = (rgb) => { layer.classList.toggle('ag', !!rgb); layer.style.setProperty('--sbg', rgb ? (night ? `oklch(from ${rgb} 0.4 min(c, 0.05) h)` : `oklch(from ${rgb} 0.8 min(c, 0.1) h)`) : (night ? toneN : tone)); };
+          if (!art) { use(null); return; }
+          saverArtRgb(art, (rgb) => { if (artFor === art) use(rgb); });
+        };
+        artwork(); SAVER.tint = setInterval(artwork, 2000);
+      }
     }
     if (stg) saverDrift([[stg]]);
     saverMini(sr);
@@ -6529,7 +6615,7 @@ const saverXfade = (el, bg) => {
       layer.className = 'hemma-saver';
       if (o.rabg === 'color') layer.classList.add('flat');
       const sr = layer.attachShadow({ mode: 'open' });
-      sr.innerHTML = `<style>${saverCss}</style><div class="clock"><b></b><small></small></div><div class="lbl"><b>${(() => { const l = T('saver.new_media', 'New Media'), k = l.indexOf(' '); return k > 0 ? esc(l.slice(0, k)) + ' <span>' + esc(l.slice(k + 1)) + '</span>' : esc(l); })()}</b><small></small></div><div class="mini" role="button" aria-label="${esc(T('now_playing.title', 'Now Playing'))}"><i class="gx gd"></i><i class="gx gs"></i><i class="gx gt"></i><i class="gx gb"></i><span class="ma"></span><svg class="dots" width="29" height="4.6" viewBox="0 0 25 4"><circle cx="1.60" cy="2" r="1.6" style="--o:1;--o2:1.00;--dl:0.00s"/><circle cx="5.96" cy="2" r="1.6" style="--o:0.8;--o2:1.00;--dl:0.17s"/><circle cx="10.32" cy="2" r="1.6" style="--o:0.62;--o2:1.00;--dl:0.34s"/><circle cx="14.68" cy="2" r="1.6" style="--o:0.47;--o2:0.97;--dl:0.51s"/><circle cx="19.04" cy="2" r="1.6" style="--o:0.35;--o2:0.85;--dl:0.68s"/><circle cx="23.40" cy="2" r="1.6" style="--o:0.26;--o2:0.76;--dl:0.85s"/></svg></div><div class="dark"></div>`;
+      sr.innerHTML = `<style>${saverCss}${CLOUD_CSS}</style><div class="glows"></div><div class="clock"><b></b><small></small></div><div class="lbl"><b>${(() => { const l = T('saver.new_media', 'New Media'), k = l.indexOf(' '); return k > 0 ? esc(l.slice(0, k)) + ' <span>' + esc(l.slice(k + 1)) + '</span>' : esc(l); })()}</b><small></small></div><div class="mini" role="button" aria-label="${esc(T('now_playing.title', 'Now Playing'))}"><i class="gx gd"></i><i class="gx gs"></i><i class="gx gt"></i><i class="gx gb"></i><span class="ma"></span><svg class="dots" width="29" height="4.6" viewBox="0 0 25 4"><circle cx="1.60" cy="2" r="1.6" style="--o:1;--o2:1.00;--dl:0.00s"/><circle cx="5.96" cy="2" r="1.6" style="--o:0.8;--o2:1.00;--dl:0.17s"/><circle cx="10.32" cy="2" r="1.6" style="--o:0.62;--o2:1.00;--dl:0.34s"/><circle cx="14.68" cy="2" r="1.6" style="--o:0.47;--o2:0.97;--dl:0.51s"/><circle cx="19.04" cy="2" r="1.6" style="--o:0.35;--o2:0.85;--dl:0.68s"/><circle cx="23.40" cy="2" r="1.6" style="--o:0.26;--o2:0.76;--dl:0.85s"/></svg></div><div class="dark"></div>`;
       const panel = document.createElement('hemma-recent-panel');
       // The Plex tile's own settings carry over, spoiler blur included.
       let pv = {};
@@ -6583,7 +6669,8 @@ const saverXfade = (el, bg) => {
       let artFor = null;
       const artwork = () => {
         if (o.rabg !== 'color') return;
-        const src = saverNP(), art = src && src.playing ? src.art || '' : '';
+        const art = saverArtNow();
+        if (o.bg === 'artwork') { panel.classList.toggle('clouds', !!art); (layer._cl || (layer._cl = saverClouds(sr.querySelector('.glows'), true)))(art); return; }
         if (art === artFor) return;
         artFor = art;
         const use = (rgb) => { if (rgb) panel.style.setProperty('--npflat', rgb); else panel.style.removeProperty('--npflat'); };

@@ -1,5 +1,5 @@
 
-const PANEL_VERSION = "2.4.1";
+const PANEL_VERSION = "2.5.0";
 const SETUP_KEY = "hemma_panel_setup";
 const TEMPLATES_URL = "/api/hemma/templates";
 const TEMPLATES_URL_STATIC = "/hemma_panel/hemma-templates.json";
@@ -1497,8 +1497,8 @@ const SECTIONS = [
         darkSwatch: (vars) => { const k = (vars.hemma_hv_color === "album" ? vars.hemma_hv_rest : vars.hemma_hv_color) || "", D = { "": "#49575c", gray: "#49575c", sand: "#5b564e", sage: "#4c5944", blue: "#44556d", rose: "#654d51", lavender: "#56506a", sea: "#395c5b", clay: "#684e42", plum: "#664b5c", honey: "#5c543f", black: "#000" }; return { ...D, "": vars.hemma_style === "homeview" ? (D[k] || D[""]) : D[""] }; },
         optionLabels: (vars) => ({ "": vars.hemma_style === "homeview" ? "Match Dashboard" : "Gray", gray: "Gray", sand: "Sand", sage: "Sage", blue: "Blue", rose: "Rose", lavender: "Lavender", sea: "Sea", clay: "Clay", plum: "Plum", honey: "Honey", black: "Black" }) },
       { key: "__sv_np", label: "Now Playing", type: "select", auto: true, scope: "dashboard", joined: true,
-        when: (vars) => !vars.hemma_screensaver_style || vars.hemma_screensaver_style === "clock" || vars.hemma_screensaver_style === "face",
-        options: (vars) => vars.hemma_screensaver_style === "face" ? ["", "album"] : ["", "artwork", "album"],
+        when: (vars) => !vars.hemma_screensaver_style || ["clock", "face", "week", "calendar", "recent"].includes(vars.hemma_screensaver_style),
+        options: ["", "artwork", "album"],
         optionLabels: { "": "Off", artwork: "Color Clouds", album: "Artwork Color" } },
       { key: "hemma_screensaver_ra_bg", label: "Background", type: "select", auto: true, scope: "dashboard",
         when: (vars) => vars.hemma_screensaver_style === "recent",
@@ -2626,9 +2626,9 @@ const saverMock = (k0, tint, face, faceBg) => {
   if (nk) return nk;
   if (k === "face" && face === "stacked") {
     const bg = SW_LIGHT[faceBg === "gray" ? "" : faceBg] || SW_LIGHT[""];
-    return `<svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%;font-family:-apple-system,system-ui,sans-serif"><rect width="320" height="200" fill="color-mix(in oklab, ${bg} 76%, #000)"/>`
-      + `<g fill="#fff" font-weight="700"><text x="18" y="30" font-size="13">THU 4</text><text x="18" y="182" font-size="13">72°</text></g>`
-      + `<g fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" font-weight="300" text-anchor="end" style="font-stretch:50%;letter-spacing:7px" font-size="104"><text x="311" y="94">10</text><text x="311" y="184">:44</text></g></svg>`;
+    return `<svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%;font-family:-apple-system,system-ui,sans-serif"><rect width="320" height="200" fill="${bg}"/>`
+      + `<g fill="#111" font-weight="700"><text x="18" y="30" font-size="13">THU 4</text><text x="18" y="182" font-size="13">72°</text></g>`
+      + `<g fill="#111" stroke="#111" stroke-width="4" stroke-linejoin="round" paint-order="stroke" font-weight="300" text-anchor="end" style="font-stretch:50%;letter-spacing:7px" font-size="104"><text x="311" y="94">10</text><text x="311" y="184">:44</text></g></svg>`;
   }
   if (k === "face") {
     const cls = face === "classic", bg = SW_LIGHT[faceBg === "gray" ? "" : faceBg] || SW_LIGHT[""], cx = 160, cy = 100;
