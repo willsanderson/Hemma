@@ -1759,6 +1759,23 @@ window.hemmaMenuGlass = {
   };
   // Every light the whole-home Lights badge and page cover: the lights set on each room card and the light tiles of every
   // room. A light that is unavailable is not one of them.
+  // The door, window and garage sensors set on a tile of any room, as the Security page lists them.
+  window.hemmaHomeOpeningIds = function (hass) {
+    const cfg = window.hemmaDeskCfg(hass);
+    if (!cfg || !hass) return [];
+    const st = hass.states || {}, ids = [];
+    const walk = (x) => {
+      if (Array.isArray(x)) { x.forEach(walk); return; }
+      if (!x || typeof x !== 'object') return;
+      if (x.type === 'custom:button-card' && typeof x.entity === 'string' && x.entity.indexOf('binary_sensor.') === 0 && window.hemmaOnThisSurface(x)) {
+        const s = st[x.entity];
+        if (s && /^(door|window|garage_door|opening|gate|garage)$/.test(String((s.attributes || {}).device_class || ''))) ids.push(x.entity);
+      }
+      Object.keys(x).forEach((k) => { if (k !== 'button_card_templates') walk(x[k]); });
+    };
+    walk(cfg.views);
+    return [...new Set(ids)];
+  };
   window.hemmaHomeLightIds = function (hass) {
     const H = window.hemmaHome, cfg = window.hemmaDeskCfg(hass);
     if (!H || !cfg || !hass) return [];
@@ -15874,9 +15891,10 @@ window.hemmaMenuGlass = {
     if (Array.isArray(V && V.devices)) return V.devices.filter(function (x) { return typeof x === 'string' && x.indexOf('.') > 0; });
     if (!hass || !hass.entities) return [];
     var st = hass.states || {}, seen = {};
+    var tiled = window.hemmaHomeOpeningIds ? window.hemmaHomeOpeningIds(hass) : [];
     return Object.keys(hass.entities).filter(function (id) {
       var e = hass.entities[id], a = st[id] && st[id].attributes;
-      return id.indexOf('binary_sensor.') === 0 && a && OPENING[a.device_class] && !e.hidden && !e.entity_category && !!areaOf(hass, id);
+      return id.indexOf('binary_sensor.') === 0 && a && OPENING[a.device_class] && !e.hidden && !e.entity_category && (!!areaOf(hass, id) || tiled.indexOf(id) >= 0);
     }).sort().filter(function (id) {
       var d = (hass.devices || {})[hass.entities[id].device_id] || {}, key = (d.name_by_user || d.name || id).toLowerCase() + '|' + (areaOf(hass, id) || '');
       if (seen[key]) return false;

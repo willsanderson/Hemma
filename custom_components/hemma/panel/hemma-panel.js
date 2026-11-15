@@ -13737,6 +13737,7 @@ class HemmaPanel extends HTMLElement {
   _renderForm() {
     this._disarmRow();
     const room = this._state && this._state.compact.rooms[this._room];
+    this._syncLightSlots();
     this._markDirty();
     if (!room) return;
 
@@ -14013,10 +14014,11 @@ class HemmaPanel extends HTMLElement {
       const h2 = document.createElement("h2");
       h2.textContent = _sx(sec.label);
       head.appendChild(h2);
-      if (sec.blurb) {
+      const blurbText = sec.bid === "security" && this._room === 0 ? this._securityNote() : (sec.blurb ? _sx(sec.blurb) : "");
+      if (blurbText) {
         const p = document.createElement("p");
         p.className = "blurb";
-        p.textContent = _sx(sec.blurb);
+        p.textContent = blurbText;
         head.appendChild(p);
       }
 
@@ -16652,9 +16654,11 @@ class HemmaPanel extends HTMLElement {
       const s = t && t.entity && states[t.entity];
       return !!s && String(t.entity).indexOf("binary_sensor.") === 0 && /^(door|window|garage_door|opening|gate|garage)$/.test(String((s.attributes || {}).device_class || ""));
     };
+    const first = (((this._state || {}).compact || {}).rooms || [])[0];
     ordered.forEach((sec) => {
       const tiles = live(sec).filter((t) => tileOnSurface(t, !!phone) && (tileCategory(t) === k || (k === "security" && opening(t))) && usable(t));
-      if (tiles.length) out.push({ ...sec, tiles: tiles, _kept: true });
+      // The Home room's tiles are the phone's Favorites row, and the dashboard's category page calls them that.
+      if (tiles.length) out.push({ ...sec, name: !phone && sec === first ? _studioT("mobile.favorites", "Favorites") : sec.name, tiles: tiles, _kept: true });
     });
     const into = (name, tiles) => {
       const fresh = tiles.filter(usable);
@@ -16680,11 +16684,18 @@ class HemmaPanel extends HTMLElement {
         const a = e.area_id || (((h.devices || {})[e.device_id] || {}).area_id);
         return (((h.areas || {})[a]) || {}).name || "";
       };
+      const onceKeys = new Set();
       Object.keys(h.entities || {}).sort().forEach((id) => {
         const e = h.entities[id], s = states[id];
         if (id.indexOf("binary_sensor.") !== 0 || !s || !OPENING[s.attributes && s.attributes.device_class] || e.hidden || e.entity_category) return;
         const area = areaName(id);
-        if (area) into(area, [{ template: "hemma_entity_actions", entity: id, name: named(id), variables: { mobile_filter_category: "security" } }]);
+        if (!area) return;
+        // One device is one entry, as the dashboard's Security badge counts it.
+        const dev = ((h.devices || {})[e.device_id]) || {};
+        const key = String(dev.name_by_user || dev.name || id).toLowerCase() + "|" + area;
+        if (onceKeys.has(key)) return;
+        onceKeys.add(key);
+        into(area, [{ template: "hemma_entity_actions", entity: id, name: named(id), variables: { mobile_filter_category: "security" } }]);
       });
     }
     return out;
@@ -17241,6 +17252,53 @@ class HemmaPanel extends HTMLElement {
 
   // The lights the whole-home Lights badge and page cover: those set on each room card and the light tiles of every room,
   // available ones only (hemma-core hemmaHomeLightIds).
+  // The Home room's Lights list names every light the Lights page shows (those set on any room's card and the light tiles),
+  // so the list, the preview and the dashboard count the same. A light goes into the next free slot; none is ever removed.
+  _syncLightSlots() {
+    const home = ((((this._state || {}).compact || {}).rooms) || [])[0];
+    if (!home || !this._hass || (this._state || {}).surface === "mobile") return false;
+    home.variables = home.variables || {};
+    const V = home.variables;
+    if (V.show_lights === false) return false;
+    const have = new Set([V.light_group_entity].concat([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => V["light_entity_" + n])).filter(Boolean));
+    let changed = false;
+    this._homeLightIds(false).filter((id) => !have.has(id)).forEach((id) => {
+      for (let n = 1; n <= 10; n++) {
+        if (V["light_entity_" + n]) continue;
+        V["light_entity_" + n] = id;
+        have.add(id);
+        changed = true;
+        this._mirrorToPair("light_entity_" + n, id, [home]);
+        break;
+      }
+    });
+    return changed;
+  }
+
+  // What the Home Security badge covers beyond what is set on its card: every door, window or garage sensor of an area and of a
+  // tile, named so the settings show the same list the page does.
+  _securityNote() {
+    const h = this._hass || {}, S = h.states || {};
+    const OPEN = /^(door|window|garage_door|opening|gate|garage)$/;
+    const area = (id) => { const e = (h.entities || {})[id] || {}; return e.area_id || (((h.devices || {})[e.device_id] || {}).area_id); };
+    const ids = new Set(), once = new Set();
+    Object.keys(h.entities || {}).sort().forEach((id) => {
+      const e = h.entities[id], s = S[id];
+      if (id.indexOf("binary_sensor.") === 0 && s && OPEN.test(String((s.attributes || {}).device_class || "")) && !e.hidden && !e.entity_category && area(id)) {
+        const dev = ((h.devices || {})[e.device_id]) || {};
+        const key = String(dev.name_by_user || dev.name || id).toLowerCase() + "|" + area(id);
+        if (!once.has(key)) { once.add(key); ids.add(id); }
+      }
+    });
+    ((((this._state || {}).compact || {}).rooms) || []).forEach((r) => (r.tiles || []).forEach((t) => {
+      const s = t && t.entity && S[t.entity];
+      if (s && t.entity.indexOf("binary_sensor.") === 0 && (t.variables || {}).enabled !== false && tileOnSurface(t, false) && OPEN.test(String((s.attributes || {}).device_class || ""))) ids.add(t.entity);
+    }));
+    if (!ids.size) return "";
+    const names = [...ids].map((id) => String((S[id].attributes || {}).friendly_name || id));
+    return _sx("Also covers {n} doors and windows from your areas and tiles: {names}", { n: ids.size, names: names.join(", ") });
+  }
+
   _homeLightIds(phone) {
     const S = (this._hass && this._hass.states) || {}, ids = [];
     (((this._state || {}).compact || {}).rooms || []).forEach((r) => {
