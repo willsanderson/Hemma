@@ -844,6 +844,7 @@
   "studio.edit_card_2": "Edit card",
   "studio.edit_code": "Edit code…",
   "studio.edit_code_2": "Edit code",
+  "studio.see_the_code": "See the code…",
   "studio.template_keep_name": "Keep the name “{name}”: tiles that use it would lose their template.",
   "studio.template_is_card": "That is a card, not a template.",
   "studio.template_code_note": "The template behind this tile type, as it is stored. Saving replaces it for every tile of this type, in every room.",

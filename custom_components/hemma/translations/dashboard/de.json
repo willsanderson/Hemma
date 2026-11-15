@@ -844,6 +844,7 @@
 	"studio.edit_card_2": "Karte bearbeiten",
   "studio.edit_code": "Code bearbeiten …",
   "studio.edit_code_2": "Code bearbeiten",
+  "studio.see_the_code": "Siehe Code …",
   "studio.template_keep_name": "Behalte den Namen „{name}“: Kacheln, die ihn verwenden, würden ihre Vorlage verlieren.",
   "studio.template_is_card": "Das ist eine Karte, keine Vorlage.",
   "studio.template_code_note": "Die Vorlage hinter diesem Kachel-Typ, wie sie gespeichert ist. Speichern ersetzt sie für jede Kachel dieses Typs in jedem Raum.",

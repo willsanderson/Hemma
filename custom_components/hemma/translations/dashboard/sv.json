@@ -844,6 +844,7 @@
 	"studio.edit_card_2": "Redigera kort",
   "studio.edit_code": "Redigera kod…",
   "studio.edit_code_2": "Redigera kod",
+  "studio.see_the_code": "Se koden…",
   "studio.template_keep_name": "Behåll namnet “{name}”: brickor som använder det skulle förlora sin mall.",
   "studio.template_is_card": "Det där är ett kort, inte en mall.",
   "studio.template_code_note": "Mallen bakom den här brickan, som den är lagrad. Att spara ersätter den för varje bricka av den här typen, i varje rum.",

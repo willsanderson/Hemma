@@ -3453,6 +3453,10 @@ function userTypeFields(tpl) {
   const declared = (tpl && tpl.variables) || {};
   return Object.keys(declared).filter((k) => !TILE_OWN_KEYS.has(k)).map((k) => {
     const def = declared[k];
+    // The icon the template names previews at once, and stays the default until you pick another.
+    if (k === "icon" && typeof def === "string" && def) {
+      return { key: k, label: "Icon", type: "icon", iconDefault: def };
+    }
     if (typeof def === "boolean") {
       return { key: k, label: prettyKey(k), type: "bool", boolDefault: def };
     }
@@ -21460,8 +21464,11 @@ class HemmaPanel extends HTMLElement {
       box.classList.toggle("armed", this._armed === key);
     };
     head.appendChild(rm);
+    // A tile type of your own can name its icon in the template (variables.icon); the row and the Icon field start from it.
+    const tplIcon = type.user && typeof tile.template === "string"
+      ? ((((this._state || {}).templates || {})[tile.template] || {}).variables || {}).icon || null : null;
     const rowIcon = (tile.variables || {}).icon || tile.icon
-      || glyphNow() || TILE_ICON[type.id] || (type.raw ? ICON_DEFAULT : null);
+      || glyphNow() || TILE_ICON[type.id] || tplIcon || (type.raw ? ICON_DEFAULT : null);
     if (rowIcon) {
       const g = document.createElement("span");
       g.className = "sicon";
@@ -21473,6 +21480,7 @@ class HemmaPanel extends HTMLElement {
     const title = document.createElement("div");
     title.className = "grow";
     const kind = type.raw ? tileLabel(tile).replace(/^custom:/, "")
+      : type.user ? "custom_card"
       : (tile.name && tile.name.trim() ? "" : type.label);
     title.innerHTML = `${tile.name || _sx("(unnamed)")}${kind ? ` <span class="kind">${kind}</span>` : ""}`;
     head.appendChild(title);
@@ -21803,6 +21811,13 @@ class HemmaPanel extends HTMLElement {
         if (rebuild) this._renderForm();
         else this._syncPreview();
       });
+    // A tile type of your own reads its entities in its own code, so this field is not used.
+    if (type.user) {
+      const entIn = entCombo.wrap.querySelector("input");
+      if (entIn) { entIn.value = ""; entIn.placeholder = _sx("See the code\u2026"); entIn.disabled = true; }
+      entCombo.wrap.style.opacity = "0.55";
+      entCombo.wrap.style.pointerEvents = "none";
+    }
     const entityLabel = isGroup ? _sx("{noun} {n}", { noun: _sx(grp.noun), n: 1 }) : (_sx(type.entityLabel) || _sx("Entity"));
     const noEntityRow = !!type.noEntity;
     const entityInDrawer = !noEntityRow && !!type.entityAdvanced && !isGroup;
