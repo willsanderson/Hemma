@@ -16671,7 +16671,7 @@ class HemmaPanel extends HTMLElement {
         const V = r.variables || {};
         const ids = [];
         for (let n = 1; n <= 10; n++) if (typeof V["light_entity_" + n] === "string" && V["light_entity_" + n]) ids.push(V["light_entity_" + n]);
-        if (ids.length) into(r.name, ids.map((id) => ({ template: "hemma_light", entity: id, name: named(id), variables: { mobile_filter_category: "lights" } })));
+        if (ids.length) into(r.name, ids.map((id) => ({ template: "hemma_light", entity: id, name: named(id), _slot: true, variables: { mobile_filter_category: "lights" } })));
       });
     } else {
       const OPENING = { door: 1, window: 1, garage_door: 1, opening: 1, gate: 1, garage: 1 };
@@ -19430,6 +19430,8 @@ class HemmaPanel extends HTMLElement {
       if (k === "lights" || sec._bucket === "lights") {
         const pre = String((sec._bucket ? roomName : sec.name) || "").toLowerCase() + " ";
         tiles = tiles.flatMap((t) => {
+          // A light group set on the room card stays the one tile it is, as on the dashboard.
+          if (t._slot) return [t];
           const ids = t.entity ? members(t.entity).filter((x) => x.indexOf("light.") === 0) : [];
           if (ids.length <= 1 && !(ids[0] && ids[0] !== t.entity)) return [t];
           return ids.map((id) => {

@@ -320,6 +320,16 @@
     return _bgCardCache;
   }
 
+  // The desktop dashboard's room settings, read once as soon as an overlay has its hass: the Lights page lists the lights
+  // set on each room's card, and the phone dashboard does not carry them.
+  function prefetchDeskConfig(hass) {
+    if (window._hemmaDeskCfg !== undefined || window._hemmaDeskBusy || !hass || !hass.callWS) return;
+    window._hemmaDeskBusy = true;
+    const seg = String(location.pathname.split('/')[1] || '').replace(/[-_]mobile$/i, '');
+    Promise.resolve(hass.callWS({ type: 'lovelace/config', url_path: seg && seg !== 'lovelace' ? seg : null }))
+      .then((c) => { window._hemmaDeskCfg = c || null; }, () => { window._hemmaDeskCfg = null; });
+  }
+
   const EMPTY_SET = new Set();
   const activeStates     = () => window.HEMMA_ACTIVE_STATES || EMPTY_SET;
   const filterCategories = () => window.HEMMA_FILTER_CATEGORIES || {};
@@ -898,6 +908,7 @@
       const prevFilter = this._hass?.states?.['input_select.hemma_mobile_filter']?.state;
       v = F ? F.apply(v) : v;
       this._hass = v;
+      prefetchDeskConfig(v);
       for (const el of this._cardEls) { try { el.hass = v; } catch (_) {} }
       const filter = v?.states?.['input_select.hemma_mobile_filter']?.state;
 
@@ -1138,8 +1149,10 @@
         if ((this._catWait = (this._catWait || 0) + 1) < 40) setTimeout(() => { if (this._showing) { this._ensureAutoSections(); this._sortSectionGrids(); } }, 150);
         return;
       }
+      const cat = this._config.filter_category;
       const roomMode = this._config.room || null;
       const rooms = [];
+      let favs = null;
       let pending = null; // last seen room header
       for (const kid of container.children) {
         const bc = this._getBC(kid);
@@ -1165,9 +1178,15 @@
             if (this._config.filter_category === 'lights' && window.hemmaExpandLights)
               cards = window.hemmaExpandLights(this._hass?.states || {}, pending.name, cards);
             if (cards.length) rooms.push({ ...pending, cards });
+          } else if (pending.name === 'Favorites' && cat === 'lights') {
+            const fc = (hsr._config?.cards || []).filter((c) => _cardCategory(c) === 'lights');
+            if (fc.length) favs = { ...pending, cards: fc, fav: true };
           }
           pending = null;
         }
+      }
+      if (!roomMode && (cat === 'lights' || cat === 'security') && window.hemmaMergeCategory) {
+        rooms.splice(0, rooms.length, ...window.hemmaMergeCategory(this._hass, (favs ? [favs] : []).concat(rooms), cat, window._hemmaDeskCfg));
       }
       if (!rooms.length && (roomMode || this._config.filter_category !== 'energy')) return;
       this._autoSectionsDone = true;
