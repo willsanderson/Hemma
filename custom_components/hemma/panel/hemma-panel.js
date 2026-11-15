@@ -16747,6 +16747,47 @@ class HemmaPanel extends HTMLElement {
     this._status(_sx("Card updated"), "ok");
   }
 
+  // Edit the code of a tile type of your own, in place. A template pasted into Custom card is stored on the
+  // dashboard, so this reopens it as text and saves the new version over the old one. The name stays: every tile
+  // of this type, in every room, points at it.
+  async _editTemplateCode(room, tile) {
+    const s = this._state;
+    const name = tile.template;
+    const cur = (this._ownTemplates || {})[name]
+      || ((s || {}).templates || {})[name]
+      || (((this._raw || {}).button_card_templates) || {})[name];
+    if (!s || !cur) return this._status(_sx("Could not read \u201c{name}\u201d.", { name: name }), "err");
+    const check = (v) => {
+      const read = parsePasted(v);
+      if (read.kind !== "template") throw new Error(_sx("That is a card, not a template."));
+      if (read.name !== name) {
+        throw new Error(_sx("Keep the name \u201c{name}\u201d: tiles that use it would lose their template.", { name: name }));
+      }
+      return read;
+    };
+    const got = await this._ask({
+      title: _sx("Edit code"),
+      message: _sx("The template behind this tile type, as it is stored. Saving replaces it for every tile of "
+        + "this type, in every room."),
+      value: cardToText({ [name]: cur }),
+      multiline: true,
+      wide: true,
+      rows: 18,
+      confirmLabel: _sx("Save"),
+      validate: (v) => { try { check(v); return ""; } catch (e) { return e.message; } },
+    });
+    if (!got) return;
+    const text = typeof got === "string" ? got : got.value;
+    let read;
+    try { read = check(text); } catch (e) { return this._status(e.message, "err"); }
+    s.templates = { ...(s.templates || {}), [name]: read.template };
+    this._ownTemplates = { ...(this._ownTemplates || {}), [name]: read.template };
+    syncUserTileTypes(s.templates, (s.compact || {}).rooms, [name], (s.extras || {})[FINGERPRINT_KEY]);
+    this._markDirty();
+    this._renderForm();
+    this._status(_sx("Updated \u201c{name}\u201d", { name: name }), "ok");
+  }
+
   // A pasted template is stored on the dashboard, not in Hemma's own folder, so
   // it stays the user's: no fingerprint, never replaced, and in the picker for
   // every room from here on.
@@ -21509,8 +21550,10 @@ class HemmaPanel extends HTMLElement {
         menu.splice(1, 0, { id: "down", label: _sx("Move below the tiles") });
       }
     }
+    if (type.user) menu.unshift({ id: "edit_code", label: _sx("Edit code\u2026") });
     dots.onclick = () => this._menuAt(dots, menu, (id) => {
       if (id === "edit") return this._editRawCard(room, tile);
+      if (id === "edit_code") return this._editTemplateCode(room, tile);
       if (id === "down") {
         const inner = tile.template === CUSTOM_TEMPLATE
           ? clone((tile.custom_fields || {}).card || {}) : omit(tile, ["variables"]);
