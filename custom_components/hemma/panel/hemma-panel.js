@@ -16633,6 +16633,63 @@ class HemmaPanel extends HTMLElement {
     }
   }
 
+  // The whole-home Lights or Security page in the preview, as the dashboard builds it (hemma-core _homeCategory): the room
+  // tiles of the kind, the lights set on each room's card, and every door or window of an area, once each. A light that
+  // is unavailable is left out, as it cannot be used.
+  _previewHomeCategory(ordered, k, live) {
+    const h = this._hass || {}, states = h.states || {}, seen = new Set(), out = [];
+    const usable = (t) => {
+      const id = t && t.entity;
+      if (!id) return true;
+      const s = states[id];
+      if (k === "lights" && (!s || s.state === "unavailable" || s.state === "unknown")) return false;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    };
+    // A door or window sensor on a plain tile files under Security by its device class, as on the dashboard.
+    const opening = (t) => {
+      const s = t && t.entity && states[t.entity];
+      return !!s && String(t.entity).indexOf("binary_sensor.") === 0 && /^(door|window|garage_door|opening|gate|garage)$/.test(String((s.attributes || {}).device_class || ""));
+    };
+    ordered.forEach((sec) => {
+      const tiles = live(sec).filter((t) => (tileCategory(t) === k || (k === "security" && opening(t))) && usable(t));
+      if (tiles.length) out.push({ ...sec, tiles: tiles, _kept: true });
+    });
+    const into = (name, tiles) => {
+      const fresh = tiles.filter(usable);
+      if (!fresh.length) return;
+      const key = String(name || "").trim().toLowerCase();
+      const hit = out.find((s) => !isFav(s) && String(s.name || "").trim().toLowerCase() === key);
+      if (hit) hit.tiles = hit.tiles.concat(fresh); else out.push({ name: name, tiles: fresh, variables: {} });
+    };
+    const named = (id) => String(((states[id] || {}).attributes || {}).friendly_name || id);
+    if (k === "lights") {
+      const rooms = ((this._state || {}).compact || {}).rooms || [];
+      const first = rooms[0];
+      rooms.filter((r) => r !== first).concat(first ? [first] : []).forEach((r) => {
+        const V = r.variables || {};
+        const ids = [];
+        for (let n = 1; n <= 10; n++) if (typeof V["light_entity_" + n] === "string" && V["light_entity_" + n]) ids.push(V["light_entity_" + n]);
+        if (ids.length) into(r.name, ids.map((id) => ({ template: "hemma_light", entity: id, name: named(id), variables: { mobile_filter_category: "lights" } })));
+      });
+    } else {
+      const OPENING = { door: 1, window: 1, garage_door: 1, opening: 1, gate: 1, garage: 1 };
+      const areaName = (id) => {
+        const e = (h.entities || {})[id] || {};
+        const a = e.area_id || (((h.devices || {})[e.device_id] || {}).area_id);
+        return (((h.areas || {})[a]) || {}).name || "";
+      };
+      Object.keys(h.entities || {}).sort().forEach((id) => {
+        const e = h.entities[id], s = states[id];
+        if (id.indexOf("binary_sensor.") !== 0 || !s || !OPENING[s.attributes && s.attributes.device_class] || e.hidden || e.entity_category) return;
+        const area = areaName(id);
+        if (area) into(area, [{ template: "hemma_entity_actions", entity: id, name: named(id), variables: { mobile_filter_category: "security" } }]);
+      });
+    }
+    return out;
+  }
+
   async _addCustomCard(room) {
     // A phone layout has no slot below the row, so it is not offered one.
     const canPlace = (this._state || {}).surface !== "mobile";
@@ -19351,6 +19408,8 @@ class HemmaPanel extends HTMLElement {
       ordered = ROOM_SECTION_ORDER.concat("other").filter((key) => buckets.has(key))
         .map((key) => ({ ...ordered[0], name: ROOM_SECTION_LABEL[key], tiles: buckets.get(key), _bucket: key }));
     }
+    // The badge counts lights from each room's card and doors from the home's areas, so the page lists those too, once each.
+    if (!home && !scope && !roomName && (k === "lights" || k === "security")) ordered = this._previewHomeCategory(ordered, k, live);
     let scenesDue = home && !scope && this._scenesOn() && this._sceneList().length > 0;
     const scenesHere = () => {
       if (!scenesDue) return;
@@ -19366,7 +19425,6 @@ class HemmaPanel extends HTMLElement {
       ordered = ids.length ? [{ name: "", tiles: ids.map((id) => this._personTile(id)), _people: true }] : [];
     }
     ordered.forEach((sec) => {
-      if (isFav(sec) && k === "lights") return;
       let tiles = live(sec).filter((t) => home || sec._people || tileCategory(t) === k);
       // A room's Lights section lists every light, as the Lights page and the dashboard do.
       if (k === "lights" || sec._bucket === "lights") {

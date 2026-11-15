@@ -4177,7 +4177,7 @@ window.hemmaMenuGlass = {
           }
           if (c.type === 'custom:hemma-smart-row' && pending) {
             const cards = (c.cards || []).filter((x) => k === 'home' || catOf(x) === k);
-            if (pending === 'Favorites') { if (k !== 'lights' && cards.length) favs = cards; }
+            if (pending === 'Favorites') { if (cards.length) favs = cards; }
             else if (cards.length) rooms.push({ name: pending, cards });
             pending = null;
             return;
@@ -4868,6 +4868,8 @@ window.hemmaMenuGlass = {
         try { n = window._hemmaSC ? window._hemmaSC.list(this._hass.states, this._hass, Object.assign({}, this._scenePick, { category: k })).length : 0; } catch (_) { n = 0; }
         if (n) sections = [{ scenes: true, category: k, name: _hemmaT('nav.scenes', 'Scenes') }].concat(sections);
       }
+      // The badge counts lights from the room settings and doors from the home's areas, so the page lists those too, next to the tiles.
+      if (!scope && (k === 'lights' || k === 'security')) sections = await this._homeCategory(sections, k);
       const devices = k === 'energy' && helpers && !scope ? await this._energyDevices() : false;
       if (scope && k !== 'home' && k !== 'scenes' && window.hemmaHome && !sections.some((sec) => sec.cards && sec.cards.length)) {
         const fill = window.hemmaHome.roomCards(this._hass, scope, k, await this._roomSlotIds(scope, k));
@@ -5487,6 +5489,65 @@ window.hemmaMenuGlass = {
         });
       };
       idle(next);
+    }
+
+    // The desktop dashboard's config, whichever of the pair is open (the phone one has no room settings).
+    async _deskConfig() {
+      if (!this._deskCfg2 || Date.now() - this._deskCfg2At > 60000) {
+        const seg = String(location.pathname.split('/')[1] || '').replace(/[-_]mobile$/i, '');
+        this._deskCfg2 = await this._hass.callWS({ type: 'lovelace/config', url_path: seg && seg !== 'lovelace' ? seg : null });
+        this._deskCfg2At = Date.now();
+      }
+      return this._deskCfg2;
+    }
+
+    // A category page for the whole home lists what its badge counts, once each: the room tiles, the lights set on each
+    // room's card, and every door or window of an area. A light that is unavailable is left out, as it cannot be used.
+    async _homeCategory(sections, k) {
+      const H = window.hemmaHome, hass = this._hass;
+      if (!H || !hass) return sections;
+      const st = hass.states || {}, seen = new Set(), out = [];
+      const dead = (c) => {
+        if (k !== 'lights' || !c || !c.entity) return false;
+        const s = st[c.entity];
+        return !s || s.state === 'unavailable' || s.state === 'unknown';
+      };
+      const keep = (cards) => (cards || []).filter((c) => {
+        const id = c && c.entity;
+        if (!id) return true;
+        if (seen.has(id) || dead(c)) return false;
+        seen.add(id);
+        return true;
+      });
+      sections.forEach((sec) => {
+        if (!sec || sec.scenes || !Array.isArray(sec.cards)) { out.push(sec); return; }
+        const cards = keep(sec.cards);
+        if (cards.length) out.push(Object.assign({}, sec, { cards: cards }));
+      });
+      const into = (name, cards) => {
+        const fresh = keep(cards);
+        if (!fresh.length) return;
+        const hit = out.find((s) => s.cards && !s.fav && String(s.name || '').trim().toLowerCase() === String(name || '').trim().toLowerCase());
+        if (hit) hit.cards = hit.cards.concat(fresh); else out.push({ name: name, cards: fresh });
+      };
+      try {
+        if (k === 'lights') {
+          const rooms = H.read(await this._deskConfig(), hass).rooms;
+          rooms.filter((r) => !r.overview).concat(rooms.filter((r) => r.overview)).forEach((r) => {
+            const ids = (r.slots && r.slots.lights) || [];
+            if (ids.length) into(r.name, window.hemmaExpandLights(st, r.name, ids.map((id) => H.tileFor(hass, id))));
+          });
+        } else {
+          const areaOf = (id) => {
+            const e = (hass.entities || {})[id] || {};
+            const a = e.area_id || (((hass.devices || {})[e.device_id] || {}).area_id);
+            return (((hass.areas || {})[a]) || {}).name || '';
+          };
+          const ids = window.hemmaSecurityDevices({}, hass).concat(window.hemmaSecurityLocks({}, hass));
+          ids.forEach((id) => into(areaOf(id), [H.tileFor(hass, id)]));
+        }
+      } catch (_) { /* the tiles alone */ }
+      return out;
     }
 
     async _roomSlotIds(scope, k) {
