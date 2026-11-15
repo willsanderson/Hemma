@@ -1776,6 +1776,19 @@ window.hemmaMenuGlass = {
     walk(cfg.views);
     return [...new Set(ids)];
   };
+  // The lights one room's Lights badge and popup cover: the room's group and light rows plus its light tiles, each group opened into
+  // the lights in it, once each, available ones only. match: { path } (a desktop room page) or { key } (a phone room).
+  window.hemmaRoomLightIds = function (hass, match) {
+    const H = window.hemmaHome, cfg = window.hemmaDeskCfg(hass);
+    if (!H || !cfg || !hass || !match) return [];
+    const r = H.read(cfg, hass).rooms.filter((x) => (match.path && x.path === match.path) || (match.key && x.key === match.key))[0];
+    if (!r) return [];
+    const st = hass.states || {}, seen = new Set();
+    const kids = (id) => { const m = st[id] && st[id].attributes && st[id].attributes.entity_id; return Array.isArray(m) ? m.filter((x) => typeof x === 'string' && x.indexOf('light.') === 0) : []; };
+    const leaf = (id) => { if (seen.has(id)) return []; seen.add(id); const k = kids(id); return k.length ? k.flatMap(leaf) : [id]; };
+    return [].concat((r.slots && r.slots.lights) || [], (r.tiles && r.tiles.lights) || []).flatMap(leaf)
+      .filter((id) => st[id] && st[id].state !== 'unavailable' && st[id].state !== 'unknown');
+  };
   window.hemmaHomeLightIds = function (hass) {
     const H = window.hemmaHome, cfg = window.hemmaDeskCfg(hass);
     if (!H || !cfg || !hass) return [];

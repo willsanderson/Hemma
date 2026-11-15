@@ -264,7 +264,10 @@ hemma_mobile_sensor_chips:
                 const f = states['input_select.hemma_mobile_filter']?.state;
                 const eid  = variables.room_chips?.[f]?.lights_entity;
                 const mems = eid ? states[eid]?.attributes?.entity_id : null;
-                const eids = (Array.isArray(mems) && mems.length) ? mems : (eid ? [eid] : []);
+                let eids = (Array.isArray(mems) && mems.length) ? mems : (eid ? [eid] : []);
+                // The room's group and light rows and light tiles, each group opened into its lights.
+                const own = window.hemmaRoomLightIds ? window.hemmaRoomLightIds(hass, { key: f }) : [];
+                if (own.length) eids = own;
                 const onCount = eids.filter(e => states[e]?.state === 'on').length;
                 const T = window._hemmaT || ((k, en, v) => String(en).replace(/\{(\w+)\}/g,
                   (m, p) => (v && Object.prototype.hasOwnProperty.call(v, p) ? String(v[p]) : m)));

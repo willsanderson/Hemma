@@ -1147,6 +1147,11 @@
       }
       const cat = this._config.filter_category;
       const roomMode = this._config.room || null;
+      // A room's Lights come from the desktop dashboard's room settings; wait for them like the whole-home pages do.
+      if (roomMode && window.hemmaDeskCfg && window.hemmaDeskCfg(this._hass) === undefined && (this._catWait = (this._catWait || 0) + 1) < 40) {
+        setTimeout(() => { if (this._showing) { this._ensureAutoSections(); this._sortSectionGrids(); } }, 150);
+        return;
+      }
       const rooms = [];
       let favs = null;
       let pending = null; // last seen room header
@@ -1268,6 +1273,19 @@
           }
           if (buckets.has('lights') && window.hemmaExpandLights) {
             buckets.set('lights', window.hemmaExpandLights(this._hass?.states || {}, roomMode, buckets.get('lights')));
+          }
+          // The popup lists every light the room's badge counts: the room's group and light rows too, each group opened into its lights.
+          const own = window.hemmaRoomLightIds ? window.hemmaRoomLightIds(this._hass, { key: window.hemmaHome.keyOf(roomMode) }) : [];
+          if (own.length) {
+            const have = new Set((buckets.get('lights') || []).map((c) => c.entity));
+            const pre = String(roomMode).toLowerCase() + ' ';
+            const more = own.filter((id) => !have.has(id)).map((id) => {
+              const fn = String(this._hass.states[id]?.attributes?.friendly_name || '');
+              const card = { type: 'custom:button-card', template: 'hemma_light', entity: id, variables: { as_light: true } };
+              if (fn.toLowerCase().indexOf(pre) === 0 && fn.length > pre.length) card.name = fn.slice(pre.length);
+              return card;
+            });
+            if (more.length) buckets.set('lights', (buckets.get('lights') || []).concat(more));
           }
           const keys = ROOM_SECTION_ORDER.filter((k) => buckets.has(k));
           if (buckets.has(ROOM_SECTION_OTHER)) keys.push(ROOM_SECTION_OTHER);

@@ -151,7 +151,12 @@ hemma_badge_light_group:
       const more = wholeHome && window.hemmaHomeLightIds ? window.hemmaHomeLightIds(hass) : [];
 
       const seen = new Set();
-      const eids = [...new Set(cfgEids.concat(more).flatMap(eid => units(eid, seen)))];
+      let eids = [...new Set(cfgEids.concat(more).flatMap(eid => units(eid, seen)))];
+      // A room's badge counts its group's lights and its light rows and tiles, each group opened into its lights.
+      if (!wholeHome && window.hemmaRoomLightIds) {
+        const rl = window.hemmaRoomLightIds(hass, { path: seg[1] });
+        if (rl.length) eids = rl;
+      }
 
       const onCount = eids.filter(eid => hass.states[eid]?.state === 'on').length;
       const T = window._hemmaT || ((k, en, v) => String(en).replace(/\{(\w+)\}/g,

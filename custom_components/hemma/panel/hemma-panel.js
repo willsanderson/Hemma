@@ -1115,7 +1115,7 @@ function syncRoomChips(pair) {
         set("aqi_room_name", sec.name);
       }
     }
-    if (V.show_lights !== false) set("lights_entity", V.light_group_entity);
+    if (V.show_lights !== false) set("lights_entity", V.light_group_entity || [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => V["light_entity_" + n]).find(Boolean));
     chips[key] = next;
     if (next.temp_entity || next.humidity_entity || next.entity_quality
       || next.lights_entity || next.motion_entity) filled++;
@@ -17327,6 +17327,25 @@ class HemmaPanel extends HTMLElement {
     return [...ids].filter((id) => !set.has(id));
   }
 
+  // The lights one room's Lights badge and popup cover: its group and "Light N" rows plus its light tiles, each group opened into
+  // the lights in it, once each, the available ones only (hemma-core hemmaRoomLightIds is the dashboard's twin).
+  _roomLightIds(room) {
+    const S = (this._hass && this._hass.states) || {}, V = (room && room.variables) || {}, seen = new Set();
+    const kids = (id) => { const m = ((S[id] || {}).attributes || {}).entity_id; return Array.isArray(m) ? m.filter((x) => typeof x === "string" && x.indexOf("light.") === 0) : []; };
+    const leaf = (id) => { if (seen.has(id)) return []; seen.add(id); const k = kids(id); return k.length ? k.flatMap(leaf) : [id]; };
+    const base = [V.light_group_entity].concat([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => V["light_entity_" + n]))
+      .concat(((room && room.tiles) || []).filter((t) => t && t.entity && (t.variables || {}).enabled !== false && tileCategory(t) === "lights").map((t) => t.entity))
+      .filter((id) => typeof id === "string" && id);
+    return base.flatMap(leaf).filter((id) => S[id] && S[id].state !== "unavailable" && S[id].state !== "unknown");
+  }
+
+  // The desktop room behind a phone section, by name.
+  _wideRoomByName(name) {
+    const rooms = ((((this._pair || {}).desktop || {}).compact || {}).rooms) || [];
+    const k = roomKeyOf(name);
+    return rooms.find((r) => roomKeyOf(r.name) === k) || null;
+  }
+
   _homeLightIds(phone) {
     const S = (this._hass && this._hass.states) || {}, ids = [];
     (((this._state || {}).compact || {}).rooms || []).forEach((r) => {
@@ -17519,12 +17538,14 @@ class HemmaPanel extends HTMLElement {
       : (Array.isArray(members) && members.length ? members.filter(Boolean) : (grp ? [grp] : []));
     if (on("show_lights") && (grp || listed.length || extraLights.length)) {
       const seenL = new Set();
-      const units = [...new Set((listed.length ? listed : (grp ? [grp] : [])).concat(extraLights).flatMap((e) => lightUnits(this._hass.states, e, seenL)))];
+      const isHome = (opts && opts.home) || ((((this._state || {}).compact || {}).rooms || [])[0] === room);
+      const units = isHome ? [...new Set((listed.length ? listed : (grp ? [grp] : [])).concat(extraLights).flatMap((e) => lightUnits(this._hass.states, e, seenL)))]
+        : this._roomLightIds(room);
       const lit = units.filter((e) => (st(e) || {}).state === "on").length;
       out.push({
         id: "lights", label: _studioT("filter.lights", "Lights"), icon: "light", color: LIGHT, dim: !lit,
         text: lit === 0 ? _studioT("lights.all_off", "All Off") : lit === units.length ? _studioT("lights.all_on", "All On") : _studioT("lights.n_on", "{n} On", { n: lit }),
-        subs: lights.map((e) => {
+        subs: (isHome ? lights : units).map((e) => {
           const l = st(e) || {};
           const br = l.attributes && l.attributes.brightness;
           return {
@@ -18643,7 +18664,9 @@ class HemmaPanel extends HTMLElement {
       if (lit) {
         const S = this._hass.states;
         const mems = ((S[e.lights_entity] || {}).attributes || {}).entity_id;
-        const eids = Array.isArray(mems) && mems.length ? mems : [e.lights_entity];
+        const wideR = this._wideRoomByName(roomPop);
+        const own = wideR ? this._roomLightIds(wideR) : [];
+        const eids = own.length ? own : Array.isArray(mems) && mems.length ? mems : [e.lights_entity];
         const n = eids.filter((id) => (S[id] || {}).state === "on").length;
         bareChip({ icon: "light", label: _studioT("filter.lights", "Lights"), glyphHeight: "90%",
           color: n ? lit.color : "var(--badge-title-inactive, rgba(255,255,255,0.55))",
@@ -18678,6 +18701,13 @@ class HemmaPanel extends HTMLElement {
         if (!buckets.has(k)) buckets.set(k, []);
         buckets.get(k).push(t);
       });
+      // The Lights section lists every light the room's badge counts, each group opened into its lights.
+      const wideL = this._wideRoomByName(roomPop);
+      const own = wideL ? this._roomLightIds(wideL) : [];
+      if (own.length) {
+        const named = (id) => String(((this._hass.states[id] || {}).attributes || {}).friendly_name || id);
+        buckets.set("lights", own.map((id) => ({ template: "hemma_light", entity: id, name: named(id), variables: { mobile_filter_category: "lights", as_light: true } })));
+      }
       ROOM_SECTION_ORDER.concat("other").filter((k) => buckets.has(k)).forEach((k, i) => {
         const head = document.createElement("div");
         head.className = "mp-head";
@@ -18979,7 +19009,9 @@ class HemmaPanel extends HTMLElement {
     const lit = rm.find((b) => b.id === "lights");
     if (lit && e.lights_entity) {
       const mems = ((S[e.lights_entity] || {}).attributes || {}).entity_id;
-      const eids = Array.isArray(mems) && mems.length ? mems : [e.lights_entity];
+      const wideR = this._wideRoomByName(name);
+      const own = wideR ? this._roomLightIds(wideR) : [];
+      const eids = own.length ? own : Array.isArray(mems) && mems.length ? mems : [e.lights_entity];
       const n = eids.filter((id) => (S[id] || {}).state === "on").length;
       crow.appendChild(this._paintChip({ icon: "light", label: _studioT("filter.lights", "Lights"), glyphHeight: "90%", bare: true,
         color: n ? lit.color : "var(--badge-title-inactive, rgba(255,255,255,0.55))",
