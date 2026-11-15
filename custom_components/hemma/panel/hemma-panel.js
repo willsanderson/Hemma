@@ -952,7 +952,7 @@ function tileTwinKey(t) {
     const card = (t.custom_fields || {}).card || {};
     return stable([t.template, t.name || "", card.type || "", card.entity || ""]);
   }
-  return stable([t.template || t.type, t.entity || ""]);
+  return stable(t.entity ? [t.template || t.type, t.entity] : [t.template || t.type, "", t.name || ""]);
 }
 
 // Matched by template AND entity, never by position.
@@ -1181,7 +1181,8 @@ function syncPairTiles(pair) {
     (room.tiles || []).forEach((t) => {
       // No entity means a tile nobody has finished setting up, except a hosted
       // card, whose entity is the card's business rather than the host's.
-      if (!t || (!t.entity && t.template !== CUSTOM_TEMPLATE)) return;
+      // A tile built on the user's own template (not a hemma_ one) keeps its entity in the template, so it goes too.
+      if (!t || (!t.entity && t.template !== CUSTOM_TEMPLATE && !(typeof t.template === "string" && t.template && !/^hemma_/.test(t.template)))) return;
       const key = tileTwinKey(t);
       if (onPhone.has(key)) return;
       onPhone.add(key);
