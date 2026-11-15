@@ -16645,7 +16645,7 @@ class HemmaPanel extends HTMLElement {
         { id: CUSTOM_IN_ROW, label: _sx("In the tile row") },
         { id: CUSTOM_BELOW, label: _sx("Below the tiles") },
       ] : null,
-      validate: (v) => { try { parseCardText(v); return ""; } catch (e) { return e.message; } },
+      validate: (v) => { try { parsePasted(v); return ""; } catch (e) { return e.message; } },
     });
     if (!got) return;
     const text = typeof got === "string" ? got : got.value;
