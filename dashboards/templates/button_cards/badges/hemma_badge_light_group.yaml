@@ -145,8 +145,13 @@ hemma_badge_light_group:
         return mems.flatMap(m => units(m, seen));
       };
 
+      // The whole-home badge (the Home page and the phone's row) counts every light on the Lights page, not only those set on this card.
+      const seg = location.pathname.split('/').filter(Boolean);
+      const wholeHome = /-mobile$/i.test(seg[0] || '') || seg[1] === 'home';
+      const more = wholeHome && window.hemmaHomeLightIds ? window.hemmaHomeLightIds(hass) : [];
+
       const seen = new Set();
-      const eids = [...new Set(cfgEids.flatMap(eid => units(eid, seen)))];
+      const eids = [...new Set(cfgEids.concat(more).flatMap(eid => units(eid, seen)))];
 
       const onCount = eids.filter(eid => hass.states[eid]?.state === 'on').length;
       const T = window._hemmaT || ((k, en, v) => String(en).replace(/\{(\w+)\}/g,

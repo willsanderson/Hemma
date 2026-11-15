@@ -1727,6 +1727,45 @@ window.hemmaMenuGlass = {
     return out;
   };
 
+  // The desktop dashboard's room settings (light slots, tiles), read once and kept: the whole-home Lights count and page need
+  // them, and the phone dashboard does not carry them. Undefined until it arrives, null if it could not be read.
+  window.hemmaDeskCfg = function (hass) {
+    if (window._hemmaDeskCfg === undefined && !window._hemmaDeskBusy && hass && hass.callWS) {
+      window._hemmaDeskBusy = true;
+      const seg = String(location.pathname.split('/')[1] || '').replace(/[-_]mobile$/i, '');
+      Promise.resolve(hass.callWS({ type: 'lovelace/config', url_path: seg && seg !== 'lovelace' ? seg : null }))
+        .then((c) => { window._hemmaDeskCfg = c || null; }, () => { window._hemmaDeskCfg = null; })
+        .then(() => {
+          // The Lights badges were drawn before it arrived: draw them again.
+          const roots = [document];
+          for (let i = 0; i < roots.length; i++) {
+            roots[i].querySelectorAll('*').forEach((n) => {
+              if (n.shadowRoot) roots.push(n.shadowRoot);
+              if (n.tagName === 'BUTTON-CARD' && n._config && n.requestUpdate && [].concat(n._config.template || []).some((t) => String(t).indexOf('hemma_badge_light') === 0)) n.requestUpdate();
+            });
+          }
+        });
+    }
+    return window._hemmaDeskCfg;
+  };
+  // Every light the whole-home Lights badge and page cover: the lights set on each room card and the light tiles of every
+  // room. A light that is unavailable is not one of them.
+  window.hemmaHomeLightIds = function (hass) {
+    const H = window.hemmaHome, cfg = window.hemmaDeskCfg(hass);
+    if (!H || !cfg || !hass) return [];
+    const st = hass.states || {}, ids = [];
+    H.read(cfg, hass).rooms.forEach((r) => { ids.push(...((r.slots && r.slots.lights) || [])); });
+    // The light tiles of every room, wherever the row sits in the view.
+    const walk = (x) => {
+      if (Array.isArray(x)) { x.forEach(walk); return; }
+      if (!x || typeof x !== 'object') return;
+      if (x.type === 'custom:button-card' && typeof x.entity === 'string' && x.entity.indexOf('light.') === 0 && (x.variables || {}).enabled !== false) ids.push(x.entity);
+      Object.keys(x).forEach((k) => { if (k !== 'button_card_templates') walk(x[k]); });
+    };
+    walk(cfg.views);
+    return [...new Set(ids)].filter((id) => st[id] && st[id].state !== 'unavailable' && st[id].state !== 'unknown');
+  };
+
   if (typeof window._hemmaSameGame !== 'function') {
     window._hemmaSameGame = function (x, y) {
       const flat = (v) => String(v || '').toLowerCase()

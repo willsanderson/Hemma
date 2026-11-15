@@ -17239,6 +17239,18 @@ class HemmaPanel extends HTMLElement {
     this._armSceneMenuDismiss();
   }
 
+  // The lights the whole-home Lights badge and page cover: those set on each room card and the light tiles of every room,
+  // available ones only (hemma-core hemmaHomeLightIds).
+  _homeLightIds() {
+    const S = (this._hass && this._hass.states) || {}, ids = [];
+    (((this._state || {}).compact || {}).rooms || []).forEach((r) => {
+      const V = r.variables || {};
+      for (let n = 1; n <= 10; n++) if (typeof V["light_entity_" + n] === "string" && V["light_entity_" + n]) ids.push(V["light_entity_" + n]);
+      (r.tiles || []).forEach((t) => { if (t && t.entity && (t.variables || {}).enabled !== false && tileCategory(t) === "lights") ids.push(t.entity); });
+    });
+    return [...new Set(ids)].filter((id) => S[id] && S[id].state !== "unavailable" && S[id].state !== "unknown");
+  }
+
   _miniModel(room, opts) {
     const forPhone = !!(opts && opts.phone);
     const V = room.variables || {};
@@ -17414,12 +17426,14 @@ class HemmaPanel extends HTMLElement {
 
     const grp = V.light_group_entity;
     const listed = list("light_entity_", 10);
+    // The whole-home badge (the first room, and the phone's row) counts every light the Lights page lists, as the dashboard does.
+    const extraLights = (opts && opts.home) || ((((this._state || {}).compact || {}).rooms || [])[0] === room) ? this._homeLightIds() : [];
     const members = grp ? ((st(grp) || {}).attributes || {}).entity_id : null;
     const lights = listed.length ? listed
       : (Array.isArray(members) && members.length ? members.filter(Boolean) : (grp ? [grp] : []));
-    if (on("show_lights") && (grp || listed.length)) {
+    if (on("show_lights") && (grp || listed.length || extraLights.length)) {
       const seenL = new Set();
-      const units = [...new Set((listed.length ? listed : [grp]).flatMap((e) => lightUnits(this._hass.states, e, seenL)))];
+      const units = [...new Set((listed.length ? listed : (grp ? [grp] : [])).concat(extraLights).flatMap((e) => lightUnits(this._hass.states, e, seenL)))];
       const lit = units.filter((e) => (st(e) || {}).state === "on").length;
       out.push({
         id: "lights", label: _studioT("filter.lights", "Lights"), icon: "light", color: LIGHT, dim: !lit,
@@ -18232,7 +18246,7 @@ class HemmaPanel extends HTMLElement {
     });
     const wideRoom = (wideHome.find((r) => r.path === "home") || wideHome[0] || {});
     const border = this._badgeOrder(wideRoom);
-    const model = this._miniModel({ variables: { ...bvv, ...wideV } }, { phone: true })
+    const model = this._miniModel({ variables: { ...bvv, ...wideV } }, { phone: true, home: true })
       .filter((b) => PHONE_FILTERS.indexOf(b.id) !== -1 || String(b.id).indexOf("status:") === 0)
       .sort((a, b) => border.indexOf(String(a.id).split(":")[0]) - border.indexOf(String(b.id).split(":")[0]));
 
@@ -18591,8 +18605,10 @@ class HemmaPanel extends HTMLElement {
       });
     }
 
-    // Then the sections, in the order the phone scrolls them.
-    (roomPop ? [] : (st.compact.rooms || [])).forEach((sec, n) => {
+    // Then the sections, in the order the phone scrolls them. The whole-home Lights and Security popups list what their badge counts.
+    let phoneSecs = roomPop ? [] : (st.compact.rooms || []);
+    if (!roomPop && (this._phoneFilter === "lights" || this._phoneFilter === "security")) phoneSecs = this._previewHomeCategory(phoneSecs.slice(), this._phoneFilter, liveTiles);
+    phoneSecs.forEach((sec, n) => {
       const keep = (t) => {
         if (!this._phoneFilter) return true;
         const cat = tileCategory(t);
@@ -19624,7 +19640,9 @@ class HemmaPanel extends HTMLElement {
             : (TILE_COLOR[kind] || TILE_TINT));
         }
       }
-      el.querySelector(".mname").textContent = tile.name || (type && _sx(type.label)) || _sx("Tile");
+      el.querySelector(".mname").textContent = tile.name
+        || String((((this._hass && this._hass.states) || {})[tile.entity] || {}).attributes && this._hass.states[tile.entity].attributes.friendly_name || "")
+        || (type && _sx(type.label)) || _sx("Tile");
       el.querySelector(".mstate").textContent =
         tileStateWord(kind, tile, ent, this._hass.states, this._hass);
       const ring = tileProgressOn(tile, ent);
