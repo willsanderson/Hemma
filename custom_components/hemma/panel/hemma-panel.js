@@ -514,6 +514,12 @@ const HV_CAT = { climate: "#00C3D0", lights: "#FFCC00", presence: "#0A84FF", peo
 const PV_CATS = [["climate", "fan", "Climate"], ["lights", "light", "Lights"], ["presence", "person", "People"],
   ["media", "media", "Media"], ["security", "lock-fill", "Security"], ["energy", "energy", "Energy"]];
 
+const ENTITY_CATEGORY = {
+  light: "lights", media_player: "media", remote: "media",
+  climate: "climate", fan: "climate", humidifier: "climate", cover: "climate", water_heater: "climate",
+  lock: "security", alarm_control_panel: "security", camera: "security",
+};
+
 const tileCategory = (tile) => {
   const direct = (tile.variables || {}).mobile_filter_category;
   if (direct !== null && direct !== undefined) return direct;
@@ -523,13 +529,10 @@ const tileCategory = (tile) => {
     if (!Object.prototype.hasOwnProperty.call(FILTER_CATEGORIES, name)) continue;
     if (FILTER_CATEGORIES[name] !== "by_entity") return FILTER_CATEGORIES[name];
     // hemma-core's hemmaEntityCategory: Entity Actions files under its entity's kind.
-    return ({
-      light: "lights", media_player: "media", remote: "media",
-      climate: "climate", fan: "climate", humidifier: "climate", cover: "climate", water_heater: "climate",
-      lock: "security", alarm_control_panel: "security", camera: "security",
-    })[String(tile.entity || "").split(".")[0]] || null;
+    return ENTITY_CATEGORY[String(tile.entity || "").split(".")[0]] || null;
   }
-  return null;
+  // A template the table does not know files by its entity, as the dashboard does.
+  return ENTITY_CATEGORY[String(tile.entity || "").split(".")[0]] || null;
 };
 
 const roomKeyOf = (name) =>

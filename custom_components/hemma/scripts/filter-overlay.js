@@ -334,7 +334,8 @@
       if (cats[n] !== 'by_entity') return cats[n];
       return window.hemmaEntityCategory ? window.hemmaEntityCategory(cfg?.entity) : null;
     }
-    return null;
+    // A template the table does not know files by its entity, like an Entity tile.
+    return cfg?.entity && window.hemmaEntityCategory ? window.hemmaEntityCategory(cfg.entity) : null;
   }
 
   const ROOM_SECTION_ORDER = ['climate', 'lights', 'media', 'security', 'energy', 'presence'];

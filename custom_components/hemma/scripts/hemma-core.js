@@ -1659,12 +1659,22 @@ window.hemmaMenuGlass = {
   };
 
   // A tile that takes any entity (Entity Actions) files under its entity's kind; 'by_entity' in the table above.
+  // A tile on a template the table does not know (a plain Entity tile, say) files the same way, by its entity.
   window.hemmaEntityCategory = function (id) {
-    return ({
+    const dom = String(id || '').split('.')[0];
+    const byDomain = ({
       light: 'lights', media_player: 'media', remote: 'media',
       climate: 'climate', fan: 'climate', humidifier: 'climate', cover: 'climate', water_heater: 'climate',
       lock: 'security', alarm_control_panel: 'security', camera: 'security',
-    })[String(id || '').split('.')[0]] || null;
+    })[dom];
+    if (byDomain) return byDomain;
+    // A door, window or garage sensor files under Security, by its device class.
+    if (dom === 'binary_sensor') {
+      const ha = document.querySelector('home-assistant');
+      const st = ha && ha.hass && ha.hass.states && ha.hass.states[id];
+      return ({ door: 'security', window: 'security', garage_door: 'security', opening: 'security', lock: 'security', tamper: 'security' })[st && st.attributes && st.attributes.device_class] || null;
+    }
+    return null;
   };
 
   if (typeof window._hemmaSameGame !== 'function') {
@@ -4145,7 +4155,7 @@ window.hemmaMenuGlass = {
         const d = c && c.variables && c.variables.mobile_filter_category;
         if (d !== null && d !== undefined) return d;
         for (const t of [].concat((c && c.template) || [])) if (t && cats[t]) return cats[t] === 'by_entity' ? window.hemmaEntityCategory(c.entity) : cats[t];
-        return null;
+        return c && c.entity ? window.hemmaEntityCategory(c.entity) : null;
       };
       const isHeader = (c) => [].concat((c && c.template) || []).indexOf('hemma_mobile_header') >= 0;
       let explicit = null;
@@ -4589,7 +4599,7 @@ window.hemmaMenuGlass = {
         const d = c && c.variables && c.variables.mobile_filter_category;
         if (d !== null && d !== undefined) return d;
         for (const t of [].concat((c && c.template) || [])) if (t && cats[t]) return cats[t] === 'by_entity' ? window.hemmaEntityCategory(c.entity) : cats[t];
-        return null;
+        return c && c.entity ? window.hemmaEntityCategory(c.entity) : null;
       };
       const ORDER = ['climate', 'lights', 'media', 'security', 'energy', 'presence', 'other'];
       const EN = { climate: 'Climate', lights: 'Lights', media: 'Media', security: 'Security', energy: 'Energy', presence: 'People', other: 'Other' };

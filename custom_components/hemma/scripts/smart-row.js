@@ -146,6 +146,8 @@ function getFilterCategory(card) {
     const slug = String(cfg.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
     if (Object.prototype.hasOwnProperty.call(HEADER_CATEGORIES, slug)) return HEADER_CATEGORIES[slug];
   }
+  // A template the table does not know files by its entity, like an Entity tile.
+  if (cfg.entity && window.hemmaEntityCategory) return window.hemmaEntityCategory(cfg.entity);
   return null;
 }
 
