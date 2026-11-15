@@ -1282,7 +1282,7 @@
             const more = own.filter((id) => !have.has(id)).map((id) => {
               const fn = String(window.hemmaEntityName(this._hass, id) || '');
               const card = { type: 'custom:button-card', template: 'hemma_light', entity: id, variables: { as_light: true } };
-              if (fn.toLowerCase().indexOf(pre) === 0 && fn.length > pre.length) card.name = fn.slice(pre.length);
+              if (fn) card.name = fn.toLowerCase().indexOf(pre) === 0 && fn.length > pre.length ? fn.slice(pre.length) : fn;
               return card;
             });
             if (more.length) buckets.set('lights', (buckets.get('lights') || []).concat(more));

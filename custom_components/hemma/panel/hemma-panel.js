@@ -14237,9 +14237,11 @@ class HemmaPanel extends HTMLElement {
         cell.onclick = (ev) => {
           if (ev && ev.stopPropagation) ev.stopPropagation();
           this._armRow(row, kindLabel(f) || _sx(f.label), () => {
-            if (sec.bid === "lights" && this._room === 0) this._dropHomeLight(sectionFields(sec).filter((x) => unitOf(x) === u).map((x) => room.variables[x.key]).filter(Boolean));
+            const gone = sectionFields(sec).filter((x) => unitOf(x) === u).map((x) => room.variables[x.key]).filter(Boolean);
+            if (sec.bid === "lights" && this._room === 0) this._dropHomeLight(gone);
             sectionFields(sec).filter((x) => unitOf(x) === u).forEach((x) => setVar(x.key, undefined, x));
             this._revealed.delete(room.path + "|" + u);
+            if (sec.bid === "lights" && this._room !== 0) this._pruneHomeLight(gone);
             this._renderForm();
           });
         };
@@ -17292,6 +17294,19 @@ class HemmaPanel extends HTMLElement {
       for (let n = 1; n <= 10; n++) if (!V["light_entity_" + n]) { V["light_entity_" + n] = id; break; }
     });
     if (wasClean) { this._clean = this._print(); this._lastPrint = this._clean; this._shadow = this._snap(); }
+  }
+
+  // A light taken out of its room that no other room has leaves the Home list too (its row there was only the page's own).
+  _pruneHomeLight(ids) {
+    const rooms = (((this._state || {}).compact || {}).rooms || []), home = rooms[0], V = (home && home.variables) || {};
+    ids.forEach((id) => {
+      const used = rooms.slice(1).some((r) => {
+        const v = r.variables || {};
+        return [v.light_group_entity].concat([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => v["light_entity_" + n])).indexOf(id) >= 0
+          || (r.tiles || []).some((t) => t && t.entity === id && (t.variables || {}).enabled !== false);
+      });
+      if (!used) for (let n = 1; n <= 10; n++) if (V["light_entity_" + n] === id) delete V["light_entity_" + n];
+    });
   }
 
   // Taking a light out of the Home list takes it off the page: its slot on any room card is cleared and its tiles are switched off.

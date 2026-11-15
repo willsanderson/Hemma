@@ -1655,14 +1655,19 @@ window.hemmaMenuGlass = {
     const used = new Set();
     list.forEach((c) => {
       const ids = c.entity ? members(c.entity).filter((x) => x.indexOf('light.') === 0) : [];
-      if (ids.length <= 1 && !(ids[0] && ids[0] !== c.entity)) { cards.push(c); return; }
+      if (ids.length <= 1 && !(ids[0] && ids[0] !== c.entity)) {
+        // A single light without a name of its own shows its own name, not the device's in front of it.
+        const ha1 = document.querySelector('home-assistant'), own = c.entity && !c.name && ha1 && ha1.hass ? window.hemmaEntityName(ha1.hass, c.entity) : '';
+        cards.push(own ? Object.assign({}, c, { name: own }) : c);
+        return;
+      }
       ids.forEach((id) => {
         if (used.has(id)) return;
         used.add(id);
         const ha = document.querySelector('home-assistant');
         const fn = String((ha && ha.hass && window.hemmaEntityName(ha.hass, id)) || (st[id] && st[id].attributes && st[id].attributes.friendly_name) || '');
         const card = { type: 'custom:button-card', template: 'hemma_light', entity: id, variables: { as_light: true } };
-        if (fn.toLowerCase().indexOf(pre) === 0 && fn.length > pre.length) card.name = fn.slice(pre.length);
+        if (fn) card.name = fn.toLowerCase().indexOf(pre) === 0 && fn.length > pre.length ? fn.slice(pre.length) : fn;
         cards.push(card);
       });
     });
@@ -1750,11 +1755,12 @@ window.hemmaMenuGlass = {
   // The desktop dashboard's room settings (light slots, tiles), read once and kept: the whole-home Lights count and page need
   // them, and the phone dashboard does not carry them. Undefined until it arrives, null if it could not be read.
   window.hemmaDeskCfg = function (hass) {
-    if (window._hemmaDeskCfg === undefined && !window._hemmaDeskBusy && hass && hass.callWS) {
+    // Read again after half a minute, so a dashboard saved from the Studio shows on a page that is already open.
+    if ((window._hemmaDeskCfg === undefined || Date.now() - (window._hemmaDeskAt || 0) > 30000) && !window._hemmaDeskBusy && hass && hass.callWS) {
       window._hemmaDeskBusy = true;
       const seg = String(location.pathname.split('/')[1] || '').replace(/[-_]mobile$/i, '');
       Promise.resolve(hass.callWS({ type: 'lovelace/config', url_path: seg && seg !== 'lovelace' ? seg : null }))
-        .then((c) => { window._hemmaDeskCfg = c || null; }, () => { window._hemmaDeskCfg = null; })
+        .then((c) => { window._hemmaDeskCfg = c || null; window._hemmaDeskAt = Date.now(); }, () => { window._hemmaDeskCfg = window._hemmaDeskCfg || null; window._hemmaDeskAt = Date.now(); })
         .then(() => {
           // The Lights badges were drawn before it arrived: draw them again.
           const roots = [document];
