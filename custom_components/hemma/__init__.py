@@ -222,25 +222,39 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.http.register_view(HemmaTemplatesView())
         hass.data[f"{DOMAIN}_views"] = True
 
-    # Remove first so a version bump re-registers cleanly instead of being skipped.
-    async_remove_panel(hass, PANEL_URL, warn_if_unknown=False)
-    async_remove_panel(hass, LEGACY_PANEL_URL, warn_if_unknown=False)
-    async_register_built_in_panel(
-        hass=hass,
-        component_name="custom",
-        sidebar_title=SIDEBAR_TITLE,
-        sidebar_icon=PANEL_ICON,
-        frontend_url_path=PANEL_URL,
-        require_admin=True,
-        config={
-            "_panel_custom": {
-                "name": "hemma-panel",
-                "embed_iframe": False,
-                "trust_external": False,
-                "module_url": f"{URL_BASE}/hemma-panel.js?v={VERSION}.{stamp}",
-            }
-        },
-    )
+    def _register_panel(stamp: int) -> None:
+        # Remove first so a version bump re-registers cleanly instead of being skipped.
+        async_remove_panel(hass, PANEL_URL, warn_if_unknown=False)
+        async_remove_panel(hass, LEGACY_PANEL_URL, warn_if_unknown=False)
+        async_register_built_in_panel(
+            hass=hass,
+            component_name="custom",
+            sidebar_title=SIDEBAR_TITLE,
+            sidebar_icon=PANEL_ICON,
+            frontend_url_path=PANEL_URL,
+            require_admin=True,
+            config={
+                "_panel_custom": {
+                    "name": "hemma-panel",
+                    "embed_iframe": False,
+                    "trust_external": False,
+                    "module_url": f"{URL_BASE}/hemma-panel.js?v={VERSION}.{stamp}",
+                }
+            },
+        )
+
+    _register_panel(stamp)
+
+    # Re-registered when the panel file changes, so a plain browser refresh loads the new code (the ?v= stamp was only set at startup).
+    last = {"stamp": stamp}
+
+    async def _restamp_panel(_now) -> None:
+        now = await hass.async_add_executor_job(_stamp)
+        if now != last["stamp"]:
+            last["stamp"] = now
+            _register_panel(now)
+
+    entry.async_on_unload(async_track_time_interval(hass, _restamp_panel, timedelta(seconds=20)))
     _LOGGER.debug("Registered Hemma panel at /%s", PANEL_URL)
 
     return True

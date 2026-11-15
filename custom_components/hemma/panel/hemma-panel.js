@@ -13737,6 +13737,7 @@ class HemmaPanel extends HTMLElement {
   _renderForm() {
     this._disarmRow();
     const room = this._state && this._state.compact.rooms[this._room];
+    this._syncLightSlots();
     this._markDirty();
     if (!room) return;
 
@@ -14226,6 +14227,7 @@ class HemmaPanel extends HTMLElement {
         cell.onclick = (ev) => {
           if (ev && ev.stopPropagation) ev.stopPropagation();
           this._armRow(row, kindLabel(f) || _sx(f.label), () => {
+            if (sec.bid === "lights" && this._room === 0) this._dropHomeLight(sectionFields(sec).filter((x) => unitOf(x) === u).map((x) => room.variables[x.key]).filter(Boolean));
             sectionFields(sec).filter((x) => unitOf(x) === u).forEach((x) => setVar(x.key, undefined, x));
             this._revealed.delete(room.path + "|" + u);
             this._renderForm();
@@ -14605,7 +14607,7 @@ class HemmaPanel extends HTMLElement {
         plain.forEach((f) => tracked(f, fs));
       }
       // Read-only rows for what the page and badge also cover (tiles, areas, other rooms): nothing is saved, the list matches the preview.
-      const derived = this._room !== 0 ? [] : sec.bid === "security" ? this._securityNote() : sec.bid === "lights" ? this._lightsNote() : [];
+      const derived = this._room !== 0 ? [] : sec.bid === "security" ? this._securityNote() : [];
       derived.forEach((id) => {
         const row = document.createElement("div");
         row.className = "row";
@@ -17267,6 +17269,31 @@ class HemmaPanel extends HTMLElement {
   // available ones only (hemma-core hemmaHomeLightIds).
   // The Lights the Home badge and page cover beyond those named in its settings (the light tiles of every room and the lights
   // set on other rooms' cards), listed in a note so the settings and the preview show the same lights. Nothing is added.
+  // The Home room's light rows are the lights the page, badge and preview show: each one not yet named goes into the next free
+  // "Light N" row, so it has its icon and its remove button like any other. The saved baseline moves with it, so opening the
+  // Studio does not light up Save; the lights are written when the user saves for another reason.
+  _syncLightSlots() {
+    const home = ((((this._state || {}).compact || {}).rooms) || [])[0];
+    const extra = this._lightsNote();
+    if (!home || !extra.length) return;
+    const wasClean = !!this._clean && this._print() === this._clean;
+    const V = home.variables = home.variables || {};
+    extra.forEach((id) => {
+      for (let n = 1; n <= 10; n++) if (!V["light_entity_" + n]) { V["light_entity_" + n] = id; break; }
+    });
+    if (wasClean) { this._clean = this._print(); this._lastPrint = this._clean; this._shadow = this._snap(); }
+  }
+
+  // Taking a light out of the Home list takes it off the page: its slot on any room card is cleared and its tiles are switched off.
+  _dropHomeLight(ids) {
+    const gone = new Set(ids);
+    (((this._state || {}).compact || {}).rooms || []).forEach((r) => {
+      const V = r.variables || {};
+      for (let n = 1; n <= 10; n++) if (gone.has(V["light_entity_" + n])) delete V["light_entity_" + n];
+      (r.tiles || []).forEach((t) => { if (t && gone.has(t.entity) && tileCategory(t) === "lights") t.variables = { ...(t.variables || {}), enabled: false }; });
+    });
+  }
+
   _lightsNote() {
     const home = ((((this._state || {}).compact || {}).rooms) || [])[0];
     if (!home || !this._hass || (this._state || {}).surface === "mobile") return [];
