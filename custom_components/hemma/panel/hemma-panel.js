@@ -14013,8 +14013,7 @@ class HemmaPanel extends HTMLElement {
       const h2 = document.createElement("h2");
       h2.textContent = _sx(sec.label);
       head.appendChild(h2);
-      const note = this._room === 0 ? (sec.bid === "security" ? this._securityNote() : sec.bid === "lights" ? this._lightsNote() : "") : "";
-      const blurbText = [sec.blurb ? _sx(sec.blurb) : "", note].filter(Boolean).join(" ");
+      const blurbText = sec.blurb ? _sx(sec.blurb) : "";
       if (blurbText) {
         const p = document.createElement("p");
         p.className = "blurb";
@@ -14605,6 +14604,20 @@ class HemmaPanel extends HTMLElement {
       } else {
         plain.forEach((f) => tracked(f, fs));
       }
+      // Read-only rows for what the page and badge also cover (tiles, areas, other rooms): nothing is saved, the list matches the preview.
+      const derived = this._room !== 0 ? [] : sec.bid === "security" ? this._securityNote() : sec.bid === "lights" ? this._lightsNote() : [];
+      derived.forEach((id) => {
+        const row = document.createElement("div");
+        row.className = "row";
+        const lab = document.createElement("label");
+        lab.textContent = _sx(sec.bid === "security" ? "From areas and tiles" : "From tiles and rooms");
+        const inp = document.createElement("input");
+        inp.readOnly = true;
+        inp.disabled = true;
+        inp.value = String((((this._hass.states || {})[id] || {}).attributes || {}).friendly_name || id);
+        row.appendChild(lab); row.appendChild(inp);
+        fs.appendChild(row);
+      });
 
       const advanced = visible.filter((f) => f.advanced);
       const advOffer = offersFrom(units.filter((u) => !unitLive(u) && advUnit(u)
@@ -17256,14 +17269,11 @@ class HemmaPanel extends HTMLElement {
   // set on other rooms' cards), listed in a note so the settings and the preview show the same lights. Nothing is added.
   _lightsNote() {
     const home = ((((this._state || {}).compact || {}).rooms) || [])[0];
-    if (!home || !this._hass || (this._state || {}).surface === "mobile") return "";
+    if (!home || !this._hass || (this._state || {}).surface === "mobile") return [];
     const V = home.variables || {};
-    if (V.show_lights === false) return "";
+    if (V.show_lights === false) return [];
     const have = new Set([V.light_group_entity].concat([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => V["light_entity_" + n])).filter(Boolean));
-    const S = this._hass.states || {};
-    const extra = this._homeLightIds(false).filter((id) => !have.has(id));
-    if (!extra.length) return "";
-    return _sx("Also covers {n} lights from your tiles and rooms: {names}", { n: extra.length, names: extra.map((id) => String(((S[id] || {}).attributes || {}).friendly_name || id)).join(", ") });
+    return this._homeLightIds(false).filter((id) => !have.has(id));
   }
 
   // What the Home Security badge covers beyond what is set on its card: every door, window or garage sensor of an area and of a
@@ -17285,9 +17295,9 @@ class HemmaPanel extends HTMLElement {
       const s = t && t.entity && S[t.entity];
       if (s && t.entity.indexOf("binary_sensor.") === 0 && (t.variables || {}).enabled !== false && tileOnSurface(t, false) && OPEN.test(String((s.attributes || {}).device_class || ""))) ids.add(t.entity);
     }));
-    if (!ids.size) return "";
-    const names = [...ids].map((id) => String((S[id].attributes || {}).friendly_name || id));
-    return _sx("Also covers {n} doors and windows from your areas and tiles: {names}", { n: ids.size, names: names.join(", ") });
+    const V0 = ((((this._state || {}).compact || {}).rooms) || [])[0];
+    const set = new Set(Object.keys((V0 && V0.variables) || {}).filter((k) => /^security_/.test(k)).flatMap((k) => [].concat(V0.variables[k])));
+    return [...ids].filter((id) => !set.has(id));
   }
 
   _homeLightIds(phone) {
