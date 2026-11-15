@@ -1635,6 +1635,16 @@ window.hemmaMenuGlass = {
     };
   }
   // A light group's tile becomes one tile per member, room name dropped; a member that is a group itself stays one tile.
+  // A light is shown by its own name ("Cabinet"), not the device's name in front of it ("IR Remote Cabinet").
+  window.hemmaEntityName = function (hass, id) {
+    const s = hass && hass.states && hass.states[id], fn = s && s.attributes && s.attributes.friendly_name;
+    if (!fn || String(id).indexOf('light.') !== 0) return fn || '';
+    const reg = (hass.entities || {})[id] || {};
+    if (reg.name) return String(reg.name);
+    const dev = (hass.devices || {})[reg.device_id], dn = dev && (dev.name_by_user || dev.name);
+    return dn && String(fn).indexOf(dn + ' ') === 0 && String(fn).length > dn.length + 1 ? String(fn).slice(dn.length + 1) : String(fn);
+  };
+
   window.hemmaExpandLights = function (st, room, list) {
     const members = (id) => {
       const kids = st[id] && st[id].attributes && st[id].attributes.entity_id;
@@ -1649,7 +1659,8 @@ window.hemmaMenuGlass = {
       ids.forEach((id) => {
         if (used.has(id)) return;
         used.add(id);
-        const fn = String((st[id] && st[id].attributes && st[id].attributes.friendly_name) || '');
+        const ha = document.querySelector('home-assistant');
+        const fn = String((ha && ha.hass && window.hemmaEntityName(ha.hass, id)) || (st[id] && st[id].attributes && st[id].attributes.friendly_name) || '');
         const card = { type: 'custom:button-card', template: 'hemma_light', entity: id, variables: { as_light: true } };
         if (fn.toLowerCase().indexOf(pre) === 0 && fn.length > pre.length) card.name = fn.slice(pre.length);
         cards.push(card);
@@ -15781,7 +15792,12 @@ window.hemmaMenuGlass = {
 
   function tileFor(hass, id) {
     var d = id.split('.')[0], st = (hass.states || {})[id], dc = st && st.attributes && st.attributes.device_class;
-    if (TILE[d]) return { type: 'custom:button-card', template: TILE[d], entity: id };
+    if (TILE[d]) {
+      var tile = { type: 'custom:button-card', template: TILE[d], entity: id };
+      var own = d === 'light' && window.hemmaEntityName ? window.hemmaEntityName(hass, id) : '';
+      if (own) tile.name = own;
+      return tile;
+    }
     if (d === 'sensor' && dc === 'power') return { type: 'custom:button-card', template: 'hemma_energy', entity: id, variables: { entity_power: id } };
     var card = { type: 'custom:button-card', template: 'hemma_entity_actions', entity: id };
     var icon = SENSOR_ICON[dc] || (/air_quality|aqi/.test(id) ? 'aqi-medium' : null);

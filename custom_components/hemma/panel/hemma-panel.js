@@ -535,6 +535,16 @@ const tileCategory = (tile) => {
   return ENTITY_CATEGORY[String(tile.entity || "").split(".")[0]] || null;
 };
 
+// A light is shown by its own name ("Cabinet"), not with the device's name in front ("IR Remote Cabinet"). Twin: hemmaEntityName.
+const entName = (hass, id) => {
+  const s = hass && hass.states && hass.states[id], fn = s && s.attributes && s.attributes.friendly_name;
+  if (!fn || String(id).indexOf("light.") !== 0) return fn || "";
+  const reg = (hass.entities || {})[id] || {};
+  if (reg.name) return String(reg.name);
+  const dev = (hass.devices || {})[reg.device_id], dn = dev && (dev.name_by_user || dev.name);
+  return dn && String(fn).indexOf(dn + " ") === 0 && String(fn).length > dn.length + 1 ? String(fn).slice(dn.length + 1) : String(fn);
+};
+
 const roomKeyOf = (name) =>
   "room_" + String(name || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
 
@@ -14346,7 +14356,7 @@ class HemmaPanel extends HTMLElement {
             const l = document.createElement("label");
             const st = this._hass.states[id];
             l.textContent = many
-              ? ((st && st.attributes.friendly_name) || id)
+              ? (entName(this._hass, id) || id)
               : _sx(f.label);
             r.appendChild(l);
             const write = (v) => {
@@ -14616,7 +14626,7 @@ class HemmaPanel extends HTMLElement {
         const inp = document.createElement("input");
         inp.readOnly = true;
         inp.disabled = true;
-        inp.value = String((((this._hass.states || {})[id] || {}).attributes || {}).friendly_name || id);
+        inp.value = entName(this._hass, id) || id;
         row.appendChild(lab); row.appendChild(inp);
         fs.appendChild(row);
       });
@@ -15772,7 +15782,7 @@ class HemmaPanel extends HTMLElement {
 
   _prettyEntity(v) {
     const e = v && String(v).includes(".") && this._hass && this._hass.states[v];
-    return (e && e.attributes && e.attributes.friendly_name) || v;
+    return (e && entName(this._hass, v)) || v;
   }
 
   _boolSwitch(cur, boolDefault, onChange, label) {
@@ -16682,7 +16692,7 @@ class HemmaPanel extends HTMLElement {
       const hit = out.find((s) => !isFav(s) && String(s.name || "").trim().toLowerCase() === key);
       if (hit) hit.tiles = hit.tiles.concat(fresh); else out.push({ name: name, tiles: fresh, variables: {} });
     };
-    const named = (id) => String(((states[id] || {}).attributes || {}).friendly_name || id);
+    const named = (id) => entName(this._hass, id) || id;
     if (k === "lights") {
       const rooms = ((this._state || {}).compact || {}).rooms || [];
       const first = rooms[0];
@@ -17379,7 +17389,7 @@ class HemmaPanel extends HTMLElement {
     };
     const nameOf = (id) => {
       const e = st(id);
-      return (e && e.attributes && e.attributes.friendly_name) || String(id || "").split(".").pop().replace(/_/g, " ");
+      return (e && entName(this._hass, id)) || String(id || "").split(".").pop().replace(/_/g, " ");
     };
     const areaOf = (id) => {
       const H = this._hass || {};
@@ -18705,7 +18715,7 @@ class HemmaPanel extends HTMLElement {
       const wideL = this._wideRoomByName(roomPop);
       const own = wideL ? this._roomLightIds(wideL) : [];
       if (own.length) {
-        const named = (id) => String(((this._hass.states[id] || {}).attributes || {}).friendly_name || id);
+        const named = (id) => entName(this._hass, id) || id;
         buckets.set("lights", own.map((id) => ({ template: "hemma_light", entity: id, name: named(id), variables: { mobile_filter_category: "lights", as_light: true } })));
       }
       ROOM_SECTION_ORDER.concat("other").filter((k) => buckets.has(k)).forEach((k, i) => {
@@ -19569,7 +19579,7 @@ class HemmaPanel extends HTMLElement {
           const ids = t.entity ? members(t.entity).filter((x) => x.indexOf("light.") === 0) : [];
           if (ids.length <= 1 && !(ids[0] && ids[0] !== t.entity)) return [t];
           return ids.map((id) => {
-            const fn = String(((states[id] || {}).attributes || {}).friendly_name || id);
+            const fn = entName(this._hass, id) || id;
             return { template: "hemma_light", entity: id, variables: { as_light: true },
               name: fn.toLowerCase().indexOf(pre) === 0 && fn.length > pre.length ? fn.slice(pre.length) : fn };
           });
@@ -19759,7 +19769,7 @@ class HemmaPanel extends HTMLElement {
         }
       }
       el.querySelector(".mname").textContent = tile.name
-        || String((((this._hass && this._hass.states) || {})[tile.entity] || {}).attributes && this._hass.states[tile.entity].attributes.friendly_name || "")
+        || entName(this._hass, tile.entity)
         || (type && _sx(type.label)) || _sx("Tile");
       el.querySelector(".mstate").textContent =
         tileStateWord(kind, tile, ent, this._hass.states, this._hass);
