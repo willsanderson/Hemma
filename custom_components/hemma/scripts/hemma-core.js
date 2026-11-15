@@ -1680,6 +1680,15 @@ window.hemmaMenuGlass = {
   // The whole-home Lights or Security page (desktop page and phone popup alike) lists what its badge counts, once each:
   // the room tiles of that kind, the lights set on each room's card, and every door or window of an area. A light that
   // is unavailable is left out, and a light group stays the one tile it is.
+  // A tile or setting made for the phone only, or the desktop only, is left out of the other's list (variables.surfaces).
+  window.hemmaOnThisSurface = function (c) {
+    const v = (c && c.variables) || {};
+    if (v.enabled === false || v.enabled === 'false' || v.enabled === 0 || v.enabled === '0') return false;
+    const phone = /-mobile$/i.test(String(location.pathname.split('/')[1] || ''));
+    if (v.surfaces === 'phone') return phone;
+    if (v.surfaces === 'desktop') return !phone;
+    return true;
+  };
   window.hemmaMergeCategory = function (hass, sections, k, deskCfg) {
     const H = window.hemmaHome;
     if (!H || !hass || (k !== 'lights' && k !== 'security')) return sections;
@@ -1692,7 +1701,7 @@ window.hemmaMenuGlass = {
     const keep = (cards) => (cards || []).filter((c) => {
       const id = c && c.entity;
       if (!id) return true;
-      if (seen.has(id) || dead(c)) return false;
+      if (!window.hemmaOnThisSurface(c) || seen.has(id) || dead(c)) return false;
       seen.add(id);
       return true;
     });
@@ -1741,7 +1750,7 @@ window.hemmaMenuGlass = {
           for (let i = 0; i < roots.length; i++) {
             roots[i].querySelectorAll('*').forEach((n) => {
               if (n.shadowRoot) roots.push(n.shadowRoot);
-              if (n.tagName === 'BUTTON-CARD' && n._config && n.requestUpdate && [].concat(n._config.template || []).some((t) => String(t).indexOf('hemma_badge_light') === 0)) n.requestUpdate();
+              if (n.tagName === 'BUTTON-CARD' && n._config && n.requestUpdate && [].concat(n._config.template || []).some((t) => String(t).indexOf('hemma_badge_light') === 0)) n.requestUpdate('_config', {});
             });
           }
         });
@@ -1759,7 +1768,7 @@ window.hemmaMenuGlass = {
     const walk = (x) => {
       if (Array.isArray(x)) { x.forEach(walk); return; }
       if (!x || typeof x !== 'object') return;
-      if (x.type === 'custom:button-card' && typeof x.entity === 'string' && x.entity.indexOf('light.') === 0 && (x.variables || {}).enabled !== false) ids.push(x.entity);
+      if (x.type === 'custom:button-card' && typeof x.entity === 'string' && x.entity.indexOf('light.') === 0 && window.hemmaOnThisSurface(x)) ids.push(x.entity);
       Object.keys(x).forEach((k) => { if (k !== 'button_card_templates') walk(x[k]); });
     };
     walk(cfg.views);

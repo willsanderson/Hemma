@@ -16636,7 +16636,7 @@ class HemmaPanel extends HTMLElement {
   // The whole-home Lights or Security page in the preview, as the dashboard builds it (hemma-core _homeCategory): the room
   // tiles of the kind, the lights set on each room's card, and every door or window of an area, once each. A light that
   // is unavailable is left out, as it cannot be used.
-  _previewHomeCategory(ordered, k, live) {
+  _previewHomeCategory(ordered, k, live, phone) {
     const h = this._hass || {}, states = h.states || {}, seen = new Set(), out = [];
     const usable = (t) => {
       const id = t && t.entity;
@@ -16653,7 +16653,7 @@ class HemmaPanel extends HTMLElement {
       return !!s && String(t.entity).indexOf("binary_sensor.") === 0 && /^(door|window|garage_door|opening|gate|garage)$/.test(String((s.attributes || {}).device_class || ""));
     };
     ordered.forEach((sec) => {
-      const tiles = live(sec).filter((t) => (tileCategory(t) === k || (k === "security" && opening(t))) && usable(t));
+      const tiles = live(sec).filter((t) => tileOnSurface(t, !!phone) && (tileCategory(t) === k || (k === "security" && opening(t))) && usable(t));
       if (tiles.length) out.push({ ...sec, tiles: tiles, _kept: true });
     });
     const into = (name, tiles) => {
@@ -17241,12 +17241,12 @@ class HemmaPanel extends HTMLElement {
 
   // The lights the whole-home Lights badge and page cover: those set on each room card and the light tiles of every room,
   // available ones only (hemma-core hemmaHomeLightIds).
-  _homeLightIds() {
+  _homeLightIds(phone) {
     const S = (this._hass && this._hass.states) || {}, ids = [];
     (((this._state || {}).compact || {}).rooms || []).forEach((r) => {
       const V = r.variables || {};
       for (let n = 1; n <= 10; n++) if (typeof V["light_entity_" + n] === "string" && V["light_entity_" + n]) ids.push(V["light_entity_" + n]);
-      (r.tiles || []).forEach((t) => { if (t && t.entity && (t.variables || {}).enabled !== false && tileCategory(t) === "lights") ids.push(t.entity); });
+      (r.tiles || []).forEach((t) => { if (t && t.entity && (t.variables || {}).enabled !== false && tileOnSurface(t, !!phone) && tileCategory(t) === "lights") ids.push(t.entity); });
     });
     return [...new Set(ids)].filter((id) => S[id] && S[id].state !== "unavailable" && S[id].state !== "unknown");
   }
@@ -17427,7 +17427,7 @@ class HemmaPanel extends HTMLElement {
     const grp = V.light_group_entity;
     const listed = list("light_entity_", 10);
     // The whole-home badge (the first room, and the phone's row) counts every light the Lights page lists, as the dashboard does.
-    const extraLights = (opts && opts.home) || ((((this._state || {}).compact || {}).rooms || [])[0] === room) ? this._homeLightIds() : [];
+    const extraLights = (opts && opts.home) || ((((this._state || {}).compact || {}).rooms || [])[0] === room) ? this._homeLightIds(forPhone) : [];
     const members = grp ? ((st(grp) || {}).attributes || {}).entity_id : null;
     const lights = listed.length ? listed
       : (Array.isArray(members) && members.length ? members.filter(Boolean) : (grp ? [grp] : []));
@@ -18607,7 +18607,7 @@ class HemmaPanel extends HTMLElement {
 
     // Then the sections, in the order the phone scrolls them. The whole-home Lights and Security popups list what their badge counts.
     let phoneSecs = roomPop ? [] : (st.compact.rooms || []);
-    if (!roomPop && (this._phoneFilter === "lights" || this._phoneFilter === "security")) phoneSecs = this._previewHomeCategory(phoneSecs.slice(), this._phoneFilter, liveTiles);
+    if (!roomPop && (this._phoneFilter === "lights" || this._phoneFilter === "security")) phoneSecs = this._previewHomeCategory(phoneSecs.slice(), this._phoneFilter, liveTiles, true);
     phoneSecs.forEach((sec, n) => {
       const keep = (t) => {
         if (!this._phoneFilter) return true;
@@ -19425,7 +19425,7 @@ class HemmaPanel extends HTMLElement {
         .map((key) => ({ ...ordered[0], name: ROOM_SECTION_LABEL[key], tiles: buckets.get(key), _bucket: key }));
     }
     // The badge counts lights from each room's card and doors from the home's areas, so the page lists those too, once each.
-    if (!home && !scope && !roomName && (k === "lights" || k === "security")) ordered = this._previewHomeCategory(ordered, k, live);
+    if (!home && !scope && !roomName && (k === "lights" || k === "security")) ordered = this._previewHomeCategory(ordered, k, live, false);
     let scenesDue = home && !scope && this._scenesOn() && this._sceneList().length > 0;
     const scenesHere = () => {
       if (!scenesDue) return;
