@@ -844,6 +844,8 @@
 	"studio.edit_card_2": "Redigera kort",
   "studio.edit_code": "Redigera kod…",
   "studio.edit_code_2": "Redigera kod",
+  "studio.also_covers_doors": "Omfattar även {n} dörrar och fönster från dina områden och brickor: {names}",
+  "studio.also_covers_lights": "Omfattar även {n} lampor från dina brickor och rum: {names}",
   "studio.see_the_code": "Se koden…",
   "studio.template_keep_name": "Behåll namnet “{name}”: brickor som använder det skulle förlora sin mall.",
   "studio.template_is_card": "Det där är ett kort, inte en mall.",

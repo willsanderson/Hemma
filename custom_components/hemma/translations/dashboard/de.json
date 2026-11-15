@@ -844,6 +844,8 @@
 	"studio.edit_card_2": "Karte bearbeiten",
   "studio.edit_code": "Code bearbeiten …",
   "studio.edit_code_2": "Code bearbeiten",
+  "studio.also_covers_doors": "Deckt auch {n} Türen und Fenster aus Ihren Bereichen und Kacheln ab: {names}",
+  "studio.also_covers_lights": "Deckt auch {n} Lichter aus Ihren Kacheln und Räumen ab: {names}",
   "studio.see_the_code": "Siehe Code …",
   "studio.template_keep_name": "Behalte den Namen „{name}“: Kacheln, die ihn verwenden, würden ihre Vorlage verlieren.",
   "studio.template_is_card": "Das ist eine Karte, keine Vorlage.",

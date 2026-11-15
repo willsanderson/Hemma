@@ -13737,7 +13737,6 @@ class HemmaPanel extends HTMLElement {
   _renderForm() {
     this._disarmRow();
     const room = this._state && this._state.compact.rooms[this._room];
-    this._syncLightSlots();
     this._markDirty();
     if (!room) return;
 
@@ -14014,7 +14013,8 @@ class HemmaPanel extends HTMLElement {
       const h2 = document.createElement("h2");
       h2.textContent = _sx(sec.label);
       head.appendChild(h2);
-      const blurbText = sec.bid === "security" && this._room === 0 ? this._securityNote() : (sec.blurb ? _sx(sec.blurb) : "");
+      const note = this._room === 0 ? (sec.bid === "security" ? this._securityNote() : sec.bid === "lights" ? this._lightsNote() : "") : "";
+      const blurbText = [sec.blurb ? _sx(sec.blurb) : "", note].filter(Boolean).join(" ");
       if (blurbText) {
         const p = document.createElement("p");
         p.className = "blurb";
@@ -17252,27 +17252,18 @@ class HemmaPanel extends HTMLElement {
 
   // The lights the whole-home Lights badge and page cover: those set on each room card and the light tiles of every room,
   // available ones only (hemma-core hemmaHomeLightIds).
-  // The Home room's Lights list names every light the Lights page shows (those set on any room's card and the light tiles),
-  // so the list, the preview and the dashboard count the same. A light goes into the next free slot; none is ever removed.
-  _syncLightSlots() {
+  // The Lights the Home badge and page cover beyond those named in its settings (the light tiles of every room and the lights
+  // set on other rooms' cards), listed in a note so the settings and the preview show the same lights. Nothing is added.
+  _lightsNote() {
     const home = ((((this._state || {}).compact || {}).rooms) || [])[0];
-    if (!home || !this._hass || (this._state || {}).surface === "mobile") return false;
-    home.variables = home.variables || {};
-    const V = home.variables;
-    if (V.show_lights === false) return false;
+    if (!home || !this._hass || (this._state || {}).surface === "mobile") return "";
+    const V = home.variables || {};
+    if (V.show_lights === false) return "";
     const have = new Set([V.light_group_entity].concat([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => V["light_entity_" + n])).filter(Boolean));
-    let changed = false;
-    this._homeLightIds(false).filter((id) => !have.has(id)).forEach((id) => {
-      for (let n = 1; n <= 10; n++) {
-        if (V["light_entity_" + n]) continue;
-        V["light_entity_" + n] = id;
-        have.add(id);
-        changed = true;
-        this._mirrorToPair("light_entity_" + n, id, [home]);
-        break;
-      }
-    });
-    return changed;
+    const S = this._hass.states || {};
+    const extra = this._homeLightIds(false).filter((id) => !have.has(id));
+    if (!extra.length) return "";
+    return _sx("Also covers {n} lights from your tiles and rooms: {names}", { n: extra.length, names: extra.map((id) => String(((S[id] || {}).attributes || {}).friendly_name || id)).join(", ") });
   }
 
   // What the Home Security badge covers beyond what is set on its card: every door, window or garage sensor of an area and of a

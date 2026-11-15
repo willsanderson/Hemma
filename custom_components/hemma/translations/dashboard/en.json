@@ -844,6 +844,8 @@
   "studio.edit_card_2": "Edit card",
   "studio.edit_code": "Edit code…",
   "studio.edit_code_2": "Edit code",
+  "studio.also_covers_doors": "Also covers {n} doors and windows from your areas and tiles: {names}",
+  "studio.also_covers_lights": "Also covers {n} lights from your tiles and rooms: {names}",
   "studio.see_the_code": "See the code…",
   "studio.template_keep_name": "Keep the name “{name}”: tiles that use it would lose their template.",
   "studio.template_is_card": "That is a card, not a template.",
