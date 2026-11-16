@@ -2293,7 +2293,7 @@ window.hemmaMenuGlass = {
         const q = t.indexOf('?');
         if (q < 0) return t;
         const rest = t.slice(q + 1).split('&')
-          .filter((p) => p.slice(0, 6) !== 'token=' && p.slice(0, 8) !== 'authSig=')
+          .filter((p) => p.slice(0, 6) !== 'token=' && p.slice(0, 8) !== 'authSig=' && p.slice(0, 5) !== 'time=')
           .sort().join('&');
         return t.slice(0, q) + (rest ? '?' + rest : '');
       };
@@ -2302,8 +2302,10 @@ window.hemmaMenuGlass = {
         const e = V['show_media_player_' + i] && V['media_player_' + i];
         if (e) {
           const s = states[e]; const a = s?.attributes || {};
+          // A player that reports its position over and over (an updated_at that moves with the position unchanged) must not rebuild the
+          // Now Playing tiles each time: the position counts in 15 s steps, so a seek or a new track still does.
           parts.push(e + s?.state + (a.media_title || '') +
-            (a.media_position_updated_at || '') +
+            (a.media_position == null ? '' : Math.floor(Number(a.media_position) / 15)) +
             artSig(a.entity_picture || a.media_image_url || a.media_album_cover_url || a.image_url));
         }
       }
