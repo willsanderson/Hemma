@@ -1755,14 +1755,16 @@ window.hemmaMenuGlass = {
   // The desktop dashboard's room settings (light slots, tiles), read once and kept: the whole-home Lights count and page need
   // them, and the phone dashboard does not carry them. Undefined until it arrives, null if it could not be read.
   window.hemmaDeskCfg = function (hass) {
-    // Read again after half a minute, so a dashboard saved from the Studio shows on a page that is already open.
-    if ((window._hemmaDeskCfg === undefined || Date.now() - (window._hemmaDeskAt || 0) > 30000) && !window._hemmaDeskBusy && hass && hass.callWS) {
+    // Read again every few minutes, so a dashboard saved from the Studio shows on a page that is already open.
+    if ((window._hemmaDeskCfg === undefined || Date.now() - (window._hemmaDeskAt || 0) > 300000) && !window._hemmaDeskBusy && hass && hass.callWS) {
       window._hemmaDeskBusy = true;
       const seg = String(location.pathname.split('/')[1] || '').replace(/[-_]mobile$/i, '');
       Promise.resolve(hass.callWS({ type: 'lovelace/config', url_path: seg && seg !== 'lovelace' ? seg : null }))
-        .then((c) => { window._hemmaDeskCfg = c || null; window._hemmaDeskAt = Date.now(); }, () => { window._hemmaDeskCfg = window._hemmaDeskCfg || null; window._hemmaDeskAt = Date.now(); })
-        .then(() => {
-          // The Lights badges were drawn before it arrived: draw them again.
+        .then((c) => { const was = window._hemmaDeskSig; window._hemmaDeskCfg = c || null; window._hemmaDeskAt = Date.now(); window._hemmaDeskSig = c ? JSON.stringify(c.views || c).length + ':' + JSON.stringify(c.views || c).slice(0, 4000) + JSON.stringify(c.views || c).slice(-2000) : ''; return was !== window._hemmaDeskSig; },
+          () => { window._hemmaDeskCfg = window._hemmaDeskCfg || null; window._hemmaDeskAt = Date.now(); return false; })
+        .then((changed) => {
+          // The Lights badges were drawn before it arrived (or the dashboard changed): draw them again. Nothing changed: leave the page alone.
+          if (!changed) return;
           const roots = [document];
           for (let i = 0; i < roots.length; i++) {
             roots[i].querySelectorAll('*').forEach((n) => {
