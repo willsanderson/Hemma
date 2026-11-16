@@ -1978,7 +1978,9 @@ window.hemmaMenuGlass = {
           const p = new URL(full, location.origin);
           // authSig signs the exact param list, so editing the query of a signed URL 401s it.
           if (p.searchParams.has('authSig')) return full;
-          p.searchParams.delete('refresh');
+          // Cache-busting parameters that move on every report of some players (hass_agent's time=, a plain timestamp) would make the
+          // same picture look new each time and rebuild the tile.
+          ['refresh', 'time', 't', 'ts', 'timestamp', '_', '_t', 'cb', 'nocache', 'rand'].forEach((k) => p.searchParams.delete(k));
           return p.toString();
         } catch (e) { return full; }
       };
@@ -2293,7 +2295,7 @@ window.hemmaMenuGlass = {
         const q = t.indexOf('?');
         if (q < 0) return t;
         const rest = t.slice(q + 1).split('&')
-          .filter((p) => p.slice(0, 6) !== 'token=' && p.slice(0, 8) !== 'authSig=' && p.slice(0, 5) !== 'time=')
+          .filter((p) => p.slice(0, 6) !== 'token=' && p.slice(0, 8) !== 'authSig=' && !/^(time|t|ts|timestamp|_|_t|cb|nocache|rand|refresh)=/i.test(p))
           .sort().join('&');
         return t.slice(0, q) + (rest ? '?' + rest : '');
       };
