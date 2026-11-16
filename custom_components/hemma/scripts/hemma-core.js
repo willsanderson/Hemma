@@ -1755,8 +1755,8 @@ window.hemmaMenuGlass = {
   // The desktop dashboard's room settings (light slots, tiles), read once and kept: the whole-home Lights count and page need
   // them, and the phone dashboard does not carry them. Undefined until it arrives, null if it could not be read.
   window.hemmaDeskCfg = function (hass) {
-    // Read again every few minutes, so a dashboard saved from the Studio shows on a page that is already open.
-    if ((window._hemmaDeskCfg === undefined || Date.now() - (window._hemmaDeskAt || 0) > 300000) && !window._hemmaDeskBusy && hass && hass.callWS) {
+    // Read once per page load (a dashboard saved from the Studio shows on the next load); nothing re-reads it on a timer.
+    if (window._hemmaDeskCfg === undefined && !window._hemmaDeskBusy && hass && hass.callWS) {
       window._hemmaDeskBusy = true;
       const seg = String(location.pathname.split('/')[1] || '').replace(/[-_]mobile$/i, '');
       Promise.resolve(hass.callWS({ type: 'lovelace/config', url_path: seg && seg !== 'lovelace' ? seg : null }))
