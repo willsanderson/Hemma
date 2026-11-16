@@ -244,17 +244,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     _register_panel(stamp)
-
-    # Re-registered when the panel file changes, so a plain browser refresh loads the new code (the ?v= stamp was only set at startup).
-    last = {"stamp": stamp}
-
-    async def _restamp_panel(_now) -> None:
-        now = await hass.async_add_executor_job(_stamp)
-        if now != last["stamp"]:
-            last["stamp"] = now
-            _register_panel(now)
-
-    entry.async_on_unload(async_track_time_interval(hass, _restamp_panel, timedelta(seconds=20)))
     _LOGGER.debug("Registered Hemma panel at /%s", PANEL_URL)
 
     return True
