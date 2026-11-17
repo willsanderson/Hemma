@@ -271,7 +271,7 @@ const plainName = (n) => {
   return m ? JSON.parse(m[1]) : n;
 };
 
-function extractConfig(lovelace) {
+function extractConfig0(lovelace) {
   const views = lovelace.views || [];
   if (!views.length) throw new Error("dashboard has no views");
 
@@ -323,7 +323,7 @@ function extractConfig(lovelace) {
   };
 }
 
-function expandConfig(compact, scaffold, extras, templates) {
+function expandConfig0(compact, scaffold, extras, templates) {
   const views = (compact.rooms || []).map((room, ri) => ({
     type: scaffold.view_type,
     title: room.title,
@@ -363,7 +363,7 @@ function isHemmaConfig(lovelace) {
 
 const put = (obj, key, val) => { if (val !== undefined) obj[key] = val; return obj; };
 
-function extractMobileConfig(lovelace) {
+function extractMobileConfig0(lovelace) {
   const views = lovelace.views || [];
   if (!views.length) throw new Error("dashboard has no views");
 
@@ -428,7 +428,7 @@ function extractMobileConfig(lovelace) {
   };
 }
 
-function expandMobileConfig(compact, scaffold, extras, templates, chrome) {
+function expandMobileConfig0(compact, scaffold, extras, templates, chrome) {
   const rooms = compact.rooms || [];
   const kids = [];
 
@@ -760,6 +760,42 @@ function assistShown(V, hass) {
 function mobilePathOf(url_path) {
   return String(url_path || "").replace(/[-_]mobile$/i, "") + "-mobile";
 }
+
+// A tile of your own whose template writes its own title in code keeps the name you type in the Studio as
+// variables.studio_label, because a name on the tile would replace the code's title. Reading puts it back.
+function walkTiles(cfg, fn) {
+  (function walk(o) {
+    if (Array.isArray(o)) { o.forEach(walk); return; }
+    if (!o || typeof o !== "object") return;
+    if (o.type === "custom:button-card" && typeof o.template === "string") fn(o);
+    Object.keys(o).forEach((k) => { if (o[k] && typeof o[k] === "object" && k !== "button_card_templates") walk(o[k]); });
+  })(cfg && cfg.views);
+  return cfg;
+}
+
+function restoreLabels(lovelace) {
+  return walkTiles(lovelace, (c) => {
+    const l = c.variables && c.variables.studio_label;
+    if (l === undefined) return;
+    if (c.name === undefined) c.name = l;
+    delete c.variables.studio_label;
+    if (!Object.keys(c.variables).length) delete c.variables;
+  });
+}
+function storeLabels(built) {
+  const out = clone(built);
+  const tpls = out.button_card_templates || {};
+  return walkTiles(out, (c) => {
+    const t = tpls[c.template];
+    if (c.template.indexOf("hemma_") === 0 || !t || typeof t.name !== "string" || c.name === undefined || c.name === "") return;
+    c.variables = { ...(c.variables || {}), studio_label: c.name };
+    delete c.name;
+  });
+}
+function expandConfig(a, b, c, d) { return storeLabels(expandConfig0(a, b, c, d)); }
+function expandMobileConfig(a, b, c, d, e) { return storeLabels(expandMobileConfig0(a, b, c, d, e)); }
+function extractConfig(l) { return extractConfig0(restoreLabels(l)); }
+function extractMobileConfig(l) { return extractMobileConfig0(restoreLabels(l)); }
 
 function extractAny(lovelace) {
   return isMobileConfig(lovelace) ? extractMobileConfig(lovelace) : extractConfig(lovelace);
