@@ -13,7 +13,7 @@ hemma_mobile_sensor_chips:
 
   variables:
     temp_entity: null
-    temp_unit: F
+    temp_unit: null
     humidity_entity: null
     aqi_room_name: null
     entity_quality: null
@@ -134,7 +134,7 @@ hemma_mobile_sensor_chips:
               sensor_rooms: '[[[ const o = {}; Object.entries(variables.room_chips || {}).forEach(([k, r]) => { const id = k.replace(/^room_/, ""); if (r && r.temp_entity) o[r.temp_entity] = r.aqi_room_name || hass.areas?.[id]?.name || Object.values(hass.areas || {}).find((a) => a.area_id.replace(/_/g, "") === id)?.name || ""; }); return o; ]]]'
               enabled: '[[[ return !!variables.temp_entity ]]]'
               gauge: true
-              temp_unit: '[[[ return variables.temp_unit || "F" ]]]'
+              temp_unit: '[[[ return variables.temp_unit ]]]'
               room_name: '[[[ return variables.aqi_room_name || hass?.config?.location_name || "" ]]]'
               entity_quality: '[[[ return variables.entity_quality ]]]'
               entity_temp: '[[[ return variables.entity_temp || variables.temp_entity ]]]'
@@ -198,7 +198,7 @@ hemma_mobile_sensor_chips:
               sensor_kind: temperature
               enabled: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return !!variables.room_chips?.[f]?.temp_entity ]]]'
               gauge: true
-              temp_unit: '[[[ return variables.temp_unit || "F" ]]]'
+              temp_unit: '[[[ return variables.temp_unit ]]]'
               room_name: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.aqi_room_name || variables.aqi_room_name || hass?.config?.location_name || "" ]]]'
               entity_quality: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.entity_quality ]]]'
               entity_temp: '[[[ const f = states["input_select.hemma_mobile_filter"]?.state; return variables.room_chips?.[f]?.temp_entity ]]]'

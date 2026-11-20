@@ -10,7 +10,7 @@ hemma_badge_climate_group:
     temp_sensor_5: null
     humidity_sensor: null
     quality_sensor: null
-    temp_unit: 'F'
+    temp_unit: null
     climate_entity: null
     climate_entity_2: null
     climate_entity_3: null
@@ -106,7 +106,9 @@ hemma_badge_climate_group:
             const sensor = variables.temp_sensor || variables.temp_sensor_2 || variables.temp_sensor_3 || variables.temp_sensor_4 || variables.temp_sensor_5;
             const v = parseFloat(hass.states[sensor]?.state);
             if (!sensor || isNaN(v)) return 'var(--hemma-badge-icon-inactive, var(--badge-title-inactive))';
-            const unit = String(variables.temp_unit || 'F').toUpperCase();
+            const rawU = String(variables?.temp_unit || '').replace('°', '').trim().toUpperCase();
+            const autoU = String(hass.states[sensor]?.attributes?.unit_of_measurement || hass?.config?.unit_system?.temperature || '').replace('°', '').trim().toUpperCase();
+            const unit = (rawU === 'C' || rawU === 'F') ? rawU : (autoU === 'C' || autoU === 'F') ? autoU : 'F';
             const t = (unit === 'F')
               ? { veryCold: 65, cool: 70, comfortable: 76, warm: 81, hot: 85 }
               : { veryCold: 18, cool: 21, comfortable: 24, warm: 27, hot: 29 };

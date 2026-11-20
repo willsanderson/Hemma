@@ -175,7 +175,7 @@ The climate group badge aggregates temperature, HVAC activity, humidity, and air
 | `temp_sensor_1` – `temp_sensor_5` | Temperature sensors - if multiple are provided, the badge shows a min–max range |
 | `humidity_sensor` | Humidity sensor (shown as a sub-badge on the Climate page) |
 | `quality_sensor` | Air quality sensor (shown as a sub-badge on the Climate page) |
-| `temp_unit` | `'F'` or `'C'` - controls comfort label thresholds |
+| `temp_unit` | Optional `'F'` or `'C'` override - auto-detected from the sensor or Home Assistant unit system by default |
 | `show_climate_inline` | `true` to show temp/humidity/air-quality as individual badges on the top row instead of one group badge |
 
 ---
@@ -215,7 +215,7 @@ The widget appears when `weather_entity` is set.
 |---|---|
 | `weather_entity` | Your HA weather entity |
 | `weather_temp_sensor` | *(optional)* A separate sensor for outdoor temperature |
-| `temp_unit` | `'F'` or `'C'` - controls comfort thresholds and labels |
+| `temp_unit` | Optional `'F'` or `'C'` override - auto-detected from the sensor or Home Assistant unit system by default |
 
 Template: `hemma_weather`
 
