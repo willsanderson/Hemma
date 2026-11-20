@@ -1,0 +1,46 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hemma",
+        "description": "Ajoute Hemma à la barre latérale, où vous pourrez configurer votre tableau de bord."
+      }
+    },
+    "abort": {
+      "already_configured": "Hemma est déjà configuré."
+    },
+    "create_entry": {
+      "default": "Hemma est prêt. [Ouvrir Hemma](/hemma-studio) pour créer votre tableau de bord, ou retrouvez-le à tout moment dans la barre latérale."
+    }
+  },
+  "issues": {
+    "theme_not_loaded": {
+      "title": "Le thème Hemma ne se charge pas",
+      "description": "Hemma ajoute automatiquement son thème à Home Assistant, mais il n'apparaît pas dans la liste des thèmes pour le moment. Ouvrez Hemma depuis la barre latérale et choisissez Relancer la configuration dans le menu ⋯. Si le thème manque toujours, rechargez l'intégration Hemma dans Paramètres > Appareils et services."
+    },
+    "theme_replaced": {
+      "title": "Le thème Hemma a été mis à jour",
+      "description": "Hemma maintient désormais son thème à jour automatiquement et a donc remplacé la copie dans `themes/hemma/`. Comme cette copie contenait des modifications, elle a été sauvegardée dans `{path}`.\n\nPour conserver vos propres modifications, copiez le thème dans un nouveau fichier et donnez-lui un nouveau nom."
+    },
+    "theme_duplicate": {
+      "title": "Une seconde copie du thème Hemma existe",
+      "description": "Hemma conserve son thème dans `themes/hemma/hemma.yaml` et le met à jour automatiquement, mais ce fichier définit également un thème nommé Hemma : `{paths}`.\n\nSupprimez cette copie ou renommez son thème afin que Hemma puisse maintenir le thème à jour."
+    },
+    "helpers_missing": {
+      "title": "Certaines entrées Hemma n'ont pas pu être créées",
+      "description": "Hemma crée automatiquement ses entrées dans Paramètres > Appareils et services > Entrées, mais celles-ci n'ont pas pu être ajoutées : {helpers}. Ouvrez Hemma depuis la barre latérale et appuyez sur Réparer, ou choisissez Relancer la configuration dans le menu ⋯. Si une entité portant l'un de ces noms existe déjà sans être une entrée, renommez-la ou supprimez-la d'abord."
+    }
+  },
+  "services": {
+    "light_smart_toggle": {
+      "name": "Bascule intelligente d'éclairage",
+      "description": "Éteint une lampe ou un groupe de lampes en mémorisant celles qui étaient allumées, puis rallume exactement celles-ci.",
+      "fields": {
+        "light_entity": {
+          "name": "Lampe",
+          "description": "La lampe ou le groupe de lampes."
+        }
+      }
+    }
+  }
+}
