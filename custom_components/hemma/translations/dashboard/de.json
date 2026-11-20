@@ -786,7 +786,7 @@
 	"studio.default": "Standard",
 	"studio.default_color": "Standardfarbe",
 	"studio.default_dashboard": "Standard-Dashboard",
-	"studio.default_f": "Standard (°F)",
+	"studio.default_f": "Auto (Home Assistant)",
 	"studio.default_keep_discord": "Standard (Discord behalten)",
 	"studio.default_theme": "Standard (Theme)",
 	"studio.delete": "Löschen",

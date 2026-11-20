@@ -3,7 +3,7 @@ hemma_badge_temp:
 
   variables:
     enabled: true
-    temp_unit: 'F'
+    temp_unit: null
     room_name: null
     entity_quality: null
     entity_temp: null
@@ -26,7 +26,9 @@ hemma_badge_temp:
       const v      = parseFloat(stRaw);
       const hide   = !enabled || !hasEnt || !stRaw || ['unknown','unavailable','none'].includes(st) || Number.isNaN(v);
 
-      const unit = String(variables?.temp_unit || 'F').toUpperCase();
+      const rawU = String(variables?.temp_unit || '').replace('°', '').trim().toUpperCase();
+      const autoU = String(entity?.attributes?.unit_of_measurement || hass?.config?.unit_system?.temperature || '').replace('°', '').trim().toUpperCase();
+      const unit = (rawU === 'C' || rawU === 'F') ? rawU : (autoU === 'C' || autoU === 'F') ? autoU : 'F';
       const t = (unit === 'F')
         ? { cool: 70, warm: 81 }
         : { cool: 21, warm: 27 };
@@ -120,7 +122,9 @@ hemma_badge_temp:
       - --hemma-icon-color: >
           [[[
             const v    = parseFloat(entity?.state);
-            const unit = String(variables?.temp_unit || 'F').toUpperCase();
+            const rawU = String(variables?.temp_unit || '').replace('°', '').trim().toUpperCase();
+            const autoU = String(entity?.attributes?.unit_of_measurement || hass?.config?.unit_system?.temperature || '').replace('°', '').trim().toUpperCase();
+            const unit = (rawU === 'C' || rawU === 'F') ? rawU : (autoU === 'C' || autoU === 'F') ? autoU : 'F';
             if (isNaN(v)) return 'var(--disabled-text-color)';
             const t = (unit === 'F')
               ? { veryCold: 65, cool: 70, comfortable: 76, warm: 81, hot: 85 }
@@ -138,7 +142,9 @@ hemma_badge_temp:
   name: >
     [[[
       const v    = parseFloat(entity?.state);
-      const unit = String(variables?.temp_unit || 'F').toUpperCase();
+      const rawU = String(variables?.temp_unit || '').replace('°', '').trim().toUpperCase();
+      const autoU = String(entity?.attributes?.unit_of_measurement || hass?.config?.unit_system?.temperature || '').replace('°', '').trim().toUpperCase();
+      const unit = (rawU === 'C' || rawU === 'F') ? rawU : (autoU === 'C' || autoU === 'F') ? autoU : 'F';
       if (isNaN(v)) return '';
 
       const t = (unit === 'F')

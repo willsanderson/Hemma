@@ -107,7 +107,7 @@ views:
           weather_entity: weather.YOUR_WEATHER            # e.g., weather.home, weather.pirateweather
           weather_temp_sensor: sensor.YOUR_OUTDOOR_TEMP   # e.g., sensor.outdoor_temperature
 
-          # temp_unit: 'C'   # only needed for Celsius; comfort thresholds default to 'F'
+          # temp_unit: 'C'   # optional override ('F' or 'C'); auto-detected from sensor / HA unit system by default
 
           # Presence Badges (optional - requires person/status sensors)
           # Shows a group badge on the hero card; tap to expand individual badges

@@ -1663,7 +1663,7 @@ const SECTIONS = [
       { ...E("humidity_sensor", "Humidity", ["sensor"]), ord: 3 },
       { ...E("quality_sensor", "Air quality", ["sensor"]), ord: 4 },
       { key: "temp_unit", label: "Unit", type: "select", options: ["", "F", "C"], auto: true, ord: 1,
-        optionLabels: { "": "Default (\u00b0F)", F: "Fahrenheit \u00b0F", C: "Celsius \u00b0C" } },
+        optionLabels: { "": "Auto (Home Assistant)", F: "Fahrenheit \u00b0F", C: "Celsius \u00b0C" } },
       { key: "show_climate_inline", label: "Separate climate badges", type: "bool",
         boolDefault: false, advanced: true,
         hint: "Shows temperature, humidity and air quality as their own badges." },
@@ -17174,7 +17174,14 @@ class HemmaPanel extends HTMLElement {
     };
     const on = (key) => V[key] !== false;
     const list = (prefix, n) => Array.from({ length: n }, (_, k) => V[prefix + (k + 1)]).filter(Boolean);
-    const unit = V.temp_unit === "C" ? "°C" : "°";
+    const thermostats = list("climate_entity_", 3);
+    const temps = list("temp_sensor_", 5);
+    const rawTU = String(V.temp_unit || "").replace("°", "").trim().toUpperCase();
+    const autoTU = String(((st(temps[0]) || {}).attributes || {}).unit_of_measurement
+      || (this._hass && this._hass.config && this._hass.config.unit_system && this._hass.config.unit_system.temperature)
+      || "").replace("°", "").trim().toUpperCase();
+    const tempUnit = (rawTU === "C" || rawTU === "F") ? rawTU : (autoTU === "C" || autoTU === "F") ? autoTU : "F";
+    const unit = tempUnit === "C" ? "°C" : "°";
     const out = [];
 
     const CLIMATE = "var(--hemma-badge-climate-color, var(--hemma-color-teal, #00C3D0))";
@@ -17183,9 +17190,6 @@ class HemmaPanel extends HTMLElement {
     const YELLOW = "var(--hemma-color-yellow, #FFCC00)";
     const TEAL = "var(--hemma-color-teal, #00C3D0)";
     const ENERGY = "var(--hemma-badge-energy-color, var(--hemma-color-green, #30D158))";
-
-    const thermostats = list("climate_entity_", 3);
-    const temps = list("temp_sensor_", 5);
     const climateOn = !!(thermostats.length || temps.length || V.humidity_sensor || V.quality_sensor);
     if (on("show_climate") && climateOn) {
       const t = num(temps[0]) ?? (st(thermostats[0]) || {}).attributes?.current_temperature;
@@ -17193,13 +17197,13 @@ class HemmaPanel extends HTMLElement {
       const subs = [];
       // hemma_badge_temp's own thresholds and wording.
       const tempWord = (v) => {
-        const c = V.temp_unit === "C";
+        const c = tempUnit === "C";
         const k = c ? [18, 21, 24, 27, 29] : [65, 70, 76, 81, 85];
         return v <= k[0] ? _studioT("temp.very_cold", "Very Cold") : v <= k[1] ? _studioT("temp.cool", "Cool") : v <= k[2] ? _studioT("temp.comfortable", "Comfortable")
           : v <= k[3] ? _studioT("temp.warm", "Warm") : v <= k[4] ? _studioT("temp.hot", "Hot") : _studioT("temp.very_hot", "Very Hot");
       };
       const humWord = (v) => (v < 30 ? _studioT("humidity.very_dry", "Very Dry") : v < 40 ? _studioT("humidity.dry", "Dry") : v < 61 ? _studioT("humidity.comfortable", "Comfortable") : v < 70 ? _studioT("humidity.humid", "Humid") : _studioT("humidity.very_humid", "Very Humid"));
-      const tempKeys = () => (V.temp_unit === "C" ? [18, 21, 24, 27, 29] : [65, 70, 76, 81, 85]);
+      const tempKeys = () => (tempUnit === "C" ? [18, 21, 24, 27, 29] : [65, 70, 76, 81, 85]);
       const tempColor = (v) => {
         const k = tempKeys();
         return "var(--hemma-badge-temp-" + (
@@ -17220,7 +17224,7 @@ class HemmaPanel extends HTMLElement {
           icon: n != null ? tempIcon(n) : "temp-medium",
           color: n != null ? tempColor(n) : CLIMATE,
           label: _studioT("temp.title", "Temperature"),
-          gauge: n != null ? clamp(unit === "F" ? (n - 45) / 50 : (n - 7) / 28) : null,
+          gauge: n != null ? clamp(tempUnit === "F" ? (n - 45) / 50 : (n - 7) / 28) : null,
           text: n != null ? tempWord(n) + " \u00b7 " + Math.round(n) + unit : _studioL("state.default.unknown", "Unknown") });
       }
       if (V.humidity_sensor) {
@@ -17289,7 +17293,7 @@ class HemmaPanel extends HTMLElement {
         });
         // hemma_badge_climate_group's color: teal while conditioning, else the first sensor's band.
         const firstT = temps.length ? num(temps[0]) : null;
-        const fBand = String(V.temp_unit || "F").toUpperCase() === "F"
+        const fBand = tempUnit === "F"
           ? [65, 70, 76, 81, 85] : [18, 21, 24, 27, 29];
         const climateTone = hvacOn ? "var(--hemma-color-teal, #00C3D0)"
           : firstT == null ? "rgba(255,255,255,0.55)"
