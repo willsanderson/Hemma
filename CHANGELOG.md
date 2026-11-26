@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.2
+
+Housekeeping for the HACS default list: the integration's brand folder now holds only the PNG images Home Assistant uses. Nothing changes on your dashboards.
+
 ## 2.5.1
 
 Hemma now works alongside layout-card, keeps your own Home Assistant theme, and adds wider tiles and faster loading.
