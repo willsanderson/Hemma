@@ -53,8 +53,8 @@ hemma_badge_base:
   styles:
     card:
       - background: var(--hemma-badge-bg, var(--badge-background, rgba(10,12,14,0.65)))
-      - backdrop-filter: blur(var(--badge-blur, 14px))
-      - -webkit-backdrop-filter: blur(var(--badge-blur, 14px))
+      - backdrop-filter: var(--badge-bf, blur(var(--badge-blur, 14px)))
+      - -webkit-backdrop-filter: var(--badge-bf, blur(var(--badge-blur, 14px)))
       - box-shadow: none
       - --ha-card-box-shadow: none
       - --ha-shadow-light-hover: none

@@ -344,7 +344,7 @@ hemma_now_playing_primary:
               // Boot timestamp distinguishes "already playing before page load" from "genuinely new arrival": store._npKey resets every page load, so !prev alone can't tell them apart. Only gates isFirst - exits/promotions/reassignments are untouched.
               window._hemmaNPBootAt = window._hemmaNPBootAt || Date.now();
               const booting = (Date.now() - window._hemmaNPBootAt) < 2500;
-              const skipFirst = isFirst && (!horizontal || booting);
+              const skipFirst = isFirst && booting;
 
               if (!skipFirst && !isExit) {
                 const c0 = this;
@@ -450,13 +450,22 @@ hemma_now_playing_primary:
                 const reveal = () => {
                   card.style.transformOrigin = '50% 50%';
                   card.style.removeProperty('opacity');
-                  store._npBodyAnim = card.animate(
-                    [
-                      { opacity: 0 },
-                      { opacity: 1 },
-                    ],
-                    { duration: 420, easing: 'ease-out', fill: 'both' }
-                  );
+                  store._npBodyAnim = isFirst
+                    ? card.animate(
+                      [
+                        { opacity: 0, transform: 'scale(0.92)' },
+                        { opacity: 1, transform: 'scale(1.012)', offset: 0.62 },
+                        { opacity: 1, transform: 'scale(1)' },
+                      ],
+                      { duration: 380, easing: 'cubic-bezier(0.25, 0.9, 0.3, 1)', fill: 'both' }
+                    )
+                    : card.animate(
+                      [
+                        { opacity: 0 },
+                        { opacity: 1 },
+                      ],
+                      { duration: 420, easing: 'ease-out', fill: 'both' }
+                    );
                   store._npBodyAnim.finished
                     .then(() => { try { store._npBodyAnim?.cancel(); } catch (e) {} })
                     .catch(() => {});
@@ -954,7 +963,7 @@ hemma_now_playing_primary:
       height: 100%;
       width: 100%;
       border-radius: 999px;
-      background: var(--hv-np-fill, var(--np-accent, #67f5a0));
+      background: var(--hv-np-fill, #fff);
       transform-origin: left center;
     }
 

@@ -873,7 +873,7 @@ hemma_mobile_now_playing:
         custom_fields:
           media1:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("media1", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[0] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -882,7 +882,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[0] || null; ]]]'
           media2:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("media2", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[1] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -891,7 +891,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[1] || null; ]]]'
           media3:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("media3", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[2] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -900,7 +900,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[2] || null; ]]]'
           media4:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("media4", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[3] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -909,7 +909,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[3] || null; ]]]'
           media5:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("media5", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[4] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -918,7 +918,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[4] || null; ]]]'
           media6:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("media6", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[5] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -927,7 +927,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[5] || null; ]]]'
           media7:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("media7", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[6] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -936,7 +936,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[6] || null; ]]]'
           media8:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("media8", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[7] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -945,7 +945,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[7] || null; ]]]'
           media9:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("media9", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg) : [])[8] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -1026,7 +1026,7 @@ hemma_mobile_now_playing:
         custom_fields:
           c1:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("c1", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[1] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -1035,7 +1035,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[1] || null; ]]]'
           c2:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("c2", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[2] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -1044,7 +1044,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[2] || null; ]]]'
           c3:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("c3", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[3] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -1053,7 +1053,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[3] || null; ]]]'
           c4:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("c4", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[4] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -1062,7 +1062,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[4] || null; ]]]'
           c5:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("c5", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[5] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -1071,7 +1071,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[5] || null; ]]]'
           c6:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("c6", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[6] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -1080,7 +1080,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[6] || null; ]]]'
           c7:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("c7", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[7] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'
@@ -1089,7 +1089,7 @@ hemma_mobile_now_playing:
                 src: '[[[ return (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[7] || null; ]]]'
           c8:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("c8", (typeof window._hemmaNPPlan === "function" ? window._hemmaNPPlan(states, variables.cfg).filter(Boolean) : [])[8] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 entry_direction: 'horizontal'

@@ -50,7 +50,7 @@ views:
   # The main overview room - typically shows whole-home controls
   # and media player status across all rooms
   # ------------------------------------------------------
-  - type: custom:grid-layout
+  - type: custom:hemma-grid-layout
     title: home
     path: home
     layout: !include /config/dashboards/templates/includes/hemma_screen_layout.yaml
@@ -339,7 +339,7 @@ views:
   # ------------------------------------------------------
   # LIVING ROOM
   # ------------------------------------------------------
-  - type: custom:grid-layout
+  - type: custom:hemma-grid-layout
     title: living-room
     path: living-room
     layout: !include /config/dashboards/templates/includes/hemma_screen_layout.yaml
@@ -487,7 +487,7 @@ views:
   # ------------------------------------------------------
   # KITCHEN
   # ------------------------------------------------------
-  - type: custom:grid-layout
+  - type: custom:hemma-grid-layout
     title: kitchen
     path: kitchen
     layout: !include /config/dashboards/templates/includes/hemma_screen_layout.yaml
@@ -564,7 +564,7 @@ views:
   # ------------------------------------------------------
   # BEDROOM
   # ------------------------------------------------------
-  - type: custom:grid-layout
+  - type: custom:hemma-grid-layout
     title: bedroom
     path: bedroom
     layout: !include /config/dashboards/templates/includes/hemma_screen_layout.yaml

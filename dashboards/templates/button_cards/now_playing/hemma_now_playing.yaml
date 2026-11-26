@@ -634,7 +634,7 @@ hemma_now_playing:
         custom_fields:
           s1:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("d1", (variables.settled || [])[0] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 slot_id: >
@@ -645,7 +645,7 @@ hemma_now_playing:
                 np_count: '[[[ return (variables.settled || []).length || 1; ]]]'
           s2:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("d2", (variables.settled || [])[1] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 slot_id: >
@@ -656,7 +656,7 @@ hemma_now_playing:
                 np_count: '[[[ return (variables.settled || []).length || 1; ]]]'
           s3:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("d3", (variables.settled || [])[2] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 slot_id: >
@@ -667,7 +667,7 @@ hemma_now_playing:
                 np_count: '[[[ return (variables.settled || []).length || 1; ]]]'
           s4:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("d4", (variables.settled || [])[3] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 slot_id: >
@@ -678,7 +678,7 @@ hemma_now_playing:
                 np_count: '[[[ return (variables.settled || []).length || 1; ]]]'
           s5:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("d5", (variables.settled || [])[4] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 slot_id: >
@@ -689,7 +689,7 @@ hemma_now_playing:
                 np_count: '[[[ return (variables.settled || []).length || 1; ]]]'
           s6:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("d6", (variables.settled || [])[5] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 slot_id: >
@@ -700,7 +700,7 @@ hemma_now_playing:
                 np_count: '[[[ return (variables.settled || []).length || 1; ]]]'
           s7:
             card:
-              type: custom:button-card
+              type: '[[[ return (!window._hemmaNPSlot || window._hemmaNPSlot("d7", (variables.settled || [])[6] || null)) ? "custom:button-card" : "custom:hemma-np-empty"; ]]]'
               template: hemma_now_playing_primary
               variables:
                 slot_id: >

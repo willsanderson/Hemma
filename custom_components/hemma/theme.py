@@ -9,12 +9,16 @@ import os
 import re
 import time
 
+import voluptuous as vol
+
+from homeassistant.components import websocket_api
+from homeassistant.components.frontend import add_extra_js_url, remove_extra_js_url
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.storage import Store
 from homeassistant.util.yaml import load_yaml
 
-from .const import DOMAIN
+from .const import DOMAIN, SCRIPTS_DIR, SCRIPTS_URL_BASE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +28,7 @@ SHIPPED = f"custom_components/{DOMAIN}/theme/shipped.json"
 TARGET = "themes/hemma/hemma.yaml"
 BACKUPS = "hemma_backups"
 STORE_KEY = f"{DOMAIN}.theme"
+THEME_JS = "hemma-theme.js"
 # Home Assistant's own record of the default theme, and the hass.data keys it keeps it under.
 FRONTEND_STORE = "frontend_theme"
 DEFAULT_KEYS = ("frontend_default_theme", "frontend_default_dark_theme")
@@ -81,8 +86,55 @@ def _sync(config_dir: str, written: str | None) -> dict:
     return {"sha": sha, "current": True, "wrote": True, "backup": backup}
 
 
+async def _register_js(hass: HomeAssistant) -> None:
+    """Load hemma-theme.js on every page: it lays Hemma's look over the user's own theme on Hemma's pages only."""
+    path = hass.config.path(SCRIPTS_DIR, THEME_JS)
+    try:
+        stamp = int(await hass.async_add_executor_job(os.path.getmtime, path))
+    except OSError:
+        return
+    url = f"{SCRIPTS_URL_BASE}/{THEME_JS}?v={stamp}"
+    old = hass.data.get(f"{DOMAIN}_theme_js")
+    if old == url:
+        return
+    if old:
+        remove_extra_js_url(hass, old)
+    add_extra_js_url(hass, url)
+    hass.data[f"{DOMAIN}_theme_js"] = url
+
+
+def _uses_hemma(hass: HomeAssistant) -> bool:
+    return THEME_NAME in (hass.data.get(DEFAULT_KEYS[0]), hass.data.get(DEFAULT_KEYS[1]))
+
+
+@websocket_api.websocket_command({vol.Required("type"): "hemma/theme/get"})
+@websocket_api.require_admin
+@callback
+def _ws_theme_get(hass: HomeAssistant, connection, msg: dict) -> None:
+    connection.send_result(msg["id"], {"all": _uses_hemma(hass)})
+
+
+@websocket_api.websocket_command({vol.Required("type"): "hemma/theme/set", vol.Required("all"): bool})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def _ws_theme_set(hass: HomeAssistant, connection, msg: dict) -> None:
+    """Hemma's look for all of Home Assistant: the default theme, which each user's own profile choice still overrides."""
+    if msg["all"]:
+        await hass.services.async_call("frontend", "set_theme", {"name": THEME_NAME}, blocking=True)
+    else:
+        await hass.services.async_call("frontend", "set_theme", {"name": "none"}, blocking=True)
+        if hass.data.get(DEFAULT_KEYS[1]) == THEME_NAME:
+            await hass.services.async_call("frontend", "set_theme", {"name": "none", "mode": "dark"}, blocking=True)
+    connection.send_result(msg["id"], {"all": _uses_hemma(hass)})
+
+
 async def async_setup_theme(hass: HomeAssistant) -> None:
     """Write the bundled theme to themes/hemma/ when it changes, then reload themes."""
+    await _register_js(hass)
+    if not hass.data.get(f"{DOMAIN}_theme_ws"):
+        websocket_api.async_register_command(hass, _ws_theme_get)
+        websocket_api.async_register_command(hass, _ws_theme_set)
+        hass.data[f"{DOMAIN}_theme_ws"] = True
     store: Store[dict] = Store(hass, 1, STORE_KEY)
     data = await store.async_load() or {}
     try:
@@ -143,12 +195,6 @@ async def async_setup_theme(hass: HomeAssistant) -> None:
         hass.bus.async_listen("themes_updated", _again)
         hass.data[f"{DOMAIN}_theme_listen"] = True
     await _restore_default(hass)
-    if not data.get("default_checked"):
-        try:
-            if await _pick_default(hass):
-                await store.async_save({**data, "default_checked": True})
-        except Exception:  # noqa: BLE001 - choosing a theme must never block setup
-            _LOGGER.exception("Hemma: could not make Hemma the default theme")
 
 
 async def _frontend_saved(hass: HomeAssistant) -> dict:
@@ -161,22 +207,6 @@ async def _frontend_saved(hass: HomeAssistant) -> dict:
     except Exception:  # noqa: BLE001
         return {}
     return saved if isinstance(saved, dict) else {}
-
-
-async def _pick_default(hass: HomeAssistant) -> bool:
-    """Once: make Hemma the default theme unless another theme is already chosen. True when settled."""
-    themes = hass.data.get("frontend_themes")
-    if not isinstance(themes, dict) or THEME_NAME not in themes:
-        return False
-    saved = await _frontend_saved(hass)
-    chosen = [saved.get(k) for k in DEFAULT_KEYS if saved.get(k) not in (None, "", "default")]
-    if chosen:
-        return True
-    if not hass.services.has_service("frontend", "set_theme"):
-        return False
-    await hass.services.async_call("frontend", "set_theme", {"name": THEME_NAME}, blocking=True)
-    _LOGGER.info("Hemma: made Hemma the default theme")
-    return True
 
 
 async def _restore_default(hass: HomeAssistant) -> None:

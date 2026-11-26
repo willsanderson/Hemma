@@ -640,6 +640,7 @@
     ].join(';');
     pillHost.appendChild(pillFlash);
     pillHost.addEventListener('pointerdown', (ev) => {
+      if (document.documentElement.classList.contains('hemma-hv')) return;
       const r = pillHost.getBoundingClientRect();
       const x = r.width ? ((ev.clientX - r.left) / r.width) * 100 : 50;
       pillFlash.style.background = 'radial-gradient(circle at '
@@ -1818,6 +1819,7 @@
         this._subBadgesWrapper.style.removeProperty('margin-top');
         this._subBadgesWrapper.style.removeProperty('--badge-background');
         this._subBadgesWrapper.style.removeProperty('--badge-blur');
+        this._subBadgesWrapper.style.removeProperty('--badge-bf');
         this._subBadgesWrapper.style.removeProperty('padding-left');
         if (this._subBadgesSavedParent) {
           const sib = this._subBadgesSavedSibling;
@@ -2050,6 +2052,7 @@
       if (this._subBadgesWrapper) {
         this._subBadgesWrapper.style.setProperty('--badge-background', 'transparent');
         this._subBadgesWrapper.style.setProperty('--badge-blur', '0px');
+        this._subBadgesWrapper.style.setProperty('--badge-bf', 'none');
       }
 
       // Auto sections first (rooms), then Favorites prepends itself in front.

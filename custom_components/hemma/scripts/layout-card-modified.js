@@ -1870,7 +1870,7 @@ var ce = function() {
     }, {
         key: "isBreak",
         value: function(t) {
-            return "custom:layout-break" === t.type
+            return "custom:hemma-layout-break" === t.type || "custom:layout-break" === t.type
         }
     }, {
         key: "_makeLayout",
@@ -2037,7 +2037,7 @@ var de = function() {
     }]);
     var e
 }();
-customElements.define("masonry-layout", de);
+customElements.define("hemma-masonry-layout", de);
 var he = function() {
     function t() {
         return Q(this, t), R(this, t, arguments)
@@ -2068,7 +2068,7 @@ var he = function() {
     }]);
     var e
 }();
-customElements.define("horizontal-layout", he);
+customElements.define("hemma-horizontal-layout", he);
 var ve = function() {
     function t() {
         return Q(this, t), R(this, t, arguments)
@@ -2099,7 +2099,7 @@ var ve = function() {
     }]);
     var e
 }();
-customElements.define("vertical-layout", ve);
+customElements.define("hemma-vertical-layout", ve);
 var fe = function() {
     function t() {
         return Q(this, t), R(this, t, arguments)
@@ -2124,7 +2124,7 @@ var fe = function() {
     }], [{
         key: "getConfigElement",
         value: function() {
-            return document.createElement("layout-break-editor")
+            return document.createElement("hemma-layout-break-editor")
         }
     }, {
         key: "getStubConfig",
@@ -2133,9 +2133,9 @@ var fe = function() {
         }
     }])
 }();
-customElements.define("layout-break", fe), window.customCards = window.customCards || [], window.customCards.push({
-    type: "layout-break",
-    name: "Layout Break",
+customElements.define("hemma-layout-break", fe), window.customCards = window.customCards || [], window.customCards.push({
+    type: "hemma-layout-break",
+    name: "Hemma Layout Break",
     preview: !1,
     description: "Forces a break in the layout flow. For use with layout-card or special layouts."
 });
@@ -2151,7 +2151,7 @@ var pe = function() {
         }
     }])
 }();
-customElements.define("layout-break-editor", pe);
+customElements.define("hemma-layout-break-editor", pe);
 var ye = function() {
     function t() {
         var e;
@@ -2305,7 +2305,7 @@ var ye = function() {
     }]);
     var e, n, i
 }();
-customElements.define("grid-layout", ye);
+customElements.define("hemma-grid-layout", ye);
 var ge = function() {
     function t() {
         var e;
@@ -2320,7 +2320,7 @@ var ge = function() {
                 })
             })));
             var e = t.layout_type;
-            e ? ((null == e ? void 0 : e.endsWith("-layout")) || (e += "-layout"), e.startsWith("custom:") && (e = e.substring(7))) : e = "hui-masonry-view", this._layoutType = e
+            e ? ((null == e ? void 0 : e.endsWith("-layout")) || (e += "-layout"), e.startsWith("custom:") && (e = e.substring(7)), e.startsWith("hemma-") || (e = "hemma-" + e)) : e = "hui-masonry-view", this._layoutType = e
         }
     }, {
         key: "updated",
@@ -2424,7 +2424,7 @@ var ge = function() {
     }, {
         key: "getConfigElement",
         value: function() {
-            return document.createElement("layout-card-editor")
+            return document.createElement("hemma-layout-card-editor")
         }
     }, {
         key: "getStubConfig",
@@ -2438,9 +2438,9 @@ var ge = function() {
     }]);
     var e, n, i
 }();
-Y([se()], ge.prototype, "hass", void 0), Y([se()], ge.prototype, "editMode", void 0), Y([se()], ge.prototype, "isPanel", void 0), Y([se()], ge.prototype, "_config", void 0), Y([se()], ge.prototype, "_cards", void 0), Y([se()], ge.prototype, "_layoutElement", void 0), Y([se()], ge.prototype, "_layoutType", void 0), customElements.define("layout-card", ge), window.customCards = window.customCards || [], window.customCards.push({
-    type: "layout-card",
-    name: "Layout Card",
+Y([se()], ge.prototype, "hass", void 0), Y([se()], ge.prototype, "editMode", void 0), Y([se()], ge.prototype, "isPanel", void 0), Y([se()], ge.prototype, "_config", void 0), Y([se()], ge.prototype, "_cards", void 0), Y([se()], ge.prototype, "_layoutElement", void 0), Y([se()], ge.prototype, "_layoutType", void 0), customElements.define("hemma-layout-card", ge), window.customCards = window.customCards || [], window.customCards.push({
+    type: "hemma-layout-card",
+    name: "Hemma Layout Card",
     preview: !1,
     description: "Like a stack card, but with way more control."
 });
@@ -2486,16 +2486,16 @@ var me = function() {
         }
     }(),
     _e = [{
-        value: "custom:masonry-layout",
+        value: "custom:hemma-masonry-layout",
         label: "Masonry (layout-card)"
     }, {
-        value: "custom:horizontal-layout",
+        value: "custom:hemma-horizontal-layout",
         label: "Horizontal (layout-card)"
     }, {
-        value: "custom:vertical-layout",
+        value: "custom:hemma-vertical-layout",
         label: "Vertical (layout-card)"
     }, {
-        value: "custom:grid-layout",
+        value: "custom:hemma-grid-layout",
         label: "Grid (layout-card)"
     }],
     be = ["masonry", "sidebar", "panel"],
@@ -2663,7 +2663,7 @@ Y([se()], we.prototype, "_config", void 0), Y([se()], we.prototype, "lovelace", 
             }
         })
     }
-}("hui-card-element-editor")], we.prototype, "_cardEditorEl", void 0), customElements.define("layout-card-editor", we), customElements.whenDefined("hui-card-element-editor").then((function() {
+}("hui-card-element-editor")], we.prototype, "_cardEditorEl", void 0), customElements.define("hemma-layout-card-editor", we), customElements.whenDefined("hui-card-element-editor").then((function() {
     var t = customElements.get("hui-card-element-editor"),
         e = t.prototype.getConfigElement;
     t.prototype.getConfigElement = L(T().mark((function t() {
@@ -2732,7 +2732,7 @@ var ke = function() {
     }], [{
         key: "getConfigElement",
         value: function() {
-            return document.createElement("gap-card-editor")
+            return document.createElement("hemma-gap-card-editor")
         }
     }, {
         key: "getStubConfig",
@@ -2741,9 +2741,9 @@ var ke = function() {
         }
     }])
 }();
-customElements.define("gap-card", ke), window.customCards = window.customCards || [], window.customCards.push({
-    type: "gap-card",
-    name: "Gap Card",
+customElements.define("hemma-gap-card", ke), window.customCards = window.customCards || [], window.customCards.push({
+    type: "hemma-gap-card",
+    name: "Hemma Gap Card",
     preview: !1,
     description: "Add a customizable gap in the layout."
 });
@@ -2783,6 +2783,6 @@ var Ee = function() {
         }
     }])
 }();
-Y([se()], Ee.prototype, "_config", void 0), customElements.define("gap-card-editor", Ee);
+Y([se()], Ee.prototype, "_config", void 0), customElements.define("hemma-gap-card-editor", Ee);
 var Ce = "2.4.6";
 console.groupCollapsed("%cLAYOUT-CARD ".concat(Ce, " IS INSTALLED"), "color: green; font-weight: bold"), console.log("Readme:", "https://github.com/thomasloven/lovelace-layout-card"), console.groupEnd();

@@ -56,6 +56,7 @@ hemma_mobile_sensor_chips:
             ]]]
         - --badge-background: transparent
         - --badge-blur: 0px
+        - --badge-bf: none
         - --hemma-badge-glass-rim: none
         - --hemma-badge-icon-scale: 54%
         - --hemma-badge-icon-override: var(--hemma-gauge-size, 34px)
@@ -83,6 +84,7 @@ hemma_mobile_sensor_chips:
         # Every chip bare, like the gauges: Lights and Motion are plain badges and would keep their pill.
         - --badge-background: transparent
         - --badge-blur: 0px
+        - --badge-bf: none
         - --hemma-badge-glass-rim: none
         - --ha-ripple-hover-opacity: 0
         - --ha-ripple-pressed-opacity: 0
@@ -110,8 +112,8 @@ hemma_mobile_sensor_chips:
 
     climate_row:
       card:
-        type: custom:layout-card
-        layout_type: custom:grid-layout
+        type: '[[[ return (!window._hemmaOnce || window._hemmaOnce("chips:climate_row", (states["input_select.hemma_mobile_filter"]?.state ?? "all") === "climate")) ? "custom:hemma-layout-card" : "custom:hemma-np-empty"; ]]]'
+        layout_type: custom:hemma-grid-layout
         layout:
           grid-auto-flow: column
           grid-auto-columns: max-content
@@ -172,8 +174,8 @@ hemma_mobile_sensor_chips:
     # Rooms row
     rooms_row:
       card:
-        type: custom:layout-card
-        layout_type: custom:grid-layout
+        type: '[[[ return (!window._hemmaOnce || window._hemmaOnce("chips:rooms_row", !!(variables.room_chips && variables.room_chips[states["input_select.hemma_mobile_filter"]?.state ?? "all"]))) ? "custom:hemma-layout-card" : "custom:hemma-np-empty"; ]]]'
+        layout_type: custom:hemma-grid-layout
         layout:
           grid-auto-flow: column
           grid-auto-columns: max-content
@@ -291,6 +293,7 @@ hemma_mobile_sensor_chips:
                 const R = window.hemmaRoomSensors ? window.hemmaRoomSensors(hass, f, variables.room_chips) : { motion: [], occupancy: [variables.room_chips?.[f]?.motion_entity].filter(Boolean) };
                 // Hidden as a whole host, as the gauge chips are: a hidden card alone leaves its grid column and gaps.
                 return (R.motion.length ? '' : ':host{display:none !important}') + `
+              :host{ --hv-bi-in-o: 6% !important; }
               #img-cell, .img-cell{ position: relative; }
               #img-cell #icon, .img-cell #icon{ color: transparent !important; opacity: 0 !important; }
               #img-cell::before, .img-cell::before{
@@ -350,6 +353,7 @@ hemma_mobile_sensor_chips:
                 const R = window.hemmaRoomSensors ? window.hemmaRoomSensors(hass, f, variables.room_chips) : { motion: [], occupancy: [variables.room_chips?.[f]?.motion_entity].filter(Boolean) };
                 // Hidden as a whole host, as the gauge chips are: a hidden card alone leaves its grid column and gaps.
                 return (R.occupancy.length ? '' : ':host{display:none !important}') + `
+              :host{ --hv-bi-in-o: 3% !important; }
               #img-cell, .img-cell{ position: relative; }
               #img-cell #icon, .img-cell #icon{ color: transparent !important; opacity: 0 !important; }
               #img-cell::before, .img-cell::before{

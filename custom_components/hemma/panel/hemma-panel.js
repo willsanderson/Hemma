@@ -1,5 +1,5 @@
 
-const PANEL_VERSION = "2.5.0";
+const PANEL_VERSION = "2.5.1";
 const SETUP_KEY = "hemma_panel_setup";
 const TEMPLATES_URL = "/api/hemma/templates";
 const TEMPLATES_URL_STATIC = "/hemma_panel/hemma-templates.json";
@@ -1303,11 +1303,17 @@ function expandPair(pair, parts) {
 // ─── form schema ──────────────────────────────────────────────────────────────
 
 const E = (key, label, domains) => ({ key, label, domains });
+const AUTO_ENTITY = "__automatic__";
 const T = (key, label) => ({ key, label, type: "text" });
 const LIST = (key, label, domains) => ({ key, label, type: "list", domains });
 const MAP = (key, label, over, domains) => ({ key, label, type: "map", over, domains });
 // A section set to all of a domain (an empty list) still offers each of them: every camera but a recording or snapshot twin.
 const allOf = (hass, domain) => Object.keys((hass && hass.states) || {}).filter((id) => id.startsWith(domain + ".") && !/record|snapshot/.test(id)).sort();
+
+const backLabel = (name) => {
+  const n = String(name || "").trim();
+  return n && n.length <= 12 ? n : _sx("Back");
+};
 
 const GROUPS = [
   { id: "rooms", label: "Room", lead: true, icon: "room",
@@ -1340,16 +1346,10 @@ const mediaSources = () => [
   { ...E("discord_user", "Discord account", ["sensor"]), unit: "discord", unitLabel: "Discord",
     sub: "discord", ord: 20,
     hint: "Your Discord Game user sensor. If no game appears, turn on your bot's Presence intent." },
-  { ...T("discord_label", "Discord shown as"), unit: "discord", advanced: true, ord: 25, placeholder: "PC" },
 
   { ...E("steam_account", "Steam account", ["sensor"]), unit: "steam", unitLabel: "Steam",
     sub: "steam", ord: 30,
     hint: "Your Steam account sensor." },
-  { ...T("steam_label", "Steam shown as"), unit: "steam", advanced: true, ord: 33, placeholder: "Steam" },
-  { key: "duplicate_game", label: "Same game on both", type: "select", advanced: true, ord: 34,
-    options: ["", "discord", "steam", "both"], needs: "steam",
-    optionLabels: { "": "Default (keep Discord)", discord: "Keep Discord",
-      steam: "Keep Steam", both: "Show both" } },
 ];
 
 const fieldFault = (f, val, hass) => {
@@ -1399,8 +1399,6 @@ const SECTIONS = [
         optionLabels: { "": "Photo", slate: "Slate", sand: "Sand", sage: "Sage", blue: "Blue", rose: "Rose" } },
       { key: "image", label: "Wallpaper", type: "image", always: true,
         when: (vars) => vars.hemma_style !== "homeview" || !vars.hemma_hv_backdrop || vars.hemma_hv_backdrop_phone === "photo" },
-      { ...E("motion_entity", "Motion sensor", ["binary_sensor"]),
-        hint: "Pulses a dot beside this room in the navigation, and shows a motion icon on the phone." },
     ],
   },
   {
@@ -1411,6 +1409,8 @@ const SECTIONS = [
         options: ["", "overview"], optionLabels: { "": "Focus", overview: "Overview" } },
       { key: "home_layout_tablet", label: "Tablet", type: "select", auto: true, scope: "dashboard",
         options: ["", "focus", "overview"], optionLabels: { "": "Same as desktop", focus: "Focus", overview: "Overview" } },
+      { key: "hemma_tile_width", label: "Tile width", type: "select", auto: true, scope: "dashboard",
+        options: ["", "wide", "xwide"], optionLabels: { "": "Standard", wide: "Wide", xwide: "Extra wide" } },
       { key: "sidebar_open", label: "Open sidebar on load", type: "bool",
         boolDefault: false, auto: true, scope: "dashboard" },
       { key: "sidebar_icon_color", label: "Sidebar icons", type: "accent", accentDefault: { label: "Bright teal", hex: "#33CFD9" },
@@ -1430,6 +1430,7 @@ const SECTIONS = [
     fields: [
       { key: "show_assist", sub: "chrome", label: "Show Assist button", type: "bool",
         boolDefault: true, auto: true, scope: "dashboard" },
+      { key: "_hemma_theme_all", sub: "chrome", label: "Use Hemma theme everywhere", type: "hatheme", always: true, scope: "dashboard" },
       { key: "hemma_hide_header", sub: "chrome", label: "Hide the HA header", type: "bool",
         boolDefault: true, auto: true, scope: "dashboard" },
       { key: "hemma_swipe_nav", sub: "chrome", label: "Swipe between rooms", type: "bool",
@@ -1635,9 +1636,6 @@ const SECTIONS = [
       { id: "steam", label: "Steam" },
     ],
     fields: [
-      { ...T("pause_timeout_minutes", "Hide paused after (minutes)"),
-        auto: true, advanced: true, noAdd: true, ord: 41,
-        placeholder: "10" },
       { key: "start_minimized", label: "Start minimized", type: "bool", boolDefault: false,
         auto: true, scope: "dashboard", ord: 5 },
 
@@ -1772,6 +1770,14 @@ const SECTIONS = [
       ], "Popup detail"),   // one per sub-badge: what its popup shows instead of the room's totals
     ],
   },
+  {
+    label: "Room Activity", icon: "person-walking-motion", iconColor: "var(--hemma-color-orange, #FF9230)", group: "badges",
+    fields: [
+      { ...E("motion_entity", "Motion sensor", ["binary_sensor"]), always: true, autoPick: true, placeholder: "Automatic",
+        classes: ["motion", "occupancy", "presence"],
+        hint: "Pulses a dot beside this room in the navigation, and shows a motion icon on the phone. Automatic uses the room's own motion or occupancy sensor." },
+    ],
+  },
 ];
 
 // Repeats are flattened once per section; visibility then works on units as before.
@@ -1823,6 +1829,219 @@ const dashScopedKeys = () => {
     });
   });
   return [...out];
+};
+
+const CH_J = (x) => (x === undefined ? "~" : stable(x));
+const CH_PHOTO = /^(image|image_night)$/;
+const CH_BADGE = /^(badges?$|badge_|hemma_badge|show_|climate|temp|humid|aqi|lights?_|security|lock|contact|camera|energy|people|person|media_|now_playing|motion|occupancy|presence|window|door|co2|power)/;
+const chSet = (V, k, v) => { if (v === undefined) delete V[k]; else V[k] = clone(v); };
+const chFlat = (sn) => sn.s.concat([sn.m || null, sn.t || {}, sn.h == null ? null : sn.h]);
+const chUnflat = (x) => ({ s: x.slice(0, 4), m: x[4] || null, t: x[5] || {}, h: x[6] == null ? undefined : x[6] });
+
+function chSetting(k, v) {
+  for (const sec of SECTIONS) {
+    const f = sectionFields(sec).find((x) => x && x.key === k);
+    if (!f || !f.label || String(f.key).startsWith("__")) continue;
+    const head = _sx(f.label);
+    if (f.type === "bool") {
+      const on = v === undefined || v === null || v === "" ? f.boolDefault !== false : v === true || v === "true" || v === 1;
+      return _sx(on ? "Turned on {name}" : "Turned off {name}", { name: head });
+    }
+    if (f.type === "select") {
+      const lab = f.optionLabels && f.optionLabels[v === undefined || v === null ? "" : String(v)];
+      return lab ? head + ": " + _sx(lab) : null;
+    }
+    return null;
+  }
+  return null;
+}
+
+function changeItems(before, after, ctx) {
+  const out = [];
+  const add = (text, fix, kind) => out.push({ text, fix, kind: kind || "room" });
+  const rn = (r) => (ctx && ctx.roomName ? ctx.roomName(r) : (r && (r.name || r.path)) || "");
+  const tn = (t) => (ctx && ctx.tileName ? ctx.tileName(t) : (t && (t.name || t.entity)) || _sx("Tile"));
+  const rooms = (x) => ((x && x[0]) || {}).rooms || [];
+  const R0 = rooms(before), R1 = rooms(after);
+  const key = (r) => r.path || r.name || "";
+  const M0 = new Map(R0.map((r) => [key(r), r])), M1 = new Map(R1.map((r) => [key(r), r]));
+  const roomOf = (x, k) => rooms(x).find((r) => key(r) === k);
+  const vars = (r) => (r.variables = r.variables || {});
+  const links = (ctx && ctx.links) || [];
+  const twin = (x, b, k, tile) => {
+    if (!x[4] || !b || !b[4]) return;
+    const sec = (y) => { const i = rooms(y).findIndex((r) => key(r) === k); const l = links.find((q) => q.room === i); return l && l.section != null ? ((y[4][0] || {}).rooms || [])[l.section] : null; };
+    const cur = sec(x), was = sec(b);
+    if (!cur || !was) return;
+    const tk = tileTwinKey(tile);
+    const bi = (was.tiles || []).findIndex((t) => t && tileTwinKey(t) === tk);
+    const l = (cur.tiles || []).filter((t) => !(t && tileTwinKey(t) === tk));
+    if (bi >= 0) l.splice(Math.min(bi, l.length), 0, clone(was.tiles[bi]));
+    cur.tiles = l;
+  };
+  R1.forEach((r) => {
+    if (!M0.has(key(r))) add(_sx("Added room {room}", { room: rn(r) }), (x) => { const l = rooms(x); const i = l.findIndex((y) => key(y) === key(r)); if (i >= 0) l.splice(i, 1); });
+  });
+  R0.forEach((r, bi) => {
+    if (!M1.has(key(r))) add(_sx("Deleted room {room}", { room: rn(r) }), (x) => { const l = rooms(x); if (!roomOf(x, key(r))) l.splice(Math.min(bi, l.length), 0, clone(r)); });
+  });
+  if (CH_J(R0.filter((r) => M1.has(key(r))).map(key)) !== CH_J(R1.filter((r) => M0.has(key(r))).map(key))) {
+    add(_sx("Reordered rooms"), (x, b) => {
+      const l = rooms(x), base = rooms(b).map(key), slots = [], common = [];
+      l.forEach((r, i) => { if (base.indexOf(key(r)) >= 0) { slots.push(i); common.push(r); } });
+      common.sort((p, q) => base.indexOf(key(p)) - base.indexOf(key(q)));
+      slots.forEach((s, i) => { l[s] = common[i]; });
+    });
+  }
+  const common = R1.filter((r) => M0.has(key(r)));
+  const dashKeys = new Set(dashScopedKeys());
+  const changedIn = new Map();
+  common.forEach((r) => {
+    const V0 = M0.get(key(r)).variables || {}, V1 = r.variables || {};
+    new Set(Object.keys(V0).concat(Object.keys(V1))).forEach((k) => {
+      if (CH_J(V0[k]) === CH_J(V1[k])) return;
+      if (!changedIn.has(k)) changedIn.set(k, []);
+      changedIn.get(k).push(CH_J(V1[k]));
+    });
+  });
+  const wide = new Set();
+  changedIn.forEach((vals, k) => {
+    if (k === "room_name" || CH_PHOTO.test(k)) return;
+    if (dashKeys.has(k) || (vals.length >= 2 && vals.length >= common.length * 0.8 && vals.every((v) => v === vals[0]))) wide.add(k);
+  });
+  R1.forEach((r) => {
+    const o = M0.get(key(r));
+    if (!o) return;
+    const k = key(r), n = rn(r);
+    const V0 = o.variables || {}, V1 = r.variables || {};
+    const here = (x) => roomOf(x, k);
+    const was = (b) => roomOf(b, k) || {};
+    const copyVars = (re) => (x, b) => {
+      const t = here(x); if (!t) return;
+      const B = was(b).variables || {}, V = vars(t);
+      new Set(Object.keys(B).concat(Object.keys(V))).forEach((v) => { if (re(v)) chSet(V, v, B[v]); });
+    };
+    const renamed = (o.name || "") !== (r.name || "");
+    if (renamed) {
+      add(_sx("Renamed {old} to {room}", { old: rn(o), room: n }), (x, b) => {
+        const t = here(x); if (!t) return;
+        if (was(b).name === undefined) delete t.name; else t.name = was(b).name;
+        copyVars((v) => v === "room_name")(x, b);
+      });
+    }
+    if (CH_J(V0.image) !== CH_J(V1.image) || CH_J(V0.image_night) !== CH_J(V1.image_night)) {
+      add(_sx("Changed the photo for {room}", { room: n }), copyVars((v) => CH_PHOTO.test(v)));
+    }
+    const a = (o.tiles || []).map(CH_J), bb = (r.tiles || []).map(CH_J);
+    const pool = new Map();
+    a.forEach((x, i) => { if (!pool.has(x)) pool.set(x, []); pool.get(x).push(i); });
+    const added = [];
+    bb.forEach((x, i) => { const l = pool.get(x); if (l && l.length) l.shift(); else added.push(r.tiles[i]); });
+    const removed = [];
+    pool.forEach((l) => l.forEach((i) => removed.push(o.tiles[i])));
+    removed.sort((x, y) => o.tiles.indexOf(x) - o.tiles.indexOf(y));
+    const tiles = (x) => { const t = here(x); return t ? (t.tiles = t.tiles || []) : null; };
+    const findT = (l, t) => l.findIndex((y) => CH_J(y) === CH_J(t));
+    const used = new Set();
+    const pairs = [];
+    added.forEach((nu) => {
+      const tk = tileTwinKey(nu);
+      const j = removed.findIndex((old, i) => !used.has(i) && tileTwinKey(old) === tk);
+      if (j >= 0) { used.add(j); pairs.push([nu, removed[j]]); }
+    });
+    const paired = new Set(pairs.map((p) => p[0]));
+    pairs.forEach(([nu, old]) => {
+      add(_sx("Changed {tile} in {room}", { tile: tn(nu), room: n }), (x, b) => { const l = tiles(x); const j = l ? findT(l, nu) : -1; if (j >= 0) l[j] = clone(old); twin(x, b, k, old); }, "tile");
+    });
+    added.filter((t) => !paired.has(t)).forEach((t) => add(_sx("Added {tile} to {room}", { tile: tn(t), room: n }),
+      (x, b) => { const l = tiles(x); const j = l ? findT(l, t) : -1; if (j >= 0) l.splice(j, 1); twin(x, b, k, t); }, "tile"));
+    removed.filter((t, i) => !used.has(i)).forEach((t) => add(_sx("Removed {tile} from {room}", { tile: tn(t), room: n }),
+      (x, b) => { const l = tiles(x); if (l) l.splice(Math.min(o.tiles.indexOf(t), l.length), 0, clone(t)); twin(x, b, k, t); }, "tile"));
+    if (!added.length && !removed.length && CH_J(a) !== CH_J(bb)) {
+      add(_sx("Reordered tiles in {room}", { room: n }), (x, b) => { const t = here(x); if (t) t.tiles = clone(was(b).tiles || []); }, "tile");
+    }
+    const badgeKeys = [], otherKeys = [];
+    new Set(Object.keys(V0).concat(Object.keys(V1))).forEach((v) => {
+      if (wide.has(v) || CH_PHOTO.test(v) || CH_J(V0[v]) === CH_J(V1[v])) return;
+      if (renamed && v === "room_name") return;
+      if (CH_BADGE.test(v)) badgeKeys.push(v); else otherKeys.push(v);
+    });
+    if (badgeKeys.length) add(_sx("Changed badges in {room}", { room: n }), copyVars((v) => badgeKeys.indexOf(v) >= 0));
+    const SHELL = ["title", "_hero", "_row", "_view", "_extraCards", "_header"];
+    const shell = (x) => CH_J(SHELL.map((f) => (renamed && f === "title" ? null : x[f])));
+    if (otherKeys.length || shell(o) !== shell(r)) {
+      const one = otherKeys.length === 1 && shell(o) === shell(r) ? chSetting(otherKeys[0], V1[otherKeys[0]]) : null;
+      add(one ? one + " · " + n : _sx("Changed {room} settings", { room: n }), (x, b) => {
+        copyVars((v) => otherKeys.indexOf(v) >= 0)(x, b);
+        const t = here(x), B = was(b);
+        if (t) SHELL.forEach((f) => { if (renamed && f === "title") return; if (B[f] === undefined) delete t[f]; else t[f] = clone(B[f]); });
+      });
+    }
+  });
+  const dash = CH_J((before || []).slice(1, 4)) !== CH_J((after || []).slice(1, 4));
+  if (dash || wide.size) {
+    const one = common[0] || {};
+    const named = !dash && wide.size <= 2 ? [...wide].map((k) => chSetting(k, (one.variables || {})[k])) : [];
+    add(named.length && named.every(Boolean) ? named.join(" · ") : _sx("Changed dashboard settings"), (x, b) => {
+      for (let i = 1; i < 4; i++) x[i] = clone((b || [])[i]);
+      rooms(x).forEach((r) => {
+        const B = (roomOf(b, key(r)) || {}).variables || {};
+        wide.forEach((v) => { chSet(vars(r), v, B[v]); });
+      });
+    }, "dash");
+  }
+  if (CH_J((before || [])[5] || {}) !== CH_J((after || [])[5] || {})) add(_sx("Changed tap actions"), (x, b) => { x[5] = clone((b || [])[5] || {}); }, "dash");
+  if (CH_J((before || [])[6]) !== CH_J((after || [])[6])) add(_sx("Changed theme colors"), (x, b) => { x[6] = clone((b || [])[6]); }, "dash");
+  if (!out.length && CH_J((before || [])[4]) !== CH_J((after || [])[4])) add(_sx("Changed the phone layout"), (x, b) => { x[4] = clone((b || [])[4]); }, "phone");
+  return out;
+}
+
+function revertLine(before, after, index, ctx) {
+  const items = changeItems(before, after, ctx);
+  const it = items[index];
+  if (!it) return { why: "gone" };
+  const x = after.map(clone);
+  try {
+    it.fix(x, before);
+    const B = new Map((((before || [])[0] || {}).rooms || []).map((r) => [r.path || r.name || "", r]));
+    (((x || [])[0] || {}).rooms || []).forEach((r) => {
+      const o = B.get(r.path || r.name || "");
+      if (o && o.variables === undefined && r.variables && !Object.keys(r.variables).length) delete r.variables;
+    });
+  } catch (e) { return { why: "error" }; }
+  const desk = (l) => l.filter((y) => y.kind !== "phone");
+  if (!desk(changeItems(before, x, ctx)).length) x[4] = clone((before || [])[4]);
+  const fctx = Object.assign({}, ctx, { roomName: (r) => "#" + ((r && (r.path || r.name)) || "") });
+  const sig = (l) => l.filter((y) => y.kind !== "phone").map((y) => y.text);
+  const others = changeItems(before, after, fctx).map((y, i) => ({ f: y.text, kind: y.kind, text: (items[i] || y).text, i })).filter((y) => y.i !== index && y.kind !== "phone");
+  const got = sig(changeItems(before, x, fctx)).sort();
+  const want = others.map((y) => y.f).sort();
+  if (CH_J(got) !== CH_J(want)) {
+    const left = got.slice();
+    const tied = others.find((y) => { const k = left.indexOf(y.f); if (k >= 0) { left.splice(k, 1); return false; } return true; });
+    return { why: "linked", with: tied ? tied.text : "" };
+  }
+  return { state: x };
+}
+
+const EMBED_SUBS = {
+  Appearance: [
+    { id: "page", label: "Page", keys: ["__name", "hero_title", "__phone_name"] },
+    { id: "look", label: "Look", keys: ["hemma_style", "__hv_bg", "__hv_match", "hemma_hv_text", "hemma_hv_text_phone", "hemma_glass_text"] },
+    { id: "bg", label: "Background", keys: ["hemma_hv_backdrop", "hemma_hv_backdrop_phone", "hemma_bg_color", "image"] },
+  ],
+  Layout: [
+    { id: "layout", label: "Layout", keys: ["home_layout", "home_layout_tablet", "hemma_tile_width"] },
+    { id: "side", label: "Sidebar", keys: ["sidebar_open", "sidebar_icon_color"] },
+  ],
+  Screensaver: [
+    { id: "look", label: "Look", keys: ["hemma_screensaver_style", "hemma_screensaver_face", "__sv_bg", "__sv_np", "hemma_screensaver_ra_bg", "hemma_screensaver_idle", "hemma_screensaver_np", "hemma_screensaver_week_days", "hemma_screensaver_cameras", "hemma_screensaver_calendars"] },
+    { id: "when", label: "Behavior", keys: ["hemma_screensaver", "hemma_screensaver_on", "hemma_screensaver_swipe", "hemma_screensaver_rotate", "hemma_screensaver_cycle", "hemma_screensaver_transition", "hemma_screensaver_every", "hemma_screensaver_dark"] },
+  ],
+  Notifications: [
+    { id: "safe", label: "Safety and Security", keys: ["notify_safety", "notify_air", "notify_locks", "notify_alarm", "notify_doorbell", "notify_doors"] },
+    { id: "home", label: "Around the Home", keys: ["notify_people", "notify_vacuum", "notify_appliances", "notify_plex", "notify_plants", "notify_battery", "notify_updates", "notify_restart"] },
+  ],
 };
 
 const FINGERPRINT_KEY = "hemma_template_fingerprint";
@@ -2351,6 +2570,12 @@ const MENU_ICONS = {
 // The entity's own icon: its configured one, else what HA would draw for its state.
 function entityIconEl(hass, st) {
   const own = st.attributes && st.attributes.icon;
+  const dc = st.attributes && st.attributes.device_class;
+  if (!own && String(st.entity_id || "").indexOf("binary_sensor.") === 0 && ["motion", "occupancy", "presence"].includes(dc) && typeof window !== "undefined" && window.hemmaIconUrl) {
+    const g = document.createElement("span");
+    g.style.cssText = `display:inline-block;width:var(--mdc-icon-size,24px);height:var(--mdc-icon-size,24px);background:currentColor;-webkit-mask:url("${window.hemmaIconUrl(st.state === "on" ? "person-walking-motion" : "person-walking")}") center/contain no-repeat;mask:url("${window.hemmaIconUrl(st.state === "on" ? "person-walking-motion" : "person-walking")}") center/contain no-repeat;`;
+    return g;
+  }
   if (!own && typeof customElements !== "undefined" && customElements.get("ha-state-icon")) {
     const si = document.createElement("ha-state-icon");
     si.hass = hass;
@@ -2401,6 +2626,7 @@ const PANEL_TIGHT = 900;
 const PANEL_PHONE = 700;
 const panelW = (el) => {
   if (!el || !el.getBoundingClientRect) return window.innerWidth;
+  if (el._embedDash) { const w = el.getBoundingClientRect().width; return w > 40 ? Math.round(w) : 416; }
   const left = Math.max(0, el.getBoundingClientRect().left);
   const w = Math.round(window.innerWidth - left);
   return w > 40 ? w : window.innerWidth;
@@ -2604,7 +2830,7 @@ const mdiList = () => {
 };
 const SAVER_BG = { "": "#97a9ae", sand: "#c8b9a2", sage: "#a3b29a", blue: "#93a7c2", rose: "#c6a9ad", lavender: "#afa9c9", sea: "#90b7b6", clay: "#cea796", plum: "#c0a0b4", honey: "#cab992", black: "#000" };
 const saverIsClock = (k) => !k || k === "clock" || k === "clock_photo";
-const SAVER_STYLES = [["", "Today"], ["face", "Clock"], ["np", "Now Playing"], ["recent", "Recently Added"], ["photos", "Rooms"], ["week", "Week"], ["calendar", "Calendar"], ["cameras", "Cameras"]];
+const SAVER_STYLES = [["", "Today"], ["face", "Clock"], ["np", "Now Playing"], ["recent", "Recently Added"], ["week", "Week"], ["calendar", "Calendar"], ["cameras", "Cameras"]];
 const saverMockNew = (k, bg) => {
   const box = (inner, b) => `<div style="position:absolute;inset:0;background:${b};font-family:-apple-system,system-ui,sans-serif;color:#111;text-align:left">${inner}</div>`;
   if (k === "photos") return box(`<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.3),rgba(0,0,0,0) 40%,rgba(0,0,0,0) 62%,rgba(0,0,0,.45))"></div><div style="position:absolute;left:0;right:0;top:20px;text-align:center;color:#fff"><div style="font-size:11px;font-weight:700">Monday <span style="opacity:.7">November 10</span></div><div style="font-size:62px;font-weight:700;letter-spacing:-.045em;line-height:.95">3:15</div></div><div style="position:absolute;left:18px;bottom:16px;font-size:17px;font-weight:700;color:#fff">Living Room</div><div style="position:absolute;right:18px;bottom:16px;font-size:17px;font-weight:600;color:#fff">72°</div>`, "linear-gradient(170deg,#c9b8a3 0%,#8d7a66 46%,#4d4237 47%,#6b5a49 100%)");
@@ -2686,11 +2912,14 @@ function retargetRoutes(root, urlPath, rooms, extras) {
         .map((r) => {
           const route = { url: `/${urlPath}/${r.path}`, label: r.name, icon: roomIcon(r.name), glyph: roomGlyph(r.name, r) };
           const m = (r.variables || {}).motion_entity;
+          const slug = String(r.name || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
           // The global helper is a mute switch: absent means nothing to mute.
-          if (m) route.badge = { show: "[[[ const b = states['input_boolean.hemma_motion_badges'];"
+          route.badge = { show: "[[[ const b = states['input_boolean.hemma_motion_badges'];"
             + " if (b && b.state !== 'on') return false;"
-            + " const s = states['" + m + "'];"
-            + " return !!s && s.state === 'on'; ]]]" };
+            + (m ? " const s = states['" + m + "']; return !!s && s.state === 'on'; ]]]"
+              : " const ha = document.querySelector('home-assistant');"
+              + " const R = window.hemmaRoomSensors ? window.hemmaRoomSensors(ha && ha.hass, 'room_" + slug + "', null) : null;"
+              + " return !!R && R.occupancy.some((id) => states[id] && states[id].state === 'on'); ]]]") };
           return route;
         })
         .concat(clone(keep));
@@ -2812,6 +3041,7 @@ const ICON_DATA = {
   "roman-shade-closed": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20362--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2020.744%2019.953%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2219.953%22%20opacity%3D%220%22%20width%3D%2220.744%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M3.3718%207.51314L19.2511%207.51314C19.6661%207.51314%2019.9586%207.21237%2019.9586%206.81191L19.9586%203.31542C19.9586%202.91708%2019.6661%202.62876%2019.2511%202.62876L3.3718%202.62876C2.95888%202.62876%202.66635%202.91708%202.66635%203.31542L2.66635%206.81191C2.66635%207.21237%202.95888%207.51314%203.3718%207.51314ZM3.3718%2013.7227L19.2511%2013.7227C19.6661%2013.7227%2019.9586%2013.4323%2019.9586%2013.0318L19.9586%209.53534C19.9586%209.13699%2019.6661%208.83833%2019.2511%208.83833L3.3718%208.83833C2.95888%208.83833%202.66635%209.13699%202.66635%209.53534L2.66635%2013.0318C2.66635%2013.4323%202.95888%2013.7227%203.3718%2013.7227ZM3.3718%2019.9426L19.2511%2019.9426C19.6661%2019.9426%2019.9586%2019.6522%2019.9586%2019.2414L19.9586%2015.7553C19.9586%2015.3569%2019.6661%2015.0561%2019.2511%2015.0561L3.3718%2015.0561C2.95888%2015.0561%202.66635%2015.3569%202.66635%2015.7553L2.66635%2019.2414C2.66635%2019.6522%202.95888%2019.9426%203.3718%2019.9426Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%20%3Cpath%20d%3D%22M0.0232123%200.785347C0.0232123%201.21224%200.381668%201.57069%200.806449%201.57069L19.9586%201.57069C20.3937%201.57069%2020.744%201.21224%2020.744%200.785347C20.744%200.360566%2020.3937%200%2019.9586%200L0.806449%200C0.381668%200%200.0232123%200.360566%200.0232123%200.785347ZM0.806449%203.84511C1.17355%203.84511%201.48045%203.52997%201.48045%203.17323C1.48045%202.80613%201.17355%202.51169%200.806449%202.51169C0.441462%202.51169%200.14491%202.80613%200.14491%203.17323C0.14491%203.52997%200.441462%203.84511%200.806449%203.84511ZM0.806449%206.10074C1.17355%206.10074%201.48045%205.79595%201.48045%205.43921C1.48045%205.06176%201.17355%204.76732%200.806449%204.76732C0.441462%204.76732%200.14491%205.06176%200.14491%205.43921C0.14491%205.79595%200.441462%206.10074%200.806449%206.10074ZM0.806449%208.36059C1.17355%208.36059%201.48045%208.05369%201.48045%207.69695C1.48045%207.33196%201.17355%207.03541%200.806449%207.03541C0.441462%207.03541%200.14491%207.33196%200.14491%207.69695C0.14491%208.05369%200.441462%208.36059%200.806449%208.36059ZM0.806449%2013.1569C1.23123%2013.1569%201.5918%2012.7985%201.5918%2012.3716L1.5918%2010.0764C1.5918%209.64949%201.24369%209.29104%200.806449%209.29104C0.381668%209.29104%200.0253225%209.64949%200.0253225%2010.0764L0.0253225%2012.3716C0.0253225%2012.7985%200.383778%2013.1569%200.806449%2013.1569Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
   "roman-shade-open": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20362--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2020.744%2019.953%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2219.953%22%20opacity%3D%220%22%20width%3D%2220.744%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M3.3718%205.70672L19.2511%205.70672C19.6661%205.70672%2019.9586%205.40806%2019.9586%205.0076L19.9586%203.31542C19.9586%202.91708%2019.6661%202.62876%2019.2511%202.62876L3.3718%202.62876C2.95888%202.62876%202.66635%202.91708%202.66635%203.31542L2.66635%205.0076C2.66635%205.40806%202.95888%205.70672%203.3718%205.70672ZM4.30577%209.91531L18.3067%209.91531C18.7197%209.91531%2019.0143%209.627%2019.0143%209.22654L19.0143%207.03191L3.60856%207.03191L3.60856%209.22654C3.60856%209.627%203.90109%209.91531%204.30577%209.91531Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%20%3Cpath%20d%3D%22M0.0232123%200.785347C0.0232123%201.21224%200.381668%201.57069%200.806449%201.57069L19.9586%201.57069C20.3937%201.57069%2020.744%201.21224%2020.744%200.785347C20.744%200.360566%2020.3937%200%2019.9586%200L0.806449%200C0.381668%200%200.0232123%200.360566%200.0232123%200.785347ZM0.806449%203.84511C1.17355%203.84511%201.48045%203.52997%201.48045%203.17323C1.48045%202.80613%201.17355%202.51169%200.806449%202.51169C0.441462%202.51169%200.14491%202.80613%200.14491%203.17323C0.14491%203.52997%200.441462%203.84511%200.806449%203.84511ZM0.806449%206.10074C1.17355%206.10074%201.48045%205.79595%201.48045%205.43921C1.48045%205.06176%201.17355%204.76732%200.806449%204.76732C0.441462%204.76732%200.14491%205.06176%200.14491%205.43921C0.14491%205.79595%200.441462%206.10074%200.806449%206.10074ZM0.806449%208.36059C1.17355%208.36059%201.48045%208.05369%201.48045%207.69695C1.48045%207.33196%201.17355%207.03541%200.806449%207.03541C0.441462%207.03541%200.14491%207.33196%200.14491%207.69695C0.14491%208.05369%200.441462%208.36059%200.806449%208.36059ZM0.806449%2010.6266C1.17355%2010.6266%201.48045%2010.3093%201.48045%209.95258C1.48045%209.58759%201.17355%209.29104%200.806449%209.29104C0.441462%209.29104%200.14491%209.58759%200.14491%209.95258C0.14491%2010.3093%200.441462%2010.6266%200.806449%2010.6266ZM0.806449%2012.8843C1.17355%2012.8843%201.48045%2012.5774%201.48045%2012.2207C1.48045%2011.8453%201.17355%2011.5488%200.806449%2011.5488C0.441462%2011.5488%200.14491%2011.8453%200.14491%2012.2207C0.14491%2012.5774%200.441462%2012.8843%200.806449%2012.8843ZM0.806449%2015.1399C1.17355%2015.1399%201.48045%2014.833%201.48045%2014.4784C1.48045%2014.1113%201.17355%2013.8148%200.806449%2013.8148C0.441462%2013.8148%200.14491%2014.1113%200.14491%2014.4784C0.14491%2014.833%200.441462%2015.1399%200.806449%2015.1399ZM0.806449%2019.9405C1.23123%2019.9405%201.5918%2019.58%201.5918%2019.1552L1.5918%2016.8578C1.5918%2016.4331%201.24369%2016.0725%200.806449%2016.0725C0.381668%2016.0725%200.0253225%2016.4331%200.0253225%2016.8578L0.0253225%2019.1552C0.0253225%2019.58%200.383778%2019.9405%200.806449%2019.9405Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
   "scenes": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2027.5039%2027.1289%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2227.1289%22%20opacity%3D%220%22%20width%3D%2227.5039%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M11.2852%2017.3555C12.1641%2017.8711%2012.8906%2018.0469%2013.5703%2018.0469C14.2617%2018.0469%2014.9883%2017.8711%2015.8672%2017.3555L20.3497%2014.7564L24.2344%2017.0039C25.1836%2017.5664%2025.5469%2017.9883%2025.5469%2018.6328C25.5469%2019.2773%2025.1836%2019.6992%2024.2344%2020.25L15.0703%2025.582C14.4961%2025.9102%2014.0508%2026.0625%2013.5703%2026.0625C13.1016%2026.0625%2012.6445%2025.9102%2012.082%2025.582L2.91797%2020.25C1.96875%2019.6992%201.60547%2019.2773%201.60547%2018.6328C1.60547%2017.9883%201.96875%2017.5664%202.91797%2017.0039L6.79609%2014.7559Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.425%22/%3E%0A%20%20%3Cpath%20d%3D%22M13.5703%2016.4531C14.0508%2016.4531%2014.4961%2016.3008%2015.0703%2015.9727L24.2344%2010.6523C25.1836%2010.0898%2025.5469%209.66797%2025.5469%209.02344C25.5469%208.37891%2025.1836%207.95703%2024.2344%207.40625L15.0703%202.07422C14.4961%201.74609%2014.0508%201.59375%2013.5703%201.59375C13.1016%201.59375%2012.6445%201.74609%2012.082%202.07422L2.91797%207.40625C1.96875%207.95703%201.60547%208.37891%201.60547%209.02344C1.60547%209.66797%201.96875%2010.0898%202.91797%2010.6523L12.082%2015.9727C12.6445%2016.3008%2013.1016%2016.4531%2013.5703%2016.4531Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
+  "server": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20362--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2023.37%2017.9906%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2217.9906%22%20opacity%3D%220%22%20width%3D%2223.37%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M18.0136%204.81827C18.6903%204.80581%2019.2466%204.24949%2019.2466%203.57278C19.2466%202.89396%2018.6903%202.31482%2018.0136%202.31482C17.3472%202.31482%2016.766%202.89396%2016.766%203.57278C16.766%204.24949%2017.3472%204.83073%2018.0136%204.81827ZM18.0136%2010.2263C18.6903%2010.2139%2019.2466%209.65753%2019.2466%208.98082C19.2466%208.302%2018.6903%207.72287%2018.0136%207.72287C17.3472%207.72287%2016.766%208.302%2016.766%208.98082C16.766%209.65753%2017.3472%2010.2388%2018.0136%2010.2263ZM18.0136%2015.6344C18.6903%2015.6219%2019.2466%2015.0656%2019.2466%2014.3889C19.2466%2013.71%2018.6903%2013.1309%2018.0136%2013.1309C17.3472%2013.1309%2016.766%2013.71%2016.766%2014.3889C16.766%2015.0656%2017.3472%2015.6468%2018.0136%2015.6344ZM22.1747%207.02265L22.1747%205.54512L0.874683%205.54512L0.874683%207.02265ZM22.1747%2012.4622L22.1747%2010.9846L0.874683%2010.9846L0.874683%2012.4622ZM3.06359%2017.9906L19.9544%2017.9906C22.0008%2017.9906%2023.018%2016.9692%2023.018%2014.9581L23.018%203.04078C23.018%201.02964%2022.0008%200.00824052%2019.9544%200.00824052L3.06359%200.00824052C1.02753%200.00824052%200%201.02542%200%203.04078L0%2014.9581C0%2016.9734%201.02753%2017.9906%203.06359%2017.9906ZM3.08851%2016.4095C2.11324%2016.4095%201.57069%2015.8877%201.57069%2014.8814L1.57069%203.11745C1.57069%202.10078%202.11324%201.58928%203.08851%201.58928L19.9295%201.58928C20.8963%201.58928%2021.4473%202.10078%2021.4473%203.11745L21.4473%2014.8814C21.4473%2015.8877%2020.8963%2016.4095%2019.9295%2016.4095Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
   "skip_next": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20height%3D%2224px%22%20viewBox%3D%220%20-960%20960%20960%22%20width%3D%2224px%22%20fill%3D%22%23FFFFFF%22%3E%3Cpath%20d%3D%22M636-312v-336h20v336h-20Zm-332-24v-288l228%20144-228%20144Zm20-144Zm0%20110%20169-110-169-110v220Z%22/%3E%3C/svg%3E",
   "skip_previous": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20height%3D%2224px%22%20viewBox%3D%220%20-960%20960%20960%22%20width%3D%2224px%22%20fill%3D%22%23FFFFFF%22%3E%3Cpath%20d%3D%22M304-312v-336h20v336h-20Zm352-24L428-480l228-144v288Zm-20-144Zm0%20110v-220L467-480l169%20110Z%22/%3E%3C/svg%3E",
   "sony": "data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3C%21--Generator%3A%20Apple%20Native%20CoreSVG%20341--%3E%0A%3C%21DOCTYPE%20svg%0APUBLIC%20%22-//W3C//DTD%20SVG%201.1//EN%22%0A%20%20%20%20%20%20%20%22http%3A//www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd%22%3E%0A%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20xmlns%3Axlink%3D%22http%3A//www.w3.org/1999/xlink%22%20viewBox%3D%220%200%2031.4047%2024.0352%22%3E%0A%20%3Cg%3E%0A%20%20%3Crect%20height%3D%2224.0352%22%20opacity%3D%220%22%20width%3D%2231.4047%22%20x%3D%220%22%20y%3D%220%22/%3E%0A%20%20%3Cpath%20d%3D%22M11.6477%200C13.7922%200.457031%2016.8508%201.39453%2018.55%201.95703C22.8274%203.39844%2024.3391%205.21484%2024.3391%209.35156C24.3391%2012.3398%2022.9563%2013.9219%2020.8821%2013.9219C20.2024%2013.9219%2019.4524%2013.7461%2018.6438%2013.3594L18.6438%205.89453C18.6438%205.03906%2018.55%204.27734%2017.718%204.01953C17.0266%203.79688%2016.6867%204.39453%2016.6867%205.21484L16.6867%2024.0117L11.6477%2022.418ZM17.6242%2020.7422L17.6242%2023.6367L27.9367%2019.957C29.4719%2019.418%2030.4328%2018.8789%2030.7844%2018.3984C31.3586%2017.6602%2031.1008%2016.5%2028.8742%2015.7383C26.5657%2014.9414%2023.8821%2014.6836%2021.7258%2014.8477C20.3899%2014.9531%2018.7961%2015.3867%2017.6242%2015.7852L17.6242%2018.8789L23.0383%2016.9219C23.9524%2016.582%2025.2414%2016.5469%2026.0383%2016.8164C26.7766%2017.0625%2026.7063%2017.4844%2025.7453%2017.8477ZM1.86253%2020.2266C4.13596%2021.0352%207.04221%2021.6914%2010.6282%2020.9062L10.6282%2018.3047L8.23753%2019.1953C7.24143%2019.5469%205.6594%2019.6055%205.10862%2019.4297C4.31175%2019.1602%204.47581%2018.6328%205.5305%2018.2578L10.6282%2016.4414L10.6282%2013.5469L3.62034%2016.0781C2.68284%2016.418%201.74534%2016.6875%200.667214%2017.4258C-0.51638%2018.2344-0.129661%2019.5234%201.86253%2020.2266Z%22%20fill%3D%22white%22%20fill-opacity%3D%220.85%22/%3E%0A%20%3C/g%3E%0A%3C/svg%3E%0A",
@@ -2885,7 +3115,7 @@ const TILE_ICON = {
   game: "play",
   cover: "curtain-open", vacuum: "vacuum", air_purifier: "purifier",
   humidifier: "humidifier", updates: "updates", plant: "plant",
-  energy_tile: "energy", battery: "battery", network: "wifi", plex: "plex",
+  energy_tile: "energy", battery: "battery", network: "wifi", server: "server", plex: "plex",
   lock: "lock-fill", lock_group: "lock-fill", cover_group: "curtain-open",
   cameras: "doorbell",
   entity_actions: "plug",
@@ -3338,6 +3568,12 @@ const TILE_TYPES = [
       { key: "action_1_status", label: "Button 1 status", domains: ["binary_sensor", "sensor"], advanced: true },
       { key: "action_2_entity", label: "Button 2", domains: ["button", "switch", "script"], advanced: true },
       { key: "action_2_status", label: "Button 2 status", domains: ["binary_sensor", "sensor"], advanced: true },
+    ] },
+  { id: "server", label: "Server", template: "hemma_server", hidden: true,
+    domains: ["sensor", "binary_sensor"], entityLabel: "Proxmox or Unraid sensor",
+    fields: [
+      ICON_FIELD,
+      { key: "room_name", label: "Popup title", type: "text", advanced: true },
     ] },
   { id: "plex", label: "Plex recently added", template: "hemma_plex_recently_added",
     domains: ["sensor"], whenDefault: "active", fields: [
@@ -4649,7 +4885,7 @@ class HemmaPanel extends HTMLElement {
     this._loadUserIcons();
     const dark = !(hass.themes && hass.themes.darkMode === false);
     this._lightTheme = !dark;
-    this.classList.toggle("is-light", false);
+    this.classList.toggle("is-light", !!(this._embedDash && this._embedLight));
     const lang = hass.language || "en";
     this.classList.toggle("nocaps", !/^en/.test(lang));
     if (this._sxLang !== lang) {
@@ -6670,16 +6906,27 @@ class HemmaPanel extends HTMLElement {
         }
         :host(.phone) .row:has(> .sw) > label { grid-column:1; grid-row:1; font-size:17px; color:var(--ink); }
         :host(.phone) .row:has(> .sw) > .sw { grid-column:2; grid-row:1; }
-        :host(.phone) .row:is(:has(> .combo), :has(> input)) {
+        :host(.phone) .row:is(:has(> .combo), :has(> input), :has(> div > .combo)) {
           grid-template-columns:minmax(0,1fr); row-gap:7px; padding:11px 0 13px; align-items:start;
         }
-        :host(.phone) .row:is(:has(> .combo), :has(> input)) > label {
+        :host(.phone) .row:is(:has(> .combo), :has(> input), :has(> div > .combo)) > label {
           grid-column:1; grid-row:1; font-size:14px; color:var(--ink-2);
         }
-        :host(.phone) .row:is(:has(> .combo), :has(> input)) > :nth-child(2) {
+        :host(.phone) .row:is(:has(> .combo), :has(> input), :has(> div > .combo)) > :nth-child(2) {
           grid-column:1; grid-row:2; min-width:0;
         }
-        :host(.phone) .row:is(:has(> .combo), :has(> input)) > .drop { display:none; }
+        :host(.phone) .row:is(:has(> .combo), :has(> input), :has(> div > .combo)) > .drop { display:none; }
+        :host(.phone) .row > .drop.blank { display:none; }
+        :host(.phone) .row:has(> .colorfield) {
+          grid-template-columns:minmax(0,1fr) auto; column-gap:12px; min-height:44px; padding:4px 0; align-items:center;
+        }
+        :host(.phone) .row:has(> .colorfield) > label { grid-column:1; grid-row:1; font-size:17px; color:var(--ink); }
+        :host(.phone) .row:has(> .colorfield) > .colorfield { grid-column:2; grid-row:1; justify-self:end; width:auto; max-width:100%; }
+        :host(.phone) .row:has(> div > .combo) > div { grid-column:1; grid-row:2; min-width:0; }
+        :host(.phone) .shots { padding-bottom:36px; }
+        :host(.phone) .shot { overflow:visible; }
+        :host(.phone) .shot .cap { top:calc(100% + 8px); bottom:auto; left:0; right:0; text-align:center; font-size:13px; color:var(--ink-2); text-shadow:none; }
+        :host(.phone) .band.detail .card.sel:has(> .row > .sw):not(:has(> .row > .combo)):not(:has(> .row > input)) { padding-top:1px; }
         :host(.phone) .row .combo > input,
         :host(.phone) .row > input {
           height:46px; padding:0 40px 0 14px; text-align:left;
@@ -8655,7 +8902,7 @@ class HemmaPanel extends HTMLElement {
           grid-template-columns:minmax(0,1fr);
         }
         :host(:not(.narrow)) .inspector .row:not(:has(> .drop:not(.blank))) > .drop { display:none; }
-        :host(.narrow:not(.tight)) .row:not(:has(> .sw)):not(:has(> .drop:not(.blank))) {
+        :host(.narrow:not(.tight):not(.phone)) .row:not(:has(> .sw)):not(:has(> .drop:not(.blank))) {
           grid-template-columns:minmax(110px,33%) 1fr;
         }
         :host(.tight) .row > .sw { margin-left:auto; }
@@ -9817,7 +10064,7 @@ class HemmaPanel extends HTMLElement {
       const wasPhone = this._wasPhone;
       this._wasPhone = phone;
       this.classList.toggle("phone", phone);
-      this.classList.toggle("is-light", false);
+      this.classList.toggle("is-light", !!(this._embedDash && this._embedLight));
       const split = !phone;
       const wasSplit = this.classList.contains("split");
       this.classList.toggle("split", split);
@@ -10002,12 +10249,14 @@ class HemmaPanel extends HTMLElement {
       this._restoreScroll(snap);
     });
     document.addEventListener("keydown", (ev) => {
-      if (!(ev.metaKey || ev.ctrlKey) || ev.shiftKey || ev.altKey || String(ev.key).toLowerCase() !== "z") return;
-      if (!this.isConnected || !(this._undoStack || []).length) return;
+      const k = String(ev.key).toLowerCase();
+      if (!(ev.metaKey || ev.ctrlKey) || ev.altKey || !(k === "z" || (k === "y" && ev.ctrlKey && !ev.shiftKey))) return;
+      const redo = ev.shiftKey || k === "y";
+      if (!this.isConnected || !((redo ? this._redoStack : this._undoStack) || []).length) return;
       const t = ev.composedPath ? ev.composedPath()[0] : ev.target;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
       ev.preventDefault();
-      this._undo();
+      if (redo) this._redo(); else this._undo();
     });
     this.$("donebtn").onclick = () => this._done();
     await this._refreshDashboards();
@@ -10092,6 +10341,7 @@ class HemmaPanel extends HTMLElement {
   }
 
   _openDash(withRoom) {
+    if (this._embedDash) return;
     const p = this._dashForDevice(this._dashUrl);
     if (!p) return;
     const room = withRoom && this._state && this._state.compact.rooms[this._room];
@@ -10532,7 +10782,7 @@ class HemmaPanel extends HTMLElement {
       return;
     }
 
-    let pick = select;
+    let pick = select || this._embedDash;
     // Opened from a dashboard's own "Edit dashboard": that dashboard wins over
     // whatever was edited here last. A phone path resolves to its desktop pair.
     if (!pick) {
@@ -10560,7 +10810,7 @@ class HemmaPanel extends HTMLElement {
       return;
     }
     this._setDash(pick);
-    this._remember(pick);
+    if (!this._embedDash) this._remember(pick);
 
     this._log(`${list.length} storage dashboard(s)`);
     await this._load();
@@ -12266,6 +12516,7 @@ class HemmaPanel extends HTMLElement {
       this._syncSizeOpts();
       this._renderReconcile();
       this._tapEdits = {};
+      this._themeEdit = undefined;
       this._clean = this._print();
       this._resetUndo(false);
       this._renderTabs();
@@ -12755,9 +13006,16 @@ class HemmaPanel extends HTMLElement {
         try { await this._hass.callWS({ type: "hemma/home/set_entity", entity_id: eid, options: { tap } }); }
         catch (e) { tapLeft[eid] = tap; tapErr = e; }
       }
+      if (this._themeEdit != null) {
+        try { const r = await this._hass.callWS({ type: "hemma/theme/set", all: this._themeEdit }); this._haThemeAll = !!(r && r.all); this._themeEdit = undefined; }
+        catch (e) { tapErr = tapErr || e; }
+      }
+      const themeLeft = this._themeEdit;
       this._tapEdits = {};
+      this._themeEdit = undefined;
       this._clean = this._print();
       this._tapEdits = tapLeft;
+      this._themeEdit = themeLeft;
       this._resetUndo(true);
       this._markDirty();
       this._status(tapErr ? this._plainError(tapErr, _sx("Hemma couldn't save the Tap setting.")) : "", tapErr ? "err" : undefined);
@@ -12922,7 +13180,7 @@ class HemmaPanel extends HTMLElement {
     const p = this._pair;
     return stable([s.compact, s.scaffold, s.extras, s.chrome,
       p && p.safe !== false
-        ? [p.mobile.compact, p.mobile.chrome, p.mobile.scaffold] : null, this._tapEdits || {}]);
+        ? [p.mobile.compact, p.mobile.chrome, p.mobile.scaffold] : null, this._tapEdits || {}, this._themeEdit == null ? null : this._themeEdit]);
   }
 
   _snap() {
@@ -12932,20 +13190,103 @@ class HemmaPanel extends HTMLElement {
       s: [s.compact, s.scaffold, s.extras, s.chrome].map(clone),
       m: p && p.safe !== false ? [p.mobile.compact, p.mobile.chrome, p.mobile.scaffold].map(clone) : null,
       t: clone(this._tapEdits || {}),
+      h: this._themeEdit,
     };
   }
 
   // A fresh history, taken wherever _clean is: a load starts over, a save keeps going.
   _resetUndo(keep) {
     if (!keep) this._undoStack = [];
+    this._redoStack = [];
+    this._cleanDepth = (this._undoStack || []).length;
     this._lastPrint = this._print();
     this._shadow = this._state ? this._snap() : null;
+    this._cleanSnap = this._state ? this._snap() : null;
   }
 
   _undo() {
     const snap = (this._undoStack || []).pop();
     const s = this._state;
     if (!snap || !s) return;
+    this._redoStack = (this._redoStack || []).concat([this._snap()]).slice(-50);
+    this._applySnap(snap);
+  }
+
+  _redo() {
+    const snap = (this._redoStack || []).pop();
+    if (!snap || !this._state) return;
+    this._undoStack = (this._undoStack || []).concat([this._snap()]).slice(-50);
+    this._applySnap(snap);
+  }
+
+  _embedCount() {
+    if (!this._isDirty()) return 0;
+    return Math.max(1, this._embedChanges().length);
+  }
+
+  _chCtx() {
+    const S = (this._hass && this._hass.states) || {};
+    return {
+      links: (this._pair && this._pair.safe !== false && this._pair.link && this._pair.link.links) || [],
+      tileName: (t) => (t && (t.name || ((S[t.entity] || {}).attributes || {}).friendly_name || t.entity)) || _sx("Tile"),
+    };
+  }
+
+  _embedChanges() {
+    if (!this._state || !this._cleanSnap || !this._isDirty()) return [];
+    try { return changeItems(chFlat(this._cleanSnap), chFlat(this._snap()), this._chCtx()); } catch (e) { return []; }
+  }
+
+  _embedRevertPlan(i) {
+    if (!this._state || !this._cleanSnap) return { why: "gone" };
+    try { return revertLine(chFlat(this._cleanSnap), chFlat(this._snap()), i, this._chCtx()); } catch (e) { return { why: "error" }; }
+  }
+
+  _embedRevert(i) {
+    const plan = i === "all" ? { state: chFlat(this._cleanSnap) } : this._embedRevertPlan(i);
+    if (!plan.state) return false;
+    this._undoStack = (this._undoStack || []).concat([this._snap()]).slice(-50);
+    this._redoStack = [];
+    this._applySnap(chUnflat(plan.state.map(clone)));
+    return true;
+  }
+
+  _embedNorm(snap) {
+    const cur = this._snap(), out = clone(snap);
+    out.s = (out.s || []).map((x, i) => (x === null && cur.s[i] === undefined ? undefined : x));
+    if (out.m && cur.m) out.m = out.m.map((x, i) => (x === null && cur.m[i] === undefined ? undefined : x));
+    if (!!out.m !== !!cur.m) out.m = cur.m;
+    if (out.h === null) out.h = undefined;
+    return out;
+  }
+
+  _embedDiff(snap) {
+    if (!this._state || !snap) return [];
+    try { return changeItems(chFlat(this._snap()), chFlat(this._embedNorm(snap)), this._chCtx()).map((x) => x.text); } catch (e) { return []; }
+  }
+
+  _embedLoad(snap) {
+    if (!this._state || !snap || !snap.s) return false;
+    const next = this._embedNorm(snap);
+    this._undoStack = (this._undoStack || []).concat([this._snap()]).slice(-50);
+    this._redoStack = [];
+    this._applySnap(next);
+    return true;
+  }
+
+  _embedStep(redo) {
+    const st = redo ? this._redoStack : this._undoStack, top = st && st[st.length - 1];
+    if (!top || !this._state) return "";
+    try { const l = changeItems(chFlat(redo ? this._snap() : top), chFlat(redo ? top : this._snap()), this._chCtx()); return l.length === 1 ? l[0].text : l.length ? _sx("{n} changes", { n: l.length }) : ""; } catch (e) { return ""; }
+  }
+
+
+  _embedSections() {
+    return SECTIONS.map((sec) => ({ group: sec.group || "rooms", key: sec.label, label: _sx(sec.label), icon: sec.icon || null }));
+  }
+
+  _applySnap(snap) {
+    const s = this._state;
     if (this._openCombo) this._openCombo();
     const room = s.compact.rooms[this._room];
     const tileIdx = this._sel && this._sel.group === "tiles" && room
@@ -12954,6 +13295,7 @@ class HemmaPanel extends HTMLElement {
     const p = this._pair;
     if (snap.m && p && p.safe !== false) [p.mobile.compact, p.mobile.chrome, p.mobile.scaffold] = snap.m;
     this._tapEdits = snap.t || {};
+    this._themeEdit = snap.h;
     this._room = Math.max(0, Math.min(this._room, s.compact.rooms.length - 1));
     const now = s.compact.rooms[this._room];
     if (tileIdx >= 0 && now && (now.tiles || [])[tileIdx]) this._sel.key = this._tileKey(now.tiles[tileIdx]);
@@ -12962,15 +13304,20 @@ class HemmaPanel extends HTMLElement {
     this._renderTabs();
     this._renderForm();
     this._syncPreview();
+    this._markDirty();
   }
 
   _markDirty() {
+    if (this._embedDash && !this._embedPing) {
+      this._embedPing = requestAnimationFrame(() => { this._embedPing = 0; this.dispatchEvent(new CustomEvent("hemma-studio-change")); });
+    }
     const b = this.$("save");
     if (!b) return;
     if (this._state && this._shadow && this._lastPrint !== undefined) {
       const print = this._print();
       if (print !== this._lastPrint) {
         this._undoStack = (this._undoStack || []).concat([this._shadow]).slice(-50);
+        this._redoStack = [];
         this._shadow = this._snap();
         this._lastPrint = print;
           }
@@ -13770,6 +14117,8 @@ class HemmaPanel extends HTMLElement {
     this._toPageTop = false;
     const floor = sc === pane ? 0 : pane.offsetHeight;
     if (floor) pane.style.minHeight = floor + "px";
+    const pushGhost = this._embedDash && this._navDir && this.isConnected && pane.firstChild
+      && !window.matchMedia("(prefers-reduced-motion: reduce)").matches ? this._pushGhost(pane, sc, this._navDir) : null;
     pane.innerHTML = "";
     this._renderSurfaceNote(pane);
     this._setBackdrop();
@@ -14133,8 +14482,10 @@ class HemmaPanel extends HTMLElement {
         const rec = this._switches[this._switches.length - 1];
         if (rec && rec.fs === fs) { rec.add = add; add.disabled = !rec.get(); }
         add.onclick = () => {
-          this._menuAt(add, offered, reveal);
+          this._menuAt(add, fs._navOffered || offered, reveal);
         };
+        fs._offered = offered;
+        fs._reveal = reveal;
         head.appendChild(add);
       }
       fs.appendChild(head);
@@ -14395,7 +14746,7 @@ class HemmaPanel extends HTMLElement {
           box.className = "svh";
           const svEsc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
           let paint = () => {
-            const raw = String(room.variables[f.key] || ""), sel = raw === "clock" ? "" : raw === "words" ? "face" : raw, tint = String(room.variables.hemma_screensaver_bg || "");
+            const raw = String(room.variables[f.key] || ""), sel = raw === "clock" || raw === "photos" ? "" : raw === "words" ? "face" : raw, tint = String(room.variables.hemma_screensaver_bg || "");
             const V0 = room.variables || {}, fbg = (/^(album|artwork)$/.test(tint) ? V0.hemma_screensaver_bg_rest : tint) || (V0.hemma_style === "homeview" ? ((V0.hemma_hv_color === "album" ? V0.hemma_hv_rest : V0.hemma_hv_color) || "") : "");
             box.innerHTML = `<div class="svbig"><div class="svmock">${saverMock(sel, tint, room.variables.hemma_screensaver_face, fbg)}</div><button type="button" class="svpv">${svEsc(_sx("Preview"))}</button></div>`
               + `<div class="svgrid">${styles.map(([k, l]) => `<button type="button" class="svopt${k === sel ? " on" : ""}" data-k="${k}"><span class="svthumb"><span class="svmock">${saverMock(k, tint, room.variables.hemma_screensaver_face, fbg)}</span></span><span class="svlab">${svEsc(_sx(l))}</span></button>`).join("")}</div>`;
@@ -14411,6 +14762,28 @@ class HemmaPanel extends HTMLElement {
           fs.appendChild(box);
           if (window.ResizeObserver) new ResizeObserver(fit).observe(box);
           requestAnimationFrame(fit);
+          return;
+        }
+
+        if (f.type === "hatheme") {
+          const sw = document.createElement("button");
+          sw.className = "sw";
+          sw.type = "button";
+          sw.setAttribute("role", "switch");
+          sw.setAttribute("aria-label", _sx(f.label));
+          const now = () => (this._themeEdit != null ? this._themeEdit : !!this._haThemeAll);
+          const show = () => sw.setAttribute("aria-checked", now() ? "true" : "false");
+          show();
+          if (this._haThemeAll == null && this._hass && this._hass.callWS) this._hass.callWS({ type: "hemma/theme/get" }).then((r) => { this._haThemeAll = !!(r && r.all); show(); }).catch(() => {});
+          sw.onclick = () => {
+            const want = !now();
+            this._themeEdit = want === !!this._haThemeAll ? undefined : want;
+            show();
+            this._markDirty();
+          };
+          row.appendChild(sw);
+          fs.appendChild(row);
+          addHint();
           return;
         }
 
@@ -14481,9 +14854,11 @@ class HemmaPanel extends HTMLElement {
           const pinned = f.repeatKinds && this._slotKind.get(room.path + "|" + unitOf(f));
           const kind = pinned && f.repeatKinds.find((k) => k.id === pinned);
           const doms = (kind && kind.domains) || f.domains;
-          const c = this._combo(cur, this._entityList(doms, (kind && kind.classes) || f.classes),
+          const elist = this._entityList(doms, (kind && kind.classes) || f.classes);
+          const c = this._combo(cur, f.autoPick ? [AUTO_ENTITY].concat(elist) : elist,
             f.placeholder || doms.map((d) => d + ".").join(" / "),
             (v) => {
+              if (v === AUTO_ENTITY) v = "";
               setVar(f.key, v, f);
               addFault(v);
               this._syncPreview();
@@ -14542,36 +14917,41 @@ class HemmaPanel extends HTMLElement {
       };
       const syncWhen = () => {
         const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        whenRows.forEach(({ f, row }) => {
-          const want = f.when(room.variables || {});
-          (row._extra || []).forEach((e) => { e.style.display = want ? "" : "none"; });
-          const shown = row.style.display !== "none" && !row._leaving;
+        const slide = (el, want) => {
+          const shown = el.style.display !== "none" && !el._leaving;
           if (want === shown) return;
-          row.getAnimations().forEach((a) => a.cancel());
-          row._leaving = !want;
-          if (still || !row.animate) { row.style.display = want ? "" : "none"; row._leaving = false; return; }
-          row.style.display = "";
-          const cs = getComputedStyle(row);
-          const open = { height: row.offsetHeight + "px", paddingTop: cs.paddingTop,
-            paddingBottom: cs.paddingBottom, opacity: 1 };
-          const shut = { height: "0px", paddingTop: "0px", paddingBottom: "0px", opacity: 0 };
-          row.style.overflow = "hidden";
-          row.style.boxSizing = "border-box";
-          const a = row.animate(want ? [shut, open] : [open, shut],
-            { duration: want ? 340 : 280, easing: EASE });
-          const done = () => {
-            row.style.overflow = ""; row.style.boxSizing = "";
-            if (row._leaving) { row.style.display = "none"; row._leaving = false; }
-          };
-          a.finished.then(done, () => {});
+          el.getAnimations().forEach((a) => a.cancel());
+          el._leaving = !want;
+          if (still || !el.animate) { el.style.display = want ? "" : "none"; el._leaving = false; return; }
+          el.style.display = "";
+          const cs = getComputedStyle(el);
+          const open = { height: el.offsetHeight + "px", minHeight: cs.minHeight, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, marginTop: cs.marginTop, marginBottom: cs.marginBottom, opacity: 1 };
+          const shut = { height: "0px", minHeight: "0px", paddingTop: "0px", paddingBottom: "0px", marginTop: "0px", marginBottom: "0px", opacity: 0 };
+          el.style.overflow = "hidden";
+          el.style.boxSizing = "border-box";
+          const a = el.animate(want ? [shut, open] : [open, shut], { duration: 340, easing: EASE });
+          a.finished.then(() => {
+            el.style.overflow = ""; el.style.boxSizing = "";
+            if (el._leaving) { el.style.display = "none"; el._leaving = false; }
+          }, () => {});
+        };
+        const go = () => whenRows.forEach(({ f, row }) => {
+          const want = f.when(room.variables || {});
+          slide(row, want);
+          (row._extra || []).forEach((e) => slide(e, want));
         });
+        const held = this._embedReveal ? this._embedReveal() : null;
+        if (held && held.then) held.then(go, go); else go();
       };
 
       const plain = visible.filter((f) => !f.advanced);
-      if (sec.subs) {
+      const esub = !sec.subs && this._embedDash ? EMBED_SUBS[sec.label] : null;
+      const subs = sec.subs || esub;
+      const subOf = (f) => f.sub || (esub && (esub.find((x) => x.keys.includes(f.key)) || {}).id) || subs[0].id;
+      if (subs) {
         fs.classList.add("grouped");
-        sec.subs.forEach((sub) => {
-          const mine = plain.filter((f) => (f.sub || sec.subs[0].id) === sub.id);
+        subs.forEach((sub) => {
+          const mine = plain.filter((f) => subOf(f) === sub.id);
           if (!mine.length) return;
           if (sub.label) {
             const t = document.createElement("div");
@@ -14694,6 +15074,8 @@ class HemmaPanel extends HTMLElement {
           + '<path d="m15 5-7 7 7 7"/></svg>';
         back.onclick = () => this._popRow();
         const grp = GROUPS.find((x) => x.id === this._sel.group);
+        back.dataset.prev = backLabel(this._sel.group === GROUPS[0].id
+          ? ((room && (room.name || room.path)) || _sx("Room")) : home);
         const h3 = document.createElement("h3");
         h3.textContent = _sx((grp && this._headFor(grp, room).label) || this._sel.label) || home;
         bar.appendChild(back);
@@ -14701,13 +15083,18 @@ class HemmaPanel extends HTMLElement {
         const ownHead = hit.querySelector(".chead, .thead");
         if (ownHead) {
           const sw = ownHead.querySelector(".sw");
+          if (this._embedDash) this._embedListRows(hit, ownHead, sw, h3.textContent);
           ownHead.querySelectorAll(".plus").forEach((c) => bar.appendChild(c));
-          if (sw) bar.appendChild(sw);
+          if (sw && !this._embedDash) bar.appendChild(sw);
           ownHead.querySelectorAll(".rowmenu").forEach((c) => bar.appendChild(c));
         }
         // The SAME slot the switcher lives in. Swapped, not stacked.
         seg.remove();
         nav.appendChild(bar);
+        if (this._embedDash) requestAnimationFrame(() => {
+          const b = back.getBoundingClientRect(), t = h3.getBoundingClientRect();
+          if (b.width && t.width && b.right + 12 > t.left) back.dataset.prev = _sx("Back");
+        });
       }
     }
     if (!this._sel && isPhone(this) && this._group !== GROUPS[0].id
@@ -14724,6 +15111,7 @@ class HemmaPanel extends HTMLElement {
       back.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"'
         + ' stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">'
         + '<path d="m15 5-7 7 7 7"/></svg>';
+      back.dataset.prev = backLabel((room && (room.name || room.path)) || home);
       back.onclick = () => {
         this._group = GROUPS[0].id;
         this._sel = null;
@@ -14759,11 +15147,13 @@ class HemmaPanel extends HTMLElement {
     this._navDir = 0;
     const instant = this._instantNav;
     this._instantNav = false;
+    if (this._embedDash) this._edgeSwipe();
     requestAnimationFrame(() => {
       // Again after layout: the rebuilt column may be a different height.
       if (floor) pane.style.minHeight = "";
       sc.scrollTop = keepScroll;
-      if (navDir) this._playNav(navDir, navSwapped);
+      if (pushGhost) this._playPush(pushGhost, navDir);
+      else if (navDir) this._playNav(navDir, navSwapped);
       else if (!instant && !roomSwap) this._playCards(beforeRects);
     });
   }
@@ -14905,9 +15295,8 @@ class HemmaPanel extends HTMLElement {
       ch.onclick = () => {
         this._group = g.id;
         this._sel = null;
-        this._navDir = 0;
+        this._navDir = 1;
         this._toPageTop = true;
-        this._instantNav = true;
         this._renderForm();
       };
       card.appendChild(ch);
@@ -15146,12 +15535,13 @@ class HemmaPanel extends HTMLElement {
     // Sized to its content, so a single "Remove tile" is not 240px wide.
     menu.style.width = "auto";
     const phone = isPhone(this);
-    menu.style.minWidth = phone ? "170px" : "148px";
+    menu.style.minWidth = (this._embedDash ? Math.max(phone ? 170 : 148, Math.round(r.width)) : phone ? 170 : 148) + "px";
+    if (this._embedDash) menu.style.boxSizing = "border-box";
     menu.style.maxWidth = "320px";
     const width = Math.ceil(menu.getBoundingClientRect().width);
     const inSide = !!(anchor && anchor.closest
       && (anchor.closest(".sidelist") || anchor.closest(".inspector")));
-    const lead = !inSide && r.left + r.width / 2 < window.innerWidth / 2;
+    const lead = this._embedDash ? !inSide : !inSide && r.left + r.width / 2 < window.innerWidth / 2;
     const want = lead ? r.left : r.right - width;
     const left = Math.max(16, Math.min(want, window.innerWidth - width - 16));
     menu.style.left = left + "px";
@@ -15747,6 +16137,7 @@ class HemmaPanel extends HTMLElement {
   }
 
   _prettyEntity(v) {
+    if (v === AUTO_ENTITY) return _sx("Automatic");
     const e = v && String(v).includes(".") && this._hass && this._hass.states[v];
     return (e && e.attributes && e.attributes.friendly_name) || v;
   }
@@ -15869,6 +16260,147 @@ class HemmaPanel extends HTMLElement {
     }
   }
 
+  _embedListRows(card, head, sw, title) {
+    const grouped = card.classList.contains("grouped");
+    card.querySelectorAll(".row").forEach((r) => {
+      const l = r.querySelector(":scope > label");
+      r.classList.toggle("lst", !!(grouped && r.closest(".subcard") && l && /\d+$/.test(l.textContent.trim()) && r.querySelector(":scope > .combo.hasent")));
+    });
+    if (sw) {
+      const row = document.createElement("div");
+      row.className = "row navsw";
+      const l = document.createElement("label");
+      l.textContent = title;
+      row.append(l, sw);
+      let first = head.nextElementSibling;
+      while (first && first.offsetParent === null && !first.classList.contains("subcard") && !first.classList.contains("subtitle")) first = first.nextElementSibling;
+      if (grouped && first && first.classList.contains("subcard")) first.prepend(row);
+      else if (grouped) {
+        const sub = document.createElement("div");
+        sub.className = "subcard";
+        sub.appendChild(row);
+        head.after(sub);
+      } else head.after(row);
+    }
+    const offered = card._offered || [];
+    if (!offered.length || !card._reveal) return;
+    const byGroup = new Map();
+    offered.forEach((o) => { if (o.group) byGroup.set(o.group, (byGroup.get(o.group) || []).concat(o)); });
+    const en = /^en/i.test((this._hass && this._hass.language) || "en");
+    const used = new Set();
+    card.querySelectorAll(":scope > .subtitle").forEach((st) => {
+      let sub = st.nextElementSibling;
+      while (sub && !sub.classList.contains("subcard") && !sub.classList.contains("subtitle")) sub = sub.nextElementSibling;
+      if (!sub || !sub.classList.contains("subcard")) return;
+      const stems = new Set([...sub.querySelectorAll(".row > label")].map((l) => l.textContent.trim().replace(/\s*\d+$/, "")));
+      const list = (byGroup.get(st.textContent.trim()) || []).concat(offered.filter((o) => !o.group && stems.has(o.label)));
+      if (!list.length) return;
+      const name = list.length === 1 ? list[0].label : st.textContent.trim();
+      const word = en ? name.replace(/\b\w/g, (c) => c.toUpperCase()) : name.toLowerCase();
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "row addrow";
+      b.innerHTML = '<i></i><span></span>';
+      b.querySelector("span").textContent = _sx("Add {name}", { name: word });
+      b.onclick = () => { if (list.length === 1) card._reveal(list[0].id); else this._menuAt(b, list, card._reveal); };
+      sub.appendChild(b);
+      list.forEach((o) => used.add(o));
+    });
+    const rest = offered.filter((o) => !used.has(o));
+    card._navOffered = rest;
+    if (!rest.length) head.querySelectorAll(".plus").forEach((c) => c.remove());
+  }
+
+  _pushGhost(pane, sc, dir) {
+    const insp = pane.parentElement;
+    if (!insp || !sc) return null;
+    const sr = sc.getBoundingClientRect(), ir = insp.getBoundingClientRect();
+    if (!sr.width || !ir.width) return null;
+    const clip = document.createElement("div");
+    clip.style.cssText = `position:fixed;left:${sr.left}px;top:${sr.top}px;width:${sr.width}px;height:${sr.height}px;overflow:hidden;pointer-events:none;contain:layout paint`;
+    const g = insp.cloneNode(false);
+    g.removeAttribute("id");
+    g.style.cssText = `position:absolute;left:${ir.left - sr.left}px;top:${ir.top - sr.top}px;width:${ir.width}px;margin:0;transform:none`;
+    const head = insp.querySelector(".insphead");
+    const anchor = (head || pane).getBoundingClientRect().top;
+    if (head) g.appendChild(head.cloneNode(true));
+    const body = pane.cloneNode(false);
+    body.removeAttribute("id");
+    body.style.minHeight = "";
+    while (pane.firstChild) body.appendChild(pane.firstChild);
+    body.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+    g.appendChild(body);
+    clip.appendChild(g);
+    sc.parentNode.insertBefore(clip, sc.nextSibling);
+    if (dir > 0) { clip.style.zIndex = "0"; sc.style.zIndex = "1"; clip._sc = sc; }
+    const r2 = clip.getBoundingClientRect();
+    clip.style.left = (2 * sr.left - r2.left) + "px";
+    clip.style.top = (2 * sr.top - r2.top) + "px";
+    const drift = anchor - g.firstElementChild.getBoundingClientRect().top;
+    if (drift) g.style.top = (ir.top - sr.top + drift) + "px";
+    clip._from = this._pushFrom || 0;
+    this._pushFrom = 0;
+    return clip;
+  }
+
+  _playPush(clip, dir) {
+    const insp = this.$("pane") && this.$("pane").parentElement, g = clip.firstChild;
+    const W = clip.offsetWidth, D = 500, E = "cubic-bezier(.32,.72,0,1)";
+    const done = () => { clip.remove(); if (clip._sc) clip._sc.style.zIndex = ""; };
+    if (!insp || !g) return done();
+    if (dir > 0) {
+      insp.animate([{ transform: `translateX(${W}px)` }, { transform: "none" }], { duration: D, easing: E });
+      g.animate([{ transform: "none", opacity: 1 }, { transform: `translateX(${-W * 0.3}px)`, opacity: 0 }], { duration: D, easing: E, fill: "forwards" })
+        .finished.then(done, done);
+    } else {
+      insp.animate([{ transform: `translateX(${-W * 0.3}px)`, opacity: 0 }, { transform: "none", opacity: 1 }], { duration: D, easing: E });
+      g.animate([{ transform: `translateX(${clip._from}px)` }, { transform: `translateX(${W}px)` }], { duration: D, easing: E, fill: "forwards" })
+        .finished.then(done, done);
+    }
+  }
+
+  _edgeSwipe() {
+    const sc = this._scroller();
+    if (!sc || sc._edgeWired) return;
+    sc._edgeWired = true;
+    let st = null;
+    sc.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch" || !this._embedDash) return;
+      const back = [...this.shadowRoot.querySelectorAll(".detailbar .back")].find((b) => b.offsetParent);
+      if (!back || e.clientX - sc.getBoundingClientRect().left > 28) return;
+      st = { x: e.clientX, y: e.clientY, t: performance.now(), back, insp: this.$("pane").parentElement, on: false, dx: 0 };
+    }, true);
+    sc.addEventListener("pointermove", (e) => {
+      if (!st) return;
+      const dx = e.clientX - st.x, dy = e.clientY - st.y;
+      if (!st.on) {
+        if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { st = null; return; }
+        if (dx < 8) return;
+        st.on = true;
+      }
+      st.dx = Math.max(0, dx);
+      st.v = st.dx / Math.max(1, performance.now() - st.t);
+      st.insp.style.transform = `translateX(${st.dx}px)`;
+    }, true);
+    const end = () => {
+      if (!st) return;
+      const s0 = st;
+      st = null;
+      if (!s0.on) return;
+      const W = sc.clientWidth;
+      if (s0.dx > W * 0.33 || (s0.v > 0.5 && s0.dx > 30)) {
+        s0.insp.style.transform = "";
+        this._pushFrom = s0.dx;
+        s0.back.click();
+      } else {
+        s0.insp.animate([{ transform: `translateX(${s0.dx}px)` }, { transform: "none" }], { duration: 300, easing: "cubic-bezier(.32,.72,0,1)" });
+        s0.insp.style.transform = "";
+      }
+    };
+    sc.addEventListener("pointerup", end, true);
+    sc.addEventListener("pointercancel", end, true);
+  }
+
   _playNav(dir, swapped) {
     if (!dir) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -15891,7 +16423,7 @@ class HemmaPanel extends HTMLElement {
          { opacity: 1, transform: "none" }],
         { duration: 360, easing: SEG_EASE, fill: "backwards" }));
       // Headings carry no backdrop-filter, so they take the depth entrance.
-      root.querySelectorAll(".sidehead").forEach((h) => h.animate(
+      if (!this._embedDash) root.querySelectorAll(".sidehead").forEach((h) => h.animate(
         [{ opacity: 0, transform: "perspective(900px) translateZ(-70px)" },
          { opacity: 1, transform: "perspective(900px) translateZ(0)" }],
         { duration: 360, easing: SEG_EASE, fill: "backwards" }));
@@ -15904,6 +16436,144 @@ class HemmaPanel extends HTMLElement {
          { opacity: 1, transform: "none" }],
         { duration: 280, easing: SEG_EASE, fill: "backwards" });
     }
+  }
+
+  _embedBuild() {
+    const s = this._state;
+    if (!s) return null;
+    const d = clone(s);
+    let cfg = expandAny(d, { scaffold: d.scaffold, extras: d.extras, templates: d.templates });
+    if (d.surface !== "mobile") {
+      const scenes = (this._navNode() || { routes: [] }).routes.filter((r) => !r.url).map(upgradeNavExtra);
+      cfg = retargetRoutes(cfg, this._dashUrl, d.compact.rooms, scenes).config;
+      applyScenePick(cfg, d.compact.rooms);
+    }
+    applyCameras(cfg, d.compact.rooms);
+    let mcfg = null;
+    if (this._pair && this._pair.safe !== false) {
+      try {
+        const pair = { ...this._pair, desktop: d, mobile: clone(this._pair.mobile) };
+        syncPairSections(pair); syncPairTiles(pair); syncBadgeSwitches(pair); syncRoomChips(pair); syncPresenceOverlay(pair);
+        syncScenesMobile(pair, this._scenesOn()); syncCameraSectionMobile(pair); syncCamerasMobile(pair, this._hass);
+        mcfg = markPhoneManaged(expandAny(pair.mobile, { extras: clone(pair.mobile.extras), templates: d.templates }), bellOnFor(pair), assistOnFor(pair), notifyFor(pair));
+        [applyScenePick, applyCameras, applyMotion, applyKiosk, applyStyle].forEach((f) => f(mcfg, d.compact.rooms));
+      } catch (e) { mcfg = null; }
+    }
+    return { desktop: cfg, mobile: mcfg };
+  }
+
+  _embedRoomsChanged() {
+    this._room = Math.max(0, Math.min(this._room, this._state.compact.rooms.length - 1));
+    this._renderTabs();
+    this._renderForm();
+    this._markDirty();
+  }
+
+  _embedAddRoom(name) {
+    const rooms = this._state.compact.rooms;
+    let path = slug(name), n = 2;
+    while (rooms.some((r) => r.path === path)) path = slug(name) + "-" + n++;
+    rooms.push(blankRoom(name.trim(), path, demoPhoto(name)));
+    const fresh = rooms[rooms.length - 1];
+    const src = rooms.find((r) => r !== fresh && r.variables && Object.keys(r.variables).length);
+    if (src) {
+      dashScopedKeys().forEach((k) => {
+        const v = src.variables[k];
+        if (v === undefined) return;
+        fresh.variables = fresh.variables || {};
+        if (fresh.variables[k] === undefined) fresh.variables[k] = clone(v);
+      });
+    }
+    this._room = rooms.length - 1;
+    this._embedRoomsChanged();
+    return fresh;
+  }
+
+  _embedRenameRoom(room, name) {
+    if (!room || !String(name || "").trim()) return;
+    room.name = String(name).trim();
+    this._embedRoomsChanged();
+  }
+
+  _embedDeleteRoom(room) {
+    const rooms = this._state.compact.rooms, i = rooms.indexOf(room);
+    if (i < 0 || rooms.length < 2) return;
+    rooms.splice(i, 1);
+    if (this._room >= i) this._room = Math.max(0, this._room - 1);
+    this._embedRoomsChanged();
+  }
+
+  _embedMoveRoom(room, before) {
+    const rooms = this._state.compact.rooms, cur = rooms[this._room], i = rooms.indexOf(room);
+    if (i < 0) return;
+    rooms.splice(i, 1);
+    const j = before ? rooms.indexOf(before) : rooms.length;
+    rooms.splice(j < 0 ? rooms.length : j, 0, room);
+    this._room = Math.max(0, rooms.indexOf(cur));
+    this._embedRoomsChanged();
+  }
+
+  _embedRoomGlyph(room) {
+    return ((room && room.variables) || {}).room_icon || autoRoomGlyph((room && room.name) || "");
+  }
+
+  _embedRoomIcons(room) {
+    return {
+      auto: autoRoomGlyph((room && room.name) || ""),
+      chosen: ((room && room.variables) || {}).room_icon || "",
+      choices: ROOM_ICON_CHOICES.map((g) => ({ id: g, label: roomIconLabel(g) })).concat(USER_ICONS.map((g) => ({ id: g, label: g.replace(/[-_]/g, " ") }))),
+    };
+  }
+
+  _embedIconUrl(name) {
+    return iconUrl(name);
+  }
+
+  _embedSetRoomIcon(room, id) {
+    if (!room) return;
+    if (!id) {
+      if (room.variables) delete room.variables.room_icon;
+      if (room.variables && !Object.keys(room.variables).length) delete room.variables;
+    } else {
+      room.variables = room.variables || {};
+      room.variables.room_icon = id;
+    }
+    this._embedRoomsChanged();
+  }
+
+  _embedTypes() {
+    return TILE_TYPES.filter((t) => !t.raw && t.id && t.id.indexOf("__") !== 0 && t.id !== "custom")
+      .map((t) => ({ id: t.id, label: _sx(t.label), domains: t.domains || [], icon: TILE_ICON[t.id] || null }));
+  }
+
+  _embedNewTile(entity, name, typeId) {
+    const dom = String(entity || "").split(".")[0], st = entity && (this._hass.states || {})[entity];
+    let id = typeId || AUTO_DOMAIN[dom];
+    if (!typeId && id === "fan" && /purifier|air ?clean/i.test(((st && st.attributes) || {}).friendly_name || entity)) id = "air_purifier";
+    const ok = (t) => !t.raw && t.id && t.id.indexOf("__") !== 0 && t.id !== "custom";
+    const type = (id && TILE_TYPES.find((t) => t.id === id)) || TILE_TYPES.find((t) => ok(t) && (t.domains || []).includes(dom));
+    if (!type) return null;
+    const tile = newTile(type);
+    if (entity) tile.entity = entity;
+    if (name) tile.name = name;
+    return tile;
+  }
+
+  _embedHide(tile, hide) {
+    if (hide) { tile.variables = tile.variables || {}; tile.variables.enabled = false; }
+    else if (tile.variables) { delete tile.variables.enabled; if (!Object.keys(tile.variables).length) delete tile.variables; }
+    this._markDirty();
+    this._renderForm();
+  }
+
+  _embedRemove(room, tile) {
+    const i = room.tiles.indexOf(tile);
+    if (i < 0) return false;
+    const [gone] = room.tiles.splice(i, 1);
+    this._removePairTwin(room, gone);
+    this._markDirty();
+    this._renderForm();
+    return true;
   }
 
   _popRow() {
@@ -16194,7 +16864,8 @@ class HemmaPanel extends HTMLElement {
     };
 
     // iPad's keyboard pans the whole page and leaves an inline list stranded, so touch screens pick from the sheet the phone uses.
-    const sheetPick = !fixed && (isPhone(this) || window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+    const sheetPick = !fixed && ((isPhone(this) && !this._embedDash) || window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+    input.spellcheck = false;
     const place = () => {
       const r = input.getBoundingClientRect();
       const vv = window.visualViewport;
@@ -16202,11 +16873,11 @@ class HemmaPanel extends HTMLElement {
       const below = viewBottom - r.bottom - 12;
       const above = r.top - 12;
       const drop = below >= 180 || below >= above;
-      menu.style.width = "auto";
+      menu.style.width = this._embedDash ? r.width + "px" : "auto";
       menu.style.minWidth = r.width + "px";
-      menu.style.maxWidth = Math.max(r.width, Math.min(560, window.innerWidth - 20)) + "px";
+      menu.style.maxWidth = (this._embedDash ? r.width : Math.max(r.width, Math.min(560, window.innerWidth - 20))) + "px";
       const w = Math.ceil(menu.getBoundingClientRect().width);
-      menu.style.left = Math.max(16, Math.min(r.left, window.innerWidth - w - 16)) + "px";
+      menu.style.left = (this._embedDash ? r.left : Math.max(16, Math.min(r.left, window.innerWidth - w - 16))) + "px";
       menu.style.maxHeight = Math.max(120, Math.min(300, drop ? below : above)) + "px";
       if (drop) { menu.style.top = r.bottom + 6 + "px"; menu.style.bottom = "auto"; }
       else { menu.style.bottom = window.innerHeight - r.top + 6 + "px"; menu.style.top = "auto"; }
@@ -16384,7 +17055,17 @@ class HemmaPanel extends HTMLElement {
       input.style.cursor = "pointer";
       input.value = show(current);
       input.onfocus = () => { if (isPhone(this)) input.blur(); else open(); };
-      input.onclick = () => {
+      input.onclick = (ev) => {
+        if (this._embedDash && window.hemmaCapPick && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+          if (ev) ev.stopPropagation();
+          const dot = (c) => `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c}"></span>`;
+          const mh = this.$("overlay") || this.shadowRoot.querySelector(".shell");
+          window.hemmaCapPick(wrap, list.map((o) => [o, show(o), swatches && swatches[o] ? dot(swatches[o]) : ""]), current,
+            (v) => commit(v), mh);
+          const gm = mh && mh._gmenu;
+          if (gm && this.classList.contains("is-light") && !gm.classList.contains("hv")) gm.classList.add("hv", "hvday");
+          return;
+        }
         if (!isPhone(this)) { open(); return; }
         const dk = (o) => opts && opts.darkSwatch && (typeof opts.darkSwatch === "string" ? opts.darkSwatch : (opts.darkSwatch[o] || opts.darkSwatch[""]));
         this._menuAt(wrap, list.map((o) => ({ id: o, label: show(o), checked: o === current,
@@ -16422,7 +17103,7 @@ class HemmaPanel extends HTMLElement {
       };
     }
 
-    if (isPhone(this) || sheetPick) {
+    if ((isPhone(this) && (fixed || !this._embedDash)) || sheetPick) {
       input.tabIndex = -1;
       input.style.pointerEvents = "none";
       wrap.style.cursor = "pointer";
@@ -16645,7 +17326,7 @@ class HemmaPanel extends HTMLElement {
         { id: CUSTOM_IN_ROW, label: _sx("In the tile row") },
         { id: CUSTOM_BELOW, label: _sx("Below the tiles") },
       ] : null,
-      validate: (v) => { try { parseCardText(v); return ""; } catch (e) { return e.message; } },
+      validate: (v) => { try { parsePasted(v); return ""; } catch (e) { return e.message; } },
     });
     if (!got) return;
     const text = typeof got === "string" ? got : got.value;
@@ -17656,6 +18337,17 @@ class HemmaPanel extends HTMLElement {
       }
     }
 
+    const tn = (t) => String(t || "").trim().toLowerCase();
+    out.filter((r) => r.kind !== "activity" && tn(r.title)).forEach((dev) => {
+      const acts = out.filter((r) => r.kind === "activity" && tn(r.title) === tn(dev.title));
+      if (!acts.length) return;
+      if (acts.length > 1) { out.splice(out.indexOf(dev), 1); return; }
+      const act = acts[0];
+      if (!dev.art) dev.art = act.art;
+      if (!dev.subtitle) dev.subtitle = act.source || act.subtitle;
+      out.splice(out.indexOf(act), 1);
+    });
+
     // hemma_now_playing's own rank, tie-broken by most recently started.
     const rank = (r) => {
       const c = r.controls;
@@ -17702,6 +18394,7 @@ class HemmaPanel extends HTMLElement {
 
   // As the dashboard does: past two tiles the transport goes, and the tiles share the stack's height rather than scroll.
   _fitNpStack(host) {
+    if (!host._npRo && window.ResizeObserver) { host._npRo = new ResizeObserver(() => { if (host.isConnected && host.offsetHeight) this._fitNpStack(host); }); host._npRo.observe(host); }
     const tiles = [...host.querySelectorAll(".mini-nptile")];
     host.style.removeProperty("--np-slot-h");
     if (tiles.length > 2) tiles.forEach((t) => t.classList.add("noctl"));
@@ -21312,8 +22005,18 @@ class HemmaPanel extends HTMLElement {
         if (el) this._scrollTo(el, true);
       });
     };
-    bar.appendChild(sel);
-    bar.appendChild(add);
+    if (this._embedDash && this._embedAddTile) {
+      const ab = document.createElement("button");
+      ab.type = "button";
+      ab.className = "embadd";
+      ab.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+      ab.appendChild(document.createTextNode(_sx("Add Tile")));
+      ab.onclick = () => this._embedAddTile(room);
+      bar.appendChild(ab);
+    } else {
+      bar.appendChild(sel);
+      bar.appendChild(add);
+    }
 
     const eb = document.createElement("button");
     eb.type = "button";
@@ -21698,6 +22401,7 @@ class HemmaPanel extends HTMLElement {
           if (!tile.variables) tile.variables = {};
           tile.variables.enabled = v;
         }
+        this._markDirty();
         this._renderForm();
       }, _sx("Show this tile on the dashboard"));
     head.appendChild(tsw);

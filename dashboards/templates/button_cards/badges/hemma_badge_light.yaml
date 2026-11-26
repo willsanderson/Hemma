@@ -37,6 +37,7 @@ hemma_badge_light:
       const ICON_PCT = 90;
 
       return (variables?.hide_host ? ':host{display:none !important}' : '') + `
+        :host{ --hv-bi-in-o: 8% !important; }
         #img-cell, .img-cell{ position: relative; }
 
         #img-cell #icon, .img-cell #icon{

@@ -1,0 +1,43 @@
+hemma_server:
+  template:
+    - hemma_entity
+    - hemma_popup_server_panel
+
+  variables:
+    icon: server
+    room_name: null
+
+  icon_tap_action:
+    action: more-info
+
+  hold_action:
+    action: more-info
+
+  state_display: |
+    [[[
+      const s = window.hemmaServer?.summary(hass, entity?.entity_id, states);
+      const text = s ? s.text : (entity ? hass.formatEntityState(entity) : '');
+      return window.hemmaStateFit?.(text) ?? text;
+    ]]]
+
+  state:
+    - operator: template
+      value: '[[[ return !!window.hemmaServer?.summary(hass, entity?.entity_id, states)?.alert; ]]]'
+      styles:
+        card:
+          - "--hemma-active-overlay-opacity": "1"
+          - --hemma-entity-overlay-tint: var(--hemma-entity-active-tint-current, rgba(255,255,255,0.94))
+          - "--hemma-active-overlay-dur": "0s"
+          - --hemma-entity-top-gradient: none
+          - box-shadow: var(--button-card-box-shadow-active, var(--button-card-box-shadow)) !important
+        name:
+          - color: var(--hemma-entity-name-active, var(--primary-text-color))
+        state:
+          - color: var(--hemma-entity-state-active-color)
+        img_cell:
+          - opacity: "1 !important"
+          - filter: none !important
+          - background: "var(--hemma-color-indigo, #5E5CE6) !important"
+        entity_picture:
+          - opacity: "1 !important"
+          - filter: none !important

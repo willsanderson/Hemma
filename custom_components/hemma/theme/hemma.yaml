@@ -1152,20 +1152,20 @@ Hemma:
 
 
 
-      grid-layout {
+      hemma-grid-layout {
         --masonry-view-card-margin: 0px;
       }
 
 
 
-      layout-card$ #container{
+      hemma-layout-card$ #container{
         height: auto !important;
         min-height: 0 !important;
         align-items: flex-start !important;
         justify-content: flex-start !important;
       }
 
-      layout-card$ #container > *{
+      hemma-layout-card$ #container > *{
         min-height: 0 !important;
       }
 
@@ -1461,7 +1461,7 @@ Hemma:
           --hemma-time-opacity: 0.9;
         }
       }
-    layout-card.hemma-entities$grid-layout$.: |
+    hemma-layout-card.hemma-entities$hemma-grid-layout$.: |
       /* Mobile portrait: row-grouped stagger (60ms per row) */
       @media (max-width: 767px) and (orientation: portrait) {
         #root > :nth-child(1), #root > :nth-child(2)  { --hemma-entity-anim-delay: 0s;    }

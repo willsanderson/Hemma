@@ -1,0 +1,14 @@
+hemma_popup_server_panel:
+  template:
+  - hemma_popup_base
+  variables:
+    room_name: null
+  tap_action:
+    hemma_popup:
+      title: ''
+      dismissable: true
+      style: '--popup-min-width: 400px; --popup-max-width: 400px; --popup-min-width-narrow: 340px; --hemma-popup-radius: 34px;'
+      content:
+        type: custom:hemma-server-panel
+        name: '[[[ return variables.room_name || ""; ]]]'
+        entity: '[[[ return entity?.entity_id; ]]]'

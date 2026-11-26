@@ -54,7 +54,7 @@ kiosk_mode:
     hide_sidebar: false
 
 views:
-  - type: custom:grid-layout
+  - type: custom:hemma-grid-layout
     title: Home
     path: home
     layout: !include /config/dashboards/templates/includes/hemma_mobile_layout.yaml

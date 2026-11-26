@@ -1,5 +1,53 @@
 # Changelog
 
+## 2.5.1
+
+Hemma now works alongside layout-card, keeps your own Home Assistant theme, and adds wider tiles and faster loading.
+
+**After updating, restart Home Assistant.** Your dashboards pick up the changes on their own, so there's nothing to save. If a dashboard looks unchanged, clear your browser's cache (in the iOS app, clear the app's cache).
+
+### Works alongside layout-card
+
+- **No more clashes with layout-card.** Hemma's built-in copy of layout-card now has its own names, so it no longer collides with layout-card installed from HACS. Before, whichever loaded second failed, which broke either Hemma's dashboards or your own.
+- **Your dashboards update themselves.** When Home Assistant restarts, Hemma switches its dashboards to the new names and saves a copy of each in `hemma_backups` first. For a Hemma dashboard in YAML mode, Home Assistant's log names the lines to change.
+- **Other add-ons' resources are left alone.** Hemma only updates dashboard resources in its own folders, so a resource from another add-on with the same file name is never touched.
+
+### Your theme stays yours
+
+Hemma no longer makes itself Home Assistant's default theme ([#100](https://github.com/willsanderson/Hemma/issues/100)). Hemma's pages always look like Hemma, and the rest of Home Assistant keeps the theme you chose.
+
+- **Hemma's look everywhere:** turn on **Use Hemma theme everywhere** in Hemma Studio's General section.
+- **Nothing changes** if Hemma is already your default theme.
+
+### Wider tiles
+
+**Tile width** in Hemma Studio's Layout section makes tiles Wide or Extra Wide on desktop, so longer names fit ([#98](https://github.com/willsanderson/Hemma/issues/98)). Tiles keep their height, and touch screens are unchanged.
+
+### Screensavers
+
+- **Lock your doors from Today.** Tap the locks row to lock any unlocked doors. When everything is locked, it opens the lock popup instead, so a tap never unlocks.
+- **Popups open above the screensaver** when you tap a row, instead of behind it.
+- **The Rooms screensaver is gone.** Dashboards that used it show Today instead.
+
+### Now Playing
+
+- **One card per PlayStation.** A console that is also a media player shows one card with the game's artwork instead of two. With two accounts playing on one console, each account gets its own card.
+- **Simpler settings.** Advanced options that rarely helped are gone: renaming the Discord and Steam sources, choosing which card to keep when both report the same game, and the paused timeout. Hemma keeps one card per game and hides paused players after 10 minutes.
+
+### Room Activity
+
+A new **Room Activity** section in Hemma Studio picks the motion sensor that pulses a dot beside each room in the navigation. **Automatic**, the default, uses the room's own motion or occupancy sensor, on phones too.
+
+### Minimal
+
+- **Popups stand apart from the page:** a lighter tint in light mode and a deeper one in dark mode, so a popup no longer blends into the dashboard behind it.
+- **The notification count** with white text takes a darker shade of your background instead of black.
+
+### Faster
+
+- **Smaller downloads.** Hemma's scripts are sent compressed and cached by the browser until they change. Phones download about a third less when a dashboard opens.
+- **Lighter pages.** Now Playing builds its players only when something plays, so pages carry far fewer elements, about a third fewer on phones.
+
 ## 2.5.0
 
 Five new screensavers, light control right from the screensaver, a choice of which screensavers take turns, and German.

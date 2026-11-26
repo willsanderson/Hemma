@@ -20,6 +20,7 @@ hemma_room:
     hemma_hv_backdrop_phone:
     hemma_hv_text_phone:
     hemma_glass_text:
+    hemma_tile_width:
 
     # Dashboard-wide typeface. Unset leaves the theme's primary-font-family
     # alone; 'inter', 'hanken' or 'system' override it for the whole document.
@@ -398,6 +399,7 @@ hemma_room:
               document.head.appendChild(cov);
               setTimeout(() => cov.remove(), 6000);
             }
+            if (window._hemmaTileWidth) window._hemmaTileWidth(variables.hemma_tile_width);
             if (window._hemmaHV) window._hemmaHV.set(variables.hemma_style, isDark, variables.hemma_hv_color, variables.hemma_hv_rest, variables.hemma_hv_text, variables.hemma_hv_backdrop, variables.hemma_glass_text);
             document.documentElement.classList.toggle('hg-ink-d', !hv && !isDark && variables.hemma_glass_text === 'dark');
             const base = variables.image || 'default';
@@ -730,9 +732,10 @@ hemma_room:
             const pill = root.querySelector('#chrome_pill');
             const f = pill && pill.querySelector('.cp-flash');
             if (!f || !f.animate || !pill.getBoundingClientRect().width) return;
-            const hit = ev.composedPath().some((n) => n && (['settings', 'assist', 'notifications'].indexOf(n.id) >= 0
+            const hit = ev.composedPath().find((n) => n && (['settings', 'assist', 'notifications'].indexOf(n.id) >= 0
               || (n.classList && n.classList.contains('np-head-wave'))));
             if (!hit) return;
+            if (document.documentElement.classList.contains('hemma-hv')) return;
             const r = pill.getBoundingClientRect();
             const x = Math.max(0, Math.min(100, ((ev.clientX - r.left) / r.width) * 100));
             f.style.background = 'radial-gradient(90px circle at ' + x.toFixed(1) + '% 50%,'
@@ -913,8 +916,8 @@ hemma_room:
 
     badges:
       card:
-        type: custom:layout-card
-        layout_type: custom:grid-layout
+        type: custom:hemma-layout-card
+        layout_type: custom:hemma-grid-layout
 
         layout:
           grid-auto-flow: column

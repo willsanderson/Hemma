@@ -12,6 +12,7 @@ import json
 import logging
 import math
 import os
+import re
 import time
 from typing import Any
 
@@ -25,6 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 FINGERPRINT_KEY = "hemma_template_fingerprint"
 BUNDLE = f"custom_components/{DOMAIN}/panel/hemma-templates.json"
 BACKUPS = "hemma_backups"
+LEGACY_LAYOUT = re.compile(r"custom:(layout-card|grid-layout|masonry-layout|vertical-layout|horizontal-layout|layout-break|gap-card)(?![\w-])")
 
 
 def _num(x: float) -> str:
@@ -174,6 +176,18 @@ def refresh(current: dict, ship_all: dict, seen: dict) -> tuple[dict, dict, list
     return nxt, prints, changed
 
 
+def rename_layouts(node: Any) -> Any:
+    """Point layout-card types at Hemma's own copy, whose elements now carry a hemma- prefix."""
+    if isinstance(node, dict):
+        return {
+            k: LEGACY_LAYOUT.sub(r"custom:hemma-\1", v) if k in ("type", "layout_type") and isinstance(v, str) else rename_layouts(v)
+            for k, v in node.items()
+        }
+    if isinstance(node, list):
+        return [rename_layouts(v) for v in node]
+    return node
+
+
 def _backup(config_dir: str, url_path: str, config: dict) -> str:
     rel = os.path.join(BACKUPS, time.strftime(f"dashboard-{url_path}-%Y%m%d-%H%M%S.json"))
     os.makedirs(os.path.join(config_dir, BACKUPS), exist_ok=True)
@@ -194,22 +208,32 @@ async def _run(hass: HomeAssistant) -> None:
     if not ship_all:
         return
     for url_path, board in list(boards.items()):
-        if getattr(board, "mode", None) != "storage":
-            continue
+        storage = getattr(board, "mode", None) == "storage"
         try:
             cfg = await board.async_load(False)
         except Exception:  # noqa: BLE001 - an empty or unreadable dashboard is not ours
             continue
         if not isinstance(cfg, dict) or not isinstance(cfg.get(FINGERPRINT_KEY), dict):
             continue
+        name = url_path or "lovelace"
+        if not storage:
+            if rename_layouts(cfg) != cfg:
+                _LOGGER.warning(
+                    "Hemma: the YAML dashboard %s still uses layout-card's own type names. "
+                    "Replace custom:grid-layout and custom:layout-card with custom:hemma-grid-layout "
+                    "and custom:hemma-layout-card in its file",
+                    name,
+                )
+            continue
         seen = cfg[FINGERPRINT_KEY]
         templates, prints, changed = refresh(cfg.get("button_card_templates") or {}, ship_all, seen)
-        if not changed and prints == seen:
+        nxt = rename_layouts({**cfg, "button_card_templates": templates, FINGERPRINT_KEY: prints})
+        renamed = rename_layouts(cfg) != cfg
+        if not changed and prints == seen and not renamed:
             continue
-        name = url_path or "lovelace"
         try:
             rel = await hass.async_add_executor_job(_backup, hass.config.config_dir, name, cfg)
-            await board.async_save({**cfg, "button_card_templates": templates, FINGERPRINT_KEY: prints})
+            await board.async_save(nxt)
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Hemma: could not update the templates of %s", name)
             continue

@@ -10,7 +10,6 @@ from homeassistant.components.frontend import (
     async_register_built_in_panel,
     async_remove_panel,
 )
-from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
@@ -18,11 +17,13 @@ from homeassistant.helpers.event import async_track_time_interval
 from .assets import HemmaAssetsView, warm_soft
 from .images import HemmaIconsView, HemmaImagesView
 from .templates import HemmaTemplatesView, rebuild_if_stale
+from .scripts_view import panel_view, scripts_view
 from .i18n import rebuild_if_stale as rebuild_translations_if_stale
 from .home import async_setup_home
 from .notify import async_setup_notify
 from .plant_ai import async_setup_plant_ai
 from .theme import async_setup_theme
+from .native import async_setup_native, async_unload_native
 from .helpers import async_setup_helpers
 from .template_refresh import async_setup_template_refresh
 from .const import (
@@ -127,7 +128,7 @@ async def _sync_script_resources(hass: HomeAssistant, scripts_dir: str) -> None:
                 for i in items
                 if str(i.get("url", "")).partition("?")[0].endswith("/" + name)
                 and str(i.get("url", "")).startswith(
-                    ("/local/", SCRIPTS_URL_BASE + "/", ASSETS_URL_BASE + "/")
+                    ("/local/hemma/scripts/", "/local/hemma/fonts/", SCRIPTS_URL_BASE + "/", ASSETS_URL_BASE + "/")
                 )
             ),
             None,
@@ -176,16 +177,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     scripts_dir = hass.config.path(SCRIPTS_DIR)
 
-    for url, path in (
-        (URL_BASE, panel_dir),
-        (SCRIPTS_URL_BASE, scripts_dir),
-    ):
-        try:
-            await hass.http.async_register_static_paths(
-                [StaticPathConfig(url, path, False)]
-            )
-        except RuntimeError:
-            _LOGGER.debug("Hemma: %s is already served", url)
+    if not hass.data.setdefault(DOMAIN + "_files_view", False):
+        hass.http.register_view(panel_view(URL_BASE, panel_dir))
+        hass.http.register_view(scripts_view(SCRIPTS_URL_BASE, scripts_dir))
+        hass.data[DOMAIN + "_files_view"] = True
 
     await _sync_script_resources(hass, scripts_dir)
     # Re-stamped whenever a script changes, not only at startup: an edited script kept its old URL, and Safari served its cached copy.
@@ -242,6 +237,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         },
     )
     _LOGGER.debug("Registered Hemma panel at /%s", PANEL_URL)
+    await async_setup_native(hass, panel_dir)
 
     return True
 
@@ -249,4 +245,5 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Remove the sidebar entry."""
     async_remove_panel(hass, PANEL_URL, warn_if_unknown=False)
+    async_unload_native(hass)
     return True

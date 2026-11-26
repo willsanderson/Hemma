@@ -195,8 +195,8 @@ hemma_mobile_filter_badges:
   custom_fields:
     badges:
       card:
-        type: custom:layout-card
-        layout_type: custom:grid-layout
+        type: custom:hemma-layout-card
+        layout_type: custom:hemma-grid-layout
         layout:
           grid-auto-flow: column
           grid-auto-columns: max-content

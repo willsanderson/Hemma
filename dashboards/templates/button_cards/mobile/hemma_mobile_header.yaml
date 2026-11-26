@@ -135,6 +135,7 @@ hemma_mobile_header:
               const mute = states['input_boolean.hemma_motion_badges'];
               const badgesOn = !mute || mute.state === 'on';
               const sensorId = direct || states[helper]?.state?.trim();
-              const active = badgesOn && !!sensorId && states[sensorId]?.state === 'on';
+              const R = !sensorId && window.hemmaRoomSensors ? window.hemmaRoomSensors(hass, 'room_' + slug, null) : null;
+              const active = badgesOn && (sensorId ? states[sensorId]?.state === 'on' : !!R && R.occupancy.some((id) => states[id]?.state === 'on'));
               return active ? 1 : 0;
             ]]]
