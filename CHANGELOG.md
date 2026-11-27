@@ -2,15 +2,15 @@
 
 ## 2.5.3
 
-Your room photos are private now, plus fixes from the HACS review.
+A new home for your room photos, and fixes from the HACS review.
 
 **After updating, restart Home Assistant.** Your dashboards pick up the changes on their own, so there's nothing to save. If a dashboard looks unchanged, clear your browser's cache (in the iOS app, clear the app's cache).
 
-### Your room photos are private
+### Room photos
 
-Photos you uploaded in Hemma Studio used to sit in `www/hemma/rooms`, where anyone who could reach your Home Assistant could open them. When Home Assistant restarts, Hemma moves them to `hemma/rooms` in your config folder, and from then on only people signed in to your Home Assistant can see them. Your dashboards keep showing them as before. Hemma's demo photos are unchanged.
+Room photos you upload in Hemma Studio are now kept in `hemma/rooms` in your config folder. Hemma moves your existing photos there when Home Assistant restarts, and your dashboards keep showing them as before. Hemma's demo photos are unchanged.
 
-If you linked to a room photo by its full `/local/hemma/rooms/...` address somewhere outside Hemma, that link stops working.
+If you linked to a room photo by its `/local/hemma/rooms/...` address somewhere outside Hemma, update that link.
 
 ### Check your theme line
 
