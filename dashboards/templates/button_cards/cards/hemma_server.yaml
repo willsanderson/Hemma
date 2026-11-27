@@ -6,6 +6,9 @@ hemma_server:
   variables:
     icon: server
     room_name: null
+    entity_memory: null
+    entity_disk: null
+    entity_status: null
 
   icon_tap_action:
     action: more-info
@@ -15,14 +18,14 @@ hemma_server:
 
   state_display: |
     [[[
-      const s = window.hemmaServer?.summary(hass, entity?.entity_id, states);
+      const s = window.hemmaServer?.summary(hass, entity?.entity_id, states, variables);
       const text = s ? s.text : (entity ? hass.formatEntityState(entity) : '');
       return window.hemmaStateFit?.(text) ?? text;
     ]]]
 
   state:
     - operator: template
-      value: '[[[ return !!window.hemmaServer?.summary(hass, entity?.entity_id, states)?.alert; ]]]'
+      value: '[[[ return !!window.hemmaServer?.summary(hass, entity?.entity_id, states, variables)?.alert; ]]]'
       styles:
         card:
           - "--hemma-active-overlay-opacity": "1"

@@ -162,7 +162,9 @@ const TEAL = "var(--hemma-color-teal, #00C3D0)", YEL = "var(--hemma-color-yellow
 const FALLBACK_C = "var(--hemma-icon-fallback-color, rgba(255,255,255,0.95))";
 const ON_COLOR = { light: YEL, fan: TEAL, humidifier: TEAL, climate: TEAL, vacuum: "var(--hemma-badge-vacuum-color, var(--hemma-color-orange, #FF9230))", cover: TEAL, media_player: TEAL, lock: TEAL, plant: YEL };
 const domainOf = (id) => String(id).split(".")[0];
-const esc = (t) => String(t == null ? "" : t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const esc = (t) => String(t == null ? "" : t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const PH = (u) => (window.hemmaPhotoUrl ? window.hemmaPhotoUrl(u) : u);
+const escU = (t) => esc(String(t == null ? "" : t).replace(/['"()\\]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()));
 
 const DOTS = `url('data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"><circle cx="3.5" cy="9" r="1.7"/><circle cx="9" cy="9" r="1.7"/><circle cx="14.5" cy="9" r="1.7"/></svg>')}')`;
 const SPR = "linear(0, 0.03, 0.103, 0.195, 0.294, 0.391, 0.482, 0.565, 0.637, 0.7, 0.753, 0.799, 0.837, 0.868, 0.894, 0.915, 0.933, 0.947, 0.958, 0.968, 0.975, 0.981, 0.986, 0.99, 0.993, 0.995, 0.997, 0.999, 1)";
@@ -192,7 +194,8 @@ const CSS = `
   .side .sm img { height: 14px; }
   .side button i, .bd i, .back i, .pill i { flex: none; width: 26px; height: 26px; background: currentColor; -webkit-mask: var(--i) center/contain no-repeat; mask: var(--i) center/contain no-repeat; }
   .col { position: relative; min-width: 0; overflow: hidden; }
-  .main { position: absolute; inset: 0; overflow-y: auto; padding: 38px 22px 60px 15px; }
+  .main { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 38px 22px 60px 15px; }
+  .hdr .vb { display: none; }
   .hdr { position: absolute; left: 0; right: 0; top: 0; height: 125px; pointer-events: none; z-index: 4; }
   .hdr .veil { position: absolute; inset: 0; background: var(--veil); opacity: 0; transition: opacity .22s ease-in-out; }
   :host(.glass) .hdr .veil { background: none; box-sizing: border-box; border-bottom: .5px solid rgba(255,255,255,.1); -webkit-backdrop-filter: blur(22px) saturate(1.2) brightness(.97); backdrop-filter: blur(22px) saturate(1.2) brightness(.97); }
@@ -503,7 +506,9 @@ const CSS = `
   .pl::after { transform: rotate(90deg); }
   .edadd .none { padding: 30px; text-align: center; color: rgba(255,255,255,.55); }
   :host(.lt) .page, :host(.lt) .hdr { color: #111; }
-  :host(.lt) .side .hd, :host(.lt) .bd span, :host(.lt) .bd > div > span, :host(.lt) .t .tx > span, :host(.lt) .chip span, :host(.lt) .np .meta > span { color: rgba(0,0,0,.55); }
+  :host(.lt) .side .hd, :host(.lt) .bd span, :host(.lt) .bd > div > span, :host(.lt) .t .tx > span, :host(.lt) .chip span { color: rgba(0,0,0,.55); }
+  :host(.lt) .np { color: #fff; }
+  :host(.lt) .np .meta > span { color: rgba(255,255,255,.72); }
   :host(.lt) .wx em { color: rgba(0,0,0,.55); }
   :host(.lt:not(.tab):not(.ph)) .bd > div > span, :host(.lt.ph) .bd > div > span { color: rgba(0,0,0,.55); }
   :host(.lt) .t b, :host(.lt) .sc { color: rgba(0,0,0,.85); }
@@ -577,7 +582,13 @@ const CSS = `
     :host(.ph) .edh { padding-top: 10px; }
     :host(.ph) .er0 { display: flex; margin-top: 10px; }
     :host(.ph) .ed .grab { display: block; flex: none; width: 36px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.35); margin: 7px auto 0; }
-    :host(.ph.edit) .main { padding-bottom: calc(var(--edh, 62vh) + 24px); }
+    :host(.ph.edit.phs) .main { padding-bottom: calc(var(--edh, 62vh) + 24px); }
+    :host(.ph) .ed .grab { display: none; }
+    :host(.ph) .ed.ed.full { height: calc(100% - var(--sat, env(safe-area-inset-top, 0px)) - 10px); }
+    :host(.ph) .hdr .edplus { all: unset; box-sizing: border-box; position: absolute; left: 16px; top: calc(var(--sat, env(safe-area-inset-top, 0px)) + 4px); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; pointer-events: auto; cursor: pointer; color: #fff; background: var(--hv-tab-fill, rgba(255,255,255,.2)); }
+    :host(.ph) .hdr .edplus svg { width: 17px; height: 17px; }
+    :host(.ph.lt) .hdr .edplus { color: #111; background: rgba(255,255,255,.8); }
+    :host(.ph.edit) .main .top h1 { cursor: pointer; }
   * { scrollbar-width: none; }
   *::-webkit-scrollbar { display: none; }
   .bds { display: flex; flex-wrap: wrap; gap: 6px 34px; margin: 9px 0 -2px; }
@@ -608,6 +619,8 @@ const CSS = `
   .t.on b { color: rgba(0,0,0,0.88); }
   .t.on .tx > span { color: rgba(0,0,0,0.55); }
   .menu { position: fixed; z-index: 10; min-width: 220px; padding: 6px; border-radius: 16px; background: rgba(36,36,40,0.82); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); box-shadow: 0 18px 50px rgba(0,0,0,0.35); }
+  :host(.mini) .menu { box-shadow: 0 0 0 .5px rgba(0,0,0,.25), 0 14px 36px -10px rgba(0,0,0,.35); }
+  :host(.mini.lt) .menu { box-shadow: 0 0 0 .5px rgba(0,0,0,.1), 0 14px 36px -10px rgba(0,0,0,.22); }
   .menu button { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 11px 14px; border-radius: 10px; font-size: 15px; cursor: pointer; }
   .menu button:hover { background: rgba(255,255,255,0.1); }
   .menu .red { color: #FF453A; }
@@ -624,7 +637,7 @@ const CSS = `
   :host(.ph) .pop { place-items: stretch; } :host(.ph) .pop .card { width: 100%; height: 100%; border-radius: 0; --hemma-panel-h: 100svh; --popup-min-width: 100vw; --popup-max-width: 100vw; }
   .empty { opacity: .6; margin-top: 40px; }
   .page.catp { background: var(--hvbg); }
-  :host(.glass) .page.catp { background: transparent; }
+  :host(.glass) .page.catp, :host(.ph) .page.catp { background: transparent; }
   :host(.glass.tab) .bdl.bdl::before { clip-path: none; filter: blur(5px); transform: scale(1.04); background-image: var(--gph, none); }
   :host(.glass.tab:not(.gd)) .bdl.bdl::before { filter: saturate(1.02) brightness(.985); transform: scale(1.08); background-size: cover; background-position: 50% 50%; background-repeat: no-repeat; background-image: radial-gradient(70% 55% at 0% 58%, rgba(30,30,32,.42) 0%, rgba(30,30,32,.18) 50%, rgba(30,30,32,0) 80%), linear-gradient(rgba(30,30,32,.22) 0%, rgba(30,30,32,0) 15%), radial-gradient(70% 60% at 88% 6%, rgba(255,252,246,.2) 0%, rgba(255,252,246,0) 65%), linear-gradient(to top, rgba(250,247,242,.3) 0%, rgba(250,247,242,.14) 22%, rgba(250,247,242,0) 45%), var(--gpg, none); }
   :host(.glass.tab.night:not(.gd)) .bdl.bdl::before { background-image: radial-gradient(70% 55% at 0% 58%, rgba(20,19,18,.5) 0%, rgba(20,19,18,.22) 50%, rgba(20,19,18,0) 80%), linear-gradient(rgba(20,19,18,.28) 0%, rgba(20,19,18,0) 15%), radial-gradient(70% 60% at 88% 6%, rgba(255,236,214,.12) 0%, rgba(255,236,214,0) 65%), linear-gradient(to top, rgba(255,236,214,.18) 0%, rgba(255,236,214,.08) 22%, rgba(255,236,214,0) 45%), linear-gradient(rgba(20,19,18,.08), rgba(20,19,18,.08)), linear-gradient(rgba(255,255,255,.06), rgba(255,255,255,.06)), var(--gpg, none); }
@@ -738,10 +751,16 @@ const CSS = `
   h3.lk i { width: 13.8px; height: 22.9px; background: currentColor; opacity: .5; -webkit-mask: var(--i) center/contain no-repeat; mask: var(--i) center/contain no-repeat; }
     :host(.ph) .page { grid-template-columns: 1fr; }
     :host(.ph) .side, :host(.ph) .hdr .mini { display: none; }
+    :host(.mini.ph) .hdr .veil { bottom: auto; height: calc(var(--sat, env(safe-area-inset-top, 0px)) + 120px); background: linear-gradient(to bottom, color-mix(in oklab, var(--hvbg) 38%, transparent) 0%, color-mix(in oklab, var(--hvbg) 18%, transparent) 55%, transparent 100%); transition: opacity .22s ease-in-out; }
+    :host(.mini.ph.bdc) .hdr .veil { background: var(--hv-veil, linear-gradient(var(--hvbg) 58%, transparent)); }
+    :host(.mini.ph:not(.bdc)) .hdr .vb { display: block; position: absolute; left: 0; right: 0; top: 0; height: calc(var(--sat, env(safe-area-inset-top, 0px)) + 120px); pointer-events: none; opacity: 0; transition: opacity .22s ease-in-out; -webkit-backdrop-filter: var(--vb); backdrop-filter: var(--vb); -webkit-mask-image: var(--vm); mask-image: var(--vm); }
+    :host(.mini.ph) .col.scrolled .hdr .vb { opacity: 1; }
+    :host(.mini.ph) .hdr .mini { display: block; z-index: 1; left: 16px; top: calc(var(--sat, env(safe-area-inset-top, 0px)) + 4px); height: 44px; line-height: 44px; font-size: 20px; font-weight: 700; letter-spacing: -.3px; transform: translateY(5px); transition: opacity .2s ease, transform .2s ease; }
+    :host(.mini.ph) .col.scrolled .hdr .mini { transform: none; }
     :host(.ph) .hdr .back { left: 16px; top: calc(var(--sat, env(safe-area-inset-top, 0px)) + 4px); width: 40px; height: 40px; background: var(--hv-tab-fill, rgba(255,255,255,.2)); }
     :host(.ph) .hdr .back svg { width: 12px; height: 20px; }
-    :host(.ph) .main.sub { padding-top: calc(var(--sat, env(safe-area-inset-top, 0px)) + 51px); }
-    :host(.ph) .main.sub .chips { margin-top: 23px; }
+    :host(.ph) .main.sub { padding-top: calc(var(--sat, env(safe-area-inset-top, 0px)) + 55px); }
+    :host(.ph) .main.sub .chips { margin-top: 19px; }
     :host(.ph) .main.sub h3 { margin: 32px 0 10px; }
     :host(.ph) .main.sub .scs + h3 { margin-top: 36px; }
     :host(.ph) .main.sub :is(.bds, .chips) + h3 { margin-top: 28.5px; }
@@ -828,9 +847,15 @@ const CSS = `
   .nav button.on { opacity: 1; background: var(--hv-nav-active, rgba(255,255,255,.16)); }
   .nav button { transition: background-color .16s ease; }
   .nav.lensing button.on { background-color: transparent !important; }
-  .nlens { position: absolute; z-index: 3; pointer-events: none; border-radius: 9999px; background: rgba(255,255,255,.07); box-shadow: 0 6px 18px -6px rgba(0,0,0,.22); }
-  .nlens::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(rgba(255,255,255,.85), rgba(255,255,255,.18) 30%, transparent 42%, transparent 58%, rgba(255,255,255,.14) 70%, rgba(255,255,255,.55)); -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
-  :host(.lt) .nlens, :host(.glass.gd) .nlens { background: rgba(255,255,255,.22); box-shadow: 0 6px 18px -6px rgba(0,0,0,.14); }
+  .nlens { position: absolute; z-index: 3; pointer-events: none; border-radius: 9999px; overflow: hidden; box-shadow: 0 8px 22px -8px rgba(0,0,0,.3); }
+  .nlens.drag { transition: left .14s cubic-bezier(.32,.72,0,1), width .14s cubic-bezier(.32,.72,0,1); }
+  .nlens.drag .lm { transition: left .14s cubic-bezier(.32,.72,0,1), transform-origin .14s cubic-bezier(.32,.72,0,1); }
+  .nlens .lb { position: absolute; inset: 0; z-index: 0; border-radius: inherit; background: rgba(255,255,255,.12); -webkit-backdrop-filter: blur(5px) saturate(1.4) brightness(1.08); backdrop-filter: blur(5px) saturate(1.4) brightness(1.08); }
+  .hdr .nlens .nav.lm.lm { position: absolute; z-index: 1; left: 0; top: 0; display: flex; align-items: center; box-sizing: border-box; max-width: none; overflow: visible; transform: none; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; opacity: 1; pointer-events: none; isolation: auto; transition: none; }
+  .hdr .nlens .nav.lm::before, .hdr .nlens .nav.lm::after { display: none; }
+  .hdr .nlens .nav.lm button { background: none !important; flex: none; }
+  .nlens .lr { position: absolute; inset: 0; z-index: 2; box-shadow: inset 0 0 7px rgba(0,0,0,.12); border-radius: inherit; padding: 1.2px; background: linear-gradient(rgba(255,255,255,.95), rgba(255,255,255,.22) 28%, transparent 42%, transparent 60%, rgba(255,255,255,.16) 74%, rgba(255,255,255,.6)); -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+  :host(.lt) .nlens .lb, :host(.glass.gd) .nlens .lb { background: rgba(255,255,255,.4); }
   .nav .tg, .side .tg { display: grid; place-items: center; padding: 0 12px; opacity: .9; }
   .tg svg { display: block; width: 16.7px; height: 13.2px; }
   .side .tg { all: unset; position: fixed; z-index: 31; left: 16px; top: 40.5px; height: 36px; padding: 0 12px; display: none; place-items: center; cursor: pointer; }
@@ -917,10 +942,10 @@ const CSS = `
   .main.fx.sub .frow { padding-left: 26px; }
   .ftg { display: none; }
   .main.fx .frow .t { position: relative; }
-  .main.fx .frow .ftg { display: block; position: absolute; top: 22px; right: 15px; width: 44px; height: 25px; border-radius: 13px; background: rgba(120,120,128,.32); transition: background-color .2s ease; cursor: pointer; }
-  .main.fx .frow .ftg::after { content: ""; position: absolute; top: 2px; left: 2px; width: 21px; height: 21px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .25s cubic-bezier(.32,.72,0,1); }
-  .main.fx .frow .ftg.on { background: #34c759; }
-  .main.fx .frow .ftg.on::after { transform: translateX(19px); }
+  .main.fx .frow .ftg { display: block; position: absolute; top: 22px; right: 15px; width: 42px; height: 24px; box-sizing: border-box; border-radius: 12px; background: transparent; box-shadow: inset 0 0 0 2px var(--hemma-toggle-off-color, rgba(255,255,255,.8)); transition: background-color .2s ease, box-shadow .2s ease; cursor: pointer; }
+  .main.fx .frow .ftg::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--hemma-toggle-off-color, rgba(255,255,255,.8)); transition: transform .2s ease, background-color .2s ease; }
+  .main.fx .frow .ftg.on { background: var(--hemma-toggle-track-fill, rgba(0,0,0,.75)); box-shadow: none; }
+  .main.fx .frow .ftg.on::after { transform: translateX(18px); background: #fff; }
   :host(.edit) .main.fx .frow .ftg { pointer-events: none; }
   :host(.tab) .main.fx { --fcol: clamp(237px, calc(3.76vw + 193.6px), 260px); --fh: calc(var(--fcol) / 1.487); }
   :host(.tab) .main.fx .fhero { left: calc(2.25vw + 3px); top: calc(33.14vh + 28.8px); }
@@ -951,6 +976,8 @@ const CSS = `
   .fnp .nph { display: none; }
   .fnp .nps { flex-direction: column; }
   .fnp.min { opacity: 0; transform: translateY(-10px) scale(.96); pointer-events: none; }
+  .fnp:not(.min) { filter: blur(0px); transition: opacity .32s cubic-bezier(.22,1,.36,1), filter .32s cubic-bezier(.22,1,.36,1), transform .42s cubic-bezier(.32,.72,0,1), right .52s cubic-bezier(.32,.72,0,1); }
+  :host(.nco) .fnp:not(.min) { opacity: .3; filter: blur(10px); pointer-events: none; transition: opacity .32s cubic-bezier(.22,1,.36,1), filter .32s cubic-bezier(.22,1,.36,1); }
   @media (prefers-reduced-motion: reduce) { .fnp { transition: opacity .2s ease; } .fnp.min { transform: none; } }
   @media (prefers-reduced-motion: reduce) { .pill .wv i { animation: none; height: 60%; } }
   .nav .scn { display: inline-flex; align-items: center; gap: 7px; }
@@ -980,6 +1007,10 @@ const CSS = `
   :host(.mini.tab) .nav, :host(.mini.tab) .hdr .pill, :host(.mini.tab) .hdr .back, :host(.mini.ph) .hdr .pill, :host(.mini.ph) .hdr .back { background: rgba(255,255,255,.2); }
   :host(.mini.lt.tab) .nav, :host(.mini.lt.tab) .hdr .pill, :host(.mini.lt.tab) .hdr .back, :host(.mini.lt.ph) .hdr .pill, :host(.mini.lt.ph) .hdr .back { background: rgba(255,255,255,.8); }
   :host(.mini:not(.lt).tab) .hdr .pill s, :host(.mini:not(.lt).ph) .hdr .pill s { background: rgba(255,255,255,.3); }
+  :host(.mini.ph) .hdr .pill.pill, :host(.mini.ph) .hdr .back.back { background: color-mix(in oklab, var(--hvbg) 78%, #fff); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :host(.mini.lt.ph) .hdr .pill.pill, :host(.mini.lt.ph) .hdr .back.back { background: color-mix(in oklab, var(--hvbg) 12%, #fff); }
+  :host(.mini.ph) .hdr .pill.pill, :host(.mini.ph) .hdr .back.back { box-shadow: 0 0 0 .5px rgba(255,255,255,.14), 0 1px 2px rgba(0,0,0,.1), 0 6px 16px -6px rgba(0,0,0,.28); }
+  :host(.mini.lt.ph) .hdr .pill.pill, :host(.mini.lt.ph) .hdr .back.back { box-shadow: 0 0 0 .5px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.06), 0 6px 16px -6px rgba(0,0,0,.18); }
   :host(.fd) .nav button { height: 36px; line-height: 36px; padding: 0 16px; font-size: 16px; font-weight: 500; letter-spacing: -.2px; }
   :host(.fd) .side .clock { font-size: 18px; font-weight: 500; line-height: 21px; letter-spacing: 0; }
   :host(.fd) .nav .tg { padding: 0 12px; margin-right: 13.7px; }
@@ -1008,6 +1039,7 @@ const CSS = `
     mask: linear-gradient(#000 0%, rgba(0,0,0,.3) 10%, transparent 22%, transparent 78%, rgba(0,0,0,.3) 90%, #000 100%), linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: intersect, exclude; }
   :host(.glass.tab:not(.gd)) .nav::after { content: ""; position: absolute; inset: -.5px; border-radius: 9999px; pointer-events: none; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.58); -webkit-mask: linear-gradient(transparent 8%, rgba(0,0,0,.6) 20%, #000 32%, #000 68%, rgba(0,0,0,.6) 80%, transparent 92%); mask: linear-gradient(transparent 8%, rgba(0,0,0,.6) 20%, #000 32%, #000 68%, rgba(0,0,0,.6) 80%, transparent 92%); }
   :host(.glass.tab:not(.gd)) .nav button.on { background: rgba(0,0,0,.26); }
+  :host(.glass) .nav button.on:not(.tg) { color: var(--hemma-color-orange, #FF9230); }
   :host(.glass.tab:not(.gd)) .nav button { opacity: 1; }
   :host(.fd) .side button.tg { transition: opacity .25s ease; }
   :host(.fd.edit) .side button.tg { opacity: 0; pointer-events: none; }
@@ -1137,6 +1169,7 @@ class HemmaNativePanel extends HTMLElement {
     this._route(true);
     this._onCount = () => this._bell();
     window.addEventListener("hemma-notify-count", this._onCount);
+    if (!this._onPhotos) { this._onPhotos = () => { if (this._layout && !this._edit) this._renderKeep(); }; window.addEventListener("hemma-photos-signed", this._onPhotos); }
     this._bell();
     const grain = () => {
       const c = document.documentElement.classList, lt = (c.contains("hemma-hv") && c.contains("hv-light")) || (c.contains("hg-ink-d") && !c.contains("hemma-hv"));
@@ -1144,6 +1177,8 @@ class HemmaNativePanel extends HTMLElement {
       this._host.classList.toggle("lt", lt);
       this._host.classList.toggle("inkw", c.contains("hemma-hv") && c.contains("hv-ink-w"));
       this._host.classList.toggle("gd", c.contains("hg-ink-d") && !c.contains("hemma-hv"));
+      this._host.classList.toggle("nco", c.contains("hemma-nc-open"));
+      this._host.classList.toggle("bdc", c.contains("hv-bd-color"));
       const st = this._studioWarm;
       if (st && st._embedLight !== lt) { st._embedLight = lt; st.classList.toggle("is-light", lt); }
     };
@@ -1323,7 +1358,7 @@ class HemmaNativePanel extends HTMLElement {
     H.setProperty("--veil", `var(--hv-veil, ${comp["--hv-veil"] || `linear-gradient(${bg} 46%, transparent)`})`);
     H.setProperty("--chev", `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`);
     this._root.addEventListener("click", (e) => { const t = e.composedPath().find((n) => n.classList && (n.classList.contains("t") || n.classList.contains("np"))); if (t) { this._tapEl = t; this._tapAt = Date.now(); } }, true);
-    this._root.innerHTML = `<style>${CSS}</style><div class="bdl"></div><div class="page"><nav class="side"></nav><div class="col"><main class="main"></main><div class="hdr"><div class="veil"></div><div class="mini"></div><div class="nav"></div></div></div><div class="tbar"><div class="status"></div><div class="batt"></div></div></div>`;
+    this._root.innerHTML = `<style>${CSS}</style><div class="bdl"></div><div class="page"><nav class="side"></nav><div class="col"><main class="main"></main><div class="hdr"><div class="veil"></div>${[[1, 72, 100], [2, 58, 88], [4, 44, 76], [8, 30, 64], [14, 16, 52], [22, 0, 40]].map(([b, a, z]) => `<i class="vb" style="--vb:blur(${b}px)${b > 8 ? " saturate(1.2)" : ""};--vm:linear-gradient(to bottom, #000 ${a}%, transparent ${z}%)"></i>`).join("")}<div class="mini"></div><div class="nav"></div></div></div><div class="tbar"><div class="status"></div><div class="batt"></div></div></div>`;
     if (!customElements.get("hemma-icon") && !window.hemmaIconUrl) {
       try {
         const res = await this._hass.callWS({ type: "lovelace/resources" });
@@ -1503,7 +1538,7 @@ class HemmaNativePanel extends HTMLElement {
     if (t.entity === "__cameras") {
       const cams = ((room.sensors || {}).cameras || []), R = this._roomSensors(room);
       const busy = R.motion.some((id) => id.indexOf("event.") === 0 ? Date.now() - this._eventAt(id) < 60000 : (this._hass.states[id] || {}).state === "on");
-      return `<button type="button" class="t" data-e="__cameras" data-r="${this._layout.rooms.indexOf(room)}" data-n="${cams.length}"><span class="ic"><i style="--i:${this._icon("doorbell")}"></i></span><span class="tx"><b>Cameras</b><span>${busy ? "Motion" : "No Alerts"}</span></span></button>`;
+      return `<button type="button" class="t" data-e="__cameras" data-r="${this._layout.rooms.indexOf(room)}" data-n="${cams.length}"><span class="ic"><i style="--i:${this._icon("doorbell")}"></i></span><span class="tx"><b>${esc(T("cameras.title", "Cameras"))}</b><span>${busy ? esc(T("cameras.motion", "Motion")) : esc(T("cameras.no_alerts", "No Alerts"))}</span></span></button>`;
     }
     const st = this._hass.states[t.entity], s = this._state(t.entity), d = domainOf(t.entity);
     const name = t.name || (st && st.attributes.friendly_name) || t.entity;
@@ -1637,29 +1672,31 @@ class HemmaNativePanel extends HTMLElement {
       A(next, [{ transform: "translateY(20px) scale(0.93)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 560, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
       end(600, () => { next.style.transformOrigin = ""; });
     } else if (how === "sheetIn") {
-      const blur = document.createElement("div"); blur.className = "ovblur"; col.insertBefore(blur, next);
       next.style.zIndex = "2";
-      const ptop = prev.querySelector(".top");
-      kids(prev).filter((c) => !c.matches(".chips")).forEach((c) => { c.style.opacity = "0"; });
-      if (ptop) { ptop.style.transformOrigin = "50% 30%"; A(ptop, [{ transform: "none" }, { transform: "scale(0.93) translateY(20px)" }], { duration: 420, easing: FX }); A(ptop, [{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: FX }); }
-      A(blur, [{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: "ease" });
-      A(next, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease" });
+      next.scrollTop = 0;
+      const ntop = next.querySelector(".top"), rise = Math.round(window.innerHeight * 0.25);
+      kids(prev, ".chips").forEach((c) => A(c, [{ opacity: 1, filter: "blur(0px)" }, { opacity: 0, filter: "blur(8px)" }], { duration: 320, easing: FX }));
+      if (ntop) A(ntop, [{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: "ease-out" });
+      next.querySelectorAll(":scope > .cbds").forEach((c) => A(c, [{ opacity: 0 }, { opacity: 1 }], { duration: 320, delay: 50, easing: "ease-out" }));
       const secs = kids(next, ".top, .bds, .chips, .cbds");
-      secs.forEach((c, i) => A(c, [{ transform: `translateY(${window.innerHeight}px)` }, { transform: "translateY(0)" }], { duration: 550, delay: i * 40, easing: E }));
-      end(Math.max(600, 550 + 40 * secs.length) + 60, () => blur.remove());
-    } else if (how === "sheetOut") {
-      const blur = document.createElement("div"); blur.className = "ovblur"; col.insertBefore(blur, prev);
-      prev.style.zIndex = "2";
-      A(prev, [{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: FX });
-      A(prev, [{ transform: "translateY(0)" }, { transform: "translateY(40%)" }], { duration: 300, easing: FX });
-      A(prev, [{ clipPath: "inset(0% round 0px)" }, { clipPath: "inset(6% round 22px)" }], { duration: 320, easing: FX });
-      A(blur, [{ opacity: 1 }, { opacity: 0 }], { duration: 500, easing: FX });
-      kids(next, ".nothing").forEach((c) => {
-        c.style.transformOrigin = "50% 30%";
-        A(c, [{ transform: "scale(0.93) translateY(20px)" }, { transform: "none" }], { duration: 620, easing: E });
-        if (c.matches(".top, h3, .chips")) A(c, [{ opacity: 0 }, { opacity: 1 }], { duration: 500, easing: FX });
+      secs.forEach((c, i) => {
+        A(c, [{ transform: `translateY(${rise}px)` }, { transform: "translateY(0)" }], { duration: 560, delay: i * 30, easing: E });
+        A(c, [{ opacity: 0 }, { opacity: 1 }], { duration: 280, delay: i * 30, easing: "ease-out" });
       });
-      end(700, () => { blur.remove(); kids(next, ".nothing").forEach((c) => { c.style.transformOrigin = ""; }); });
+      end(580 + 30 * secs.length + 40);
+    } else if (how === "sheetOut") {
+      prev.style.zIndex = "2";
+      kids(prev, ".nothing").forEach((c) => A(c, [{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: "ease-out" }));
+      const cy = next.scrollTop + next.clientHeight / 2, staged = [];
+      kids(next, ".nothing").forEach((c) => {
+        if (c.matches(".chips")) { A(c, [{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: "ease-out" }); return; }
+        if (c.matches(".top")) { A(c, [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 440, easing: E }); return; }
+        c.style.transformOrigin = `50% ${Math.round(cy - c.offsetTop)}px`;
+        staged.push(c);
+        A(c, [{ transform: "scale(0.95)" }, { transform: "none" }], { duration: 500, easing: E });
+        A(c, [{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: "ease-out" });
+      });
+      end(540, () => staged.forEach((c) => { c.style.transformOrigin = ""; }));
     }
     if (back && this._backNew) {
       if (this._host.classList.contains("ph")) A(back, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease" });
@@ -1842,7 +1879,7 @@ class HemmaNativePanel extends HTMLElement {
     const m = this._root.querySelector(".main"), y = m ? m.scrollTop : 0;
     this._render();
     const n = this._root.querySelector(".main");
-    if (n && y) { n.scrollTop = y; this._root.querySelector(".col").classList.toggle("scrolled", y > 40); }
+    if (n && y) { n.scrollTop = y; if (n.onscroll) n.onscroll(); }
   }
 
   async _edOpen() {
@@ -1855,17 +1892,17 @@ class HemmaNativePanel extends HTMLElement {
     ed.classList.toggle("flatm", document.documentElement.classList.contains("hemma-hv") && !this._isGlass());
     this._pvBar();
     ed.querySelector(".edchg").onclick = () => this._edChanges();
-    ed.querySelector(".edx").onclick = () => this._edCancel();
+    ed.querySelector(".edx").onclick = () => (this._host.classList.contains("ph") ? this._phSheet(null) : this._edCancel());
     ed.querySelector(".edroom").onclick = (e) => { const st = this._studio; if (st && st._state) st._roomTitleMenu(e.currentTarget); };
     ed.querySelector(".edu").onclick = () => this._edUndo(false);
     ed.querySelector(".edhi").onclick = () => this._edHist();
     ed.querySelector(".edr").onclick = () => this._edUndo(true);
     this._edSearchWire(ed);
-    this._edSheet(ed);
+    if (!this._host.classList.contains("ph")) this._edSheet(ed);
     const cur = this._page === "home" ? T("nav.home", "Home") : this._page === "room" ? (this._layout.rooms[this._room] || {}).name || "" : "";
     if (cur) { ed.querySelector(".edroom span").textContent = cur; ed.querySelector(".edroom i").style.setProperty("--i", this._roomIconFor(cur)); }
     ed.querySelector(".edq").disabled = true;
-    requestAnimationFrame(() => requestAnimationFrame(() => ed.classList.add("in")));
+    if (!this._host.classList.contains("ph")) requestAnimationFrame(() => requestAnimationFrame(() => ed.classList.add("in")));
     const fail = (msg) => { const w = ed.querySelector(".edsk"); if (w) { w.className = "edwait msg"; w.textContent = msg; } };
     let s = null;
     try { s = await this._edStudio(); } catch (e) { s = null; }
@@ -2367,6 +2404,7 @@ class HemmaNativePanel extends HTMLElement {
   }
 
   _edClose() {
+    this._host.classList.remove("phs");
     this._edChangesClose();
     this._edHistClose();
     this._pvEnd();
@@ -2846,11 +2884,10 @@ class HemmaNativePanel extends HTMLElement {
     const hr = hdr.getBoundingClientRect(), r = on.getBoundingClientRect();
     const b = { x: r.left - hr.left, y: r.top - hr.top, w: r.width, h: r.height };
     hdr.querySelectorAll(".nlens").forEach((n) => n.remove());
-    const L = document.createElement("div");
-    L.className = "nlens";
-    hdr.appendChild(L);
+    const L = this._lensGlass(hdr, nav);
     nav.classList.add("lensing");
     clearTimeout(this._lensT);
+    const nq = nav.getBoundingClientRect(), nx = nq.left - hr.left, ny = nq.top - hr.top, mk = [], ok = [];
     const D = 320, N = 40, ss = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
     const zeta = 0.74, w0 = 24, wd = w0 * Math.sqrt(1 - zeta * zeta);
     const sp = (t) => (t <= 0 ? 0 : 1 - Math.exp(-zeta * w0 * t) * (Math.cos(wd * t) + (zeta * w0 / wd) * Math.sin(wd * t)));
@@ -2859,22 +2896,95 @@ class HemmaNativePanel extends HTMLElement {
     for (let i = 0; i <= N; i++) {
       const u = i / N, lift = Math.min(ss(u / 0.14), ss((1 - u) / 0.32)), p = pos(u), v = Math.abs(pos(Math.min(1, u + 1 / N)) - p) * N;
       const cx = a.x + a.w / 2 + (b.x + b.w / 2 - (a.x + a.w / 2)) * p, cy = a.y + a.h / 2 + (b.y + b.h / 2 - (a.y + a.h / 2)) * p;
-      const w = (a.w + (b.w - a.w) * Math.min(1, p)) * (1 + Math.min(0.18, v * dist / 3200)) + 8 * lift, h = a.h + (b.h - a.h) * Math.min(1, p) + 10 * lift;
-      kf.push({ offset: u, left: cx - w / 2 + "px", top: cy - h / 2 + "px", width: w + "px", height: h + "px", opacity: Math.min(1, lift * 1.6) });
+      const st = Math.min(0.2, v * dist / 3000), w = (a.w + (b.w - a.w) * Math.min(1, p)) * (1 + st) + 10 * lift, h = (a.h + (b.h - a.h) * Math.min(1, p) + 12 * lift) * (1 - st * 0.35);
+      const o = Math.min(1, lift * 1.6);
+      kf.push({ offset: u, left: cx - w / 2 + "px", top: cy - h / 2 + "px", width: w + "px", height: h + "px", boxShadow: `0 8px 22px -8px rgba(0,0,0,${(0.3 * o).toFixed(3)})` });
+      mk.push(Object.assign({ offset: u, opacity: o }, this._lensMag(cx - w / 2, cy - h / 2, w, h, nx, ny, 1 + 0.2 * lift)));
+      ok.push({ offset: u, opacity: o });
     }
     this._lensT = setTimeout(() => { if (L.isConnected) nav.classList.remove("lensing"); }, D * 0.62);
     const done = () => { L.remove(); if (!hdr.querySelector(".nlens")) { nav.classList.remove("lensing"); this._lensTo = null; } };
     L.animate(kf, { duration: D, easing: "linear", fill: "both" }).finished.then(done, done);
+    L.querySelector(".lm").animate(mk, { duration: D, easing: "linear", fill: "both" });
+    L.querySelectorAll(".lb, .lr").forEach((n) => n.animate(ok, { duration: D, easing: "linear", fill: "both" }));
+  }
+
+  _lensGlass(hdr, nav) {
+    const L = document.createElement("div");
+    L.className = "nlens";
+    L.innerHTML = '<i class="lb"></i><div class="nav lm"></div><i class="lr"></i>';
+    const lm = L.querySelector(".lm"), q = nav.getBoundingClientRect(), cs = getComputedStyle(nav);
+    lm.innerHTML = nav.innerHTML;
+    lm.querySelectorAll(".on").forEach((n) => n.classList.remove("on"));
+    Object.assign(lm.style, { width: q.width + "px", height: q.height + "px", padding: cs.padding, gap: cs.gap, marginLeft: -nav.scrollLeft + "px" });
+    hdr.appendChild(L);
+    return L;
+  }
+
+  _lensMag(lx, ly, w, h, nx, ny, m) {
+    return { left: nx - lx + "px", top: ny - ly + "px", transformOrigin: `${lx + w / 2 - nx}px ${ly + h / 2 - ny}px`, transform: `scale(${m.toFixed(3)})` };
   }
 
   _navPress(hdr) {
+    const nav = hdr.querySelector(".nav");
+    if (nav) requestAnimationFrame(() => { nav.style.touchAction = nav.scrollWidth > nav.clientWidth + 1 ? "" : "pan-y"; });
     hdr.querySelectorAll(".nav button[data-home], .nav button[data-room]").forEach((b) => {
       b.onpointerdown = (e) => {
-        if (e.button || b.classList.contains("on") || this._edit) return;
+        if (e.button || this._edit) return;
+        this._navDrag = { x: e.clientX, id: e.pointerId, from: b, live: false };
+        if (b.classList.contains("on")) return;
         const a = this._navRect(hdr);
         if (a) this._navLens(hdr, a, b);
       };
     });
+    if (nav._dragWired) return;
+    nav._dragWired = true;
+    const tabs = () => [...nav.querySelectorAll("button[data-home], button[data-room]")];
+    const near = (x) => tabs().reduce((best, t) => { const r = t.getBoundingClientRect(), d = Math.abs(r.left + r.width / 2 - x); return !best || d < best.d ? { t, d } : best; }, null);
+    nav.addEventListener("pointermove", (e) => {
+      const D = this._navDrag;
+      if (!D || D.id !== e.pointerId || this._edit) return;
+      if (!D.live) {
+        if (Math.abs(e.clientX - D.x) < 8) return;
+        D.live = true;
+        try { nav.setPointerCapture(e.pointerId); } catch (x) {}
+        hdr.querySelectorAll(".nlens").forEach((n) => { n.getAnimations().forEach((an) => an.cancel()); n.remove(); });
+        clearTimeout(this._lensT);
+        const L = this._lensGlass(hdr, nav);
+        L.classList.add("drag");
+        nav.classList.add("lensing");
+        D.lens = L;
+      }
+      const hr = hdr.getBoundingClientRect(), nr = nav.getBoundingClientRect(), hit = near(e.clientX);
+      if (!hit) return;
+      const r = hit.t.getBoundingClientRect(), w = r.width + 8, h = r.height + 10;
+      const cx = Math.max(nr.left + w / 2, Math.min(nr.right - w / 2, e.clientX * 0.6 + (r.left + r.width / 2) * 0.4));
+      const lx = cx - w / 2 - hr.left, ly = r.top + r.height / 2 - h / 2 - hr.top;
+      Object.assign(D.lens.style, { left: lx + "px", top: ly + "px", width: w + "px", height: h + "px" });
+      Object.assign(D.lens.querySelector(".lm").style, this._lensMag(lx, ly, w, h, nr.left - hr.left, nr.top - hr.top, 1.2));
+      D.to = hit.t;
+    });
+    const end = (e) => {
+      const D = this._navDrag;
+      if (!D || D.id !== e.pointerId) return;
+      this._navDrag = null;
+      if (!D.live) return;
+      this._navDragged = true;
+      setTimeout(() => { this._navDragged = false; }, 400);
+      const L = D.lens, t = D.to;
+      if (!t || t.classList.contains("on")) {
+        nav.classList.remove("lensing");
+        if (L) L.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "forwards" }).finished.then(() => L.remove(), () => L.remove());
+        return;
+      }
+      const hr = hdr.getBoundingClientRect(), lr = L.getBoundingClientRect();
+      this._lensFrom = { x: lr.left - hr.left + 4, y: lr.top - hr.top + 5, w: lr.width - 8, h: lr.height - 10, k: "drag" };
+      L.remove();
+      t.click();
+    };
+    nav.addEventListener("pointerup", end);
+    nav.addEventListener("pointercancel", end);
+    nav.addEventListener("click", (e) => { if (this._navDragged && e.isTrusted) { e.stopPropagation(); e.preventDefault(); } }, true);
   }
 
   _edFlip(snap, skip, ms, ease) {
@@ -2948,7 +3058,29 @@ class HemmaNativePanel extends HTMLElement {
     this._root.querySelectorAll(".t.sel").forEach((n) => n.classList.remove("sel"));
     b.classList.add("sel");
     const ed = this._root.querySelector(".ed");
-    if (ed && this._host.classList.contains("ph") && ed.getBoundingClientRect().height < innerHeight * 0.5) { const h = Math.round(innerHeight * 0.62); ed.style.height = h + "px"; this._host.style.setProperty("--edh", h + "px"); }
+    if (this._host.classList.contains("ph")) this._phSheet("tile");
+  }
+
+  _phSheet(mode) {
+    const ed = this._root.querySelector(".ed");
+    if (!ed) return;
+    ed.classList.toggle("full", mode === "full");
+    ed.classList.toggle("in", !!mode);
+    this._host.classList.toggle("phs", !!mode);
+    const t = mode === "tile" && this._root.querySelector(".main:not(.prev) .t.sel"), main = t && t.closest(".main");
+    if (t && main) requestAnimationFrame(() => { const r = t.getBoundingClientRect(), top = innerHeight * 0.38 - 12; if (r.bottom > top) main.scrollBy({ top: r.bottom - top, behavior: "smooth" }); });
+  }
+
+  _phPlus(btn) {
+    const s = this._studio;
+    if (!s || !s._state) return;
+    const grid = this._root.querySelector(".main:not(.prev) .grid[data-k]"), key = grid && grid.dataset.k;
+    const items = [];
+    if (key) items.push({ label: T("native.add_tile", "Add a tile"), run: () => { this._phSheet("full"); this._edAdd(key); } });
+    items.push({ label: T("native.add_room", "Add a room"), run: () => { this._phSheet("full"); s._addRoom(); } });
+    items.push({ label: T("native.dash_settings", "Dashboard Settings"), run: () => { s._group = "rooms"; s._sel = null; try { s._renderForm(); } catch (e) {} this._phSheet("full"); } });
+    if (s._isDirty && s._isDirty()) items.push({ label: T("native.discard", "Discard"), red: true, run: () => this._edCancel() });
+    this._menu(btn, items);
   }
 
   _edAdd(key) {
@@ -3109,7 +3241,12 @@ class HemmaNativePanel extends HTMLElement {
       if (this._edSel && this._edSel === (b.closest(".grid").dataset.k || "") + "|" + b.dataset.e) b.classList.add("sel");
       if (!b._edWired) { b._edWired = 1; this._edDrag(b); }
     });
-    R.querySelectorAll(".t.add").forEach((b) => { b.onclick = () => this._edAdd(b.dataset.add); });
+    R.querySelectorAll(".t.add").forEach((b) => { b.onclick = () => { if (this._host.classList.contains("ph")) this._phSheet("full"); this._edAdd(b.dataset.add); }; });
+    if (this._host.classList.contains("ph")) {
+      const plus = R.querySelector(".hdr .edplus"), h1 = R.querySelector(".main:not(.prev) .top h1"), s = this._studio;
+      if (plus) plus.onclick = (e) => { e.stopPropagation(); this._phPlus(plus); };
+      if (h1 && s && s._roomTitleMenu) h1.onclick = () => { if (this._edit) s._roomTitleMenu(h1); };
+    }
   }
 
   _edDrag(b) {
@@ -3500,14 +3637,26 @@ class HemmaNativePanel extends HTMLElement {
     return out;
   }
 
-  _npList() {
-    if (this._npV && window._hemmaNPView) { try { return (window._hemmaNPView(this._hass.states, this._npV) || []).filter(Boolean).slice(0, 3); } catch (e) { return []; } }
+  _npList(room) {
+    if (this._npV && window._hemmaNPView) { let v = []; try { v = (window._hemmaNPView(this._hass.states, this._npV) || []).filter(Boolean); } catch (e) {} return (room ? v.filter((r) => this._npInRoom(r, room)) : v).slice(0, 3); }
     if (!window._hemmaNPSources) return [];
     const V = Object.assign({}, this._chipV || {});
     Object.keys(V).forEach((k) => { const m = /^(media_player|plex_stream|psn)_(\d+)$/.exec(k); if (m && V[k]) V[`show_${m[1] === "plex_stream" ? "plex" : m[1]}_${m[2]}`] = true; });
     let l = [];
     try { l = window._hemmaNPSources(this._hass.states, V) || []; } catch (e) {}
-    return l.filter((r) => r && r.entity && (r.playing || r.state === "paused")).slice(0, 3);
+    l = l.filter((r) => r && r.entity && (r.playing || r.state === "paused"));
+    if (room) l = l.filter((r) => this._npInRoom(r, room));
+    return l.slice(0, 3);
+  }
+
+  _npInRoom(r, room) {
+    const S = this._hass.states, E = this._hass.entities || {}, D = this._hass.devices || {};
+    if (!room._npIds) { const ids = new Set(); JSON.stringify(room.tiles || room.cards || [], (k, v) => { if (typeof v === "string" && /^media_player\./.test(v)) ids.add(v); return v; }); room._npIds = ids; }
+    const ids = room._npIds, area = (id) => { const e = E[id]; return e && (e.area_id || (D[e.device_id] || {}).area_id); };
+    if (ids.has(r.entity) || (room.area && area(r.entity) === room.area)) return true;
+    if (r.kind !== "activity") return false;
+    const t = String(r.title || "").trim().toLowerCase();
+    return !!t && Object.keys(S).some((id) => /^media_player\./.test(id) && S[id].state === "playing" && (ids.has(id) || (room.area && area(id) === room.area)) && String((S[id].attributes || {}).media_title || "").trim().toLowerCase() === t);
   }
 
   _npHtml(list, one) {
@@ -3520,7 +3669,7 @@ class HemmaNativePanel extends HTMLElement {
       const sub = (r.kind === "player" ? [r.subtitle] : [r.source, r.subtitle]).map((x) => String(x || "").trim()).filter(Boolean).join(" · ");
       const c = r.controls || {}, ctl = (!r.kind || r.kind === "player") && (c.toggle || c.next || c.prev);
       return `<div class="np" data-np="${esc(r.entity)}" data-kind="${esc(r.kind || "")}"${r.art ? ` style="--npa:url('${String(r.art).replace(/'/g, "%27")}')"` : ""}><span class="art"${r.art ? ` style="background-image:url('${String(r.art).replace(/'/g, "%27")}')"` : ""}></span><div class="meta"><b>${esc(r.title || "")}</b><span>${esc(sub)}</span><div class="trk"><i></i></div></div>`
-        + (ctl ? `<div class="ctl">${c.prev ? `<button type="button" data-a="prev" aria-label="Previous">${npg("prev")}</button>` : ""}${c.toggle ? `<button type="button" data-a="toggle" aria-label="Play or pause">${npg(r.playing ? "pause" : "play")}</button>` : ""}${c.next ? `<button type="button" data-a="next" aria-label="Next">${npg("next")}</button>` : ""}</div>` : "") + `</div>`;
+        + (ctl ? `<div class="ctl">${c.prev ? `<button type="button" data-a="prev" aria-label="${esc(T("media.previous", "Previous"))}">${npg("prev")}</button>` : ""}${c.toggle ? `<button type="button" data-a="toggle" aria-label="${esc(T("media.play", "Play"))}">${npg(r.playing ? "pause" : "play")}</button>` : ""}${c.next ? `<button type="button" data-a="next" aria-label="${esc(T("media.next", "Next"))}">${npg("next")}</button>` : ""}</div>` : "") + `</div>`;
     };
     return head + `<div class="nps">${list.map(card).join("")}</div>`;
   }
@@ -3588,7 +3737,7 @@ class HemmaNativePanel extends HTMLElement {
   }
 
   _kind(c) {
-    const K = ["thermostat", "lock", "light", "cover", "battery", "network", "energy", "plex_recently_added", "updates", "cameras", "entity_actions", "vacuum", "plant", "air_purifier"];
+    const K = ["thermostat", "lock", "light", "cover", "battery", "network", "energy", "plex_recently_added", "updates", "cameras", "entity_actions", "vacuum", "plant", "air_purifier", "server"];
     for (const t of c.tpl) { const k = String(t).replace(/^hemma_/, ""); if (K.includes(k)) return k; }
     return "";
   }
@@ -3632,6 +3781,10 @@ class HemmaNativePanel extends HTMLElement {
         r.text = fit(T("network.activity", "{tier} {dir}", { tier, dir }));
       }
       r.on = max >= light; r.icon = V.icon || "wifi"; r.color = max >= heavy ? "#ffd600" : "#00c3d0";
+    } else if (k === "server") {
+      const sv = window.hemmaServer && window.hemmaServer.summary(this._hass, c.entity, S, V);
+      if (sv) { r.text = sv.text; r.on = !!sv.alert; }
+      r.icon = V.icon || "server"; r.color = "var(--hemma-color-indigo, #5E5CE6)";
     } else if (k === "energy") {
       const w = num(V.entity_power || c.entity);
       r.text = !Number.isFinite(w) ? T("state.unavailable", "Unavailable") : w >= Number(V.extreme_threshold ?? 3000) ? T("energy.extreme_usage", "Extreme Usage") : w >= Number(V.heavy_threshold ?? 1000) ? T("energy.heavy_usage", "Heavy Usage") : w >= Number(V.normal_threshold ?? 200) ? T("energy.normal", "Normal") : T("energy.idle", "Idle");
@@ -3692,6 +3845,18 @@ class HemmaNativePanel extends HTMLElement {
     return `<button type="button" class="t${r.on ? " on" : ""}${r.hide ? " hide" : ""}" data-e="${esc(c.entity)}" data-d="${esc(String(c.entity || "").split(".")[0])}" data-c="${i}"${r.icon && k !== "thermostat" ? ` data-icon="${esc(r.icon)}"` : ""} style="--c:${r.color}"><span class="ic"></span>${tg ? `<span class="ftg${tgOn ? " on" : ""}" data-tg role="switch" aria-checked="${tgOn ? "true" : "false"}"></span>` : ""}<span class="tx"><b>${esc(name)}</b><span>${esc(r.text)}</span></span></button>`;
   }
 
+  _iconTap(c, d, k) {
+    const V = c.V || {}, H = this._hass, t = V.toggle_entity || c.entity, st = H.states[t], s = String((st && st.state) || "").toLowerCase();
+    if (!st || s === "unavailable" || s === "unknown" || ["lock", "cover"].includes(k)) return false;
+    if (V.toggle_service) { const [dm, sv] = String(V.toggle_service).split("."); H.callService(dm, sv, V.toggle_service_data || { entity_id: t }); return true; }
+    const td = domainOf(t);
+    if (td === "climate") { H.callService("climate", s === "off" ? "turn_on" : "turn_off", { entity_id: t }); return true; }
+    if (td === "media_player") { const f = Number(st.attributes.supported_features || 0); if (s === "off" ? !(f & 128) : !(f & 256)) return false; H.callService("media_player", s === "off" ? "turn_on" : "turn_off", { entity_id: t }); return true; }
+    if (!TOGGLE.includes(td) && td !== "water_heater") return false;
+    H.callService("homeassistant", "toggle", { entity_id: t });
+    return true;
+  }
+
   _openCard(c) {
     const V = c.V || {}, k = this._kind(c), e = c.entity, nm = c.name || undefined;
     const map = {
@@ -3699,6 +3864,7 @@ class HemmaNativePanel extends HTMLElement {
       network: Object.assign({ type: "custom:hemma-network-panel", name: "", entity_download: V.entity_download || e, entity_upload: V.entity_upload || V.upload_sensor || null }, Object.fromEntries(["entity_ping", "entity_status", "entity_stat_1", "entity_stat_2", "entity_stat_3", "entity_stat_4", "action_1_entity", "action_1_label", "action_1_status", "action_1_confirm_helper", "action_1_done_helper", "action_2_entity", "action_2_label", "action_2_status", "action_2_confirm_helper", "action_2_done_helper"].map((x) => [x, V[x] || null])), { idle_threshold: V.idle_threshold, light_threshold: V.light_threshold, heavy_threshold: V.heavy_threshold }),
       energy: { type: "custom:hemma-energy-panel", name: "", entity_power: V.entity_power || e, entity_usage_today: V.entity_usage_today, entity_usage_month: V.entity_usage_month, entity_cost_today: V.entity_cost_today, entity_cost_month: V.entity_cost_month, usage_shows: V.usage_shows || "", power_entities: Array.isArray(V.power_entities) ? V.power_entities : [], power_icons: V.power_icons || {}, normal_threshold: V.normal_threshold, heavy_threshold: V.heavy_threshold, extreme_threshold: V.extreme_threshold },
       updates: { type: "custom:hemma-updates-panel" },
+      server: { type: "custom:hemma-server-panel", name: V.room_name || "", entity: e, entity_memory: V.entity_memory || null, entity_disk: V.entity_disk || null, entity_status: V.entity_status || null },
       plex_recently_added: { type: "custom:hemma-recent-panel", hide_spoilers: V.hide_spoilers === true },
       lock: { type: "custom:hemma-lock-panel", name: nm, locks: Array.isArray(V.locks) ? V.locks : [], battery: V.battery_entities || {}, show_battery: V.show_battery === true, doors: V.door_sensors || {} },
       cover: { type: "custom:hemma-cover-panel", entity: V.cover_entity || e, name: nm, covers: Array.isArray(V.covers) ? V.covers : [] },
@@ -3740,7 +3906,7 @@ class HemmaNativePanel extends HTMLElement {
     return `${head}<div class="${mode === "page" ? "scg" : "scs"}">${ids.map((id) => {
       const a = S[id].attributes || {}, nm = a.friendly_name || id.replace("scene.", "").replace(/_/g, " "), ic = (V.scene_icons || {})[id];
       const on = (this._sceneOn && this._sceneOn[id] > Date.now()) || this._sceneActive(id);
-      return `<button type="button" class="sc${on ? " on" : ""}" data-sc="${esc(id)}" style="--c:${(V.scene_colors || {})[id] || "#FFCC00"}">${ic ? `<i style="--i:url('${esc(ic)}')"></i>` : `<ha-icon icon="${esc(a.icon || "mdi:palette")}"></ha-icon>`}<span>${esc(nm)}</span></button>`;
+      return `<button type="button" class="sc${on ? " on" : ""}" data-sc="${esc(id)}" style="--c:${(V.scene_colors || {})[id] || "#FFCC00"}">${ic ? `<i style="--i:url('${escU(ic)}')"></i>` : `<ha-icon icon="${esc(a.icon || "mdi:palette")}"></ha-icon>`}<span>${esc(nm)}</span></button>`;
     }).join("")}</div>`;
   }
 
@@ -3788,20 +3954,20 @@ class HemmaNativePanel extends HTMLElement {
     const src = page === "room" && room && room.V && room.V.image ? room.V : V;
     const base = String(src.image || "home");
     const img = dark ? (src.image_night || base + "-night") : base;
-    const url = `url("/hemma_assets/rooms/${img}.jpg")`;
+    const url = `url("${PH(`/hemma_assets/rooms/${img}.jpg`)}")`;
     this._glassPreload(dark);
     if (this._gph !== url) {
       this._gph = url;
-      const gpg = `url("/hemma_assets/rooms-glass/${img}.jpg?v=5")`;
+      const gpg = `url("${PH(`/hemma_assets/rooms-glass/${img}.jpg?v=5`)}")`;
       const flip = this._gphDark != null && this._gphDark !== dark;
       this._gphDark = dark;
       const apply = () => { if (this._gph !== url) return; if (flip) this._bgFade(); this._host.style.setProperty("--gph", url); this._host.style.setProperty("--gpg", gpg); };
-      const pics = [`/hemma_assets/rooms/${img}.jpg`, `/hemma_assets/rooms-glass/${img}.jpg?v=5`].map((u) => this._glassPic(u));
+      const pics = [`/hemma_assets/rooms/${img}.jpg`, `/hemma_assets/rooms-glass/${img}.jpg?v=5`].map((u) => this._glassPic(PH(u)));
       if (!this._host.style.getPropertyValue("--gph")) apply();
       else Promise.all(pics.map((p) => p.decode().catch(() => {}))).then(() => requestAnimationFrame(apply));
     }
     const m = this._styleMem();
-    if (page === "home" && (!m || !m.glass || m.gph !== url)) this._styleMem({ glass: true, gph: url, gpg: `url("/hemma_assets/rooms-glass/${img}.jpg?v=5")` });
+    if (page === "home" && (!m || !m.glass || m.gph !== url)) this._styleMem({ glass: true, gph: url, gpg: `url("${PH(`/hemma_assets/rooms-glass/${img}.jpg?v=5`)}")` });
     if (!this._lookCleared && !PV) {
       this._lookCleared = true;
       try { const L = JSON.parse(localStorage.getItem("hemma_ha_look") || "null"); if (L && (L.cls || []).includes("hemma-hv")) { localStorage.removeItem("hemma_ha_look"); localStorage.removeItem("hemma_hv_bg"); } } catch (e) {}
@@ -3882,8 +4048,8 @@ class HemmaNativePanel extends HTMLElement {
     const V = this._dashV || {};
     [V].concat(this._layout.rooms.map((r) => r.V || {})).forEach((src) => {
       const base = String(src.image || V.image || "home"), img = dark ? (src.image_night || base + "-night") : base;
-      this._glassPic(`/hemma_assets/rooms/${img}.jpg`);
-      this._glassPic(`/hemma_assets/rooms-glass/${img}.jpg?v=5`);
+      this._glassPic(PH(`/hemma_assets/rooms/${img}.jpg`));
+      this._glassPic(PH(`/hemma_assets/rooms-glass/${img}.jpg?v=5`));
     });
   }
 
@@ -3975,8 +4141,9 @@ class HemmaNativePanel extends HTMLElement {
     const hdr = R.querySelector(".hdr");
     hdr.querySelectorAll(".back, .pill, .wx, .ok, .fclk").forEach((n) => n.remove());
     hdr.insertAdjacentHTML("beforeend", (fd ? `<div class="fclk">${esc(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }))}</div>` : "") + (page === "home" || F ? "" : `<button type="button" class="back" aria-label="${esc(T("nav.home", "Home"))}"><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.4 1.6 1.8 10l8.6 8.4"/></svg></button>`)
-      + (!tab && !ph && !F ? this._wxHtml() : "") + (this._edit ? `<button type="button" class="ok" aria-label="${esc(T("native.done", "Done"))}" title="${esc(T("native.done", "Done"))}"><svg viewBox="0 0 20 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.6 7.2 13.6 18 2.4"/></svg><b class="okn"></b></button>` : "") + `<div class="pill">${focus && this._npHere(page, room) && this._npList().some((r) => r.playing) ? `<button type="button" class="wv" aria-label="${esc(T("now_playing.title", "Now Playing"))}"><span><i></i><i></i><i></i><i></i><i></i></span></button>` : ""}<button type="button" class="nb" aria-label="Notifications"><i style="--i:${this._icon("bell")}"></i><b class="bc"></b></button><s></s><button type="button" class="more" aria-label="More"><i style="--i:${dots}"></i></button></div>`);
-    const lensFrom = this._navRect(hdr);
+      + (!tab && !ph && !F ? this._wxHtml() : "") + (this._edit ? `<button type="button" class="ok" aria-label="${esc(T("native.done", "Done"))}" title="${esc(T("native.done", "Done"))}"><svg viewBox="0 0 20 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.6 7.2 13.6 18 2.4"/></svg><b class="okn"></b></button>` : "") + (this._edit && ph ? `<button type="button" class="edplus" aria-label="${esc(T("native.add", "Add"))}"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg></button>` : "") + `<div class="pill">${focus && this._npHere(page, room) && this._npList().some((r) => r.playing) ? `<button type="button" class="wv" aria-label="${esc(T("now_playing.title", "Now Playing"))}"><span><i></i><i></i><i></i><i></i><i></i></span></button>` : ""}<button type="button" class="nb" aria-label="${esc(T("notify.title", "Notifications"))}"><i style="--i:${this._icon("bell")}"></i><b class="bc"></b></button><s></s><button type="button" class="more" aria-label="${esc(T("ui.more", "More"))}"><i style="--i:${dots}"></i></button></div>`);
+    const lensFrom = this._lensFrom || this._navRect(hdr);
+    this._lensFrom = null;
     hdr.querySelector(".nav").innerHTML = `<button type="button" class="tg" aria-label="${esc(T("nav.sidebar", "Sidebar"))}">${TAB_SVG}</button><button type="button" data-home class="${page !== "room" && !(focus && page === "scenes") ? "on" : ""}">${esc(T("nav.home", "Home"))}</button>`
       + rooms.map((r, i) => `<button type="button" data-room="${i}" class="${page === "room" && i === this._room ? "on" : ""}">${esc(r.name)}</button>`).join("")
       + (focus ? `<button type="button" data-scenes class="scn${page === "scenes" ? " on" : ""}">${esc(T("nav.scenes", "Scenes"))}<i style="--i:${CHEV}"></i></button>` : "");
@@ -3988,7 +4155,7 @@ class HemmaNativePanel extends HTMLElement {
     R.querySelectorAll("[data-home]").forEach((b) => { b.onclick = () => this._go("home"); });
     R.querySelectorAll("[data-scenes]").forEach((b) => { b.onclick = () => (b.classList.contains("scn") ? this._scenesMenu(b) : this._go("scenes")); });
     R.querySelectorAll("[data-npcat]").forEach((b) => { b.onclick = () => this._go("media"); });
-    this._fnpSync(focus && !ph && this._npHere(page, room));
+    this._fnpSync(focus && !ph && this._npHere(page, room), page === "room" ? room : null);
     R.querySelectorAll(".pill .wv").forEach((b) => { b.onclick = (e) => { e.stopPropagation(); if (hdr.querySelector(".fnp")) { const v = !this._npMin(); this._npMinO = { v, at: Date.now() }; hdr.querySelectorAll(".fnp").forEach((n) => n.classList.toggle("min", v)); this._hass.callService("input_boolean", v ? "turn_on" : "turn_off", { entity_id: NP_MIN }); return; } const r = this._npList().find((x) => x.playing) || this._npList()[0]; if (r && window.hemmaMediaFull) window.hemmaMediaFull.open({ entity: r.entity, name: r.title || "" }, b); }; });
     hdr.querySelector(".mini").textContent = title;
     if (hdr.querySelector(".wx")) {
@@ -3997,7 +4164,13 @@ class HemmaNativePanel extends HTMLElement {
       requestAnimationFrame(() => this._wxFit()); if (document.fonts && !this._wxFonts) { this._wxFonts = 1; document.fonts.ready.then(() => this._wxFit()); } }
     hdr.querySelector(".mini").style.left = page === "home" ? "15px" : "";
     main.scrollTop = 0; col.classList.remove("scrolled");
-    main.onscroll = () => col.classList.toggle("scrolled", main.scrollTop > 40);
+    const under = () => {
+      if (!this._host.classList.contains("ph")) return main.scrollTop > 40;
+      const ch = main.querySelector(".chips"), pl = this._root.querySelector(".hdr .pill"), pr = pl && pl.getBoundingClientRect();
+      if (!ch || !pr || !pr.height) return main.scrollTop > 40;
+      return ch.getBoundingClientRect().bottom <= pr.bottom + 4;
+    };
+    main.onscroll = () => col.classList.toggle("scrolled", under());
     main.querySelectorAll(".t").forEach((b) => this._wireTile(b));
     this._wireBadges();
     main.querySelectorAll(".t .ic").forEach((ic) => this._iconOf(ic));
@@ -4202,10 +4375,10 @@ class HemmaNativePanel extends HTMLElement {
     return !!W && W.show_media !== false && !!W.show_now_playing;
   }
 
-  _fnpSync(on) {
+  _fnpSync(on, room) {
     const hdr = this._root.querySelector(".hdr");
     if (!hdr) return;
-    const old = hdr.querySelector(".fnp"), l = on ? this._npList() : [];
+    const old = hdr.querySelector(".fnp"), l = on ? this._npList(room) : [];
     const sig = l.map((r) => [r.entity, r.title, r.subtitle, r.source, r.art].join("|")).join(";");
     if (!l.length) { if (old) old.remove(); return; }
     if (old && old.dataset.sig === sig) { old.classList.toggle("min", this._npMin()); return; }
@@ -4240,7 +4413,7 @@ class HemmaNativePanel extends HTMLElement {
 
   _refresh() {
     this._sideMotion();
-    if (this._focusOn() && !this._host.classList.contains("ph")) this._fnpSync(this._npHere(this._page || "room", this._layout && this._layout.rooms[this._room]));
+    if (this._focusOn() && !this._host.classList.contains("ph")) { const rm = this._layout && this._layout.rooms[this._room]; this._fnpSync(this._npHere(this._page || "room", rm), (this._page || "room") === "room" ? rm : null); }
     this._sceneSync();
     if (this._en) this._en.hass = this._hass;
     if ((this._page === "home" || this._page === "media") && this._npSig() !== this._npKey) {
@@ -4362,7 +4535,7 @@ class HemmaNativePanel extends HTMLElement {
       const c = this._cards[+b.dataset.c];
       b.addEventListener("click", (e) => {
         const d = domainOf(id), k = this._kind(c);
-        if (e.composedPath().some((n) => n.classList && n.classList.contains("ic")) && TOGGLE.includes(d) && !["lock", "cover"].includes(k)) { this._hass.callService("homeassistant", "toggle", { entity_id: id }); return; }
+        if (e.composedPath().some((n) => n.classList && n.classList.contains("ic")) && this._iconTap(c, d, k)) return;
         this._openCard(c);
       });
       return;
@@ -4412,6 +4585,7 @@ class HemmaNativePanel extends HTMLElement {
     R.appendChild(m);
     if (items.center) { const w = m.getBoundingClientRect().width; m.style.right = "auto"; m.style.left = Math.round(Math.max(12, Math.min(innerWidth - 12 - w, ar.left + ar.width / 2 - w / 2))) + "px"; }
     anchor.classList.add("held");
+    const morph = this._host.classList.contains("ph") && anchor.closest(".hdr .pill") && !window.matchMedia("(prefers-reduced-motion: reduce)").matches ? this._pillMorph(pill, m) : null;
     let done = false;
     const close = (after) => {
       if (done) return; done = true;
@@ -4420,19 +4594,56 @@ class HemmaNativePanel extends HTMLElement {
       anchor.classList.remove("held");
       m.style.pointerEvents = "none";
       const fin = () => { m.remove(); if (after) after(); };
+      if (morph) { morph.close(fin); return; }
       m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: "ease-out", fill: "forwards" }).finished.then(fin, fin);
     };
-    const away = (e) => { if (!e.composedPath().includes(m) && !e.composedPath().includes(anchor)) close(); };
+    const away = (e) => {
+      if (e.composedPath().includes(m) || e.composedPath().includes(anchor)) return;
+      e.stopPropagation(); e.preventDefault();
+      const eat = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+      ["pointerup", "mouseup", "touchend", "click"].forEach((t) => document.addEventListener(t, eat, { capture: true, once: t === "click" }));
+      setTimeout(() => ["pointerup", "mouseup", "touchend", "click"].forEach((t) => document.removeEventListener(t, eat, true)), 450);
+      close();
+    };
     const key = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
     m._close = () => close();
     m.querySelectorAll("button").forEach((b) => { b.onclick = () => close(items[+b.dataset.i].run); });
     setTimeout(() => { document.addEventListener("pointerdown", away, true); document.addEventListener("keydown", key, true); }, 0);
   }
 
+  _pillMorph(pill, m) {
+    const pr = pill.getBoundingClientRect();
+    Object.assign(m.style, { top: pr.top + "px", right: Math.round(innerWidth - pr.right) + "px", left: "auto" });
+    const fr = m.getBoundingClientRect(), cs = getComputedStyle(m), pcs = getComputedStyle(pill);
+    const inner = document.createElement("div");
+    inner.style.cssText = `display:flex;flex-direction:column;width:${fr.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)}px;flex:none`;
+    while (m.firstChild) inner.appendChild(m.firstChild);
+    m.appendChild(inner);
+    Object.assign(m.style, { left: fr.left + "px", right: "auto", top: fr.top + "px", width: fr.width + "px", height: fr.height + "px", overflow: "hidden", boxSizing: "border-box" });
+    const zeta = 0.72, w0 = 15, wd = w0 * Math.sqrt(1 - zeta * zeta), sp = (t) => 1 - Math.exp(-zeta * w0 * t) * (Math.cos(wd * t) + (zeta * w0 / wd) * Math.sin(wd * t));
+    const ease = "linear(" + Array.from({ length: 31 }, (_, i) => sp((i / 30) * 0.5).toFixed(3)).join(", ") + ")";
+    const from = { left: pr.left + "px", top: pr.top + "px", width: pr.width + "px", height: pr.height + "px", borderRadius: pr.height / 2 + "px", backgroundColor: pcs.backgroundColor, boxShadow: pcs.boxShadow };
+    const to = { left: fr.left + "px", top: fr.top + "px", width: fr.width + "px", height: fr.height + "px", borderRadius: cs.borderRadius, backgroundColor: cs.backgroundColor, boxShadow: cs.boxShadow };
+    const ghost = (on, ms, delay) => pill.animate([{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], { duration: ms, delay: delay || 0, easing: "ease-out", fill: "forwards" });
+    pill.style.setProperty("box-shadow", "none", "important");
+    const hide = ghost(false, 90);
+    m.animate([from, to], { duration: 480, easing: ease });
+    inner.animate([{ opacity: 0, filter: "blur(8px)", transform: "translateY(-6px)" }, { opacity: 1, filter: "blur(0px)", transform: "none" }], { duration: 240, delay: 110, easing: "ease-out", fill: "backwards" });
+    return {
+      close: (fin) => {
+        inner.animate([{ opacity: 1, filter: "blur(0px)" }, { opacity: 0, filter: "blur(8px)" }], { duration: 130, easing: "ease-in", fill: "forwards" });
+        const a = m.animate([to, from], { duration: 380, delay: 40, easing: "cubic-bezier(.32,.72,0,1)", fill: "forwards" });
+        setTimeout(() => { hide.cancel(); ghost(true, 120); }, 300);
+        const done = () => { pill.style.removeProperty("box-shadow"); fin(); };
+        a.finished.then(done, done);
+      },
+    };
+  }
+
   _scenesMenu(anchor) {
     const S = this._hass.states, V = this._sceneV || {}, ids = this._scenes(null);
     if (!ids.length) { this._go("scenes"); return; }
-    const icon = (id) => { const a = S[id].attributes || {}, ic = (V.scene_icons || {})[id]; return ic ? `<i style="display:block;width:20px;height:20px;background:currentColor;-webkit-mask:url('${esc(ic)}') center/contain no-repeat;mask:url('${esc(ic)}') center/contain no-repeat"></i>` : `<ha-icon icon="${esc(a.icon || "mdi:palette")}" style="--mdc-icon-size:20px;display:flex"></ha-icon>`; };
+    const icon = (id) => { const a = S[id].attributes || {}, ic = (V.scene_icons || {})[id]; return ic ? `<i style="display:block;width:20px;height:20px;background:currentColor;-webkit-mask:url('${escU(ic)}') center/contain no-repeat;mask:url('${escU(ic)}') center/contain no-repeat"></i>` : `<ha-icon icon="${esc(a.icon || "mdi:palette")}" style="--mdc-icon-size:20px;display:flex"></ha-icon>`; };
     const name = (id) => { const a = S[id].attributes || {}; return a.friendly_name || id.replace("scene.", "").replace(/_/g, " "); };
     const run = (id) => { const b = document.createElement("button"); b.dataset.sc = id; this._scene(b); };
     const P = window.hemmaCapPick, mac = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
@@ -4497,12 +4708,12 @@ class HemmaNativePanel extends HTMLElement {
     const mdi = (name) => `<ha-icon icon="${name}" style="--mdc-icon-size:20px;display:flex"></ha-icon>`;
     const items = [
       { key: "refresh", label: T("ui.common.refresh", "Refresh"), icon: mask("refresh"), run: () => window.location.reload() },
-      { key: "edit", label: T("native.edit_dashboard", "Edit Dashboard"), icon: mask("pencil", "16px 16px"), run: () => this._setEdit(true) },
+      { key: "edit", label: T("native.edit_dashboard", "Edit Dashboard"), icon: mask("pencil", "14px 14px"), run: () => this._setEdit(true) },
     ];
     if (!ph && window._hemmaSaverSet && window._hemmaSaverSet()) items.push({ key: "saver", label: T("menu.screensaver", "Start Screensaver"), icon: mdi("mdi:clock-outline"), run: () => { if (window._hemmaSaverNow) window._hemmaSaverNow(); } });
     if (!ph) items.push({ key: "ha", label: T("nav.home_assistant", "Home Assistant"), icon: mdi("mdi:home-assistant"), run: () => this._haSidebar() });
     const P = window.hemmaCapPick;
-    if (!P || window.matchMedia("(hover: hover) and (pointer: fine)").matches) { items.cls = "mm"; this._macMenu(anchor, items); return; }
+    if (!P || ph || window.matchMedia("(hover: hover) and (pointer: fine)").matches) { items.cls = "mm"; this._macMenu(anchor, items); return; }
     let wrap = this._root.querySelector(".mwrap");
     if (!wrap) {
       wrap = document.createElement("div");

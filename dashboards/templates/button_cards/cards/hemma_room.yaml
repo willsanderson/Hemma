@@ -404,10 +404,11 @@ hemma_room:
             document.documentElement.classList.toggle('hg-ink-d', !hv && !isDark && variables.hemma_glass_text === 'dark');
             const base = variables.image || 'default';
             const picked = isDark ? (variables.image_night || `${base}-night`) : base;
+            const P = window.hemmaPhotoUrl || String;
             if (!hv) return (window.innerWidth >= 768 && window.innerHeight > 500)
-              ? `var(--hemma-glass-wash-${isDark ? 'night' : 'day'}, none), url("/hemma_assets/rooms-glass/${picked}.jpg?v=5")`
-              : `url("/hemma_assets/rooms/${picked}.jpg")`;
-            const photo = `url("/hemma_assets/rooms-soft/${picked}.jpg?v=3")`;
+              ? `var(--hemma-glass-wash-${isDark ? 'night' : 'day'}, none), url("${P(`/hemma_assets/rooms-glass/${picked}.jpg?v=5`)}")`
+              : `url("${P(`/hemma_assets/rooms/${picked}.jpg`)}")`;
+            const photo = `url("${P(`/hemma_assets/rooms-soft/${picked}.jpg?v=3`)}")`;
             return `var(--hv-photo-top, none), var(--hv-photo-wash), ${photo}`;
           ]]]
       - --hero-tint: "[[[ return variables.hemma_style === 'homeview' ? 'transparent' : 'inherit'; ]]]"

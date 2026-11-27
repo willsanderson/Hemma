@@ -15,6 +15,8 @@ from homeassistant.helpers.storage import Store
 from .const import DOMAIN, URL_BASE
 
 NATIVE_URL = "hemma-native"
+# The preview's sidebar entry shows only where this file exists, so a tester can reach it from the iOS app.
+PREVIEW_FLAG = "hemma/native_preview"
 STORE_KEY = f"{DOMAIN}.native"
 KEEP = 30
 HISTORY_KEY = f"{DOMAIN}.native_history"
@@ -192,6 +194,7 @@ async def async_setup_native(hass: HomeAssistant, panel_dir: str) -> None:
             return 0
 
     stamp = await hass.async_add_executor_job(_stamp)
+    listed = await hass.async_add_executor_job(os.path.isfile, hass.config.path(PREVIEW_FLAG))
     if not stamp:
         return
     async_remove_panel(hass, NATIVE_URL, warn_if_unknown=False)
@@ -199,6 +202,8 @@ async def async_setup_native(hass: HomeAssistant, panel_dir: str) -> None:
         hass=hass,
         component_name="custom",
         frontend_url_path=NATIVE_URL,
+        sidebar_title="Hemma Preview" if listed else None,
+        sidebar_icon="mdi:home-variant" if listed else None,
         require_admin=True,
         config={
             "_panel_custom": {

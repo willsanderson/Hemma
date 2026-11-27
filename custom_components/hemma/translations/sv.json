@@ -15,8 +15,8 @@
   },
   "issues": {
     "theme_not_loaded": {
-      "title": "Hemma-temat laddas inte",
-      "description": "Hemma lägger själv till sitt tema i Home Assistant, men det finns inte i temalistan just nu. Öppna Hemma i sidomenyn och välj Kör installationen igen i ⋯-menyn. Saknas temat fortfarande laddar du om Hemma-integrationen under Inställningar > Enheter och tjänster."
+      "title": "Hemma-temat läses inte in",
+      "description": "Home Assistant läser in teman från din `configuration.yaml`. Lägg till de här raderna, eller lägg till raden `themes:` i den `frontend:`-del du redan har:\n\n```yaml\nfrontend:\n  themes: !include_dir_merge_named themes\n```\n\nStarta sedan om Home Assistant. Hemma håller sin temafil i `themes/hemma/` uppdaterad åt dig."
     },
     "theme_replaced": {
       "title": "Hemma-temat har uppdaterats",

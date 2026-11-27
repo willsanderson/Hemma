@@ -40,7 +40,7 @@ hemma_shared:
           const img = new Image();
           img.decoding = 'async';
           if ('fetchPriority' in img) img.fetchPriority = 'low';
-          img.src = src;
+          img.src = (window.hemmaPhotoUrl || String)(src);
           window.hemmaPreloadedImages.push(img);
           return (img.decode ? img.decode() : Promise.resolve()).catch(() => {});
         };

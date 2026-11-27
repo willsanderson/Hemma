@@ -57,8 +57,8 @@ hemma_mobile_bg:
         const v = hvm ? '--hv-m-photo' : '--hemma-mobile-hero-img';
         const q = hvm ? '?v=3' : '';
         const css = ':root{'
-          + v + '-day:url("' + dir + base + '.jpg' + q + '") !important;'
-          + v + '-night:url("' + dir + night + '.jpg' + q + '") !important;'
+          + v + '-day:url("' + (window.hemmaPhotoUrl || String)(dir + base + '.jpg' + q) + '") !important;'
+          + v + '-night:url("' + (window.hemmaPhotoUrl || String)(dir + night + '.jpg' + q) + '") !important;'
           + '}';
         if (!el) {
           el = document.createElement('style');

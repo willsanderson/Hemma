@@ -103,6 +103,13 @@ Open the link above, or add `https://github.com/willsanderson/Hemma` as a custom
 
 You need **Home Assistant 2026.9** or newer. Use UI eXtension instead of card-mod, not both.
 
+Hemma keeps its theme in `themes/hemma/`. If your `configuration.yaml` doesn't load themes yet, add this and restart:
+
+```yaml
+frontend:
+  themes: !include_dir_merge_named themes
+```
+
 <a id="set-up"></a>
 ## Set up
 
@@ -170,7 +177,7 @@ Rooms, tiles, badges, scenes, cameras, weather and screensavers, all in one plac
 
 Update Hemma in the Marketplace and restart Home Assistant. Your dashboards pick up the new templates automatically, so there is nothing to save.
 
-Hemma 2.4 creates its helpers itself. If you copied `packages/hemma_helpers.yaml` for 2.3, Hemma takes those helpers over and you can remove the file and the `packages:` line whenever you like. The `frontend: themes:` line is no longer needed either.
+Hemma 2.4 creates its helpers itself. If you copied `packages/hemma_helpers.yaml` for 2.3, Hemma takes those helpers over and you can remove the file and the `packages:` line whenever you like. Keep the `frontend: themes:` line: Home Assistant loads Hemma's theme through it.
 
 To try the new style, choose **Minimal** under Appearance > Style in Studio.
 

@@ -43,10 +43,11 @@ class _FilesView(HomeAssistantView):
         if "/" in filename or "\\" in filename or filename.startswith(".") or ext not in _TYPES:
             raise web.HTTPNotFound()
         path = os.path.join(self._dir, filename)
-        if not os.path.isfile(path):
-            raise web.HTTPNotFound()
         hass = request.app["hass"]
-        mtime_ns, size, raw, packed = await hass.async_add_executor_job(self._load, path)
+        try:
+            mtime_ns, size, raw, packed = await hass.async_add_executor_job(self._load, path)
+        except (FileNotFoundError, IsADirectoryError, NotADirectoryError):
+            raise web.HTTPNotFound() from None
         etag = f'"{mtime_ns:x}-{size:x}"'
         current = _stamp(request.query.get("v", "")) >= mtime_ns // 1_000_000_000
         headers = {"ETag": etag, "Vary": "Accept-Encoding", "Cache-Control": _YEAR if current else "no-cache"}

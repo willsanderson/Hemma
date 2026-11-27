@@ -1,5 +1,5 @@
 
-const PANEL_VERSION = "2.5.2";
+const PANEL_VERSION = "2.5.3";
 const SETUP_KEY = "hemma_panel_setup";
 const TEMPLATES_URL = "/api/hemma/templates";
 const TEMPLATES_URL_STATIC = "/hemma_panel/hemma-templates.json";
@@ -2680,6 +2680,33 @@ function ensureFontCss() {
 
 const ICON_DEFAULT = "Default";
 const PHOTO_CACHE = new Map();
+// The user's own room photos load only through signed links (the integration serves them to authenticated requests).
+const PHOTO_SIG = new Map();
+let photoHost = null, photoPend = new Set(), photoT = 0;
+const signPhotos = async (paths) => {
+  const h = photoHost && photoHost._hass;
+  if (!h || !paths.length) return;
+  try {
+    const r = await h.callWS({ type: "hemma/photos/sign", paths });
+    Object.entries(r.signed || {}).forEach(([k, v]) => PHOTO_SIG.set(k, v));
+  } catch (e) { return; }
+  const root = photoHost.shadowRoot;
+  if (root) root.querySelectorAll("img").forEach((im) => { const raw = im.getAttribute("src"); if (raw && PHOTO_SIG.has(raw)) im.src = PHOTO_SIG.get(raw); });
+};
+const sph = (u) => {
+  if (typeof u !== "string" || u.indexOf("/hemma_assets/rooms") !== 0) return u;
+  if (PHOTO_SIG.has(u)) return PHOTO_SIG.get(u);
+  photoPend.add(u);
+  clearTimeout(photoT);
+  photoT = setTimeout(() => { const l = [...photoPend]; photoPend = new Set(); signPhotos(l); }, 30);
+  return u;
+};
+const signedImages = async (imgs) => {
+  const urls = imgs.flatMap((i) => [i.day, i.night]).filter((u) => typeof u === "string" && u.indexOf("/hemma_assets/rooms") === 0 && !PHOTO_SIG.has(u));
+  if (urls.length) await signPhotos(urls);
+  return imgs.map((i) => Object.assign({}, i, { day: i.day && sph(i.day), night: i.night && sph(i.night) }));
+};
+
 const warmPhoto = (url) => {
   if (!url || PHOTO_CACHE.has(url)) return;
   const img = new Image();
@@ -3570,9 +3597,14 @@ const TILE_TYPES = [
       { key: "action_2_status", label: "Button 2 status", domains: ["binary_sensor", "sensor"], advanced: true },
     ] },
   { id: "server", label: "Server", template: "hemma_server", hidden: true,
-    domains: ["sensor", "binary_sensor"], entityLabel: "Proxmox or Unraid sensor",
+    domains: ["sensor", "binary_sensor"], entityLabel: "Server sensor",
+    entityPlaceholder: "Any sensor from your server",
+    advancedLabel: "Other servers",
     fields: [
       ICON_FIELD,
+      { key: "entity_memory", label: "Memory use", domains: ["sensor"], advanced: true },
+      { key: "entity_disk", label: "Disk use", domains: ["sensor"], advanced: true },
+      { key: "entity_status", label: "Online", domains: ["binary_sensor"], advanced: true },
       { key: "room_name", label: "Popup title", type: "text", advanced: true },
     ] },
   { id: "plex", label: "Plex recently added", template: "hemma_plex_recently_added",
@@ -4837,6 +4869,7 @@ class HemmaPanel extends HTMLElement {
   // Not the constructor: an element may not gain an attribute there.
   connectedCallback() {
     if (!this._built) this.style.backgroundColor = STUDIO_GROUND;
+    photoHost = this;
   }
 
   _wireInspector() {
@@ -17215,7 +17248,7 @@ class HemmaPanel extends HTMLElement {
       : await fetch("/api/hemma/images");
     if (!res.ok) throw new Error(`images ${res.status}`);
     const data = await res.json();
-    this._imgs = data.images || [];
+    this._imgs = await signedImages(data.images || []);
     this._imgsLoaded = true;
     return this._imgs;
   }
@@ -17564,7 +17597,7 @@ class HemmaPanel extends HTMLElement {
           : await fetch("/api/hemma/images", { method: "POST", body });
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || res.status);
-        this._imgs = data.images || [];
+        this._imgs = await signedImages(data.images || []);
         room.variables.image = name;
         this._status(_sx("uploaded {name} ({variant})", { name, variant: variantValue }), "ok");
         this._log(`uploaded ${name} ${variantValue}`, "ok");
@@ -18686,7 +18719,7 @@ class HemmaPanel extends HTMLElement {
       screen.style.setProperty("--flat", hv);
     }
     const url = psoft || (!hv && found && ((this._miniDark && found.night) || found.day));
-    if (url) img.src = url; else screen.classList.add("nophoto");
+    if (url) img.src = sph(url); else screen.classList.add("nophoto");
     screen.appendChild(img);
     const wash = document.createElement("div");
     wash.className = "mp-wash";
@@ -20421,8 +20454,8 @@ class HemmaPanel extends HTMLElement {
     if (hv) q(".miniroom").classList.add("hv", dark ? "hvd" : hvInkW(V, dark) ? "hvw" : "hvl", "bd-" + (soft ? hvBd : hvBd === "gradient" ? "gradient" : "color"));
     if (hv) q(".miniroom").style.setProperty("--flat", hv);
     if (flat) q(".miniroom").classList.add("flat");
-    else if (soft) q(".mini-photo").src = soft;
-    else if (!hv && V.image && this._miniSize !== "phone") { q(".mini-photo").src = "/hemma_assets/rooms-glass/" + (dark ? (V.image_night || V.image + "-night") : V.image) + ".jpg?v=5"; q(".miniroom").classList.add("gsoft"); q(".miniroom").style.setProperty("--pv-gwash", dark ? GLASS_WASH.night : GLASS_WASH.day); }
+    else if (soft) q(".mini-photo").src = sph(soft);
+    else if (!hv && V.image && this._miniSize !== "phone") { q(".mini-photo").src = sph("/hemma_assets/rooms-glass/" + (dark ? (V.image_night || V.image + "-night") : V.image) + ".jpg?v=5"); q(".miniroom").classList.add("gsoft"); q(".miniroom").style.setProperty("--pv-gwash", dark ? GLASS_WASH.night : GLASS_WASH.day); }
     else if (url) q(".mini-photo").src = url;
     else q(".miniroom").classList.add("nophoto");
     if (!hv && !dark && V.hemma_glass_text === "dark" && this._miniSize !== "phone") q(".miniroom").classList.add("gink");

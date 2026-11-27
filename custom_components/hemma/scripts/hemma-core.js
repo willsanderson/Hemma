@@ -1,3 +1,50 @@
+// The user's own room photos are served only to signed requests; this signs their links once and keeps them fresh.
+(function () {
+  if (window.hemmaPhotoUrl) return;
+  var KEY = 'hemma_photo_sig', SIG = {}, NAMES = null, pend = {}, busy = false, timer = 0;
+  try { var saved = JSON.parse(localStorage.getItem(KEY) || 'null'); if (saved && saved.until > Date.now()) { SIG = saved.sig || {}; NAMES = saved.names || null; } } catch (e) {}
+  var conn = function () { var ha = document.querySelector('home-assistant'); return ha && ha.hass && ha.hass.connection; };
+  var redraw = function () {
+    window.dispatchEvent(new CustomEvent('hemma-photos-signed'));
+    var st = [document];
+    for (var i = 0; i < st.length && i < 3000; i++) {
+      var all = st[i].querySelectorAll ? st[i].querySelectorAll('*') : [];
+      for (var j = 0; j < all.length; j++) {
+        var n = all[j];
+        if (n.tagName === 'BUTTON-CARD' && n._config && typeof n.requestUpdate === 'function') { try { n.requestUpdate('_config', null); } catch (e) {} }
+        if (n.shadowRoot) st.push(n.shadowRoot);
+      }
+    }
+  };
+  var save = function (days) { try { localStorage.setItem(KEY, JSON.stringify({ sig: SIG, names: NAMES, until: Date.now() + Math.max(1, (days || 7) - 1) * 864e5 })); } catch (e) {} };
+  var ask = function (paths) {
+    var c = conn();
+    if (!c) { setTimeout(function () { ask(paths); }, 500); return; }
+    busy = true;
+    c.sendMessagePromise(paths ? { type: 'hemma/photos/sign', paths: paths } : { type: 'hemma/photos/sign' }).then(function (r) {
+      busy = false;
+      NAMES = r.names || NAMES;
+      var got = r.signed || {}, fresh = false;
+      Object.keys(got).forEach(function (k) { if (SIG[k] !== got[k]) { SIG[k] = got[k]; fresh = true; } });
+      save(r.days);
+      if (fresh) redraw();
+      var left = Object.keys(pend); pend = {};
+      if (left.length) ask(left);
+    }, function () { busy = false; });
+  };
+  window.hemmaPhotoUrl = function (u) {
+    if (typeof u !== 'string' || u.indexOf('/hemma_assets/rooms') !== 0) return u;
+    if (SIG[u]) return SIG[u];
+    pend[u] = 1;
+    clearTimeout(timer);
+    timer = setTimeout(function () { if (busy) return; var l = Object.keys(pend); pend = {}; if (l.length) ask(l); }, 30);
+    return u;
+  };
+  window.hemmaPhotosRefresh = function () { SIG = {}; NAMES = null; ask(null); };
+  var start = function () { if (conn()) ask(null); else setTimeout(start, 400); };
+  start();
+  setInterval(function () { ask(null); }, 3 * 864e5);
+})();
 // Background: Color draws the room photo layers with a one-color image, so every path that expects a photo url keeps working.
 // Minimal's chart colors: each one set to a single brightness (lighter at night) at one saturation, the same on every background color.
 window.hemmaHarmonize = function (hex) {
@@ -903,18 +950,8 @@ window.hemmaMenuGlass = {
         apply(on, m === 'l');
         try { if (on) localStorage.setItem(KEY, 'hv|' + m + '|' + cfg.key + '|' + cfg.rest); else localStorage.removeItem(KEY); } catch (e) {}
       }
-      // Cards already drawn in the remembered style never redraw, so a wrong guess at boot reloads once into the right one.
-      if (!booted && on !== bootOn) {
-        var again = 0;
-        try { again = Number(sessionStorage.getItem('hemma_hv_fix') || 0); } catch (e) {}
-        if (Date.now() - again > 15000) {
-          try { sessionStorage.setItem('hemma_hv_fix', String(Date.now())); } catch (e) {}
-          document.documentElement.style.visibility = 'hidden';
-          setTimeout(function () { location.reload(); }, 0);
-          booted = true;
-          return sig;
-        }
-      }
+      // Cards drawn in the style guessed at boot keep their templates until something changes, so a wrong guess redraws them in place.
+      if (!booted && on !== bootOn) [0, 600, 2000].forEach(function (ms) { setTimeout(redrawForScheme, ms); });
       if (!booted) {
         booted = true;
         // A reload lands on the color it left with instead of easing in from the default again.
@@ -5996,7 +6033,8 @@ window.hemmaMenuGlass = {
       const dark = t && typeof t.darkMode === 'boolean' ? t.darkMode : window.matchMedia('(prefers-color-scheme: dark)').matches;
       if (v.hv && !this.classList.contains('hvp')) return { url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'/%3E", pos: 'center center' };
       const base = v.image || 'default';
-      return { url: '/hemma_assets/' + (v.hv ? 'rooms-even/' : 'rooms/') + (dark ? (v.night || base + '-night') : base) + '.jpg', pos: v.pos || 'center center' };
+      const u = '/hemma_assets/' + (v.hv ? 'rooms-even/' : 'rooms/') + (dark ? (v.night || base + '-night') : base) + '.jpg';
+      return { url: window.hemmaPhotoUrl ? window.hemmaPhotoUrl(u) : u, pos: v.pos || 'center center' };
     }
 
     // How the room card draws its photo behind the page, read off the card itself, so a layer built from it is drawn the same way by the same browser.
@@ -6430,7 +6468,7 @@ window.hemmaMenuGlass = {
         if (c.card) walk(c.card);
       };
       ((cfg && cfg.views) || []).forEach((v, i) => { view = String(v.path || i); (v.cards || []).forEach(walk); });
-      this._photos = [...urls].map((u) => { const i = new Image(); i.src = u; if (i.decode) i.decode().catch(() => {}); return i; });
+      this._photos = [...urls].map((u) => { const i = new Image(); i.src = window.hemmaPhotoUrl ? window.hemmaPhotoUrl(u) : u; if (i.decode) i.decode().catch(() => {}); return i; });
     }
 
     _dropDeferred() {

@@ -12,3 +12,6 @@ hemma_popup_server_panel:
         type: custom:hemma-server-panel
         name: '[[[ return variables.room_name || ""; ]]]'
         entity: '[[[ return entity?.entity_id; ]]]'
+        entity_memory: '[[[ return variables.entity_memory || null; ]]]'
+        entity_disk: '[[[ return variables.entity_disk || null; ]]]'
+        entity_status: '[[[ return variables.entity_status || null; ]]]'

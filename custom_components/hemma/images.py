@@ -13,9 +13,9 @@ from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
-ROOMS_DIR = "www/hemma/rooms"
+ROOMS_DIR = "hemma/rooms"
 ICONS_DIR = "www/hemma/icons"
-PUBLIC_BASE = "/local/hemma/rooms"
+PUBLIC_BASE = "/hemma_assets/rooms"
 SHIPPED_BASE = "/hemma_assets/rooms"
 SHIPPED_ROOMS = os.path.join(os.path.dirname(__file__), "assets", "rooms")
 

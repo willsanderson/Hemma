@@ -2675,7 +2675,7 @@ Y([se()], we.prototype, "_config", void 0), Y([se()], we.prototype, "lovelace", 
                 case 2:
                     return (n = t.sent) && (i = n.setConfig, n.setConfig = function(t) {
                         var e = JSON.parse(JSON.stringify(t));
-                        this._layoutData = e.view_layout, delete e.view_layout, i.bind(this)(e)
+                        "view_layout" in e ? (this._hemmaLayoutData = e.view_layout, delete e.view_layout) : delete this._hemmaLayoutData, i.bind(this)(e)
                     }), t.abrupt("return", n);
                 case 5:
                 case "end":
@@ -2685,33 +2685,7 @@ Y([se()], we.prototype, "_config", void 0), Y([se()], we.prototype, "lovelace", 
     })));
     var n = t.prototype._handleUIConfigChanged;
     t.prototype._handleUIConfigChanged = function(t) {
-        this._configElement && this._configElement._layoutData && (t.detail.config.view_layout = this._configElement._layoutData), n.bind(this)(t)
-    }
-})), customElements.whenDefined("hui-view-editor").then((function() {
-    var t = customElements.get("hui-view-editor"),
-        e = t.prototype.firstUpdated;
-    t.prototype.firstUpdated = function() {
-        var t = this;
-        null == e || e.bind(this)(), this._oldSchema = this._schema, this._schema = function() {
-            var e, n = t._oldSchema.apply(t, arguments),
-                i = n.find((function(t) {
-                    return "type" == t.name
-                }));
-            if ("layout" === i.name) return n;
-            i.selector.select.options.find((function(t) {
-                return t.value === _e[0].value
-            })) || (e = i.selector.select.options).push.apply(e, _e);
-            return void 0 === n.find((function(t) {
-                return "layout" === t.name
-            })) && n.push({
-                name: "layout",
-                selector: {
-                    object: {}
-                }
-            }), n
-        };
-        var n = document.createElement("p");
-        n.innerHTML = '\n      You have layout-card installed which adds some options to this dialog. <br/>\n      Please see\n        <a\n          href="https://github.com/thomasloven/lovelace-layout-card"\n          target="_blank"\n          rel="no referrer"\n        >\n          layout-card on github\n        </a>\n        for usage instructions.\n        <style>\n          p {padding: 16px 0 0; margin-bottom: 0;}\n          a {color: var(--primary-color);}\n        </style>\n    ', this.shadowRoot.appendChild(n), this.requestUpdate()
+        this._configElement && void 0 !== this._configElement._hemmaLayoutData && t.detail.config && !("view_layout" in t.detail.config) && (t.detail.config.view_layout = this._configElement._hemmaLayoutData), n.bind(this)(t)
     }
 }));
 var ke = function() {

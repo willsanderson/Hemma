@@ -34,7 +34,8 @@
     lock: 'hemma-lock-panel', media_player: 'hemma-media-panel', climate: 'hemma-thermostat-panel' };
   const STATUS_POP_STYLE = { 'hemma-vacuum-panel': '--popup-min-width: 300px; --popup-max-width: 300px; --popup-min-width-narrow: 300px; --hemma-popup-radius: 34px; --hemma-popup-tint: rgba(0, 0, 5, 0.16);' };
   const colorOf = (key) => (COLORS[key] ? `var(--hemma-color-${key}, ${COLORS[key]})` : 'var(--hemma-color-neutral, #CDCDCF)');
-  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const escU = (s) => esc(String(s == null ? '' : s).replace(/['"()\\]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase()));
 
   // One subscription per connection, shared by every card on the page.
   const store = window._hemmaHomeStore = window._hemmaHomeStore || { data: { status_badges: [], entities: {} }, subs: new Set(), conn: null };
@@ -198,7 +199,7 @@
       this.toggleAttribute('empty', !items.length);
       this.shadowRoot.innerHTML = `<style>${CSS}</style>` + items.map((it) =>
         `<button class="b" data-entity="${esc(it.entity)}" aria-label="${esc(it.name + ', ' + it.sub)}">`
-        + `<span class="i" style="--c:${it.color};--m:url('${esc(it.url)}')"></span>`
+        + `<span class="i" style="--c:${it.color};--m:url('${escU(it.url)}')"></span>`
         + `<span class="w"><span class="t">${esc(it.name)}</span><span class="s">${esc(it.sub)}</span></span></button>`).join('');
       if (window._hemmaHvInk) this.shadowRoot.querySelectorAll('.i').forEach((el, n) => window._hemmaHvInk(items[n].url).then((q) => {
         if (q) el.style.setProperty('--s', Math.min(0.8 / Math.sqrt(q.w * q.h), 0.86 / Math.max(q.w, q.h)).toFixed(3));
@@ -508,7 +509,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       const root = this.shadowRoot;
       root.innerHTML = `<style>${PANEL_CSS}</style><div class="wrap"><div class="page main">`
         + `<div class="h"><b>${esc(name)}</b><span class="st"></span></div>`
-        + `<button type="button" class="cap" role="slider" aria-label="${esc(T('lights.brightness', 'Brightness'))}" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span><span class="bulb"><i style="--i:url('${esc(iconUrl('light'))}')"></i></span></button>`
+        + `<button type="button" class="cap" role="slider" aria-label="${esc(T('lights.brightness', 'Brightness'))}" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span><span class="bulb"><i style="--i:url('${escU(iconUrl('light'))}')"></i></span></button>`
         + (md.temp ? `<div class="sw">${this._swatches(favs)}<button type="button" class="wheel${md.color ? '' : ' whites'}" aria-label="${esc(md.color ? T('lights.color', 'Color') : T('lights.whites', 'Whites'))}"></button></div>` : '<div></div>')
         + `</div>${group ? `<div class="page list"><div class="lhd"><button type="button" class="back" aria-label="${esc(T('ui.back', 'Back'))}"><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.4 1.6 1.8 10l8.6 8.4"/></svg></button><span class="lt"><b>${esc(name)}</b><small class="lc"></small></span></div><div class="lst"></div></div>` : ''}`
         + (group ? `<button type="button" class="lights gear corner glist" aria-label="${esc(T('lights.n_lights', '{n} Lights', { n: ids.length }))}" data-notip><i style="--i:url(&quot;${LIST_ICON}&quot;)"></i></button>` : '')
@@ -621,7 +622,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
           if (heads.has(id)) { const hd = document.createElement('div'); hd.className = 'lsec'; hd.textContent = heads.get(id); lst.appendChild(hd); }
           const r = document.createElement('div');
           r.className = 'lr';
-          r.innerHTML = `<button type="button" class="tg"><i style="--i:url('${esc(iconUrl('light'))}')"></i></button>`
+          r.innerHTML = `<button type="button" class="tg"><i style="--i:url('${escU(iconUrl('light'))}')"></i></button>`
             + `<button type="button" class="nm"><b></b><small class="v"></small></button>`
             + `<div class="pl" role="slider" aria-valuemin="0" aria-valuemax="100"><span class="fill"></span></div>`;
           const pl = r.querySelector('.pl');
@@ -1005,7 +1006,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         + `<div class="hd"><b></b><span></span></div>`
         + `<button type="button" class="ctl" role="switch"><span class="knob"><i></i></span></button>`
         + (multi ? groupPage(this._config.name || T('locks.popup.title', 'Locks'), `<div class="tiles two"></div>`, 'lock-fill', T('locks.popup.n_locks', '{n} Locks', { n: ids.length })) : `<button type="button" class="corner gear" aria-label="${esc(T('lights.settings', 'Settings'))}"><i style="--i:url(&quot;${GEAR_SOLID}&quot;)"></i></button>`)
-        + (canOpen ? `<button type="button" class="corner open" aria-label="${esc(T('tap.open', 'Open'))}"><i style="--i:url('${esc(iconUrl('door-open'))}')"></i></button>` : '')
+        + (canOpen ? `<button type="button" class="corner open" aria-label="${esc(T('tap.open', 'Open'))}"><i style="--i:url('${escU(iconUrl('door-open'))}')"></i></button>` : '')
         + `</div>`;
       const ctl = root.querySelector('.ctl');
       let y0 = null, moved = false;
@@ -1057,7 +1058,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         const b = this._battery(id);
         const sub = [this._stateText(id), b != null ? Math.round(b) + '%' : ''].filter(Boolean).join(' · ');
         const ic = this._door(id) ? 'door-open' : on ? 'lock-open-fill' : 'lock-fill';
-        return `<button type="button" class="t${on ? ' on' : ''}" data-id="${esc(id)}"><span class="ti" data-toggle="1"><i style="--i:url('${esc(iconUrl(ic))}');--k:${on ? '#fff' : LOCKED_TINT}"></i></span>`
+        return `<button type="button" class="t${on ? ' on' : ''}" data-id="${esc(id)}"><span class="ti" data-toggle="1"><i style="--i:url('${escU(iconUrl(ic))}');--k:${on ? '#fff' : LOCKED_TINT}"></i></span>`
           + `<span class="tx"><b>${esc(this._name(id))}</b><small>${esc(sub)}</small></span><svg class="chev" viewBox="0 0 8 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 6.5 6.5 1.5 11.5"/></svg></button>`;
       }).join('');
       if (tiles._html === html) return;
@@ -1228,7 +1229,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       const rows = [];
       if (autoId && S[autoId]) {
         const on = S[autoId].state === 'on', sub = today && S[today] ? (this._hass.formatEntityState ? this._hass.formatEntityState(S[today]) : S[today].state) : (this._hass.formatEntityState ? this._hass.formatEntityState(S[autoId]) : S[autoId].state);
-        rows.push(`<button type="button" class="t auto${on ? ' on' : ''}" data-auto="${esc(autoId)}"><span class="ti"><i style="--i:url('${esc(iconUrl('calendar-day'))}');--k:var(--hemma-color-teal, #00C3D0)"></i></span>`
+        rows.push(`<button type="button" class="t auto${on ? ' on' : ''}" data-auto="${esc(autoId)}"><span class="ti"><i style="--i:url('${escU(iconUrl('calendar-day'))}');--k:var(--hemma-color-teal, #00C3D0)"></i></span>`
           + `<span class="tx"><b>${esc(S[autoId].attributes.friendly_name || T('covers.automation', 'Cover Automation'))}</b><small>${esc(sub)}</small></span></button>`);
       }
       const html = rows.join('');
@@ -1635,7 +1636,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     };
     ['wheel', 'touchstart', 'pointerdown'].forEach((t) => document.addEventListener(t, arm, { capture: true, passive: true }));
   }
-  const mIco = (u) => `<span class="gm" style="--i:url('${esc(u)}')"></span>`;
+  const mIco = (u) => `<span class="gm" style="--i:url('${escU(u)}')"></span>`;
   const capButton = (cls) => `<button type="button" class="capsel ${cls}"><span></span><i class="ud"></i></button>`;
   const FAN_ICONS = {
     mode: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 7h10v2H3zm14 0h4v2h-4zm-3-3h2v8h-2zM3 15h4v2H3zm8 0h10v2H11zm-3-3h2v8H8z'/%3E%3C/svg%3E",
@@ -1884,8 +1885,8 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     @media (max-width: 768px) { .lst .hd { margin-bottom: 24px; } }
   `;
   const moreInfo = (el, id) => el.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: id }, bubbles: true, composed: true }));
-  const ICO = (name, k) => `<i style="--i:url('${esc(iconUrl(name))}')${k ? `;--k:${k}` : ''}"></i>`;
-  const ICX = (uri, k) => `<i style="--i:url('${esc(uri)}')${k ? `;--k:${k}` : ''}"></i>`;
+  const ICO = (name, k) => `<i style="--i:url('${escU(iconUrl(name))}')${k ? `;--k:${k}` : ''}"></i>`;
+  const ICX = (uri, k) => `<i style="--i:url('${escU(uri)}')${k ? `;--k:${k}` : ''}"></i>`;
   const needMdi = (names, done) => {
     const miss = names.filter((n) => /^mdi:/.test(n) && !(n.slice(4) in mdi.paths)).map((n) => n.slice(4));
     if (miss.length) Promise.all(miss.map((n) => mdi.load(n))).then(done);
@@ -2684,7 +2685,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       root.innerHTML = `<style>${SHEET_CSS}${LIST_CSS}${VAC_CSS}${BIG_CSS}</style><div class="wrap cover vac"><div class="hd"><b></b><span></span></div>`
         + `<button type="button" class="play"><i></i></button><div class="wheel" hidden></div>`
         + `<button type="button" class="capb" hidden><b></b><small></small></button>`
-        + `<button type="button" class="corner open dock" aria-label="${esc(T('vacuum.send_to_dock', 'Send to Dock'))}"><i style="--i:url('${esc(iconUrl('vacuum-charge'))}')"></i></button>`
+        + `<button type="button" class="corner open dock" aria-label="${esc(T('vacuum.send_to_dock', 'Send to Dock'))}"><i style="--i:url('${escU(iconUrl('vacuum-charge'))}')"></i></button>`
         + `<button type="button" class="vfoot">${esc(T('vacuum.send_to_dock', 'Send to Dock'))}</button>`
         + `<button type="button" class="corner gear" aria-label="${esc(T('lights.settings', 'Settings'))}"><i style="--i:url(&quot;${GEAR_SOLID}&quot;)"></i></button>`
         + `<div class="picker"><div class="ttl">${esc(T('vacuum.rooms', 'Rooms'))}</div><button type="button" class="rdone" aria-label="${esc(T('ui.done', 'Done'))}"><i></i></button>`
@@ -3556,7 +3557,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       this.shadowRoot.querySelector('.devs').innerHTML = rows.map((r) => {
         const [v, u] = powerParts(r.w);
         const share = total ? Math.round((r.w / total) * 100) : null;
-        return `<button type="button" class="li" data-id="${esc(r.id)}" style="--c:rgba(var(--hv-pk, 255,255,255),0.1);--k:var(--hv-pi, #fff)"><span class="ic"><i style="--i:url('${esc(iconUrl(icons[r.id] || energyGlyph(nameOf(r.id))))}')"></i></span>`
+        return `<button type="button" class="li" data-id="${esc(r.id)}" style="--c:rgba(var(--hv-pk, 255,255,255),0.1);--k:var(--hv-pi, #fff)"><span class="ic"><i style="--i:url('${escU(iconUrl(icons[r.id] || energyGlyph(nameOf(r.id))))}')"></i></span>`
           + `<span class="n"><b>${esc(nameOf(r.id))}</b>${share != null && r.w > 0 ? `<small>${esc(T('energy.pct_of_draw', '{n}% of total', { n: share }))}</small>` : ''}</span>`
           + `<span class="v">${esc(v)} ${esc(u)}</span></button>`;
       }).join('');
@@ -3678,7 +3679,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         const l = this._look(id), st = S[id], u = st.attributes.unit_of_measurement || '', n = num(st);
         const v = n == null ? st.state : (Math.abs(n) >= 100 ? Math.round(n) : Math.round(n * 10) / 10);
         return `<div class="w hc" data-id="${esc(id)}" style="--accent:${l.color}">`
-          + `<button type="button" class="hh"><span class="hi" style="--c:${l.color}"><i style="--i:url('${esc(iconUrl(l.icon))}')"></i></span><b>${esc(l.label)}</b>`
+          + `<button type="button" class="hh"><span class="hi" style="--c:${l.color}"><i style="--i:url('${escU(iconUrl(l.icon))}')"></i></span><b>${esc(l.label)}</b>`
           + `<span class="hv">${esc(String(v))}<small>${esc(u)}</small></span>${CHEV_SVG}</button><div class="plot"></div></div>`;
       }).join('');
       box.querySelectorAll('.hh').forEach((b) => { b.onclick = () => this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: b.parentElement.dataset.id }, bubbles: true, composed: true })); });
@@ -3854,7 +3855,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       const S = this._hass.states, st = S[id], k = this._kind(), h = this._hass;
       const fmt = (s) => (h.formatEntityState ? h.formatEntityState(s) : s.state);
       const name = this._label(id) || st.attributes.friendly_name || id;
-      const small = (glyph, color, label, sub) => `<button type="button" class="t${this._big(id) ? ' tall' : ''}" data-id="${esc(id)}" style="--c:${color}"><span class="ti"><i class="g" style="--i:url('${esc(iconUrl(glyph))}')"></i></span><span class="tx"><b>${esc(label)}</b><small>${esc(sub)}</small></span></button>`;
+      const small = (glyph, color, label, sub) => `<button type="button" class="t${this._big(id) ? ' tall' : ''}" data-id="${esc(id)}" style="--c:${color}"><span class="ti"><i class="g" style="--i:url('${escU(iconUrl(glyph))}')"></i></span><span class="tx"><b>${esc(label)}</b><small>${esc(sub)}</small></span></button>`;
       if (ctrl) {
         if (k === 'temperature') {
           const cur = st.attributes.current_temperature, t = st.attributes.temperature;
@@ -4004,7 +4005,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       list.dataset.key = key;
       list.innerHTML = stats.map(([id, label, icon, color]) => {
         const st = S[id], v = this._hass.formatEntityState ? this._hass.formatEntityState(st) : st.state;
-        return `<button type="button" class="li" data-id="${esc(id)}" style="--c:${color}"><span class="ic"><i style="--i:url('${esc(iconUrl(icon))}')"></i></span><span class="n"><b>${esc(label)}</b></span><span class="v">${esc(v)}</span>${CHEV_SVG}</button>`;
+        return `<button type="button" class="li" data-id="${esc(id)}" style="--c:${color}"><span class="ic"><i style="--i:url('${escU(iconUrl(icon))}')"></i></span><span class="n"><b>${esc(label)}</b></span><span class="v">${esc(v)}</span>${CHEV_SVG}</button>`;
       }).join('');
       list.querySelectorAll('.li').forEach((b) => { b.onclick = () => this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: b.dataset.id }, bubbles: true, composed: true })); });
       this._paintActs();
@@ -4026,7 +4027,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       if (key === this._actKey) return;
       this._actKey = key;
       const look = (a) => { const t = (a.id + ' ' + nameOf(a)).toLowerCase(); return /reboot|restart/.test(t) ? [XI.restart, 'var(--hemma-color-red, #FF453A)'] : /mesh/.test(t) ? [XI.mesh, 'var(--hemma-color-indigo, #5E5CE6)'] : [XI.bolt, 'rgba(142,142,147,1)']; };
-      acts.innerHTML = A.map((a, i) => `<button type="button" data-i="${i}" class="li${this._busy === a.id ? ' done' : ''}" style="--c:${look(a)[1]}"><span class="ic"><i style="--i:url('${esc(look(a)[0])}')"></i></span><span class="n"><b>${esc(this._busy === a.id ? T('network.restarting', 'Restarting…') : nameOf(a))}</b></span>`
+      acts.innerHTML = A.map((a, i) => `<button type="button" data-i="${i}" class="li${this._busy === a.id ? ' done' : ''}" style="--c:${look(a)[1]}"><span class="ic"><i style="--i:url('${escU(look(a)[0])}')"></i></span><span class="n"><b>${esc(this._busy === a.id ? T('network.restarting', 'Restarting…') : nameOf(a))}</b></span>`
         + `<span class="ok" role="button" tabindex="-1">${esc(nameOf(a).split(' ')[0])}</span></button>`).join('');
       // As in Hemma Studio: the first tap slides the red confirm in from the right, the confirm runs it, anywhere else puts it away.
       const disarm = () => { acts.querySelectorAll('.li.armed').forEach((r) => r.classList.remove('armed')); clearTimeout(this._armT); };
@@ -4073,7 +4074,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     const f = { B: 1e-9, kB: 1e-6, KB: 1e-6, MB: 1e-3, GB: 1, TB: 1e3, KiB: 1024 / 1e9, MiB: 1048576 / 1e9, GiB: 1.073741824, TiB: 1099.511627776 }[u];
     return f == null ? n : n * f;
   };
-  const srvGBText = (v) => (v == null ? '—' : v >= 100 ? Math.round(v) + ' GB' : v >= 1 ? v.toFixed(1) + ' GB' : Math.round(v * 1000) + ' MB');
+  const srvGBText = (v) => (v == null ? '—' : v >= 1000 ? (v >= 1e4 ? Math.round(v / 1000) : (v / 1000).toFixed(1)) + ' TB' : v >= 100 ? Math.round(v) + ' GB' : v >= 1 ? v.toFixed(1) + ' GB' : Math.round(v * 1000) + ' MB');
   const srvPct = (v) => (v == null ? '—' : Math.round(v) + '%');
   const srvUp = (st) => {
     const t = st && Date.parse(st.state);
@@ -4091,7 +4092,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     const node = nodes.find((g) => g.id === myDev) || nodes[0];
     if (!node) return null;
     const pick = (g, map) => Object.fromEntries(Object.entries(map).map(([a, k]) => [a, srvOne(g, k)]));
-    const GUEST = { status: 'status', cpu: 'cpu_used', mem: 'memory_used_perc', memUsed: 'memory_used', memTotal: 'memory_total', disk: 'disk_used_perc', uptime: 'uptime' };
+    const GUEST = { status: 'status', cpu: 'cpu_used', mem: 'memory_used_perc', memUsed: 'memory_used', memTotal: 'memory_total', disk: 'disk_used_perc', diskFree: 'disk_free', uptime: 'uptime' };
     const guests = all.filter((g) => /^(QEMU|LXC)$/i.test(g.model) || /^(QEMU|LXC) /.test(g.raw)).map((g) => {
       const mm = /^(QEMU|LXC) (.+?) \((\d+)\)$/.exec(g.raw) || [];
       const raw = mm[2] || g.raw;
@@ -4132,15 +4133,65 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       disks: Object.values(disks).filter((d) => d.key !== 'flash').sort((a, b) => rank(a.key) - rank(b.key) || a.key.localeCompare(b.key, undefined, { numeric: true }))
         .map((d) => ({ ...d, name: label(d.key), ssd: /^cache/.test(d.key) })),
       containers: (g.k.docker_container || []).slice(),
+      restart: Object.fromEntries((g.k.docker_container_restart || []).map((id) => [id.replace(/^.*?container_/, ''), id])),
     };
   };
-  const serverModel = (hass, id) => {
+  const SRV_GENERIC = {
+    synology_dsm: { label: 'Synology', cpu: ['cpu_total_load'], mem: ['memory_real_usage'], problem: ['status'],
+      vol: { pct: ['volume_percentage_used'], used: ['volume_size_used'], total: ['volume_size_total'], status: ['volume_status'] },
+      disk: { status: ['disk_smart_status', 'disk_status'], bad: ['disk_exceed_bad_sector_thr', 'disk_below_remain_life_thr'] } },
+    qnap: { label: 'QNAP', cpu: ['cpu_usage'], mem: ['memory_percent_used'], memUsed: ['memory_used'], memTotal: ['memory_size'], temp: ['system_temp', 'cpu_temp'], uptime: ['uptime'], health: ['status'],
+      vol: { pct: ['volume_percentage_used'], free: ['volume_size_free'], total: ['volume_size_total'] },
+      disk: { status: ['drive_smart_status'], temp: ['drive_temp'] } },
+    truenas: { label: 'TrueNAS', cpu: ['system_cpu_usage'], mem: ['system_memory_usage'], temp: ['system_cpu_temperature'], uptime: ['system_uptime'], load: ['system_load_shortterm'],
+      vol: { free: ['pool_free'] } },
+    glances: { label: 'Glances', cpu: ['cpu_usage'], mem: ['memory_usage'], memUsed: ['memory_use'], temp: ['temperature'], uptime: ['uptime'], load: ['processor_load'],
+      vol: { pct: ['disk_usage'], used: ['disk_used'], total: ['disk_size'], free: ['disk_free'] }, apps: ['container_cpu_usage'] },
+    systemmonitor: { label: 'System Monitor', cpu: ['processor_use'], mem: ['memory_use_percent'], memUsed: ['memory_use'], temp: ['processor_temperature'], load: ['load_1m'],
+      vol: { pct: ['disk_use_percent'], used: ['disk_use'], free: ['disk_free'] } },
+  };
+  const srvItem = (S, id, devName, own) => {
+    const f = String(((S[id] || {}).attributes || {}).friendly_name || id);
+    let mm;
+    if (!own && (mm = /\(([^)]+)\)\s*$/.exec(devName || ''))) return mm[1];
+    if ((mm = /(?:^|\s)(\/\S*)/.exec(f))) return mm[1];
+    if ((mm = /\(([^)]+)\)/.exec(f))) return mm[1];
+    const bare = f.replace(new RegExp('^' + String(devName || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*', 'i'), '')
+      .replace(/\s+(smart status|status|temperature|temp|percent used|used|usage|free|size)$/i, '');
+    return bare || f;
+  };
+  const genericModel = (hass, plat, devs, myDev) => {
+    const P = SRV_GENERIC[plat], S = hass.states, all = Object.values(devs);
+    const any = (keys, g) => { for (const k of keys || []) for (const d of g ? [g] : all) if (d.k[k]) return d.k[k][0]; return null; };
+    const every = (keys) => { const out = []; for (const d of all) for (const k of keys || []) (d.k[k] || []).forEach((id) => out.push({ id, dev: d })); return out; };
+    const me = devs[myDev] || all[0];
+    const host = all.find((d) => (P.cpu || []).some((k) => d.k[k])) || me;
+    if (!host) return null;
+    const items = (spec) => {
+      const by = {};
+      Object.entries(spec || {}).forEach(([field, keys]) => every(keys).forEach(({ id, dev }) => {
+        const name = srvItem(S, id, dev.user || dev.raw, dev === host);
+        (by[name] || (by[name] = { name }))[field] = id;
+      }));
+      return Object.values(by).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    };
+    return {
+      kind: 'generic', label: host.user || host.raw || P.label, version: host.model || '',
+      host: { cpu: any(P.cpu, host), mem: any(P.mem, host), memUsed: any(P.memUsed, host), memTotal: any(P.memTotal, host), temp: any(P.temp, host),
+        uptime: any(P.uptime, host), load: any(P.load, host), problem: any(P.problem, host), health: any(P.health, host) },
+      volumes: items(P.vol), disks: items(P.disk), apps: every(P.apps).map(({ id }) => id),
+    };
+  };
+  const customModel = (V, id) => ({ kind: 'generic', custom: true, label: '', version: '',
+    host: { cpu: id, mem: V.entity_memory || null, status: V.entity_status || null }, volumes: V.entity_disk ? [{ name: '', pct: V.entity_disk }] : [], disks: [], apps: [] });
+  const serverModel = (hass, id, V) => {
     const E = hass && hass.entities, D = (hass && hass.devices) || {};
     const me = E && id && E[id];
-    if (!me) return null;
+    if (!me) return id && hass && hass.states[id] && V && (V.entity_memory || V.entity_disk || V.entity_status) ? customModel(V, id) : null;
     const hit = srvCache.get(id);
-    if (hit && hit.E === E && hit.D === D) return hit.m;
-    const plat = me.platform || '', kind = plat === 'unraid' ? 'unraid' : /^proxmox/.test(plat) ? 'proxmox' : null;
+    const vk = V ? [V.entity_memory, V.entity_disk, V.entity_status].join('|') : '';
+    if (hit && hit.E === E && hit.D === D && hit.vk === vk) return hit.m;
+    const plat = me.platform || '', kind = plat === 'unraid' ? 'unraid' : /^proxmox/.test(plat) ? 'proxmox' : SRV_GENERIC[plat] ? 'generic' : null;
     let m = null;
     if (kind) {
       const entry = ((D[me.device_id] || {}).config_entries || [])[0], devs = {};
@@ -4152,22 +4203,34 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         const tk = e.translation_key || e.entity_id.split('.').pop();
         (g.k[tk] || (g.k[tk] = [])).push(e.entity_id);
       }
-      m = kind === 'proxmox' ? pveModel(devs, me.device_id) : unraidModel(devs[me.device_id]);
+      m = kind === 'proxmox' ? pveModel(devs, me.device_id) : kind === 'unraid' ? unraidModel(devs[me.device_id]) : genericModel(hass, plat, devs, me.device_id);
       if (m) m.kind = kind;
     }
-    srvCache.set(id, { E, D, m });
+    if (!m && V && (V.entity_memory || V.entity_disk || V.entity_status || /cpu|processor/i.test(id))) m = customModel(V, id);
+    srvCache.set(id, { E, D, m, vk });
     return m;
   };
   // Takes button-card's states proxy, so a tile watches only the entities it reads; every read happens before any early return.
   let srvIconsAsked = false;
-  const serverSummary = (hass, id, S) => {
-    const m = serverModel(hass, id);
+  const SRV_OK = /^(normal|good|ok|healthy|online)$/i;
+  const serverSummary = (hass, id, S, V) => {
+    const m = serverModel(hass, id, V);
     if (!m) return null;
     if (!srvIconsAsked) { srvIconsAsked = true; SRV_ICONS.forEach((k) => mdi.load(k)); }
     S = S || hass.states;
     const st = (x) => (x ? S[x] : undefined), is = (x, v) => !!(st(x) && st(x).state === v);
     const pct = (x) => srvPct(num(st(x)));
     const load = (x) => { const v = num(st(x)); return { text: v == null || v < 10 ? T('server.tile_idle', 'Idle') : v < 70 ? T('server.tile_normal', 'Normal') : T('server.tile_busy', 'Busy'), alert: false }; };
+    if (m.kind === 'generic') {
+      const H = m.host, down = is(H.status, 'off') || is(H.cpu, 'unavailable'), flagged = is(H.problem, 'on'), sick = !!(st(H.health) && !SRV_OK.test(st(H.health).state));
+      const badVol = m.volumes.filter((v) => st(v.status) && !SRV_OK.test(st(v.status).state)).length;
+      const badDisk = m.disks.filter((d) => (st(d.status) && !SRV_OK.test(st(d.status).state)) || is(d.bad, 'on')).length;
+      const busy = load(H.cpu);
+      if (down) return { text: T('server.offline', 'Offline'), alert: true };
+      if (badVol || badDisk) return { text: T('server.tile_disk_problem', 'Disk Problem'), alert: true };
+      if (flagged || sick) return { text: T('server.tile_attention', 'Needs Attention'), alert: true };
+      return busy;
+    }
     if (m.kind === 'proxmox') {
       const guests = (m.ha ? [m.ha] : []).concat(m.guests);
       const down = guests.filter((g) => is(g.status, 'off')), bad = m.disks.filter((d) => is(d.health, 'on'));
@@ -4223,9 +4286,20 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
     .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--hemma-color-green, #30D158); }
     .chip.off .dot { background: rgba(142,142,147,1); }
     .chip.off b { color: rgba(var(--hv-pk, 255,255,255),0.5); }
+    .chip.busy { opacity: .55; pointer-events: none; }
+    .chip.busy .dot { animation: srvbusy 1s ease-in-out infinite alternate; }
+    @keyframes srvbusy { to { opacity: .25; } }
+    @media (prefers-reduced-motion: reduce) { .chip.busy .dot { animation: none; } }
     @media (hover: hover) { .chip:hover, button.w:hover { filter: brightness(0.84); transition: filter .18s ease; } }
     .none { padding: 24px 8px; text-align: center; font-size: 14px; color: rgba(var(--hv-pk, 255,255,255),0.6); }
-    @media (max-width: 768px) { .slab .host, .slab .chip { background: none; } .slab .host { padding: 0; } .slab .chips { gap: 4px 12px; } .slab .chip { padding: 0; height: 36px; } }`;
+    @media (max-width: 768px) {
+      .slab .host { background: none; padding: 0; }
+      .slab .list.list { background: rgba(var(--hv-pk, 255,255,255),0.07); border-radius: 20px; padding: 2px 14px; }
+      .slab .sec { margin: 8px 4px 0; }
+      .slab .chips { display: grid; grid-template-columns: 1fr; gap: 0; background: rgba(var(--hv-pk, 255,255,255),0.07); border-radius: 20px; padding: 0 14px; }
+      .slab .chip { height: 44px; padding: 0; border-radius: 0; background: none; justify-content: flex-start; box-shadow: 0 -0.5px 0 rgba(var(--hv-pk, 255,255,255),0.12); }
+      .slab .chip:first-child { box-shadow: none; }
+    }`;
   class HemmaServerPanel extends HTMLElement {
     hemmaAnchor() { const el = this.shadowRoot && this.shadowRoot.querySelector('.slab'); return el ? { el, card: true } : null; }
     constructor() { super(); this.attachShadow({ mode: 'open' }); }
@@ -4238,16 +4312,18 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       const root = this.shadowRoot;
       if (!this._built) {
         this._built = true;
-        root.innerHTML = `<style>${WIDGET_CSS}${SLAB_CSS}${SRV_CSS} :host { --accent: var(--hemma-color-blue, #0088FF); } @media (max-width: 768px) { .wrap:has(.slab) { padding-bottom: 64px; } .slab { max-height: calc(100svh - 280px); } }</style>`
+        root.innerHTML = `<style>${WIDGET_CSS}${SLAB_CSS}${CAPS_CSS}${SRV_CSS} :host { --accent: var(--hemma-color-blue, #0088FF); } @media (max-width: 768px) { .wrap:has(.slab) { padding-bottom: 64px; } .slab { max-height: calc(100svh - 280px); } }</style>`
           + '<div class="wrap"><div class="page one"><div class="h"><b></b><span class="tier"></span></div><div class="slab"></div></div></div>';
         root.addEventListener('click', (ev) => {
           const b = ev.composedPath().find((n) => n.dataset && n.dataset.id);
-          if (b) this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: b.dataset.id }, bubbles: true, composed: true }));
+          if (!b) return;
+          if (b.dataset.ctl) return this._ctl(b);
+          this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: b.dataset.id }, bubbles: true, composed: true }));
         });
         Promise.all(SRV_ICONS.map((n) => mdi.load(n))).then(() => { this._last = null; this._paint(); });
       }
-      const m = serverModel(h, c.entity);
-      const out = m ? (m.kind === 'proxmox' ? this._pve(m) : this._unraid(m)) : { title: c.name || '', tier: '', body: `<div class="none">${esc(T('server.not_found', 'No Proxmox or Unraid sensors found for this tile.'))}</div>` };
+      const m = serverModel(h, c.entity, c);
+      const out = m ? (m.kind === 'proxmox' ? this._pve(m) : m.kind === 'unraid' ? this._unraid(m) : this._generic(m)) : { title: c.name || '', tier: '', body: `<div class="none">${esc(T('server.not_found', 'No server sensors found for this tile.'))}</div>` };
       const key = out.title + '|' + out.tier + '|' + out.body;
       if (key === this._last) return;
       this._last = key;
@@ -4268,44 +4344,41 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       };
       const card = (title, right, gauges) => {
         const g = gauges.filter(Boolean);
-        return g.length ? `<div class="w host"><div class="wt"><span>${esc(title)}</span><span>${esc(right || '')}</span></div><div class="trio" style="--n:${g.length}">${g.join('')}</div></div>` : '';
+        return g.length ? `<div class="w host">${title || right ? `<div class="wt"><span>${esc(title)}</span><span>${esc(right || '')}</span></div>` : ''}<div class="trio" style="--n:${g.length}">${g.join('')}</div></div>` : '';
       };
-      const row = (id, icon, color, name, sub, right, extra) => `<button type="button" class="li" data-id="${esc(id || '')}" style="--c:${color}"><span class="ic"><i style="--i:url('${esc(iconUrl('mdi:' + icon))}')"></i></span><span class="n"><b>${esc(name)}</b><small>${sub}</small>${extra || ''}</span>${right}</button>`;
+      const row = (id, icon, color, name, sub, right, extra) => `<button type="button" class="li" data-id="${esc(id || '')}" style="--c:${color}"><span class="ic"><i style="--i:url('${escU(iconUrl('mdi:' + icon))}')"></i></span><span class="n"><b>${esc(name)}</b><small>${sub}</small>${extra || ''}</span>${right}</button>`;
       const sec = (t, r, cls) => `<div class="sec"><span>${esc(t)}</span><small class="${cls || ''}">${esc(r || '')}</small></div>`;
       const deg = (id) => { const v = n(id); return v == null ? null : Math.round(v) + '°'; };
-      const of = (used, total, totalText) => {
-        if (used == null || total == null) return '';
-        const u = srvGBText(used), t = totalText || srvGBText(total);
-        return T('server.of', '{used} of {total}', { used: u.slice(-3) === t.slice(-3) ? u.slice(0, -3) : u, total: t });
-      };
-      return { S, st, n, tone, bar, gauge, card, row, sec, deg, of };
+      const word = () => { const s = serverSummary(this._hass, this._config.entity, S, this._config); return s ? s.text : ''; };
+      const ran = (on, total) => (on === total ? T('server.all_running', 'All running') : T('server.n_stopped', '{n} stopped', { n: total - on }));
+      const hot = (id) => { const v = n(id); if (v == null) return ''; const f = /F/.test(String((st(id).attributes || {}).unit_of_measurement || '')); return (f ? v >= 140 : v >= 60) ? Math.round(v) + '°' : ''; };
+      const left = (used, total) => (used == null || total == null ? '' : T('server.free', '{n} free', { n: srvGBText(Math.max(0, total - used)) }));
+      return { S, st, n, tone, bar, gauge, card, row, sec, deg, word, ran, hot, left };
     }
     _pve(m) {
       const K = this._kit(), { st, n } = K, N = m.node;
       const online = !(st(N.status) && st(N.status).state === 'off');
-      const tier = online ? [T('server.online', 'Online'), srvUp(st(N.uptime))].filter(Boolean).join(' · ') : T('server.offline', 'Offline');
-      let body = K.card(T('server.host', 'Host'), st(N.version) ? 'Proxmox VE ' + st(N.version).state : '', [
-        K.gauge(T('server.cpu', 'CPU'), N.cpu, n(N.load) == null ? '' : T('server.load', 'Load {n}', { n: n(N.load) }), 80, 95),
-        K.gauge(T('server.memory', 'Memory'), N.mem, K.of(srvGB(st(N.memUsed)), srvGB(st(N.memTotal))), 85, 95),
+      const tier = online ? K.word() : T('server.offline', 'Offline');
+      let body = K.card('', '', [
+        K.gauge(T('server.cpu', 'CPU'), N.cpu, '', 80, 95),
+        K.gauge(T('server.memory', 'Memory'), N.mem, K.left(srvGB(st(N.memUsed)), srvGB(st(N.memTotal))), 85, 95),
         K.gauge(T('server.disk', 'Disk'), N.disk, srvGB(st(N.diskFree)) == null ? '' : T('server.free', '{n} free', { n: srvGBText(srvGB(st(N.diskFree))) }), 80, 90)]);
       const ha = m.ha, isOn = (g) => !(st(g.status) && st(g.status).state === 'off');
       if (ha) {
-        body += K.card(T('server.ha', 'Home Assistant') + ' · ' + T('server.vm', 'VM {id}', { id: ha.vmid }), isOn(ha) ? srvUp(st(ha.uptime)) : T('server.stopped', 'Stopped'), [
+        body += K.card(T('server.ha', 'Home Assistant'), isOn(ha) ? '' : T('server.stopped', 'Stopped'), [
           K.gauge(T('server.cpu', 'CPU'), ha.cpu, '', 80, 95),
-          K.gauge(T('server.memory', 'Memory'), ha.mem, K.of(srvGB(st(ha.memUsed)), srvGB(st(ha.memTotal))), 85, 95),
-          K.gauge(T('server.disk', 'Disk'), ha.disk, '', 80, 90)]);
+          K.gauge(T('server.memory', 'Memory'), ha.mem, K.left(srvGB(st(ha.memUsed)), srvGB(st(ha.memTotal))), 85, 95),
+          K.gauge(T('server.disk', 'Disk'), ha.disk, srvGB(st(ha.diskFree)) == null ? '' : T('server.free', '{n} free', { n: srvGBText(srvGB(st(ha.diskFree))) }), 80, 90)]);
       }
       if (m.guests.length) {
         const vms = m.guests.filter((g) => g.vm).length, cts = m.guests.length - vms;
         const head = !vms ? T('server.containers', 'Containers') : !cts ? T('server.vms', 'Virtual machines') : T('server.guests', 'VMs and containers');
-        body += K.sec(head, T('server.running_of', '{n} of {total} running', { n: m.guests.filter(isOn).length, total: m.guests.length }));
+        body += K.sec(head, K.ran(m.guests.filter(isOn).length, m.guests.length));
         body += '<div class="list">' + m.guests.map((g) => {
-          const on = isOn(g), id = (g.vm ? T('server.vm', 'VM {id}', { id: g.vmid }) : T('server.ct', 'CT {id}', { id: g.vmid }));
-          const mt = K.tone(n(g.mem), 85, 95);
-          const right = on ? `<span class="v2"><span>${esc(T('server.cpu_short', 'CPU {n}', { n: srvPct(n(g.cpu)) }))}</span><span class="${mt}">${esc(T('server.ram_short', 'RAM {n}', { n: srvPct(n(g.mem)) }))}</span></span>`
-            : `<span class="v bad">${esc(T('server.stopped', 'Stopped'))}</span>`;
-          return K.row(g.status || g.cpu, g.vm ? 'monitor' : 'cube-outline', g.vm ? 'var(--hemma-color-blue, #0088FF)' : 'var(--hemma-color-teal, #00C3D0)', g.name,
-            esc(id + (on && srvUp(st(g.uptime)) ? ' · ' + srvUp(st(g.uptime)) : '')), right);
+          const on = isOn(g), mt = K.tone(n(g.mem), 85, 95);
+          const right = on && n(g.mem) != null ? `<span class="v ${mt}">${esc(T('server.ram_short', 'RAM {n}', { n: srvPct(n(g.mem)) }))}</span>` : '';
+          const sub = on ? esc(T('server.running', 'Running')) : `<span class="bad">${esc(T('server.stopped', 'Stopped'))}</span>`;
+          return K.row(g.status || g.cpu, g.vm ? 'monitor' : 'cube-outline', g.vm ? 'var(--hemma-color-blue, #0088FF)' : 'var(--hemma-color-teal, #00C3D0)', g.name, sub, right);
         }).join('') + '</div>';
       }
       const pools = m.storage.filter((p) => n(p.pct) != null);
@@ -4323,21 +4396,81 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
           const bad = st(d.health) && st(d.health).state === 'on', size = srvGB(st(d.size)), wear = n(d.wear);
           const parts = [bad ? `<span class="bad">${esc(T('server.check_disk', 'Check disk'))}</span>` : esc(T('server.healthy', 'Healthy'))];
           if (wear != null) parts.push(esc(T('server.worn', '{n} worn', { n: srvPct(wear) })));
-          return K.row(d.health || d.temp, 'expansion-card', 'var(--hemma-color-indigo, #5E5CE6)', d.name + (size ? ' · ' + srvGBText(size) : ''), parts.join(' · '), `<span class="v">${esc(K.deg(d.temp) || '')}</span>`);
+          return K.row(d.health || d.temp, 'expansion-card', 'var(--hemma-color-indigo, #5E5CE6)', d.name + (size ? ' · ' + srvGBText(size) : ''), parts.join(' · '), `<span class="v warn">${esc(K.hot(d.temp))}</span>`);
         }).join('') + '</div>';
       }
       return { title: m.label, tier, body };
     }
+    _generic(m) {
+      const K = this._kit(), { st, n } = K, H = m.host;
+      const online = !(st(H.status) && st(H.status).state === 'off') && !(st(H.cpu) && st(H.cpu).state === 'unavailable');
+      const tier = online ? K.word() : T('server.offline', 'Offline');
+      const memUsed = srvGB(st(H.memUsed)), memPct = n(H.mem), memTotal = srvGB(st(H.memTotal)) != null ? srvGB(st(H.memTotal)) : memUsed != null && memPct ? memUsed / (memPct / 100) : null;
+      const cpuSub = '';
+      const lead = m.volumes.find((v) => n(v.pct) != null);
+      const volSub = (v, short) => {
+        const free = srvGB(st(v.free)) != null ? srvGB(st(v.free)) : srvGB(st(v.total)) != null && srvGB(st(v.used)) != null ? srvGB(st(v.total)) - srvGB(st(v.used)) : null, total = srvGB(st(v.total));
+        return free != null && total != null && !short ? T('server.free_of', '{free} free of {total}', { free: srvGBText(free), total: srvGBText(total) }) : free != null ? T('server.free', '{n} free', { n: srvGBText(free) }) : n(v.pct) != null ? T('server.used', '{n} used', { n: srvPct(n(v.pct)) }) : '';
+      };
+      let body = K.card('', '', [
+        K.gauge(T('server.cpu', 'CPU'), H.cpu, cpuSub, 80, 95),
+        K.gauge(T('server.memory', 'Memory'), H.mem, K.left(memUsed, memTotal), 85, 95),
+        lead ? K.gauge(T('server.disk', 'Disk'), lead.pct, volSub(lead, true), 80, 90) : '']);
+      const vols = m.volumes.filter((v) => v !== lead || m.volumes.length > 1).filter((v) => v.name);
+      if (vols.length) {
+        body += K.sec(T('server.storage', 'Storage'));
+        body += '<div class="list">' + vols.map((v) => {
+          const p = n(v.pct), t = K.tone(p, 80, 90), bad = st(v.status) && !SRV_OK.test(st(v.status).state);
+          const sub = bad ? `<span class="bad">${esc(T('server.check_disk', 'Check disk'))}</span>` : esc(volSub(v));
+          return K.row(v.pct || v.free || v.status, 'database', 'var(--hemma-color-indigo, #5E5CE6)', v.name, sub, p == null ? '' : `<span class="v ${t}">${srvPct(p)}</span>`, p == null ? '' : K.bar(p, t));
+        }).join('') + '</div>';
+      }
+      if (m.disks.length) {
+        body += K.sec(T('server.disks', 'Disks'));
+        body += '<div class="list">' + m.disks.map((d) => {
+          const bad = (st(d.status) && !SRV_OK.test(st(d.status).state)) || (st(d.bad) && st(d.bad).state === 'on');
+          const sub = bad ? `<span class="bad">${esc(T('server.check_disk', 'Check disk'))}</span>` : esc(T('server.healthy', 'Healthy'));
+          return K.row(d.status || d.temp, 'harddisk', 'var(--hemma-color-indigo, #5E5CE6)', d.name, sub, `<span class="v warn">${esc(K.hot(d.temp))}</span>`);
+        }).join('') + '</div>';
+      }
+      if (m.apps.length) {
+        const cs = m.apps.filter((id) => st(id)).map((id) => ({ id, on: !/^(unavailable|unknown)$/.test(st(id).state), name: srvPretty(String(st(id).attributes.friendly_name || id).replace(/\s*container\s+cpu.*$/i, '').replace(/^.*?\s(?=\S+$)/, '')) }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        body += K.sec(T('server.containers', 'Containers'), K.ran(cs.filter((c) => c.on).length, cs.length));
+        body += '<div class="chips">' + cs.map((c) => `<button type="button" class="chip${c.on ? '' : ' off'}" data-id="${esc(c.id)}"><span class="dot"></span><b>${esc(c.name)}</b></button>`).join('') + '</div>';
+      }
+      return { title: m.label || (st(H.cpu) && st(H.cpu).attributes.friendly_name) || '', tier, body };
+    }
+    _ctl(chip) {
+      const id = chip.dataset.id, h = this._hass, st = h.states[id];
+      if (!st) return;
+      const on = st.state === 'on', name = chip.dataset.name || id;
+      const m = serverModel(h, this._config.entity, this._config), btn = m && m.restart && m.restart[id.replace(/^.*?container_/, '')];
+      const items = (on ? [['restart', T('server.restart', 'Restart')], ['stop', T('server.stop', 'Stop')]] : [['start', T('server.start', 'Start')]]).concat([['info', T('server.details', 'Details')]]);
+      const busy = (v) => chip.classList.toggle('busy', v);
+      const wait = async (want) => { for (let i = 0; i < 60; i++) { if ((this._hass.states[id] || {}).state === want) return true; await new Promise((r) => setTimeout(r, 500)); } return false; };
+      capPick(chip, items, null, async (v) => {
+        if (v === 'info') return moreInfo(this, id);
+        if (v === 'start') { busy(true); await h.callService('switch', 'turn_on', { entity_id: id }).catch(() => {}); await wait('on'); return busy(false); }
+        const q = v === 'stop' ? T('server.stop_q', 'Stop {name}?', { name }) : T('server.restart_q', 'Restart {name}?', { name });
+        if (!(await confirmTap(q, v === 'stop' ? T('server.stop', 'Stop') : T('server.restart', 'Restart')))) return;
+        busy(true);
+        if (v === 'stop') { await h.callService('switch', 'turn_off', { entity_id: id }).catch(() => {}); await wait('off'); return busy(false); }
+        if (btn && h.states[btn]) await h.callService('button', 'press', { entity_id: btn }).catch(() => {});
+        else { await h.callService('switch', 'turn_off', { entity_id: id }).catch(() => {}); if (await wait('off')) await this._hass.callService('switch', 'turn_on', { entity_id: id }).catch(() => {}); await wait('on'); }
+        busy(false);
+      });
+    }
     _unraid(m) {
       const K = this._kit(), { st, n } = K, H = m.host;
       const started = !(st(H.started) && st(H.started).state === 'off'), checking = st(H.parityRun) && st(H.parityRun).state === 'on';
-      const tier = [T('server.online', 'Online'), srvUp(st(H.uptime))].filter(Boolean).join(' · ');
+      const tier = K.word();
       const ramUsed = srvGB(st(H.ramUsed)), ramPct = n(H.ram), ramTotal = ramUsed != null && ramPct ? ramUsed / (ramPct / 100) : null;
-      const cpuSub = [K.deg(H.temp), n(H.power) == null ? null : Math.round(n(H.power)) + ' W'].filter(Boolean).join(' · ');
+      const cpuSub = '';
       const arraySub = checking ? T('server.parity_check', 'Parity check {n}', { n: srvPct(n(H.parityPct)) }) : started ? T('server.started', 'Started') : T('server.stopped', 'Stopped');
-      let body = K.card(T('server.host', 'Host'), st(H.version) ? 'Unraid ' + st(H.version).state : '', [
+      let body = K.card('', '', [
         K.gauge(T('server.cpu', 'CPU'), H.cpu, cpuSub, 80, 95),
-        K.gauge(T('server.memory', 'Memory'), H.ram, K.of(ramUsed, ramTotal, ramTotal == null ? null : Math.round(ramTotal) + ' GB'), 85, 95),
+        K.gauge(T('server.memory', 'Memory'), H.ram, K.left(ramUsed, ramTotal), 85, 95),
         K.gauge(T('server.array', 'Array'), H.array, arraySub, 80, 90)]);
       if (m.disks.length) {
         const invalid = st(H.parityValid) && st(H.parityValid).state === 'on';
@@ -4346,15 +4479,14 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
           const bad = st(d.health) && st(d.health).state === 'on', v = n(d.usage), t = K.tone(v, 80, 90);
           const sub = (bad ? `<span class="bad">${esc(T('server.check_disk', 'Check disk'))}</span>` : esc(T('server.healthy', 'Healthy'))) + (v == null ? '' : ' · ' + esc(T('server.used', '{n} used', { n: srvPct(v) })));
           return K.row(d.health || d.usage || d.temp, d.ssd ? 'expansion-card' : 'harddisk', 'var(--hemma-color-indigo, #5E5CE6)', d.name, sub,
-            `<span class="v">${esc(K.deg(d.temp) || (d.temp ? T('server.spun_down', 'Spun down') : ''))}</span>`, v == null ? '' : K.bar(v, t));
+            `<span class="v warn">${esc(K.hot(d.temp))}</span>`, v == null ? '' : K.bar(v, t));
         }).join('') + '</div>';
       }
       if (m.containers.length) {
         const cs = m.containers.filter((id) => st(id)).map((id) => ({ id, on: st(id).state === 'on', name: srvPretty(String(st(id).attributes.friendly_name || id).replace(/^.*?container\s+/i, '')) }))
           .sort((a, b) => a.name.localeCompare(b.name));
-        const mem = srvGB(st(H.dockerMem));
-        body += K.sec(T('server.docker', 'Docker'), [T('server.running_of', '{n} of {total} running', { n: cs.filter((c) => c.on).length, total: cs.length }), mem == null ? null : srvGBText(mem)].filter(Boolean).join(' · '));
-        body += '<div class="chips">' + cs.map((c) => `<button type="button" class="chip${c.on ? '' : ' off'}" data-id="${esc(c.id)}"><span class="dot"></span><b>${esc(c.name)}</b></button>`).join('') + '</div>';
+        body += K.sec(T('server.docker', 'Docker'), K.ran(cs.filter((c) => c.on).length, cs.length));
+        body += '<div class="chips">' + cs.map((c) => `<button type="button" class="chip${c.on ? '' : ' off'}" data-id="${esc(c.id)}" data-ctl="1" data-name="${esc(c.name)}" aria-haspopup="menu"><span class="dot"></span><b>${esc(c.name)}</b></button>`).join('') + '</div>';
       }
       return { title: m.label, tier, body };
     }
@@ -4398,7 +4530,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
       const ago = (iso) => { const h = (Date.now() - new Date(iso).getTime()) / 36e5; return h < 1 ? T('time.just_now', 'just now') : h < 24 ? T('time.short.hours', '{n}h ago', { n: Math.floor(h) }) : T('time.short.days', '{n}d ago', { n: Math.floor(h / 24) }); };
       this._list = movies.concat(shows);
       const shelf = (label, list) => !list.length ? '' : `<div class="sh"><div class="sl"><span>${esc(label)}</span></div><div class="row">`
-        + list.map((i) => `<button type="button" class="po" data-k="${this._list.indexOf(i)}"><span class="art" style="background-image:url('${esc(thumb(i.poster || i.fanart))}')"></span>`
+        + list.map((i) => `<button type="button" class="po" data-k="${this._list.indexOf(i)}"><span class="art" style="background-image:url('${escU(thumb(i.poster || i.fanart))}')"></span>`
           + `<span class="tx"><b>${esc(clean(i.title))}</b><small>${esc(first(i) || ago(i.airdate))}</small>${second(i) ? `<small class="ep">${esc(second(i))}</small>` : ''}</span><time>${esc(ago(i.airdate))}</time></button>`).join('')
         + `</div></div>`;
       const n = movies.length + shows.reduce((t, i) => t + i.eps.length, 0);
@@ -4624,7 +4756,7 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
         .none { flex: none; text-align: center; color: rgba(255,255,255,0.6); font-size: 14px; padding: 18px 0 8px; }</style>`
         + `<div class="wrap fade"><div class="page one"><div class="h"><b>${esc(T('plex.recently_added', 'Recently Added'))}</b><span>${esc(n ? T('plex.n_new', '{n} new', { n }) : T('plex.up_to_date', 'Up to date'))}</span></div>`
         + (phone && n ? `<div class="slab rc"><canvas class="rw"></canvas><i class="rdk"></i><div class="rtrack">`
-            + byNew.map((i) => `<button type="button" class="po rcard" data-k="${this._list.indexOf(i)}" aria-label="${esc(clean(i.title))}"><span class="art" style="background-image:url('${esc(thumb(i.poster || i.fanart))}')"></span></button>`).join('')
+            + byNew.map((i) => `<button type="button" class="po rcard" data-k="${this._list.indexOf(i)}" aria-label="${esc(clean(i.title))}"><span class="art" style="background-image:url('${escU(thumb(i.poster || i.fanart))}')"></span></button>`).join('')
             + `</div><div class="rmeta"></div><div class="rdots">${byNew.map((it, k) => `<b data-k="${k}" role="button" data-notip aria-label="${esc(clean(it.title))}"><i></i></b>`).join('')}</div>`
             + `</div>`
           : `<div class="slab">` + (n ? shelf(T('plex.movies', 'Movies'), movies) + shelf(T('plex.tv_shows', 'TV Shows'), shows) : `<div class="none">${esc(T('plex.nothing_added', 'Nothing recently added'))}</div>`) + `</div>`)
@@ -4666,16 +4798,16 @@ ${PILL_CSS}    @media (max-width: 768px) { .lpill { position: fixed; height: 52p
           const chips2 = [clean(i.rating) ? `<span class="chip solid">${esc(clean(i.rating))}</span>` : '', i.runtime ? `<span class="chip">${esc(i.runtime + ' min')}</span>` : '',
             i.tv && year ? `<span class="chip">${esc(year)}</span>` : ''].join('');
           const bd = url(i.fanart || i.art || i.poster);
-          const head = `<div class="bdrop" style="background-image:url('${esc(bd)}')"></div>`
-            + `<div class="hero"><span class="pst" style="background-image:url('${esc(thumb(i.poster || i.fanart))}')"></span><div class="hx">`
+          const head = `<div class="bdrop" style="background-image:url('${escU(bd)}')"></div>`
+            + `<div class="hero"><span class="pst" style="background-image:url('${escU(thumb(i.poster || i.fanart))}')"></span><div class="hx">`
             + `<span class="t1">${esc(clean(i.title))}</span>${meta ? `<span class="meta">${esc(meta)}</span>` : ''}</div></div>`
             + `${chips2 ? `<span class="chips">${chips2}</span>` : ''}<span class="seen">${seen}</span>`;
           this._rcDetail(rc, head + (many(i) ? list : clean(i.summary) ? `<p${spoil(i) ? ' class="spoil"' : ''}>${esc(clean(i.summary))}</p>` : ''));
           return;
         }
         root.querySelector('.det').innerHTML = many(i)
-          ? `<span class="fan" style="background-image:url('${esc(url(i.fanart || i.art || i.poster))}')"><span class="shade"></span>${mark}</span>${list}`
-          : `<div class="hero"><span class="pst" style="background-image:url('${esc(thumb(i.poster || i.fanart))}')"></span><div class="hx">`
+          ? `<span class="fan" style="background-image:url('${escU(url(i.fanart || i.art || i.poster))}')"><span class="shade"></span>${mark}</span>${list}`
+          : `<div class="hero"><span class="pst" style="background-image:url('${escU(thumb(i.poster || i.fanart))}')"></span><div class="hx">`
             + `<span class="t1">${esc(clean(i.title))}</span>${i.tv && clean(i.episode) ? `<span class="t2">${esc(clean(i.episode))}</span>` : ''}`
             + `${kick ? `<span class="kick">${esc(kick)}</span>` : ''}${chips ? `<span class="chips">${chips}</span>` : ''}<span class="kick">${seen}</span></div></div>`
             + `${clean(i.summary) ? `<p${spoil(i) ? ' class="spoil"' : ''}>${esc(clean(i.summary))}</p>` : ''}`;
@@ -5737,7 +5869,7 @@ ${CLOUD_CSS}    .bg.photo { inset: -120px; background: var(--ph) center / cover 
     for (let i = 0; i < 60; i++) { const a = i * 6 * Math.PI / 180, r1 = i % 5 ? 148 : 140; ticks += `<line x1="${170 + Math.sin(a) * r1}" y1="${170 - Math.cos(a) * r1}" x2="${170 + Math.sin(a) * 158}" y2="${170 - Math.cos(a) * 158}" style="stroke:${i % 5 ? 'var(--sub)' : 'var(--ink)'}" stroke-width="${i % 5 ? 1.3 : 2.6}" stroke-linecap="round"${i % 5 ? ' opacity=".7"' : ''}/>`; }
     for (let n = 1; n <= 12; n++) { const a = n * 30 * Math.PI / 180; nums += `<text x="${170 + Math.sin(a) * 114}" y="${180 - Math.cos(a) * 114}" text-anchor="middle" font-size="30" font-weight="600" style="fill:var(--ink)">${n}</text>`; }
     const hand = (cls, len, col) => `<g class="${cls}"><line x1="170" y1="${170 - 4}" x2="170" y2="${170 - 30}" style="stroke:${col}" stroke-width="3.2" stroke-linecap="round"/><line x1="170" y1="${170 - 30}" x2="170" y2="${170 - len}" style="stroke:${col}" stroke-width="8" stroke-linecap="round"/></g>`;
-    sr.innerHTML = `<style>${saverCss}${CLOCK_CSS}</style><div class="bg${photo ? ' photo' : ''}"${photo ? ` style="--ph:url('${esc(photo)}')"` : ` style="background:${bgc}"`}></div><div class="glows"></div><div class="stg still">
+    sr.innerHTML = `<style>${saverCss}${CLOCK_CSS}</style><div class="bg${photo ? ' photo' : ''}"${photo ? ` style="--ph:url('${escU(photo)}')"` : ` style="background:${bgc}"`}></div><div class="glows"></div><div class="stg still">
       <div class="dt"><div class="wd"><b></b> <span></span></div><div class="n"></div></div>
       <svg class="ck" viewBox="0 0 340 340">${ticks}${nums}${hand('hh', 92, 'var(--ink)')}${hand('mh', 140, 'var(--ink)')}<circle cx="170" cy="170" r="5.6" fill="none" style="stroke:var(--ink)" stroke-width="6"/><g class="sh"><line x1="170" y1="${170 + 4}" x2="170" y2="${170 + 28}" style="stroke:var(--sec)" stroke-width="2" stroke-linecap="round"/><line x1="170" y1="${170 - 4}" x2="170" y2="${170 - 160}" style="stroke:var(--sec)" stroke-width="2" stroke-linecap="round"/><circle cx="170" cy="170" r="4.3" fill="none" style="stroke:var(--sec)" stroke-width="3.4"/></g></svg>
       <div class="md" hidden><div class="ar"></div><div class="t"></div><div class="a"></div><button type="button" class="pl"></button></div>
@@ -6877,7 +7009,7 @@ ${CLOUD_CSS}    .bg.photo { inset: -120px; background: var(--ph) center / cover 
         const V = (((v.cards || [])[0]) || {}).variables || {};
         if (!V.image) continue;
         const base = String(V.image), pick = dk ? (V.image_night || base + '-night') : base;
-        const url = /^(\/|https?:)/.test(pick) ? pick : `/hemma_assets/rooms/${pick}.jpg`;
+        const url = /^(\/|https?:)/.test(pick) ? pick : (window.hemmaPhotoUrl || String)(`/hemma_assets/rooms/${pick}.jpg`);
         if (seen.has(url)) continue;
         seen.add(url);
         const t = String(v.title || V.title || v.path || ''), slug = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -7496,7 +7628,7 @@ ${CLOUD_CSS}    .bg.photo { inset: -120px; background: var(--ph) center / cover 
       const html = acts.length ? acts.map((a, i) => {
         const [ic, label, hue] = CAM_EVENT_T(a.kind);
         const thumb = i === 0 && clipSt && clipSt.attributes.entity_picture;
-        const lead = thumb ? `<span class="th" style="background-image:url('${esc(clipSt.attributes.entity_picture)}')"><i>${CAM_I.play}</i></span>`
+        const lead = thumb ? `<span class="th" style="background-image:url('${escU(clipSt.attributes.entity_picture)}')"><i>${CAM_I.play}</i></span>`
           : `<span class="ic" style="background:rgb(${hue})">${ICO(ic === 'bell' ? 'doorbell' : 'person-walking-motion', '#fff')}</span>`;
         return `<button type="button" class="li${thumb ? ' clip' : ''}">${lead}<span class="tx"><b>${esc(label)}</b><small>${esc(this._time(a.at))}</small></span>${thumb ? `<span class="tag">${esc(T('cameras.latest_clip', 'Latest clip'))}</span>` : ''}</button>`;
       }).join('') : `<div class="none">${esc(T('cameras.no_activity', 'No activity today'))}</div>`;
@@ -8184,7 +8316,7 @@ ${CLOUD_CSS}    .bg.photo { inset: -120px; background: var(--ph) center / cover 
         const ding = e.kind === 'ding';
         rows.push(`<button type="button" class="ev${go ? ' go' : ''}${go && this._clip ? ' on' : ''}" data-k="${go ? 'clip' : ''}"><span class="mk m" style="--c:${ding ? '#0A84FF' : '#FF9F0A'};--i:url(&quot;${iconUrl(ding ? 'doorbell' : 'person-walking-motion')}&quot;)"><i></i></span>`
           + `<span class="tx"><b>${esc(ding ? T('cameras.doorbell', 'Doorbell') : T('cameras.motion', 'Motion'))}</b><small>${esc(CAMS.time(h, e.at))}</small></span>`
-          + (go ? `<span class="th" style="background-image:url('${esc(pic)}')"></span>` : '') + `</button>`);
+          + (go ? `<span class="th" style="background-image:url('${escU(pic)}')"></span>` : '') + `</button>`);
       });
       if (ev && !ev.length) rows.push(`<div class="ev none">${esc(T('cameras.no_activity', 'No activity today'))}</div>`);
       const html = rows.join('');
@@ -8689,6 +8821,7 @@ ${CLOUD_CSS}    .bg.photo { inset: -120px; background: var(--ph) center / cover 
     :host(.fullp) .slab > .art img { display: block; width: min(62vw, 560px, calc((100vh - 400px) * var(--ar, 1))) !important; height: auto !important; max-width: none !important; max-height: none !important; object-fit: cover; border-radius: 18px !important; box-shadow: 0 30px 80px -24px rgba(0,0,0,0.7) !important; }
     @media (max-width: 768px) { :host(.fullp) .slab:has(.det > div:not(.sb)) > .art img { width: min(62vw, 560px, calc((100svh - 470px) * var(--ar, 1))) !important; } }
     :host(.fullp) .slab > .art.ph { width: min(40vw, 400px, max(160px, calc(100svh - 460px))) !important; aspect-ratio: 1; border-radius: 18px; background: rgba(255,255,255,0.1) !important; display: grid; place-items: center; }
+    @media (max-width: 768px) { :host(.fullp) .wrap.med > .slab.slab { justify-content: center !important; padding-top: calc(var(--hemma-sat, env(safe-area-inset-top, 0px)) + 44px) !important; } }
     :host(.fullp) .fcol { flex: none; width: min(860px, 84vw); display: flex; flex-direction: column; gap: 18px; margin-top: -84px; position: relative; z-index: 1; }
     :host(.fullp) .frow { display: flex; align-items: flex-end; gap: 16px; min-width: 0; }
     :host(.fullp) .frow > .trk { flex: 1; min-width: 0; gap: 2px; margin: 0 !important; text-shadow: 0 2px 18px rgba(0,0,0,0.45); }
@@ -9556,7 +9689,7 @@ ${CLOUD_CSS}    .bg.photo { inset: -120px; background: var(--ph) center / cover 
       // Output picker: what is playing on top, then a row per speaker with its icon and a circle that ticks; a row's fill is its volume, dragged sideways.
       const a0 = (h().states[me] || {}).attributes || {}, pic = a0.entity_picture ? (a0.entity_picture.startsWith('/') && h().hassUrl ? h().hassUrl(a0.entity_picture) : a0.entity_picture) : '';
       const t1 = a0.media_title || T('media.not_playing', 'Not Playing'), t2 = [a0.media_artist, a0.media_album_name].filter(Boolean).join(' · ');
-      box.innerHTML = `<div class="sh"><span class="sa"${pic ? ` style="background-image:url('${esc(pic)}')"` : ''}></span><span class="st"><b>${esc(t1)}</b>${t2 ? `<small>${esc(t2)}</small>` : ''}</span></div>`
+      box.innerHTML = `<div class="sh"><span class="sa"${pic ? ` style="background-image:url('${escU(pic)}')"` : ''}></span><span class="st"><b>${esc(t1)}</b>${t2 ? `<small>${esc(t2)}</small>` : ''}</span></div>`
         + ids.map((id) => `<div class="sr" data-id="${esc(id)}"><span class="f"></span><span class="si">${RM_I.air}</span><b>${esc(name(id))}</b><em><span class="c0">${RM_I.ckoff}</span><span class="c1">${RM_I.ckon}</span></em></div>`).join('');
       wrap.appendChild(box);
       const wr = wrap.getBoundingClientRect(), br = btn.getBoundingClientRect();
@@ -9986,7 +10119,7 @@ ${CLOUD_CSS}    .bg.photo { inset: -120px; background: var(--ph) center / cover 
     _placeholder(art) {
       if (art.querySelector('i')) return;
       art.classList.add('ph');
-      art.innerHTML = this._config.kind === 'activity' ? `<i style="--i:url(&quot;${MD_GAME}&quot;)"></i>` : this._tv() ? `<i style="--i:url('${esc(iconUrl('tv'))}')"></i>` : `<i style="--i:url(&quot;${MD_NOTE}&quot;)"></i>`;
+      art.innerHTML = this._config.kind === 'activity' ? `<i style="--i:url(&quot;${MD_GAME}&quot;)"></i>` : this._tv() ? `<i style="--i:url('${escU(iconUrl('tv'))}')"></i>` : `<i style="--i:url(&quot;${MD_NOTE}&quot;)"></i>`;
     }
   }
   if (!customElements.get('hemma-media-panel')) customElements.define('hemma-media-panel', HemmaMediaPanel);
@@ -10493,7 +10626,7 @@ ${CLOUD_CSS}    .bg.photo { inset: -120px; background: var(--ph) center / cover 
     _glyph(raw) {
       raw = String(raw || '').trim();
       if (raw.indexOf(':') >= 0) return `<ha-icon icon="${esc(raw)}"></ha-icon>`;
-      return `<i style="--i:url('${esc(iconUrl(raw || 'default'))}')"></i>`;
+      return `<i style="--i:url('${escU(iconUrl(raw || 'default'))}')"></i>`;
     }
     _mainIcon() {
       const c = this._config;
@@ -10519,7 +10652,7 @@ ${CLOUD_CSS}    .bg.photo { inset: -120px; background: var(--ph) center / cover 
       this._built = true;
       const k = this._kind(), root = this.shadowRoot;
       this._k = k;
-      const main = k.type === 'slider' ? `<button type="button" class="ctl${k.white ? ' white' : ''}" role="slider" aria-valuemin="0" aria-valuemax="100"><span class="fill">${k.white ? `<i class="glyph gin" style="--i:url('${esc(iconUrl(this._mainIcon()))}')"></i>` : ''}</span><i class="glyph" style="--i:url('${esc(iconUrl(this._mainIcon()))}')"></i></button>`
+      const main = k.type === 'slider' ? `<button type="button" class="ctl${k.white ? ' white' : ''}" role="slider" aria-valuemin="0" aria-valuemax="100"><span class="fill">${k.white ? `<i class="glyph gin" style="--i:url('${escU(iconUrl(this._mainIcon()))}')"></i>` : ''}</span><i class="glyph" style="--i:url('${escU(iconUrl(this._mainIcon()))}')"></i></button>`
         : k.type === 'switch' ? `<button type="button" class="ctl sw" role="switch"><span class="knob">${this._glyph(this._mainIcon())}</span></button>`
         : `<button type="button" class="${k.type}">${this._glyph(this._mainIcon())}</button>`;
       root.innerHTML = `<style>${SHEET_CSS}${COVER_CSS}${ACT_CSS}${BIG_CSS}${CAPS_CSS}</style><div class="wrap cover acts-wrap${this._config.show_names === false ? ' bare' : ''}"><div class="hd"><b></b><span></span></div>${main}`

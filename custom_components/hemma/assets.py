@@ -5,14 +5,21 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import shutil
 import threading
+from datetime import timedelta
 
 from aiohttp import web
 
-from homeassistant.components.http import HomeAssistantView
-from homeassistant.core import HomeAssistant
+import voluptuous as vol
 
-from .const import ASSETS_URL_BASE, USER_ASSETS_DIR
+from homeassistant.components import websocket_api
+from homeassistant.components.http import HomeAssistantView
+from homeassistant.components.http.auth import async_sign_path
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.http import KEY_AUTHENTICATED
+
+from .const import ASSETS_URL_BASE, LEGACY_ROOMS_DIR, PHOTOS_DIR, USER_ASSETS_DIR
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -105,14 +112,69 @@ def _under(base: str, rel: str) -> str | None:
     return full
 
 
+PHOTO_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+SIGN_DAYS = 7
+# The links the dashboards build for a room photo; a signature covers the exact path and query.
+PHOTO_LINKS = ("rooms/{}.jpg", "rooms-soft/{}.jpg", "rooms-soft/{}.jpg?v=3", "rooms-glass/{}.jpg", "rooms-glass/{}.jpg?v=5", "rooms-even/{}.jpg")
+
+
+def move_legacy_photos(config_dir: str) -> int:
+    """Room photos uploaded before 2.5.3 sat in www, where /local serves them to anyone; move them out."""
+    old = os.path.join(config_dir, LEGACY_ROOMS_DIR)
+    new = os.path.join(config_dir, PHOTOS_DIR, "rooms")
+    if not os.path.isdir(old):
+        return 0
+    moved = 0
+    for name in sorted(os.listdir(old)):
+        src = os.path.join(old, name)
+        if not os.path.isfile(src) or not name.lower().endswith(PHOTO_EXTS):
+            continue
+        if _is_retired(src):
+            os.remove(src)
+            continue
+        os.makedirs(new, exist_ok=True)
+        dst = os.path.join(new, name)
+        if os.path.exists(dst):
+            os.remove(src)
+        else:
+            shutil.move(src, dst)
+        moved += 1
+    return moved
+
+
+def user_photo_names(config_dir: str) -> list[str]:
+    folder = os.path.join(config_dir, PHOTOS_DIR, "rooms")
+    if not os.path.isdir(folder):
+        return []
+    return sorted({os.path.splitext(n)[0] for n in os.listdir(folder) if n.lower().endswith(PHOTO_EXTS)})
+
+
+@websocket_api.websocket_command({vol.Required("type"): "hemma/photos/sign", vol.Optional("paths"): [str]})
+@websocket_api.async_response
+async def ws_sign_photos(hass: HomeAssistant, connection, msg: dict) -> None:
+    """Signed links for the user's room photos, so <img> and CSS backgrounds can load them without a token."""
+    names = await hass.async_add_executor_job(user_photo_names, hass.config.config_dir)
+    paths = msg.get("paths")
+    if paths is None:
+        paths = [f"{ASSETS_URL_BASE}/{link.format(n)}" for n in names for link in PHOTO_LINKS]
+    paths = [p for p in paths[:500] if p.startswith(ASSETS_URL_BASE + "/rooms")]
+    exp = timedelta(days=SIGN_DAYS)
+    signed = {p: async_sign_path(hass, p, exp, refresh_token_id=connection.refresh_token_id) for p in paths}
+    connection.send_result(msg["id"], {"names": names, "signed": signed, "days": SIGN_DAYS})
+
+
+@callback
+def register_photo_ws(hass: HomeAssistant) -> None:
+    websocket_api.async_register_command(hass, ws_sign_photos)
+
+
 class HemmaAssetsView(HomeAssistantView):
-    """Shipped assets win; the user's www/hemma fills the gaps.
+    """Hemma's own icons, fonts, weather art and demo photos, open like any frontend file.
 
-    Room photos are the exception: the user's own copy wins, so a replaced
-    demo photo keeps showing.
-
-    Unauthenticated because these are loaded by bare <img> and @font-face,
-    which send no token. Same reach as /local, which serves the same files.
+    The user's room photos (and their blurred copies) are the exception: they
+    win over a shipped photo of the same name, and are served only to a
+    request Home Assistant has authenticated, which for <img> and CSS means a
+    link signed with auth/sign_path (see ws_sign_photos).
     """
 
     url = ASSETS_URL_BASE + "/{path:.*}"
@@ -124,17 +186,20 @@ class HemmaAssetsView(HomeAssistantView):
 
     async def get(self, request: web.Request, path: str) -> web.StreamResponse:
         hass: HomeAssistant = request.app["hass"]
-        user = hass.config.path(USER_ASSETS_DIR)
+        user = hass.config.path(PHOTOS_DIR)
+        authed = bool(request.get(KEY_AUTHENTICATED))
 
         def _find(rel: str) -> str | None:
-            order = (user, self._shipped) if rel.startswith("rooms/") else (self._shipped, user)
+            order = (user, self._shipped) if rel.startswith("rooms/") else (self._shipped, hass.config.path(USER_ASSETS_DIR))
             for base in order:
                 full = _under(base, rel)
                 if full and os.path.isfile(full):
-                    if base == user and rel.startswith("rooms/") and _is_retired(full):
-                        continue
                     return full
             return None
+
+        def _private(found: str) -> bool:
+            src = os.path.normpath(found)
+            return src.startswith(os.path.normpath(user) + os.sep) or src.startswith(os.path.normpath(hass.config.path("hemma_cache")) + os.sep)
 
         prefix = next((k for k in SOFT if path.startswith(k)), None)
 
@@ -143,6 +208,8 @@ class HemmaAssetsView(HomeAssistantView):
             src = _find("rooms/" + name)
             if src is None:
                 return None
+            if not authed and _private(src):
+                return "denied"
             try:
                 return _soft_file(hass.config.path("hemma_cache"), prefix, name, src)
             except Exception:  # noqa: BLE001
@@ -153,10 +220,17 @@ class HemmaAssetsView(HomeAssistantView):
             found = await hass.async_add_executor_job(_soft)
             if found is None:
                 return web.Response(status=404, text="not found")
-            return web.FileResponse(found, headers={"Cache-Control": "no-cache"})
+            if found == "denied":
+                return web.Response(status=401, text="unauthorized")
+            mine = await hass.async_add_executor_job(_private, found)
+            return web.FileResponse(found, headers={"Cache-Control": "private, no-cache" if mine else "no-cache"})
 
         found = await hass.async_add_executor_job(_find, path)
         if found is None:
             return web.Response(status=404, text="not found")
+        if await hass.async_add_executor_job(_private, found):
+            if not authed:
+                return web.Response(status=401, text="unauthorized")
+            return web.FileResponse(found, headers={"Cache-Control": "private, no-cache"})
         # Revalidated on every load (a cheap 304), so a redrawn icon reaches phones that cached the old one.
         return web.FileResponse(found, headers={"Cache-Control": "no-cache"})

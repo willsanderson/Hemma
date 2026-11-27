@@ -16,7 +16,7 @@
   "issues": {
     "theme_not_loaded": {
       "title": "The Hemma theme isn't loading",
-      "description": "Hemma adds its theme to Home Assistant by itself, but it isn't in the theme list right now. Open Hemma from the sidebar and choose Run setup again from the ⋯ menu. If the theme is still missing, reload the Hemma integration under Settings > Devices & services."
+      "description": "Home Assistant loads themes from your `configuration.yaml`. Add these lines to it, or add the `themes:` line to the `frontend:` section you already have:\n\n```yaml\nfrontend:\n  themes: !include_dir_merge_named themes\n```\n\nThen restart Home Assistant. Hemma keeps its theme file in `themes/hemma/` up to date for you."
     },
     "theme_replaced": {
       "title": "The Hemma theme was updated",

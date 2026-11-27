@@ -14,7 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 
-from .assets import HemmaAssetsView, warm_soft
+from .assets import HemmaAssetsView, move_legacy_photos, register_photo_ws, warm_soft
 from .images import HemmaIconsView, HemmaImagesView
 from .templates import HemmaTemplatesView, rebuild_if_stale
 from .scripts_view import panel_view, scripts_view
@@ -39,7 +39,7 @@ from .const import (
     SCRIPTS_URL_BASE,
     SHARED_SCRIPTS,
     URL_BASE,
-    USER_ASSETS_DIR,
+    PHOTOS_DIR,
     VERSION,
 )
 
@@ -206,9 +206,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if not hass.data.get(f"{DOMAIN}_views"):
         hass.http.register_view(HemmaAssetsView(hass.config.path(ASSETS_DIR)))
 
+        try:
+            moved = await hass.async_add_executor_job(move_legacy_photos, hass.config.config_dir)
+            if moved:
+                _LOGGER.info("Hemma: moved %d room photo(s) from www/hemma/rooms to hemma/rooms, out of public reach", moved)
+        except OSError:
+            _LOGGER.exception("Hemma: could not move room photos out of www/hemma/rooms")
+        register_photo_ws(hass)
+
         async def _warm() -> None:
             await hass.async_add_executor_job(
-                warm_soft, hass.config.path("hemma_cache"), hass.config.path(ASSETS_DIR), hass.config.path(USER_ASSETS_DIR)
+                warm_soft, hass.config.path("hemma_cache"), hass.config.path(ASSETS_DIR), hass.config.path(PHOTOS_DIR)
             )
 
         hass.async_create_background_task(_warm(), "hemma_warm_soft")

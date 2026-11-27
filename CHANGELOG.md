@@ -1,5 +1,36 @@
 # Changelog
 
+## 2.5.3
+
+Your room photos are private now, plus fixes from the HACS review.
+
+**After updating, restart Home Assistant.** Your dashboards pick up the changes on their own, so there's nothing to save. If a dashboard looks unchanged, clear your browser's cache (in the iOS app, clear the app's cache).
+
+### Your room photos are private
+
+Photos you uploaded in Hemma Studio used to sit in `www/hemma/rooms`, where anyone who could reach your Home Assistant could open them. When Home Assistant restarts, Hemma moves them to `hemma/rooms` in your config folder, and from then on only people signed in to your Home Assistant can see them. Your dashboards keep showing them as before. Hemma's demo photos are unchanged.
+
+If you linked to a room photo by its full `/local/hemma/rooms/...` address somewhere outside Hemma, that link stops working.
+
+### Check your theme line
+
+Home Assistant loads Hemma's theme through this line in `configuration.yaml`:
+
+```yaml
+frontend:
+  themes: !include_dir_merge_named themes
+```
+
+Hemma 2.4 said you could remove it. If you did, add it back and restart. Until you do, **Settings > Repairs** shows a notice with the same lines.
+
+### Fixes
+
+- **layout-card:** with layout-card also installed, editing a card in a layout-card view with the visual editor no longer loses the card's grid position when you save.
+- **No surprise reload:** opening a dashboard on a new device, or after changing the style in Studio, no longer reloads the page by itself. The cards redraw in their new style instead.
+- **Your theme edits are kept:** if you edited `themes/hemma/hemma.yaml`, an update now saves a copy to `hemma_backups` before replacing it, every time.
+- **Artwork with a quote in its link** no longer breaks the tile's style.
+- **The full-screen player on phones** sits in the middle of the screen instead of too high.
+
 ## 2.5.2
 
 Housekeeping for the HACS default list: the integration's brand folder now holds only the PNG images Home Assistant uses. Nothing changes on your dashboards.
