@@ -21,7 +21,7 @@ frontend:
   themes: !include_dir_merge_named themes
 ```
 
-Hemma 2.4 said you could remove it. If you did, add it back and restart. Until you do, **Settings > Repairs** shows a notice with the same lines.
+If it isn't in your `configuration.yaml`, add it and restart Home Assistant.
 
 ### Fixes
 
